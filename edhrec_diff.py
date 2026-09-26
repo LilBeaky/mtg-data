@@ -17,7 +17,7 @@ USAGE
                          nonland cards from SKIPPED
 
 SNAPSHOT FORMAT (edhrec_snapshots/<commander-slug>__<variant>__<YYYY-MM-DD>.txt)
-  # commander: Smaug the Impenetrable
+  # commander: Smaug the Impenetrable      (partner/background: "# commander: A + B")
   # variant: all            (all | exhibition | core | upgraded | optimized | cedh | budget | a theme tag)
   # url: https://edhrec.com/commanders/smaug-the-impenetrable
   # decks: 6141
@@ -71,8 +71,11 @@ def ci_of(c):
 def resolve(meta, rows):
     """Attach repo cards; return list of problems found."""
     problems = []
-    cmdr, _ = mtg.find(meta.get("commander", "")) if meta.get("commander") else (None, None)
-    cmdr_ci = ci_of(cmdr) if cmdr else None
+    # Partner/background pairs: "# commander: A + B" (color identity = union)
+    names = [n.strip() for n in meta.get("commander", "").split(" + ") if n.strip()]
+    found = [mtg.find(n)[0] for n in names]
+    cmdr = found[0] if found and all(found) else None
+    cmdr_ci = set().union(*(ci_of(c) for c in found)) if cmdr else None
     if not cmdr:
         problems.append(f"commander '{meta.get('commander')}' not found in repo")
     total = meta["decks"]
@@ -183,8 +186,9 @@ def cmd_diff(args):
         deck.append(c)
         if is_basic(c): basics += q
     cmdr_set = {mtg.find(n)[0]["name"] for n in cmdr_names if mtg.find(n)[0]}
-    if meta.get("commander") and mtg.find(meta["commander"])[0]:
-        cmdr_set.add(mtg.find(meta["commander"])[0]["name"])
+    for _n in [n.strip() for n in meta.get("commander", "").split(" + ") if n.strip()]:
+        if mtg.find(_n)[0]:
+            cmdr_set.add(mtg.find(_n)[0]["name"])
     if missing:
         print(f"! deck names not found in repo: {', '.join(missing)}")
     mine = {c["name"]: c for c in deck if not is_basic(c) and c["name"] not in cmdr_set}

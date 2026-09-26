@@ -18,6 +18,8 @@ COMMANDS
                                 combos (shows 2-card + bracket 3+; --all-combos for rest);
                                 Companion section: excluded from count, checked for
                                 legality/CI, odd/even condition auto-checked, combos included
+                                Long-form exports with trailing #tags are accepted
+                                (tags are stripped here; audit.py uses them as roles)
   gc                            list all Game Changers
   combos NAME [NAME ...]        Spellbook combos using ALL named cards
                                 (--bracket N: only tag >= N; --limit N)
@@ -37,7 +39,7 @@ SEARCH FILTERS (combine freely)
   Results sorted by EDHREC card rank (popular first).
   TOKEN TIP: search for names, then `card` only the shortlist you care about.
 
-EDHREC comparisons live in edhrec_diff.py (see USE_INSTRUCTIONS.md section 7).
+EDHREC comparisons live in edhrec_diff.py (see USE_INSTRUCTIONS.md section 9).
 
 SCHEMA REMINDER: missing "game_changer" key = not a Game Changer.
 """
@@ -71,7 +73,8 @@ def legal(c):
 
 _index = None
 def index():
-    """name/face-name (lowercased) -> card, preferring Commander-legal printings."""
+    """name/face-name (lowercased) -> card, preferring Commander-legal printings.
+    Full card names always beat face names."""
     global _index
     if _index is None:
         _index = {}
@@ -79,11 +82,19 @@ def index():
             k = k.lower()
             if k not in _index or (legal(_index[k]) != "legal" and legal(c) == "legal"):
                 _index[k] = c
+        # Pass 1: full card names. Pass 2: face names, but ONLY where no real card
+        # already owns that name. Without this, a prepare/adventure/MDFC face could
+        # shadow a real card with the same name (Sept 2026: "Rampant Growth" resolved
+        # to Studious First-Year // Rampant Growth; 12 cards were affected, incl.
+        # Reanimate, Regrowth, Replenish, Channel, Exsanguinate, Sign in Blood).
         for c in cards():
             put(c["name"], c)
+        full = set(_index)
+        for c in cards():
             for f in c.get("card_faces") or []:
-                if f.get("name"):
-                    put(f["name"], c)
+                fn = (f.get("name") or "").lower()
+                if fn and fn not in full:
+                    put(fn, c)
     return _index
 
 def norm(s):
@@ -261,18 +272,43 @@ LINE_RX = re.compile(r"^\s*(\d+)?x?\s*(.+?)\s*(\([A-Za-z0-9]+\).*)?(\*F\*)?\s*$"
 SECTIONS = {"commander", "commanders", "deck", "mainboard", "main", "sideboard",
             "companion", "maybeboard", "considering"}
 
-def parse_deck(path):
+# Trailing user tags in long-form exports, e.g. "1 Sol Ring (C21) 263 *F* #Ramp #!Mana Rock".
+# Split only on whitespace followed by '#', so multi-word tags ("Mana Rock") survive.
+TAG_SPLIT_RX = re.compile(r"\s+#(?=\S)")
+# Free-text header lines Ian writes above a list ("bracket: 3 (high)", "plan: ...", "pets: ...").
+META_RX = re.compile(r"^#?\s*(bracket|plan|pets?|notes?|target|budget)\s*:\s*(.*)$", re.I)
+
+def split_tags(s):
+    """'1 Card (SET) 12 #Ramp #!Mana Rock' -> ('1 Card (SET) 12', ['Ramp', 'Mana Rock'])"""
+    parts = TAG_SPLIT_RX.split(s)
+    tags = [p.strip().lstrip("!").strip() for p in parts[1:]]
+    return parts[0], [t for t in tags if t]
+
+def parse_deck(path, with_tags=False):
+    """[(section, qty, name)], or [(section, qty, name, tags)] with with_tags=True.
+    Trailing #tags are always stripped from the name, so tagged exports audit cleanly."""
     entries, section = [], "deck"
     for raw in open(path, encoding="utf-8"):
         s = raw.strip()
-        if not s or s.startswith(("//", "#")): continue
+        if not s or s.startswith(("//", "#")) or META_RX.match(s): continue
         if s.lower().rstrip(":") in SECTIONS:
             section = s.lower().rstrip(":"); continue
+        s, tags = split_tags(s)
         m = LINE_RX.match(s)
         if not m: continue
         qty = int(m.group(1) or 1)
-        entries.append((section, qty, m.group(2)))
+        entries.append((section, qty, m.group(2), tags) if with_tags else (section, qty, m.group(2)))
     return entries
+
+def parse_meta(path):
+    """Header lines like '#bracket: 3 (high)' or 'plan: creature storm' -> {key: value}."""
+    meta = {}
+    for raw in open(path, encoding="utf-8"):
+        m = META_RX.match(raw.strip())
+        if m:
+            k = m.group(1).lower()
+            meta[{"pet": "pets", "note": "notes"}.get(k, k)] = m.group(2).strip()
+    return meta
 
 def cmd_deck(args):
     o = parse_opts(args[1:])

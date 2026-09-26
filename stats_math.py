@@ -1,15 +1,20 @@
 """
-stats_math.py — probability tooling for mtg-data.
-Import mtg.py for decklist parsing, name lookup, and Oracle Tag access so this
-module never drifts from the repo's schema/format conventions (per USE_INSTRUCTIONS.md
-section 5). Run this from a location where `import mtg` resolves to the repo's mtg.py
-(e.g. drop this file in the repo root, or sys.path.insert the repo root first).
+stats_math.py — probability tooling for mtg-data. Full docs: STATS_MATH.md.
+
+Import it from the repo root:
+    python3 -c "import stats_math as sm; print(sm.hyper_at_least(99, 10, 10, 1))"
+Quick CLI for a one-off number:
+    python3 stats_math.py N K n k      -> P(at least k of K hits among n cards from N)
+For a whole deck, run audit.py — it calls everything below with the standard battery.
+
+Imports mtg.py for decklist parsing, name lookup, and Oracle Tag access so this
+module never drifts from the repo's schema/format conventions (USE_INSTRUCTIONS.md §7).
 """
-import math, random
+import math, random, sys
 import mtg  # the repo's own query helper
 
 EXCLUDED_FROM_POPULATION = {"sideboard", "maybeboard", "considering",
-                             "commander", "commanders", "companion"}
+                            "commander", "commanders", "companion"}
 
 # ---------- Population counting ----------
 
@@ -21,13 +26,15 @@ def count_population(decklist_path, commander_override=None):
     Returns (N, commander_names, companion_names).
     """
     entries = mtg.parse_deck(decklist_path)
-    commander_names = [o["--commander"]] if False else \
+    commander_names = [commander_override] if commander_override else \
         [n for s, q, n in entries if s in ("commander", "commanders")]
-    if commander_override:
-        commander_names = [commander_override]
     companion_names = [n for s, q, n in entries if s == "companion"]
     N = sum(q for s, q, n in entries if s not in EXCLUDED_FROM_POPULATION)
     return N, commander_names, companion_names
+
+def cards_seen(turn, on_play=True, hand=7):
+    """Cards seen by your draw step on `turn` (7-card hand, London mulligan)."""
+    return hand + (turn - 1 if on_play else turn)
 
 # ---------- Exact hypergeometric ----------
 
@@ -57,11 +64,7 @@ def multivariate_at_least(N, cats, n):
 def turn_curve(N, K, min_k, turns, on_play=True, hand=7):
     """Standard Commander convention: 7-card hand, London mulligan (bottoming
     doesn't change draw odds for cards kept)."""
-    out = {}
-    for t in turns:
-        draws = (t - 1) if on_play else t
-        out[t] = hyper_at_least(N, K, hand + draws, min_k)
-    return out
+    return {t: hyper_at_least(N, K, cards_seen(t, on_play, hand), min_k) for t in turns}
 
 # ---------- Monte Carlo ----------
 
@@ -75,23 +78,36 @@ def simulate_at_least(N, K, n, k, trials=200000, seed=42):
 
 # ---------- Oracle Tags -> category counts ----------
 
+def tag_oids(labels):
+    """Union of oracle_ids under one or more Scryfall tag labels, each walked to its
+    full subtree via mtg.load_tags (parent tags hold no direct taggings)."""
+    if isinstance(labels, str):
+        labels = [labels]
+    oids = set()
+    for lab in labels:
+        for s in mtg.load_tags(only_label=lab).values():
+            oids |= s
+    return oids
+
+def tag_labels(labels):
+    """Every label in the subtree(s) — used to map a user's own #tags onto categories."""
+    if isinstance(labels, str):
+        labels = [labels]
+    out = set()
+    for lab in labels:
+        out |= set(mtg.load_tags(only_label=lab))
+    return out
+
 def category_count_from_tag(decklist_path, tag_label, commander_override=None):
     """
-    K = cards IN THE LIBRARY (population, not commander/companion) whose oracle_id
-    falls under tag_label's Scryfall tag subtree. Walks parent/child tags via
-    mtg.load_tags, exactly like `mtg.py search --tag` does internally.
-    Returns (K, unmatched_names).
+    K = cards IN THE LIBRARY (commander/companion excluded) whose oracle_id falls
+    under tag_label's Scryfall tag subtree. tag_label may be a string or a
+    list/tuple of labels (union). Returns (K, unmatched_names) -- review unmatched
+    names by hand; they're never silently dropped.
     """
     entries = mtg.parse_deck(decklist_path)
-    commander_names = [commander_override] if commander_override else \
-        [n for s, q, n in entries if s in ("commander", "commanders")]
     library_entries = [(q, n) for s, q, n in entries if s not in EXCLUDED_FROM_POPULATION]
-
-    tag_tree = mtg.load_tags(only_label=tag_label)
-    all_oids = set()
-    for oids in tag_tree.values():
-        all_oids |= oids
-
+    all_oids = tag_oids(tag_label)
     K, unmatched = 0, []
     for q, name in library_entries:
         c, how = mtg.find(name)
@@ -101,13 +117,24 @@ def category_count_from_tag(decklist_path, tag_label, commander_override=None):
             K += q
     return K, unmatched
 
+# ---------- User #tags (long-form exports) ----------
+
+def norm_label(s):
+    """'Removal-Creature' / 'removal_creature' / 'Removal  Creature' -> 'removal creature'"""
+    return " ".join(s.lower().replace("-", " ").replace("_", " ").split())
+
+def user_tag_map(decklist_path):
+    """{card name: [normalized user tags]} for LIBRARY cards (commander/companion excluded)."""
+    out = {}
+    for s, q, n, tags in mtg.parse_deck(decklist_path, with_tags=True):
+        if s not in EXCLUDED_FROM_POPULATION and tags:
+            out[n] = [norm_label(t) for t in tags]
+    return out
+
 if __name__ == "__main__":
-    N, cmdrs, comps = count_population("/home/claude/test_decklist.txt")
-    print(f"Population N = {N} | commander(s): {cmdrs} | companion(s): {comps}")
-
-    K, unmatched = category_count_from_tag("/home/claude/test_decklist.txt", "ramp")
-    print(f"Ramp category: K = {K} (unmatched: {unmatched})")
-
-    print(f"P(>=1 ramp in opening 7): {hyper_at_least(N, K, 7, 1)*100:.1f}%")
-    p, se = simulate_at_least(N, K, 7, 1, trials=100000)
-    print(f"Simulated check: {p*100:.1f}% (should track the exact value above)")
+    a = sys.argv[1:]
+    if len(a) == 4 and all(x.isdigit() for x in a):
+        N, K, n, k = map(int, a)
+        print(f"P(>= {k} of {K} hits in {n} cards from {N}) = {100 * hyper_at_least(N, K, n, k):.1f}%")
+    else:
+        print(__doc__)
