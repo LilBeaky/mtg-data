@@ -31,6 +31,11 @@ Odds: exact hypergeometric, 7-card hand, London mulligan (see STATS_MATH.md).
 """
 import os, re, sys, glob, subprocess, datetime
 
+ACCEL_RESTRICT_RX = re.compile(r"spend this mana only")
+ACCEL_VARIABLE_RX = re.compile(r"add [^.]*\bfor each\b|add x\b|add an amount of mana")
+GENERIC_RX = re.compile(r"\{(\d+|X)\}")
+HYBRID_GENERIC_RX = re.compile(r"\{\d+/[WUBRG]\}")
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 import mtg
@@ -158,15 +163,19 @@ def main():
     def primary(r):
         if r in o["k"]:
             return o["k"][r], "confirmed", oset[r]
-        if user_primary:
+        if user_primary and uset[r]:
             return K_of(uset[r]), "your tags", uset[r]
+        if user_primary:
+            # Ian tagged nothing for this role: that means "untagged", not "zero cards".
+            # Printing K=0 / 0.0% here read as a real result (Sept 2026 Erebos audit).
+            return K_of(oset[r]), "oracle*", oset[r]
         return K_of(oset[r]), "oracle tags", oset[r]
 
     def alt_ks(r, K, src):
         """Other plausible counts for role r: oracle tags, your tags, the strict mapping."""
         alts = []
         if src != "oracle tags": alts.append(("oracle tags", K_of(oset[r])))
-        if any_user and src != "your tags": alts.append(("your tags", K_of(uset[r])))
+        if any_user and src not in ("your tags", "oracle*"): alts.append(("your tags", K_of(uset[r])))
         if r in STRICT and src != "confirmed": alts.append((f"strict {STRICT[r]}", K_of(oset[STRICT[r]])))
         seen_k, out = {K}, []
         for lab, K2 in alts:
@@ -185,7 +194,8 @@ def main():
     if any_user:
         print(f"role source: {'YOUR TAGS' if user_primary else 'oracle tags'} "
               f"(#tags on {100 * coverage:.0f}% of nonland cards"
-              f"{'' if user_primary else '; under 50%, so shown for comparison only'})")
+              f"{'' if user_primary else '; under 50%, so shown for comparison only'})"
+              + ("\n  (roles you didn't tag at all fall back to oracle tags, marked oracle* — untagged isn't zero)" if user_primary else ""))
     else:
         print("role source: Scryfall oracle tags (no #tags in this list) — broad counts are candidates, not truth")
     if o["k"]:
@@ -235,7 +245,15 @@ def main():
     cond = sorted(n for q, n, c in lands if tapped_kind(c) == "conditional")
     mdfc = sorted(n for q, n, c, t in lib if is_mdfc_land(c))
     RK, rsrc, rset = primary("ramp")
-    accel = sorted(n for n in (rset or oset["ramp"]) if mtg.find(n)[0].get("cmc", 99) <= 1)
+    # One-MV accelerants for the curve math. Restricted mana ("Spend this mana only ...",
+    # e.g. Master of Dark Rites) and graveyard/board-scaled mana (Songs of the Damned)
+    # can't be counted on to cast the commander early, so they're listed, not counted.
+    accel, accel_x = [], []
+    for n in sorted(rset or oset["ramp"]):
+        c1 = mtg.find(n)[0]
+        if c1.get("cmc", 99) > 1: continue
+        t1 = mtg.text_of(c1).lower()
+        (accel_x if (ACCEL_RESTRICT_RX.search(t1) or ACCEL_VARIABLE_RX.search(t1)) else accel).append(n)
     A = K_of(accel)
     M = L + RK
     ramp_alts = alt_ks("ramp", RK, rsrc)
@@ -244,7 +262,19 @@ def main():
     print(f"  always tapped ({len(always)}): {'; '.join(always) or 'none'}")
     if cond: print(f"  conditionally tapped ({len(cond)}): {'; '.join(cond)}")
     cr = sorted(oset["cost_reducers"])
-    if cr: print(f"  cost reducers ({K_of(cr)}, not counted as ramp — they still speed the deck up): {'; '.join(cr)}")
+    if cr:
+        print(f"  cost reducers ({K_of(cr)}, not counted as ramp — they still speed the deck up): {'; '.join(cr)}")
+        # Reducers only cut generic mana; a {B} or {U}{U} spell gets nothing from a Medallion.
+        def _cost(c): return "".join(f.get("mana_cost", "") for f in (c.get("card_faces") or [c])[:1])
+        # {2/B}-style hybrid is left out: whether a generic reducer can hit its "2" half isn't settled here
+        nogen = sorted(((q, n) for q, n, c, t in lib if not is_land(c) and not GENERIC_RX.search(_cost(c))
+                        and not HYBRID_GENERIC_RX.search(_cost(c))),
+            key=lambda x: (-x[0], x[1]))
+        if nogen:
+            ng = sum(q for q, _ in nogen)
+            print(f"      reducers can't touch {ng} nonland cards with no generic cost: "
+                  + "; ".join(f"{q}x {n}" if q > 1 else n for q, n in nogen[:12])
+                  + (" …" if len(nogen) > 12 else ""))
     if mdfc: print(f"  MDFC land backs ({len(mdfc)}, not counted as lands): {'; '.join(mdfc)}")
     p01 = sm.hyper_pmf(N, L, 7, 0) + sm.hyper_pmf(N, L, 7, 1)
     p24 = sum(sm.hyper_pmf(N, L, 7, k) for k in (2, 3, 4))
@@ -254,6 +284,8 @@ def main():
     print(line)
     print(f"  opener: ≤2 non-mana cards {pct(sm.hyper_at_least(N, M, 7, 5))} | "
           f"≥1 one-MV accelerant ({A}: {'; '.join(accel) or 'none'}) {pct(sm.hyper_at_least(N, A, 7, 1))}")
+    if accel_x:
+        print(f"      not counted as accelerants (restricted or scaling mana): {'; '.join(accel_x)}")
 
     # ----- 3. commander on curve -----
     if cmdrs:
@@ -287,7 +319,7 @@ def main():
             print(f"      {label}: {names_str(names)}")
         if any_user and src != "confirmed":
             extra_o, extra_u = oset[r] - uset[r], uset[r] - oset[r]
-            if user_primary and extra_o: print(f"      oracle tags also flag: {names_str(extra_o, 15)}")
+            if user_primary and extra_o and src != "oracle*": print(f"      oracle tags also flag: {names_str(extra_o, 15)}")
             if user_primary and extra_u: print(f"      only your tags: {names_str(extra_u, 15)}")
         for lab, K2 in alt_ks(r, K, src):
             b = odds(K2)

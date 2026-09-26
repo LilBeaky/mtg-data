@@ -82,7 +82,7 @@ USER_SYNONYMS = {
     "removal":        {"removal", "spot removal", "targeted removal"},
     "board_wipes":    {"board wipe", "boardwipe", "wipe", "wrath", "sweeper", "mass removal"},
     "protection":     {"protection", "protect"},
-    "tutors":         {"tutor", "tutors"},
+    "tutors":         {"tutor", "tutors", "search", "searcher"},   # Ian tags tutors #Search
     "counterspells":  {"counter", "counterspell", "counterspells", "counters"},
     "recursion":      {"recursion", "regrowth", "reanimation", "reanimate"},
     "graveyard_hate": {"graveyard hate", "gy hate", "grave hate"},

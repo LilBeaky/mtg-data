@@ -110,6 +110,10 @@ def index():
 def norm(s):
     s = s.strip().lower()
     s = re.sub(r"[’`]", "'", s)
+    # Moxfield exports double-faced cards with ONE slash ("Westvale Abbey / Ormendahl,
+    # Profane Prince"); Oracle names use " // ". No Oracle name contains " / ", so
+    # normalizing is safe. Found in the Sept 2026 Erebos audit (2 DFCs NOT FOUND).
+    s = re.sub(r"\s+/{1,2}\s+", " // ", s)
     return s
 
 _aliases = None
@@ -172,6 +176,8 @@ def line(c, full=True):
     body = text_of(c).replace("\n", " / ")
     if BRIEF:
         body = REMINDER_RX.sub("", body)
+        # a line that was only reminder text (hybrid, basic land types) leaves an empty " / " slot
+        body = re.sub(r"(?:^|(?<=: ))\s*/\s*|\s*/\s*(?= / |$)", "", body).strip()
     return f"{head}\n    {body}"
 
 # ---------- commands ----------
@@ -440,7 +446,9 @@ def cmd_deck(args):
     for q, c in nonland: curve[int(c.get("cmc", 0))] += q
     nl = sum(q for q, _ in nonland)
     avg = sum(q * c.get("cmc", 0) for q, c in nonland) / nl if nl else 0
-    print(f"cards: {total} (commander(s): {', '.join(cmd_names) or 'none'}; "
+    missing = sum(q for q, n in main_) - total
+    print(f"cards: {total}{f' found + {missing} NOT FOUND (excluded from every count below)' if missing > 0 else ''} "
+          f"(commander(s): {', '.join(cmd_names) or 'none'}; "
           f"CI {''.join(sorted(ci)) if ci else '?'})")
     meta = parse_deck_meta(args[0])
     if meta:

@@ -78,7 +78,7 @@ Only write a custom query if none of these can answer the question. If you do, r
 | `--all-combos` | `deck` | By default the audit lists only 2-card and Bracket 3+ combos and summarizes the rest as a count. |
 
 ### Name matching
-Lookup tries an exact name first, then case-insensitive, then `aliases.txt`, then a partial match. If a partial name matches several cards, you get an "ambiguous" message listing them, never a silent wrong pick. Either face of a double-faced card works (e.g. "Search for Azcanta").
+Lookup tries an exact name first, then case-insensitive, then `aliases.txt`, then a partial match. If a partial name matches several cards, you get an "ambiguous" message listing them, never a silent wrong pick. Either face of a double-faced card works (e.g. "Search for Azcanta"), and so does Moxfield's single-slash export (`Westvale Abbey / Ormendahl, Profane Prince`). *(Before the Sept 2026 fix, both DFCs in the Erebos list came back NOT FOUND and dropped out of the land count.)*
 
 **Full card names always beat face names.** 25 prepare-layout cards reuse a classic spell's name as a face. Before the Sept 2026 fix, 12 of them hijacked the real card: "Rampant Growth" resolved to Studious First-Year // Rampant Growth, and the same happened to Reanimate, Regrowth, Replenish, Channel, Exsanguinate, Sign in Blood, and others. `mtg.py` resolves them correctly now; a naive custom query over `card_faces` will not.
 
@@ -133,7 +133,7 @@ Lookup tries an exact name first, then case-insensitive, then `aliases.txt`, the
 | Section | Contents |
 |---|---|
 | 1 Legality & bracket | `mtg.py deck` output, GC count vs the bracket allowance, 2-card combos, extra-turn cards, possible MLD (regex flag for review) |
-| 2 Mana base | Lands, always- and conditionally-tapped lands (auto-detected), cost reducers, MDFC land backs, ramp, opener land odds, one-MV accelerants |
+| 2 Mana base | Lands, always- and conditionally-tapped lands (auto-detected), cost reducers plus the cards they can't reduce (no generic cost, rule 118.7a), MDFC land backs, ramp, opener land odds, one-MV accelerants (restricted or scaling mana, e.g. Master of Dark Rites or Songs of the Damned, is listed but not counted) |
 | 3 Commander on curve | Lands-only floor and with a 1-MV accelerant, per commander |
 | 4 Roles & odds | K and odds (opener, T3, T4, T6 ≥2) for ramp, draw, draw engines, removal, wipes, protection, tutors, counterspells, recursion, graveyard hate, plus any other category present and every custom #tag |
 | 5 Density & flood | ≥4 non-mana cards in the first 12, flood odds, screw odds, with ramp-count alternatives |
@@ -143,7 +143,7 @@ Lookup tries an exact name first, then case-insensitive, then `aliases.txt`, the
 ### Roles: where K comes from (this matters)
 Hypergeometric odds are only as good as K, the number of cards that actually do the job. The sources, in priority order:
 
-1. **Ian's `#tags`**, when they cover ≥50% of the nonland cards. His labels are his intent, so they're the truth. Labels under a category's Scryfall subtree (e.g. `mana rock`, `removal-creature`, `draw engine`) and plain-English synonyms (`wipe`, `tutor`, `counter`) map automatically. Any other label becomes its own row (e.g. `#pump`, `#pet`).
+1. **Ian's `#tags`**, when they cover ≥50% of the nonland cards. His labels are his intent, so they're the truth. `#Search` counts as tutors. A role he tagged nothing for falls back to oracle tags, marked `oracle*`: untagged isn't zero. Labels under a category's Scryfall subtree (e.g. `mana rock`, `removal-creature`, `draw engine`) and plain-English synonyms (`wipe`, `tutor`, `counter`) map automatically. Any other label becomes its own row (e.g. `#pump`, `#pet`).
 2. **`--k ROLE=N`**, a count you confirmed with Ian or by reading the card list.
 3. **Scryfall oracle tags.** These are broad. They answer "does this card have the effect?" rather than "does it fill this role in this deck?" In the Sept 2026 Wilson spot check, tags said 11 protection pieces against ~7 real ones, which moved "2 protection by T6" from 20% to 40%.
 
@@ -192,7 +192,7 @@ The sandbox can't reach EDHREC, so you fetch the page yourself with the web tool
 ### Workflow
 
 1. **Reuse before you fetch.** `audit.py` looks for a snapshot automatically. If there's one for the same commander under 30 days old, you're done. The fetch is the most expensive step (~15–20K tokens).
-2. **Pick the right page: match the deck's bracket.** `/exhibition`, `/core`, `/upgraded`, `/optimized`, or `/cedh`. Budget (`/budget`, `/expensive`) and theme pages (`/treasure`, etc.) also exist. Fall back to the all-decks page **only** if the bracket page has under ~200 decks.
+2. **Pick the right page: match the deck's bracket.** Bracket pages count only decks with a *user-set* bracket, so they run small (Erebos: `/core` had 113 of 1,578). `/exhibition`, `/core`, `/upgraded`, `/optimized`, or `/cedh`. Budget (`/budget`, `/expensive`) and theme pages (`/treasure`, etc.) also exist. Fall back to the all-decks page **only** if the bracket page has under ~200 decks.
    - *Why this is strict:* the Sept 2026 Yusri audit diffed a B4 deck against the all-decks page. The field was mostly casual chaos decks, so every Game Changer showed up as "negative synergy" and SKIPPED filled with theme cards. The numbers looked rigorous but measured the wrong field.
    - *Getting the URL:* `web_fetch` refuses URLs you construct. First `web_search` for the bracket page itself (e.g. "edhrec yusri optimized"). If it doesn't come back, fetch the all-decks page (its bracket, budget, and theme links then count as seen) and fetch the bracket page second. Two fetches is fine to avoid a mismatched baseline; the snapshot is reused for 30 days.
    - `diff` reads the deck's `bracket` header and warns if the snapshot doesn't match.
@@ -310,6 +310,8 @@ The combos output is ~3 MB gzipped (~40 MB unzipped). Keep it gzipped, since Git
 - **Sandbox network:** GitHub (including `api.github.com`), PyPI, and npm are reachable. `json.commanderspellbook.com`, `backend.commanderspellbook.com`, and EDHREC are **blocked** from the sandbox (`host_not_allowed`). Use `web_search` / `web_fetch` for EDHREC (section 9), and have Ian download Spellbook data.
 - **EDHREC data** isn't bundled because it changes too fast. Snapshots in `edhrec_snapshots/` are point-in-time copies; anything over 30 days old should be refetched. For commander popularity rank, check live.
 - **Rules file date:** mechanics newer than the Comprehensive Rules file (e.g. prepare, when the file predates it) need an outside rules check. `audit.py` prints the date.
+- **Rules file vs new mechanics:** the 20260227 file has no `prepare` or `Paradigm` text. Use `rulings` for those (they cover it) until Ian drops in a newer rules file.
+- **Prepare cards in Spellbook:** Spellbook lists a prepare card as a stand-in for its spell (every Exsanguinate combo has a Stensian Sanguinist // Exsanguinate twin; Channel combos appear under Yavimaya Bloomsage). A prepare card can only cast that spell as a copy while prepared, never from hand, so treat those variants as conditional.
 - Spellbook's `mv` field shows 0 for some combos (e.g. Obeka's). The meaning is unconfirmed, so don't rely on it.
 - Sandbox RAM is ~3 GB. Stream big files; never `json.load` the raw Spellbook export.
 

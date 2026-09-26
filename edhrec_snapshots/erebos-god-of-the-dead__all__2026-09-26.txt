@@ -1,0 +1,273 @@
+# commander: Erebos, God of the Dead
+# variant: all
+# url: https://edhrec.com/commanders/erebos-god-of-the-dead
+# decks: 1578
+# fetched: 2026-09-26
+# note: /core had only 113 decks (user-set brackets only), so the all-decks page is the baseline per USE_INSTRUCTIONS §9
+Troop of Ponies|10|7|228
+Emrakul, the Exigent Doom|5.0|5|80
+Gollum, Riddle Master|2.7|2|255
+Inside Information|2.5|1|237
+The Master of Lake-town|2.4|-1|251
+Exsanguinate|71|46
+Whip of Erebos|54|43
+Underworld Dreams|41|35
+Gray Merchant of Asphodel|83|33
+Damnation|53|33
+Nirkana Revenant|43|33
+Liliana of the Dark Realms|46|33
+Torment of Hailfire|46|31
+Phyrexian Obliterator|41|30
+Exquisite Blood|42|29
+Crypt Ghast|74|27
+Jet Medallion|71|9
+Dark Ritual|59|-8
+Phyrexian Arena|59|20
+Feed the Swarm|54|4
+Toxic Deluge|52|15
+Massacre Wurm|44|27
+Defile|40|5
+Reanimate|40|-1
+Mutilate|40|24
+Bolas's Citadel|39|11
+Demonic Tutor|37|10
+Necropotence|28|13
+Vampiric Tutor|26|5
+Orcish Bowmasters|12|-1
+Ancient Tomb|10|-2
+Opposition Agent|9.3|0
+The One Ring|8.1|-1
+Imperial Seal|7.2|0
+Glacial Chasm|5.1|5
+Sheoldred, the Apocalypse|38|24
+Dread Presence|37|24
+K'rrik, Son of Yawgmoth|36|16
+Vito, Thorn of the Dusk Rose|32|21
+Bloodletter of Aclazotz|30|19
+Magus of the Coffers|30|23
+Creeping Bloodsucker|29|25
+Vilis, Broker of Blood|29|16
+Twilight Prophet|28|23
+Ayara, First of Locthwain|28|2
+Solemn Simulacrum|27|6
+Blood Artist|27|-5
+Bloodthirsty Conqueror|25|16|1520
+Vampire Nighthawk|25|20
+Enduring Tenacity|25|17
+Dauthi Voidwalker|24|9
+Sheoldred, Whispering One|24|13
+Kokusho, the Evening Star|24|20
+Nighthawk Scavenger|21|16
+Murderous Rider|21|15
+Sangromancer|21|11
+Gifted Aetherborn|20|16
+Tymaret, Chosen from Death|19|18
+Qarsi Revenant|18|13|1270
+Zodiark, Umbral God|18|11|1170
+Noxious Gearhulk|17|10
+Grave Titan|16|9
+Ophiomancer|14|-4
+Burnished Hart|14|7
+Abhorrent Overlord|13|9
+Plaguecrafter|13|-7
+Archfiend of Depravity|13|6
+Erebos, Bleak-Hearted|12|10
+Rune-Scarred Demon|12|7
+Maha, Its Feathers Night|11|6
+Valgavoth, Terror Eater|11|5
+Boggart Trawler|10|1
+Fate Unraveler|10|7
+Gixian Puppeteer|10|7
+Pontiff of Blight|10|7
+Grim Servant|10|5
+Shard of the Nightbringer|10|6
+Marauding Blight-Priest|10|3
+Zulaport Cutthroat|9.4|-14
+Accursed Marauder|9.3|-13
+Mikaeus, the Unhallowed|9.1|2
+Sheoldred|8.9|3
+Archfiend of Despair|8.8|6
+Syr Konrad, the Grim|8.6|-12
+Archon of Cruelty|8.5|3
+Withering Torment|36|4
+Consuming Corruption|35|20
+Deadly Rollick|32|7
+Infernal Grasp|27|2
+Imp's Mischief|25|-0
+Darkness|25|14
+Sudden Spoiling|24|16
+Fell the Profane|23|3
+Erebos's Intervention|21|19
+Go for the Throat|20|-2
+Archenemy's Charm|15|6|1050
+Baleful Mastery|15|7
+Hero's Downfall|15|8
+Snuff Out|15|1
+Malakir Rebirth|14|-10
+Sheoldred's Edict|12|-3
+Soul Shatter|12|1
+Force of Despair|12|4
+Tragic Slip|11|-7
+Cabal Ritual|11|-8
+Tendrils of Corruption|11|8
+Dismember|10|-0
+Withering Boon|10|5
+Drag to the Underworld|9.3|8
+Doom Blade|8.8|2
+Bitter Triumph|8.2|-2
+Saw in Half|8.0|-1
+Murder|7.2|-2
+Crypt Incursion|6.5|4
+Entomb|6.3|-6
+Hagra Mauling|6.1|2
+Dash Hopes|5.3|4
+Sign in Blood|36|1
+Bubbling Muck|30|15
+Night's Whisper|23|-2
+Read the Bones|22|6
+Decree of Pain|21|16
+Blasphemous Edict|17|1|1520
+Diabolic Tutor|17|4
+Rise of the Dark Realms|17|3
+Black Sun's Zenith|16|12
+Grim Tutor|16|4
+Victimize|14|-14
+Profane Command|12|11
+Syphon Mind|12|0
+Insatiable Avarice|12|1
+Beseech the Queen|12|6
+Corrupt|11|8
+Consume Spirit|10|9
+Deadly Tempest|10|8
+Agadeem's Awakening|10|2
+Killing Wave|9.3|7
+In Garruk's Wake|8.9|5
+Peer into the Abyss|8.4|-2
+Temporal Extortion|8.0|6
+Decorum Dissertation|7.8|2|513
+Repay in Kind|7.0|5
+Final Act|6.7|5
+Yawgmoth's Will|6.5|3
+Drain Life|5.9|5
+Dark Petition|5.8|2
+Dread Return|5.7|-6
+Diabolic Intent|5.6|-10
+Army of the Damned|5.2|1
+Living Death|5.1|-5
+Will of the Abzan|5.0|2|1250
+Profane Tutor|5.0|1
+Beseech the Mirror|5.0|-2
+Expedition Map|39|28
+The Darkness Crystal|35|15|1170
+Wayfarer's Bauble|26|12
+Bontu's Monument|22|-6
+Alhammarret's Archive|16|13
+Aetherflux Reservoir|14|5
+Lightning Greaves|14|-20
+Sensei's Divining Top|10|2
+Swiftfoot Boots|9.4|-22
+Venser's Journal|8.2|7
+Shadowspear|8.2|4
+Staff of the Death Magus|7.8|5
+Demon's Horn|7.7|4
+Lashwrithe|6.2|2
+World Map|6.0|4|1150
+Sinister Monolith|5.8|5
+Thaumatic Compass|5.4|5
+God-Pharaoh's Statue|5.2|5
+Mask of Griselbrand|5.1|2
+Painful Quandary|38|28
+No Mercy|36|28
+Sanguine Bond|33|22
+The Meathook Massacre|32|15
+Black Market Connections|26|1
+Font of Agonies|24|20
+Animate Dead|24|6
+Black Market|23|3
+Bloodchief Ascension|22|13
+Polluted Bonds|21|19
+Pestilence|20|17
+Oubliette|18|16
+Wound Reflection|16|12
+Phyrexian Reclamation|15|6
+Dictate of Erebos|15|4
+Grave Pact|15|-5
+Meathook Massacre II|12|6
+Revenge of Ravens|12|10
+Bitterblossom|12|-1
+Virtue of Persistence|9.1|5
+Underworld Connections|8.6|7
+Oppression|8.2|1
+Leyline of the Void|7.7|6
+Tainted Aether|7.6|7
+Court of Ambition|7.5|4
+Hissing Miasma|6.7|6
+Palace Siege|6.5|5
+Warlock Class|6.2|5
+Lethal Vapors|5.8|5
+Retreat to Hagra|5.7|5
+Waste Not|5.6|-4
+Dogged Pursuit|5.6|5
+Necromancy|5.5|-0
+Spreading Plague|5.5|5
+Sanctum of Stone Fangs|5.4|5
+Subversion|5.3|5
+Grave Betrayal|5.3|3
+Blood Reckoning|5.3|5
+Triskaidekaphobia|5.0|4
+Sorin Markov|20|18
+Liliana, Dreadhorde General|8.9|-5
+Ob Nixilis of the Black Oath|8.2|7
+Liliana Vess|7.5|4
+Ob Nixilis Reignited|6.1|4
+Liliana of the Veil|5.1|-2
+Cabal Coffers|76|21
+Urborg, Tomb of Yawgmoth|56|19
+Nykthos, Shrine to Nyx|56|27
+Bojuka Bog|56|8
+Cabal Stronghold|52|18
+Reliquary Tower|38|9
+Witch's Cottage|26|1
+Thespian's Stage|19|15
+Castle Locthwain|19|3
+Takenuma, Abandoned Mire|19|3
+Deserted Temple|19|15
+Leechridden Swamp|14|12
+Phyrexian Tower|14|-13
+Vesuva|12|9
+Maze of Ith|12|9
+Crypt of Agadeem|11|-0
+War Room|10|-6
+Mortuary Mire|8.9|-4
+Barren Moor|8.9|-0
+Strip Mine|8.2|5
+Volrath's Stronghold|7.8|4
+Temple of the False God|7.7|0
+Shizo, Death's Storehouse|7.5|-3
+Rogue's Passage|7.1|-12
+Boseiju, Who Shelters All|6.5|5
+Ghost Quarter|6.2|4
+Lake of the Dead|5.9|1
+Terrain Generator|5.8|4
+Urza's Saga|5.7|-2
+Westvale Abbey|5.0|-1
+Sol Ring|84|-1
+Arcane Signet|56|-5
+Thought Vessel|38|14
+Caged Sun|32|22
+Mind Stone|31|4
+Charcoal Diamond|31|9
+Nyx Lotus|25|19
+The Soul Stone|20|4|998
+Extraplanar Lens|15|11
+Fellwar Stone|15|1
+Throne of Eldraine|13|4
+Gauntlet of Power|11|8
+Altar of the Pantheon|9.4|9
+Everflowing Chalice|9.4|4
+Sceptre of Eternal Glory|9.3|2
+Gilded Lotus|7.1|2
+Thran Dynamo|6.4|1
+Myriad Landscape|32|8
+Urza's Cave|18|10
+Demolition Field|6.7|1
