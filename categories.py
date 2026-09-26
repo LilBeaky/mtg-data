@@ -6,10 +6,16 @@ mtg.load_tags() — these aren't guessed slugs; each returned real card coverage
 Card counts are commander-legal + non-legal combined (load_tags doesn't filter
 by legality). A value can be one label or a tuple of labels (union).
 
-Used by audit.py (default role battery) and by
+Used by audit.py (default role battery), `python3 stats_math.py report DECK`, and
 stats_math.category_count_from_tag(decklist_path, CATEGORIES["ramp"]).
 
-RELIABILITY (Sept 2026 spot check on the Wilson list, vs hand counts):
+RELIABILITY — two real-deck checks, Sept 2026. Always read the matched names
+(audit.py lists them; so does `python3 stats_math.py report DECK`).
+  Yusri (99-card library):
+    ramp misses cost reducers entirely (Ruby/Sapphire Medallion) -> cost_reducers
+    tutor includes judgment calls (Okaun/Zndrsplt "partner with", Enter the Infinite)
+    removal, counterspell, protection, extra turn matched cleanly
+  Wilson (vs hand counts):
   Oracle tags answer "does this card have the effect?", not "does it fill this
   role in THIS deck?". Broad categories overcount:
     card_draw   15 vs 9 real engines (cantrips + cycling lands counted)
@@ -47,6 +53,9 @@ CATEGORIES = {
     "counterspells":   "counterspell",      # 563 cards, 24 sub-tags
     "extra_turns":     "extra turn",        # 64 cards -- note the literal label has a space
     "sac_outlets":     "sacrifice outlet",  # 1,549 cards, 23 sub-tags -- also a space, not a hyphen
+    "cost_reducers":   "cost reducer",      # 387 cards, 25 sub-tags -- the Medallions etc.
+                                             #   `ramp` does NOT include these; count both
+                                             #   when judging a deck's mana (Yusri audit, Sept 2026)
     "monarch":         "monarch matters",   # 49 cards
     "stax_ish":        "tax",               # 487 cards -- APPROXIMATION ONLY. Real stax covers
                                             #   more than tax effects (hatebears, prison pieces);
@@ -77,6 +86,7 @@ USER_SYNONYMS = {
     "counterspells":  {"counter", "counterspell", "counterspells", "counters"},
     "recursion":      {"recursion", "regrowth", "reanimation", "reanimate"},
     "graveyard_hate": {"graveyard hate", "gy hate", "grave hate"},
+    "cost_reducers":  {"cost reducer", "cost reduction", "reducer", "medallion"},
 }
 
 # Searched for (including broadened regex passes over every raw label in the

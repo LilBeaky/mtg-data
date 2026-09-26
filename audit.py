@@ -39,7 +39,6 @@ from categories import CATEGORIES, STRICT, AUDIT_ROLES, USER_SYNONYMS
 
 SENSITIVE_PTS = 15
 STALE_DAYS = 30
-BRACKET_VARIANT = {1: "exhibition", 2: "core", 3: "upgraded", 4: "optimized", 5: "cedh"}
 GC_ALLOW = {1: 0, 2: 0, 3: 3}
 MLD_RX = re.compile(
     r"(destroy|exile)s? all [\w, ]*?lands\b|sacrifices? (all|half|x|that many) (of their |nonbasic )?lands"
@@ -74,9 +73,10 @@ def slug(name):
     s = name.lower().replace("'", "").replace("\u2019", "")
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
 
+PETS = set()
 def names_str(items, limit=40):
     items = sorted(items)
-    out = "; ".join(items[:limit])
+    out = "; ".join(n + (" [pet]" if n in PETS else "") for n in items[:limit])
     return out + (f" (+{len(items) - limit} more)" if len(items) > limit else "")
 
 def parse_args(argv):
@@ -111,7 +111,7 @@ def main():
     lists = not o.get("no-lists")
 
     entries = mtg.parse_deck(path, with_tags=True)
-    meta = mtg.parse_meta(path)
+    meta = mtg.parse_deck_meta(path)
     N, cmd_names, comp_names = sm.count_population(path, o.get("commander"))
     cmdrs = [c for c in (mtg.find(n)[0] for n in cmd_names) if c]
 
@@ -128,15 +128,14 @@ def main():
         qty_of[n] = qty_of.get(n, 0) + q
     K_of = lambda names: sum(qty_of[n] for n in names)
 
-    bracket = None
-    if o.get("bracket"):
-        bracket = int(o["bracket"])
-    elif re.search(r"[1-5]", meta.get("bracket", "")):
-        bracket = int(re.search(r"[1-5]", meta["bracket"]).group())
+    bracket = int(o["bracket"]) if o.get("bracket") else meta.get("bracket")
+    pets = {c["name"] for c in (mtg.find(p)[0] for p in meta.get("pets", [])) if c}
+    PETS.update(pets)
 
     # ----- roles: oracle sets, user sets, label mapping -----
-    oids = {r: sm.tag_oids(v) for r, v in CATEGORIES.items()}
-    subtree = {r: {sm.norm_label(l) for l in sm.tag_labels(v)} for r, v in CATEGORIES.items()}
+    trees = mtg.load_tags_multi(sorted({l for v in CATEGORIES.values() for l in sm._as_labels(v)}))
+    oids = {r: sm.tag_oids(v, trees) for r, v in CATEGORIES.items()}
+    subtree = {r: {sm.norm_label(l) for l in sm.tag_labels(v, trees)} for r, v in CATEGORIES.items()}
     roots = {r: {sm.norm_label(l) for l in ((v,) if isinstance(v, str) else v)} for r, v in CATEGORIES.items()}
     role_labels = {r: subtree[r] | {sm.norm_label(r)} | USER_SYNONYMS.get(r, set()) for r in CATEGORIES}
     for r in CATEGORIES:                       # nested categories inherit synonyms (wipe -> removal too)
@@ -183,8 +182,6 @@ def main():
     today = datetime.date.today()
     print(f"=== AUDIT: {' + '.join(c['name'] for c in cmdrs) or 'no commander'} | N={N} library cards | "
           f"{'on the play' if on_play else 'on the draw'} | {today} ===")
-    if meta:
-        print("meta: " + " · ".join(f"{k}: {v}" for k, v in meta.items()))
     if any_user:
         print(f"role source: {'YOUR TAGS' if user_primary else 'oracle tags'} "
               f"(#tags on {100 * coverage:.0f}% of nonland cards"
@@ -246,6 +243,8 @@ def main():
           + ("".join(f" | alt ramp {K2} ({lab})" for lab, K2 in ramp_alts)))
     print(f"  always tapped ({len(always)}): {'; '.join(always) or 'none'}")
     if cond: print(f"  conditionally tapped ({len(cond)}): {'; '.join(cond)}")
+    cr = sorted(oset["cost_reducers"])
+    if cr: print(f"  cost reducers ({K_of(cr)}, not counted as ramp — they still speed the deck up): {'; '.join(cr)}")
     if mdfc: print(f"  MDFC land backs ({len(mdfc)}, not counted as lands): {'; '.join(mdfc)}")
     p01 = sm.hyper_pmf(N, L, 7, 0) + sm.hyper_pmf(N, L, 7, 1)
     p24 = sum(sm.hyper_pmf(N, L, 7, k) for k in (2, 3, 4))
@@ -341,12 +340,12 @@ def main():
                 parts = os.path.basename(f)[:-4].split("__")
                 if len(parts) == 3 and parts[0] in slugs:
                     found.append((parts[1], parts[2], f))
-            want = BRACKET_VARIANT.get(bracket)
+            want = mtg.BRACKET_VARIANT.get(bracket)
             for pick in ([v for v in found if v[0] == want], [v for v in found if v[0] == "all"], found):
                 if pick:
                     snap = max(pick, key=lambda v: v[1])[2]; break
         if not snap:
-            v = BRACKET_VARIANT.get(bracket, "all")
+            v = mtg.BRACKET_VARIANT.get(bracket, "all")
             print(f"  NO SNAPSHOT for {' / '.join(sorted(slugs))}. Fetch per USE_INSTRUCTIONS §9 "
                   f"(try /{v}; fall back to the all-decks page under ~200 decks), transcribe, run "
                   f"`edhrec_diff.py check`, then re-run this audit.")

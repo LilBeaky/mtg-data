@@ -1,0 +1,286 @@
+# commander: Yusri, Fortune's Flame
+# variant: all
+# url: https://edhrec.com/commanders/yusri-fortunes-flame
+# decks: 6709
+# fetched: 2026-09-25
+Chira, All In|8.3|8|1150
+Wizard's Staff|5.9|-8|1210
+Samut, Tyrant of Naktamun|2.5|0|240
+Glamdring, Foe-hammer|1.9|-3|1180
+Troop of Ponies|1.2|1|1180
+Tavern Scoundrel|94|87
+Krark's Thumb|90|85
+Zndrsplt, Eye of Wisdom|81|79
+Chance Encounter|83|79
+Stitch in Time|80|74
+Okaun, Eye of Chaos|74|73
+Fiery Gambit|75|71
+Edgar, King of Figaro|73|70|5390
+Krark, the Thumbless|69|65
+Invert Polarity|73|62
+Chaos Warp|63|23
+Squee's Revenge|63|60
+Counterspell|63|11
+Tribute Mage|56|52
+Game of Chaos|55|52
+Ral Zarek|55|51
+Lightning Greaves|53|28
+Fabricate|50|41
+Boompile|50|47
+Niv-Mizzet, Parun|49|24
+Gamble|47|31
+Jeska's Will|22|-7
+Cyclonic Rift|19|-4
+Rhystic Study|18|-5
+Fierce Guardianship|16|-5
+Mystical Tutor|16|-5
+Underworld Breach|8.7|-4
+Force of Will|8.2|-4
+Ancient Tomb|7.1|-4
+Thassa's Oracle|6.1|3
+Mutalith Vortex Beast|47|45
+Goblin Archaeologist|43|40
+Karplusan Minotaur|42|40
+Goblin Traprunner|42|40
+Psychosis Crawler|39|32
+The Locust God|39|32
+Mogg Assassin|38|35
+Creepy Doll|37|36
+Goblin Electromancer|32|5
+Breeches, the Blastmaker|31|29
+Frenetic Efreet|27|26
+Triskaidekaphile|27|25
+Two-Headed Giant|25|23
+Goblin Kaboomist|23|21
+Storm-Kiln Artist|23|-17
+Laboratory Maniac|22|15
+Ral, Monsoon Mage|21|15
+Goblin Engineer|20|17
+Chasm Skulker|20|17
+Spark Double|20|15
+Auntie Blyte, Bad Influence|20|19
+Niv-Mizzet, the Firemind|19|11
+Archmage Emeritus|19|-15
+Guttersnipe|17|-7
+Goblin Assassin|14|13
+Stormcatch Mentor|14|-9
+Sakashima of a Thousand Faces|14|12
+Imperial Recruiter|13|7
+Chaotic Goo|13|12
+Goblin Bangchuckers|12|12
+Hexing Squelcher|11|-1|3390
+Twenty-Toed Toad|11|10
+Pinnacle Monk|11|-3
+Dualcaster Mage|10|3
+Niv-Mizzet, Visionary|10|-1|6580
+Homunculus Horde|9.5|7|6560
+Volatile Rig|8.7|8
+Loyal Inventor|8.2|7
+Crazed Firecat|8.1|8
+Simian Spirit Guide|7.8|-2
+Delina, Wild Mage|7.7|6
+Body of Knowledge|7.6|6
+Vnwxt, Verbose Host|7.4|6|6160
+Prismari, the Inspiration|7.4|-1|2460
+Alandra, Sky Dreamer|7.4|6
+Phyrexian Metamorph|7.3|1
+Etali, Primal Storm|7.2|3
+Ragavan, Nimble Pilferer|6.6|-2
+Solemn Simulacrum|6.3|-3
+Skyclaw Thrash|5.9|5
+Brainstorm|47|5
+Negate|39|8
+Muddle the Mixture|39|29
+Frantic Search|38|-3
+An Offer You Can't Refuse|37|-1
+Arcane Denial|35|6
+Pongify|31|4
+Desperate Gambit|30|28
+Puppet's Verdict|28|27
+Izzet Charm|27|11
+Opt|25|-8
+Fighting Chance|25|23
+Deflecting Swat|19|-2
+Abrade|18|-3
+Lightning Bolt|18|-10
+Mana Drain|18|1
+Swan Song|17|-5
+Rapid Hybridization|15|-2
+Tempt with Mayhem|15|14
+Snap|14|-9
+Reality Shift|12|-2
+Wild Magic Surge|12|9
+Thrill of Possibility|11|-2
+Valakut Awakening|11|2
+Tibalt's Trickery|11|9
+Sink into Stupor|10|-8
+Prismari Command|10|-8
+Flusterstorm|8.6|-4
+Consider|8.5|-13
+Untimely Malfunction|8.1|0
+Narset's Reversal|8.0|-1
+Big Score|7.8|-18
+Brain Freeze|7.7|-3
+Flick a Coin|7.6|5
+Dig Through Time|7.4|-4
+Counterflux|7.2|4
+Long-Term Plans|7.2|6
+Whir of Invention|7.2|4
+Fact or Fiction|7.1|1
+Force of Negation|7.0|-3
+Guff Rewrites History|6.6|5
+Red Elemental Blast|6.5|0
+Flashback|6.4|-9|2420
+Seething Song|6.3|-14
+Pyroblast|6.2|-1
+Scour for Scrap|6.2|3|4770
+Reinterpret|6.1|4
+Return the Favor|6.0|-2
+Contact Other Plane|5.9|4
+Expedite|5.9|-2
+Mana Clash|47|45
+Blasphemous Act|45|6
+Ponder|35|-1
+Molten Birth|30|28
+Windfall|25|1
+Preordain|25|-8
+Vandalblast|25|0
+Faithless Looting|23|-8
+Reckless Handling|22|21
+Enter the Infinite|18|17
+Mana Geyser|16|-8
+Wheel of Misfortune|16|12
+Grapeshot|15|-4
+Expressive Iteration|14|-9
+Seize the Day|14|11
+Dance with Calamity|13|10
+Sea Gate Restoration|11|2
+Relentless Assault|10|9
+Treasure Cruise|10|-4
+Winter Sky|9.1|9
+Mizzix's Mastery|9.0|-10
+Enter the Enigma|8.3|2
+Prisoner's Dilemma|7.5|6
+Gitaxian Probe|7.5|-13
+Call Forth the Tempest|7.3|4
+Wheel of Fortune|7.3|0
+Solve the Equation|7.2|-5
+Mind's Desire|6.8|2
+Serum Visions|6.8|-9
+Warp World|6.7|5
+Expropriate|6.3|4
+Chandra's Ignition|5.8|-2
+Slip Through Space|5.7|1
+Rite of Flame|5.7|-5
+Fury of the Horde|5.6|5
+Time Stretch|5.3|2
+Goblin Game|5.1|5
+Strike It Rich|5.0|-8
+Basilisk Collar|49|41
+Swiftfoot Boots|45|16
+Strionic Resonator|27|24
+Shadowspear|26|22
+Loxodon Warhammer|19|17
+Crooked Scales|16|15
+Whispersilk Cloak|15|11
+Sorcerer's Strongbox|14|13
+Venser's Journal|13|12
+Wand of Wonder|8.7|6
+Resurrection Orb|7.5|7
+Plasma Caster|7.4|7
+Spellbook|7.3|5
+Alhammarret's Archive|6.9|6
+Wayfarer's Bauble|6.8|-2
+Ruby Medallion|6.6|-4
+Aetherflux Reservoir|5.7|1
+Sculpting Steel|5.4|1
+Planar Chaos|46|43
+Mirror March|42|39
+Wizard Class|37|29
+Teferi's Ageless Insight|30|23
+Impulsive Maneuvers|28|26
+Goblin Bomb|23|22
+Tide of War|23|22
+Propaganda|20|6
+Risky Move|16|15
+Curiosity|15|-9
+Mystic Remora|14|-5
+Powerbalance|13|10
+Thousand-Year Storm|12|-3
+Omniscience|12|7
+Ominous Seas|12|9
+Aqueous Form|10|8
+Possibility Storm|6.8|5
+Goblin Festival|6.3|6
+Mirrormade|5.6|4
+Aggravated Assault|5.5|4
+Grip of Chaos|5.2|5
+Jace, Wielder of Mysteries|10|7
+Ral, Crackling Wit|5.5|-6
+Reliquary Tower|73|24
+The Gold Saucer|37|34|5360
+Rogue's Passage|35|21
+Buried Ruin|25|18
+Mystic Sanctuary|24|-2
+Academy Ruins|24|17
+Witch's Clinic|17|16
+Otawara, Soaring City|15|-4
+Arena of Glory|13|9
+Access Tunnel|11|10
+Inventors' Fair|10|3
+Mistrise Village|10|-6|5780
+Temple of the False God|9.4|0
+Urza's Saga|8.9|0
+Desolate Lighthouse|6.6|-2
+Maze of Ith|5.6|4
+Sol Ring|88|2
+Arcane Signet|83|1
+Thought Vessel|62|26
+Izzet Signet|58|4
+Talisman of Creativity|53|-1
+Fellwar Stone|25|-7
+Mind Stone|22|0
+Decanter of Endless Water|20|12
+Commander's Sphere|13|0
+Resonating Lute|9.4|-14|2440
+Lotus Petal|8.1|-6
+Fire Diamond|7.1|0
+Sky Diamond|6.8|0
+Chrome Mox|5.8|-4
+Command Tower|87|1
+Sulfur Falls|71|3
+Shivan Reef|57|-2
+Steam Vents|50|0
+Frostboil Snarl|50|6
+Stormcarved Coast|46|1
+Training Center|45|3
+Cascade Bluffs|45|-1
+Temple of Epiphany|42|4
+Izzet Boilerworks|38|4
+Exotic Orchard|35|0
+Scalding Tarn|31|0
+Riverglide Pathway|25|2
+Ferrous Lake|22|-4
+Swiftwater Cliffs|21|4
+Riverpyre Verge|20|-2|6160
+Fiery Islet|19|-6
+Evolving Wilds|17|2
+Thundering Falls|16|-5
+Spirebluff Canal|15|0
+Myriad Landscape|15|1
+Volcanic Island|14|-1
+Terramorphic Expanse|10|-2
+Scorched Geyser|10|-9|2450
+Izzet Guildgate|8.3|0
+Molten Tributary|8.1|0
+Misty Rainforest|7.6|-3
+Fabled Passage|7.4|-4
+Flooded Strand|7.2|-4
+Polluted Delta|6.8|-4
+Arid Mesa|6.6|-3
+Bloodstained Mire|6.6|-3
+Gemstone Caverns|6.1|-1
+Silverbluff Bridge|6.1|-4
+Path of Ancestry|5.9|-9
+Prismatic Vista|5.6|0
+Wooded Foothills|5.6|-3

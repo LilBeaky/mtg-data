@@ -136,19 +136,21 @@ live in child tags -- see USE_INSTRUCTIONS.md §7). Everything here reuses
 `mtg.load_tags()` and `mtg.find()` rather than re-implementing that walk, so
 it can't drift out of sync with the repo's own tag logic.
 
-```python
-tag_oids(labels)       # oracle_ids under one label or a tuple of labels (union)
-tag_labels(labels)     # every label in those subtrees (maps human #tags onto categories)
+| Function | Returns |
+|---|---|
+| `tag_tree(label_or_tuple)` | `{sub_label: oracle_ids}` for one label or a tuple (union), from one pass via `mtg.load_tags_multi` |
+| `tag_oids(...)` / `tag_labels(...)` | The oracle_ids / sub-labels in that tree (labels map Ian's #tags onto categories) |
+| `category_members(deck, tag_label)` | `([(qty, name), ...], unmatched)`: library cards under the tag subtree |
+| `category_count_from_tag(deck, tag_label)` | `(K, unmatched)`, a thin wrapper over `category_members`, so count and names can't disagree |
+| `category_report(deck, categories=None)` | `{category: {"label", "K", "cards"}}` for every `categories.py` entry (or a subset), from **one** pass over the tag file; prints by default |
+| `user_tag_map(deck)` / `norm_label(s)` | Ian's own `#tags` from a long-form export, normalized (`Removal-Creature` → `removal creature`) |
 
-category_count_from_tag(decklist_path, tag_label)
-    # K = LIBRARY cards (commander/companion excluded) under the tag subtree.
-    # tag_label: a string or a tuple (union). Returns (K, unmatched_names);
-    # unmatched names are for review, never silently dropped.
-
-user_tag_map(decklist_path)
-    # {card name: [normalized #tags]} from a long-form export (library cards only)
-norm_label("Removal-Creature")  # -> "removal creature"; used for all tag matching
+Standalone category check (audit.py prints the same lists per role):
 ```
+python3 stats_math.py report DECKLIST [category ...]
+```
+It prints N, then each category's K **and the matched card names**. Read the
+names before using any K. Tags are a starting point, not a verdict (section 7).
 
 `categories.py` holds the curated category → label mapping. Some categories
 come in **broad/strict pairs** (`card_draw`/`draw_engine`,
@@ -181,15 +183,27 @@ answer, as it should for a static category.
 
 ## 7. Known limits / open items
 
-- **Tag reliability: spot-checked (Sept 2026, Wilson list vs hand counts).**
-  Broad tags overcount. `draw` found 15 vs 9 real engines (cantrips, cycling
-  lands), `protection` 11 vs ~7 (Darksteel Mutation, Your Temple Is Under
-  Attack), `ramp` 14 vs 11 (Bear Umbra, Krosan Verge, Mark of Sakiko). The
-  difference is not cosmetic: at K=11 "2 protection pieces by T6" reads 40%;
-  at K=7 it reads 20%, which flips the conclusion. Strict mappings help:
-  `draw_engine` matched the hand count exactly (9/9). **Treat broad tag
-  counts as candidate lists, not K.** Ian's `#tags` or a confirmed `--k` are
-  the real K.
+- **Tag reliability: checked on two real decks (Sept 2026).** Always read the
+  names that `category_report` / `audit.py` print, and state any
+  hand-corrections to K in the write-up.
+  - *Yusri (99-card library):* `ramp` misses cost reducers entirely
+    (Ruby/Sapphire Medallion), so they're now their own category,
+    `cost_reducers`; count both when judging mana. `tutor` includes judgment
+    calls: Okaun/Zndrsplt (their "partner with" search) and Enter the
+    Infinite. `removal`, `counterspell`, `protection`, and `extra turn`
+    matched cleanly.
+  - *Wilson (vs hand counts):* broad tags overcount. `draw` found 15 vs 9
+    real engines (cantrips, cycling lands), `protection` 11 vs ~7 (Darksteel
+    Mutation, Your Temple Is Under Attack), `ramp` 14 vs 11 (Bear Umbra,
+    Krosan Verge, Mark of Sakiko). Not cosmetic: at K=11 "2 protection
+    pieces by T6" reads 40%; at K=7 it reads 20%, which flips the
+    conclusion. Strict mappings help: `draw_engine` matched the hand count
+    exactly (9/9).
+  - *The two disagree on purpose:* `protection` was clean on Yusri and
+    overcounted on Wilson. Reliability depends on the deck (an aura deck is
+    full of cards that incidentally grant keywords), which is why the names
+    get read every time. **Treat broad tag counts as candidate lists, not
+    K.** Ian's `#tags` or a confirmed `--k` are the real K.
 - **No card-effect modeling yet.** The Monte Carlo engine handles static
   categories only. Draw engines, untappers, cascade, and ramp that digs
   aren't represented, so engine decks run better than these odds after ~T3.
@@ -209,12 +223,13 @@ answer, as it should for a static category.
 above are summaries, not the source. It holds: population counting
 (`count_population`, `cards_seen`), the exact engine (`hyper_pmf`,
 `hyper_at_least`, `multivariate_at_least`, `turn_curve`), Monte Carlo
-(`simulate_at_least`), tag helpers (`tag_oids`, `tag_labels`,
-`category_count_from_tag`), and user-tag helpers (`norm_label`,
-`user_tag_map`). If behavior changes, edit `stats_math.py` and update the
+(`simulate_at_least`), tag helpers (`tag_tree`, `tag_oids`, `tag_labels`,
+`category_members`, `category_count_from_tag`, `category_report`), and
+user-tag helpers (`norm_label`, `user_tag_map`). If behavior changes, edit `stats_math.py` and update the
 matching section here.
 
 - Import it: `python3 -c "import stats_math as sm; ..."` from the repo root.
+- Category check: `python3 stats_math.py report DECK [category ...]`.
 - Quick one-off: `python3 stats_math.py N K n k` prints P(≥k of K in n cards).
 - Running it with no arguments prints usage. There is no self-test anymore;
   the old one pointed at a hardcoded path and printed noise.

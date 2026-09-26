@@ -39,6 +39,15 @@ SEARCH FILTERS (combine freely)
   Results sorted by EDHREC card rank (popular first).
   TOKEN TIP: search for names, then `card` only the shortlist you care about.
 
+DECKLIST HEADER (optional, see USE_INSTRUCTIONS §4)
+  # bracket: 4      # plan: free text      # pets: Card A; Card B
+  Bare "bracket: / plan: / pets:" lines (no #) work too. Pets split on ';' or ' + ',
+  never on commas (card names contain commas).
+TRAILING #TAGS on card lines (long-form exports) are stripped from names here;
+  audit.py reads them as roles.
+
+RESKINS: names in aliases.txt ("Printed => Oracle") resolve automatically.
+
 EDHREC comparisons live in edhrec_diff.py (see USE_INSTRUCTIONS.md section 9).
 
 SCHEMA REMINDER: missing "game_changer" key = not a Game Changer.
@@ -57,6 +66,7 @@ RULINGS_FILE = latest("rulings-*.jsonl") or latest("*rulings*.json*")
 TAGS_FILE = latest("oracle-tags-*.jsonl")
 RULES_FILE = latest("MagicCompRules*.txt")
 COMBOS_FILE = latest("spellbook_combos*.json*")
+ALIASES_FILE = os.path.join(ROOT, "aliases.txt")
 TAG_NAMES = {"R": "Ruthless", "S": "Spicy", "P": "Powerful", "O": "Oddball",
              "C": "Core", "E": "Exhibition", "B": "Banned"}
 
@@ -82,19 +92,19 @@ def index():
             k = k.lower()
             if k not in _index or (legal(_index[k]) != "legal" and legal(c) == "legal"):
                 _index[k] = c
-        # Pass 1: full card names. Pass 2: face names, but ONLY where no real card
-        # already owns that name. Without this, a prepare/adventure/MDFC face could
-        # shadow a real card with the same name (Sept 2026: "Rampant Growth" resolved
-        # to Studious First-Year // Rampant Growth; 12 cards were affected, incl.
-        # Reanimate, Regrowth, Replenish, Channel, Exsanguinate, Sign in Blood).
+        # Pass 1: full card names. Pass 2: face names, only where no full name
+        # already owns the key. Prepare/adventure reprints reuse classic spell
+        # names as a face (e.g. "Studious First-Year // Rampant Growth"). 25 face
+        # names collide with real cards; with a single pass, 12 of them resolved
+        # to the wrong card (Rampant Growth, Reanimate, Regrowth, Replenish,
+        # Channel, Exsanguinate, Sign in Blood, ...). Fixed Sept 2026.
         for c in cards():
             put(c["name"], c)
         full = set(_index)
         for c in cards():
             for f in c.get("card_faces") or []:
-                fn = (f.get("name") or "").lower()
-                if fn and fn not in full:
-                    put(fn, c)
+                if f.get("name") and f["name"].lower() not in full:
+                    put(f["name"], c)
     return _index
 
 def norm(s):
@@ -102,8 +112,26 @@ def norm(s):
     s = re.sub(r"[’`]", "'", s)
     return s
 
+_aliases = None
+def aliases():
+    """aliases.txt: 'Printed Name => Oracle Name' per line, # comments.
+    For reskins (Secret Lair / Universes Beyond / Universes Within names) that
+    Scryfall's oracle bulk file doesn't carry."""
+    global _aliases
+    if _aliases is None:
+        _aliases = {}
+        if os.path.exists(ALIASES_FILE):
+            for raw in open(ALIASES_FILE, encoding="utf-8"):
+                s = raw.split("#", 1)[0].strip()
+                if "=>" in s:
+                    printed, oracle = (p.strip() for p in s.split("=>", 1))
+                    if printed and oracle:
+                        _aliases[norm(printed)] = oracle
+    return _aliases
+
 def find(name):
-    """Returns (card, how). how = exact | partial:<n matches> | None."""
+    """Returns (card, how). how = exact | alias | partial | ambiguous: ... | None.
+    exact and alias are both trustworthy; alias means the name was a known reskin."""
     idx = index()
     n = norm(name)
     if n in idx:
@@ -111,6 +139,9 @@ def find(name):
     # front face only, e.g. "Search for Azcanta // Azcanta..." typed partially
     if " // " in n and n.split(" // ")[0] in idx:
         return idx[n.split(" // ")[0]], "exact"
+    al = aliases().get(n)
+    if al and norm(al) in idx:
+        return idx[norm(al)], "alias"
     hits = [k for k in idx if n in k]
     if len(hits) == 1:
         return idx[hits[0]], "partial"
@@ -156,7 +187,9 @@ def cmd_card(args):
     for nm in names:
         c, how = find(nm)
         if c:
-            print(line(c) + ("" if how == "exact" else f"\n    (matched partially from '{nm}')"))
+            note = {"exact": "", "alias": f"\n    (reskin: '{nm}' is this card)"}.get(
+                how, f"\n    (matched partially from '{nm}')")
+            print(line(c) + note)
         else:
             print(f"NOT FOUND: {nm}" + (f" — {how}" if how else ""))
 
@@ -195,25 +228,34 @@ def load_tags(only_label=None, only_oid=None):
                 if any(x.get("oracle_id") == only_oid for x in t.get("taggings", [])):
                     out[t["label"]] = t.get("description", "")
         return out
-    by_id, root = {}, None
+    return load_tags_multi([only_label]).get(only_label, {})
+
+def load_tags_multi(labels):
+    """One pass over the tag file for several labels.
+    Returns {label: {sub_label: set(oracle_id)}} with each label's full child
+    subtree (same walk as load_tags). Missing labels map to {}."""
+    wanted = set(labels)
+    by_id, roots = {}, {}
     with open(TAGS_FILE, encoding="utf-8") as fh:
         for l in fh:
             t = json.loads(l)
             by_id[t["id"]] = (t["label"], {x.get("oracle_id") for x in t.get("taggings", [])},
                               t.get("child_ids", []))
-            if only_label in (t.get("label"), *t.get("aliases", [])):
-                root = t["id"]
-    if root is None:
-        return {}
-    out, stack, seen = {}, [root], set()
-    while stack:
-        i = stack.pop()
-        if i in seen or i not in by_id: continue
-        seen.add(i)
-        lab, oids, kids = by_id[i]
-        out[lab] = oids
-        stack.extend(kids)
-    return out
+            for name in (t.get("label"), *t.get("aliases", [])):
+                if name in wanted:
+                    roots[name] = t["id"]
+    result = {}
+    for label in labels:
+        out, stack, seen = {}, [roots[label]] if label in roots else [], set()
+        while stack:
+            i = stack.pop()
+            if i in seen or i not in by_id: continue
+            seen.add(i)
+            lab, oids, kids = by_id[i]
+            out[lab] = oids
+            stack.extend(kids)
+        result[label] = out
+    return result
 
 def cmd_tags(args):
     c, _ = find(" ".join(args))
@@ -275,8 +317,11 @@ SECTIONS = {"commander", "commanders", "deck", "mainboard", "main", "sideboard",
 # Trailing user tags in long-form exports, e.g. "1 Sol Ring (C21) 263 *F* #Ramp #!Mana Rock".
 # Split only on whitespace followed by '#', so multi-word tags ("Mana Rock") survive.
 TAG_SPLIT_RX = re.compile(r"\s+#(?=\S)")
-# Free-text header lines Ian writes above a list ("bracket: 3 (high)", "plan: ...", "pets: ...").
-META_RX = re.compile(r"^#?\s*(bracket|plan|pets?|notes?|target|budget)\s*:\s*(.*)$", re.I)
+# Header lines above a list: "# key: value" (any key), or bare known keys without '#'
+# ("bracket: 3 (high)", "plan: ...", "pets: ..."). parse_deck skips both; parse_deck_meta reads them.
+META_RX = re.compile(r"^#\s*([A-Za-z_]+)\s*:\s*(.*?)\s*$")
+BARE_META_RX = re.compile(r"^(bracket|plan|pets?|notes?|target|budget)\s*:\s*(.*?)\s*$", re.I)
+BRACKET_VARIANT = {1: "exhibition", 2: "core", 3: "upgraded", 4: "optimized", 5: "cedh"}
 
 def split_tags(s):
     """'1 Card (SET) 12 #Ramp #!Mana Rock' -> ('1 Card (SET) 12', ['Ramp', 'Mana Rock'])"""
@@ -290,7 +335,7 @@ def parse_deck(path, with_tags=False):
     entries, section = [], "deck"
     for raw in open(path, encoding="utf-8"):
         s = raw.strip()
-        if not s or s.startswith(("//", "#")) or META_RX.match(s): continue
+        if not s or s.startswith(("//", "#")) or BARE_META_RX.match(s): continue
         if s.lower().rstrip(":") in SECTIONS:
             section = s.lower().rstrip(":"); continue
         s, tags = split_tags(s)
@@ -300,14 +345,29 @@ def parse_deck(path, with_tags=False):
         entries.append((section, qty, m.group(2), tags) if with_tags else (section, qty, m.group(2)))
     return entries
 
-def parse_meta(path):
-    """Header lines like '#bracket: 3 (high)' or 'plan: creature storm' -> {key: value}."""
+def parse_deck_meta(path):
+    """Optional header lines in a decklist (parse_deck skips them):
+    '# key: value' (any key), or bare 'bracket: / plan: / pets: / notes: / target: /
+    budget:' lines. 'bracket' -> int 1-5 (full text kept as 'bracket_text' when it
+    says more, e.g. '3 (high)'); 'pets' -> list of card names split on ';' or ' + '
+    (never commas, since names contain them). Other keys stay plain strings."""
     meta = {}
     for raw in open(path, encoding="utf-8"):
-        m = META_RX.match(raw.strip())
-        if m:
-            k = m.group(1).lower()
-            meta[{"pet": "pets", "note": "notes"}.get(k, k)] = m.group(2).strip()
+        s = raw.strip()
+        m = META_RX.match(s) or BARE_META_RX.match(s)
+        if not m:
+            continue
+        k, v = m.group(1).lower(), m.group(2).strip()
+        k = {"pet": "pets", "note": "notes"}.get(k, k)
+        if k == "bracket":
+            d = re.search(r"[1-5]", v)
+            if d:
+                meta[k] = int(d.group())
+                if v != d.group(): meta["bracket_text"] = v
+        elif k == "pets":
+            meta[k] = [x.strip() for x in re.split(r"\s*;\s*|\s+\+\s+", v) if x.strip()]
+        else:
+            meta[k] = v
     return meta
 
 def cmd_deck(args):
@@ -317,11 +377,12 @@ def cmd_deck(args):
     comp_names = [n for s, q, n in entries if s == "companion"]
     cmd_names = [n for s, q, n in entries if s in ("commander", "commanders")]
     if "--commander" in o: cmd_names = [o["--commander"]]
-    found, problems = [], []
+    found, problems, alias_notes = [], [], []
     for q, n in main_:
         c, how = find(n)
         if not c: problems.append(f"NOT FOUND: {n}" + (f" — {how}" if how else "")); continue
-        if how != "exact": problems.append(f"partial match: '{n}' -> {c['name']}")
+        if how == "alias": alias_notes.append(f"{n} -> {c['name']}")
+        elif how != "exact": problems.append(f"partial match: '{n}' -> {c['name']}")
         found.append((q, c))
     # commander & color identity
     ci = None
@@ -381,6 +442,25 @@ def cmd_deck(args):
     avg = sum(q * c.get("cmc", 0) for q, c in nonland) / nl if nl else 0
     print(f"cards: {total} (commander(s): {', '.join(cmd_names) or 'none'}; "
           f"CI {''.join(sorted(ci)) if ci else '?'})")
+    meta = parse_deck_meta(args[0])
+    if meta:
+        bits = []
+        if "bracket" in meta: bits.append(f"target B{meta['bracket']}" + (" " + re.sub(r"^\s*[1-5]\s*", "", meta["bracket_text"]) if meta.get("bracket_text") else ""))
+        if meta.get("plan"): bits.append(f"plan: {meta['plan']}")
+        if meta.get("pets"): bits.append(f"pets: {'; '.join(meta['pets'])}")
+        print("header: " + " | ".join(bits))
+        in_deck = {c["name"] for _, c in found} | {c["name"] for c in (find(n)[0] for n in cmd_names) if c}
+        stale = []
+        for p in meta.get("pets", []):
+            c, _ = find(p)
+            if not c or c["name"] not in in_deck:
+                stale.append(p)
+        if stale:
+            print("  ! stale pets (not in this list — update the header): " + ", ".join(stale))
+    else:
+        print("header: none (add '# bracket:', '# plan:', '# pets:' lines — see USE_INSTRUCTIONS §4)")
+    if alias_notes:
+        print("reskins resolved: " + "; ".join(alias_notes))
     if comp_names:
         print(f"companion (not counted): {', '.join(c['name'] for c in comp_cards) or ', '.join(comp_names)}"
               + (f" — {'; '.join(comp_notes)}" if comp_notes else ""))

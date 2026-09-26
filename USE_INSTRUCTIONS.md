@@ -2,6 +2,8 @@
 
 **Claude: read this first.** This repo is your primary source of truth for Magic card data, rulings, tags, combos, and rules. Use it every time a conversation touches card text, legality, brackets, or deckbuilding. Don't answer card questions from memory when the repo can answer them.
 
+**Running a deck audit? Follow the procedure in section 5.** It exists because every miss in past audits was a process miss, not a tool gap.
+
 ---
 
 ## 1. Start of every session
@@ -33,9 +35,10 @@ Only write a custom query if none of these can answer the question. If you do, r
 | `USE_INSTRUCTIONS.md` | This file. |
 | `audit.py` | The default full deck audit. One command runs every check. |
 | `mtg.py` | Query helper for cards, rulings, tags, search, deck, GCs, combos, and rules. |
-| `stats_math.py` | Probability engine (hypergeometric, Monte Carlo, tag and user-tag counts). |
+| `stats_math.py` | Probability engine (hypergeometric, Monte Carlo, tag and user-tag counts). `python3 stats_math.py report DECK` prints each category's K with the matched names. |
 | `STATS_MATH.md` | Docs for `stats_math.py`: conventions, functions, known limits. |
-| `categories.py` | Curated role → Scryfall tag mapping (broad/strict pairs, synonyms for Ian's #tags). |
+| `categories.py` | Curated role → Scryfall tag mapping (broad/strict pairs, cost reducers, synonyms for Ian's #tags). |
+| `aliases.txt` | Reskin names → Oracle names (e.g. Ghal Maraz → Loxodon Warhammer). Ian adds a line per reskin he owns. |
 | `edhrec_diff.py` | Validates an EDHREC snapshot and diffs a deck against it. |
 | `edhrec_snapshots/` | Transcribed EDHREC pages, one file per commander + variant + date. |
 | `trim.py` | Ian's data-refresh tool (`scryfall` and `spellbook` subcommands). See section 12. |
@@ -75,26 +78,44 @@ Only write a custom query if none of these can answer the question. If you do, r
 | `--all-combos` | `deck` | By default the audit lists only 2-card and Bracket 3+ combos and summarizes the rest as a count. |
 
 ### Name matching
-Lookup tries an exact name first, then case-insensitive, then a partial match. If a partial name matches several cards, you get an "ambiguous" message listing them, never a silent wrong pick. Either face of a double-faced card works (e.g. "Search for Azcanta").
+Lookup tries an exact name first, then case-insensitive, then `aliases.txt`, then a partial match. If a partial name matches several cards, you get an "ambiguous" message listing them, never a silent wrong pick. Either face of a double-faced card works (e.g. "Search for Azcanta").
 
-**Full card names always beat face names.** *(Fixed Sept 2026: prepare-card back faces used to take over real cards with the same name. "Rampant Growth" resolved to Studious First-Year // Rampant Growth. 12 cards were affected, including Reanimate, Regrowth, Replenish, Channel, Exsanguinate, and Sign in Blood.)*
+**Full card names always beat face names.** 25 prepare-layout cards reuse a classic spell's name as a face. Before the Sept 2026 fix, 12 of them hijacked the real card: "Rampant Growth" resolved to Studious First-Year // Rampant Growth, and the same happened to Reanimate, Regrowth, Replenish, Channel, Exsanguinate, Sign in Blood, and others. `mtg.py` resolves them correctly now; a naive custom query over `card_faces` will not.
+
+**Reskins:** a Secret Lair / Universes Beyond / Universes Within name that isn't in the repo prints `NOT FOUND`, because Scryfall's Oracle bulk file carries one printing per card. Web-search it once, confirm the Oracle card with `mtg.py card`, then add the line to `aliases.txt` (`Printed Name => Oracle Name`) and push it (section 11). Alias hits print "(reskin: …)" and aren't flagged as problems.
 
 ### Deck file input (mtg.py, audit.py, edhrec_diff.py, stats_math.py)
 - Accepts Moxfield-style lines: `1 Card Name (SET) 123 *F*`, `1x Card`, or bare names.
 - Section headers `Commander`, `Companion`, `Deck`, `Sideboard`, and `Maybeboard` are recognized. Sideboard and Maybeboard are excluded.
 - **Trailing `#tags` are Ian's roles.** In a long-form export like `1 Sol Ring (C21) 263 *F* #Ramp #!Mana Rock`, the tags are stripped from the card name and `audit.py` uses them as role labels. Multi-word tags survive, and a leading `!` is dropped. Ian doesn't always tag; use them when they're there.
-- **Header lines** like `bracket: 3 (high)`, `plan: creature storm`, `pets: ...`, `notes:`, `target:`, and `budget:` (with or without a leading `#`) are read as metadata, not as cards. `audit.py` takes the bracket target from `bracket:`.
+- **Optional header** above the list, read as metadata rather than cards:
+  ```
+  # bracket: 4
+  # plan: Yusri Omniscience; Lab Man/Thoracle wins
+  # pets: Planar Chaos; Okaun, Eye of Chaos
+  ```
+  Any `# key: value` line works. Bare `bracket:`, `plan:`, `pets:`, `notes:`, `target:`, and `budget:` lines without the `#` work too (Ian sometimes writes them that way).
+  - `bracket` sets the audit's target and lets `edhrec_diff.py` warn when the snapshot isn't that bracket's page. Extra text is kept (`3 (high)` → "B3 (high)").
+  - `plan` is the deck's stated direction. Judge suggestions against it.
+  - `pets` are cards Ian keeps on purpose (fun over efficiency). Separate them with `;` or ` + `, never commas, because card names contain commas. `deck` flags any pet that's no longer in the list as stale; `edhrec_diff` and `audit.py` mark pets `[pet]`. Don't recommend cutting a pet on efficiency grounds alone. If it actively fights the plan, raise it as a question.
+  - No header? `deck` says so. Check memory and past chats for the bracket and plan, then ask Ian. Don't guess the bracket.
 - **Companion** is excluded from the card count but still checked for legality and color identity, and it's included in the combo check (it can be put into hand for {3}, so its combos are live). Odd/even conditions (Obosh, Gyruda) are verified automatically; the other 10 companions print "review manually".
 - If there's no Commander section, pass `--commander "Name"`.
 
 ## 5. Deck audits — `audit.py` (the default)
 
-**Every deck audit starts here.** Ian wants audits as thorough as the tooling allows by default, so don't skip sections to save a step.
+**Every deck audit starts here.** Ian wants audits as thorough as the tooling allows by default, so don't skip steps to save a call. Run them in order; each one is here because an audit went wrong without it.
 
-1. Write Ian's list to a file exactly as given (keep his `#tags` and header lines).
-2. Run `python3 audit.py deck.txt`. It takes about 10 seconds.
-3. Read the output, then do the judgment work: gameplan, table feel, cuts, adds. Pull oracle text (`mtg.py card -f --brief`) only for cards you're actually evaluating.
-4. If there's no EDHREC snapshot, fetch one (section 9) and re-run with `--snapshot` or plain.
+1. **Clone and read this file once** (section 1).
+2. **Write the list to a file exactly as given**, keeping his `#tags`. Add a header (section 4) if he didn't include one: bracket and plan from memory or past chats, or ask. Don't guess the bracket.
+3. **`python3 audit.py deck.txt`** (about 4 seconds). Fix every `NOT FOUND` before going further: reskin → `aliases.txt` (section 4); new set → verify externally. Note stale pets.
+4. **EDHREC:** if section 6 says NO SNAPSHOT, fetch the bracket-matched page (section 9), transcribe, `check` until OK, and re-run the audit.
+5. **Read the role card lists and settle K.** Where your tags are primary, note the disagreements. Where oracle tags are primary, correct K by hand wherever tags miss or over-include, and re-run with `--k`. Cost reducers aren't in `ramp`; weigh both. **State every K correction in the write-up.** Then run the odds that matter for *this* deck's plan (section 6), not just the standard battery.
+6. **Pull text only for cards you're evaluating**: unfamiliar mechanics, interaction-heavy pieces, the commander. One batch `mtg.py card -f` call.
+7. **Close rules questions before writing them up.** Use `rulings --grep` and `rule` (e.g. `rule 702.26b` settled a phasing question). Say "I'm not certain" only after the repo can't answer it.
+8. **Bracket items no script sees** (section 8): whether flagged MLD is real, extra-turn chains, 2-card combos before T6, "requires" pieces.
+9. **Verify before recommending.** Every card that EDHREC or memory surfaces gets `mtg.py card` before it goes into a recommendation.
+10. **Write up** in this order: findings (the interactions and nonbos you found), then numbers, then a separate EDHREC section. Respect pets and the stated plan; challenge them with a question, not a cut list. Push any new snapshot or alias (section 11).
 
 ### Options
 | Flag | Effect |
@@ -112,7 +133,7 @@ Lookup tries an exact name first, then case-insensitive, then a partial match. I
 | Section | Contents |
 |---|---|
 | 1 Legality & bracket | `mtg.py deck` output, GC count vs the bracket allowance, 2-card combos, extra-turn cards, possible MLD (regex flag for review) |
-| 2 Mana base | Lands, always- and conditionally-tapped lands (auto-detected), MDFC land backs, ramp, opener land odds, one-MV accelerants |
+| 2 Mana base | Lands, always- and conditionally-tapped lands (auto-detected), cost reducers, MDFC land backs, ramp, opener land odds, one-MV accelerants |
 | 3 Commander on curve | Lands-only floor and with a 1-MV accelerant, per commander |
 | 4 Roles & odds | K and odds (opener, T3, T4, T6 ≥2) for ramp, draw, draw engines, removal, wipes, protection, tutors, counterspells, recursion, graveyard hate, plus any other category present and every custom #tag |
 | 5 Density & flood | ≥4 non-mana cards in the first 12, flood odds, screw odds, with ramp-count alternatives |
@@ -132,6 +153,7 @@ The audit prints the alternative counts under each role and marks **⚠ K-SENSIT
 
 `audit.py` covers the standard battery. **Lean toward using Stats Math more, not less**, for anything else a draw-odds question touches: package coherence ("both halves by T4"), comparing a cut against an add, or mulligan decisions. Ian prefers it be too willing rather than not willing enough.
 
+- Category check: `python3 stats_math.py report DECK [category ...]` → N, then each category's K **and the matched names**.
 - Quick number: `python3 stats_math.py N K n k` → P(at least k of K in n cards from N).
 - Anything more: `python3 -c "import stats_math as sm; ..."` from the repo root. Key functions: `count_population`, `cards_seen`, `hyper_at_least`, `multivariate_at_least` (disjoint categories at once), `turn_curve`, `category_count_from_tag`, `user_tag_map`.
 - Conventions are fixed: 7-card hand, London mulligan, N counted from the list (never assumed).
@@ -146,6 +168,7 @@ The audit prints the alternative counts under each role and marks **⚠ K-SENSIT
 - **`edhrec_rank` is the CARD's overall rank, not commander popularity.** Don't use it to judge whether a commander is "top 100". *(A Sept 2026 mistake: Obeka's card rank was ~5,900, but its commander rank was #306.)* For commander popularity, check EDHREC live via web search.
 - **Parent oracle tags have zero direct taggings.** `removal` and `draw` hold no cards themselves; their cards sit in child tags (`removal` has 55). `mtg.py` and `stats_math.py` walk the tag tree for you. A naive custom query would silently return nothing.
 - **Tags that do exist** (despite earlier notes saying otherwise): `sweeper` for board wipes, and the `recursion` umbrella, which covers regrowth as well as `reanimate`.
+- **`ramp` doesn't include cost reducers** (the Medallions, etc.). They're their own category, `cost_reducers`. Count both when judging a deck's mana.
 - **Layouts:** `prepare` is a real mechanic (46 legal cards). Keep it. `host`/`augment` are Un-cards (not legal) and are kept on purpose.
 - **Prices** exist only if the trim was run with `--prices` (fields `usd`, `usd_foil`). Treat prices older than ~2 weeks as stale.
 
@@ -169,8 +192,10 @@ The sandbox can't reach EDHREC, so you fetch the page yourself with the web tool
 ### Workflow
 
 1. **Reuse before you fetch.** `audit.py` looks for a snapshot automatically. If there's one for the same commander under 30 days old, you're done. The fetch is the most expensive step (~15–20K tokens).
-2. **Pick the right page.** Match the deck's target bracket: `/exhibition`, `/core`, `/upgraded`, `/optimized`, or `/cedh`. Budget (`/budget`, `/expensive`) and theme pages (`/treasure`, etc.) also exist. Fall back to the all-decks page if the bracket page has under ~200 decks.
-   - `web_fetch` refuses URLs you construct. Get the first URL from `web_search`. After one commander page is fetched, its bracket, budget, and theme links count as seen and can be fetched directly.
+2. **Pick the right page: match the deck's bracket.** `/exhibition`, `/core`, `/upgraded`, `/optimized`, or `/cedh`. Budget (`/budget`, `/expensive`) and theme pages (`/treasure`, etc.) also exist. Fall back to the all-decks page **only** if the bracket page has under ~200 decks.
+   - *Why this is strict:* the Sept 2026 Yusri audit diffed a B4 deck against the all-decks page. The field was mostly casual chaos decks, so every Game Changer showed up as "negative synergy" and SKIPPED filled with theme cards. The numbers looked rigorous but measured the wrong field.
+   - *Getting the URL:* `web_fetch` refuses URLs you construct. First `web_search` for the bracket page itself (e.g. "edhrec yusri optimized"). If it doesn't come back, fetch the all-decks page (its bracket, budget, and theme links then count as seen) and fetch the bracket page second. Two fetches is fine to avoid a mismatched baseline; the snapshot is reused for 30 days.
+   - `diff` reads the deck's `bracket` header and warns if the snapshot doesn't match.
 3. **Fetch once** with `web_fetch`. Note that `text_content_token_limit` is ignored on EDHREC pages; you get the whole page.
 4. **Transcribe** to `edhrec_snapshots/<commander-slug>__<variant>__<YYYY-MM-DD>.txt`:
    ```

@@ -1,0 +1,12 @@
+# aliases.txt — reskin names -> Oracle names, read by mtg.py find().
+#
+# Format:  Printed Name => Oracle Name      (one per line; # starts a comment)
+#
+# Why this exists: Scryfall's Oracle Cards bulk file carries one printing per
+# card, so Secret Lair / Universes Beyond / Universes Within names often aren't
+# in trimmed_scryfall_v2.json. Add a line whenever you buy a reskin. The Oracle
+# name must match the repo exactly; `python3 mtg.py card "Printed Name"` will
+# confirm the mapping works.
+
+Ghal Maraz, the Great Shatterer => Loxodon Warhammer   # SLD Warhammer Age of Sigmar
+Exclusive Nightclub => Oscorp Industries             # Universes Within name (found in the Jodah audit, July 2026)

@@ -85,7 +85,7 @@ def resolve(meta, rows):
         if c is None:
             problems.append(f"L{r['line']} NOT FOUND: {r['name']}" + (f" ({how})" if how else ""))
             continue
-        if how != "exact":
+        if how not in ("exact", "alias"):
             problems.append(f"L{r['line']} fuzzy match: '{r['name']}' -> {c['name']} (confirm)")
         if cmdr_ci is not None and not ci_of(c) <= cmdr_ci:
             problems.append(f"L{r['line']} outside color identity: {c['name']} {sorted(ci_of(c))}")
@@ -175,6 +175,20 @@ def cmd_diff(args):
     by_name = {r["card"]["name"]: r for r in rows}
 
     # deck
+    dmeta = mtg.parse_deck_meta(deck_path)
+    pets = {c["name"] for c in (mtg.find(p)[0] for p in dmeta.get("pets", [])) if c}
+    variant = (meta.get("variant") or "all").lower()
+    want_var = mtg.BRACKET_VARIANT.get(dmeta.get("bracket"))
+    if want_var and variant != want_var:
+        if variant in mtg.BRACKET_VARIANT.values():
+            print(f"! BRACKET MISMATCH: deck targets B{dmeta['bracket']} ({want_var}) but this "
+                  f"snapshot is '{variant}'. Refetch the /{want_var} page.")
+        else:
+            print(f"! baseline is '{variant}', not the deck's bracket page (/{want_var}). Field "
+                  f"includes every bracket: expect noise in NEGATIVE SYNERGY and SKIPPED. Use "
+                  f"/{want_var} unless it has under ~200 decks.")
+    elif not want_var:
+        print("  (deck has no '# bracket:' header; can't check the snapshot matches its bracket)")
     entries = mtg.parse_deck(deck_path)
     cmdr_names = [n for s, q, n in entries if s in ("commander", "commanders")]
     if opts["--commander"]: cmdr_names = [opts["--commander"]]
@@ -229,12 +243,13 @@ def cmd_diff(args):
     groups = {}
     for n in off: groups.setdefault(bucket(mine[n]), []).append(n)
     for t in TYPE_ORDER + ["Other"]:
-        if t in groups: print(f"  {t}: {', '.join(sorted(groups[t]))}")
+        if t in groups: print(f"  {t}: {', '.join(n + (' [pet]' if n in pets else '') for n in sorted(groups[t]))}")
 
     neg = sorted((by_name[n] for n in on if by_name[n]["syn"] < 0), key=lambda r: r["syn"])
     print(f"\nNEGATIVE SYNERGY - you run these; this commander's decks play them LESS than average ({len(neg)})")
     for r in neg[:limit]:
-        print(f"  {r['incl']:>4g}% syn {r['syn']:>+4g}  {r['card']['name']}")
+        print(f"  {r['incl']:>4g}% syn {r['syn']:>+4g}  {r['card']['name']}"
+              + ("  [pet]" if r["card"]["name"] in pets else ""))
 
     agree = sorted((by_name[n] for n in on), key=lambda r: -r["incl"])
     print(f"\nON-LIST - your cards, most to least played ({len(agree)})")
