@@ -240,36 +240,32 @@ The sandbox can't reach EDHREC, so you fetch the page yourself with the web tool
 
 ## 11. Pushing changes to GitHub (Claude)
 
-Ian may provide a **fine-grained personal access token** (starts with `github_pat_`) — check the Project instructions first, then ask, scoped to this repo only, with *Contents* and *Pull requests* set to read and write. With it, you commit to a branch and open a pull request; Ian reviews and merges on github.com. Without it, hand files over via outputs as before.
+Ian keeps a **fine-grained personal access token** (starts with `github_pat_`) in the Project instructions, scoped to this repo only. If it isn't there, ask. This is a personal project, so **commit straight to `main`**: no branches, no pull requests. Ian only wants the current version, and git history is the undo button.
 
 **Rules:**
 - The token is a password. **Never** write it into the repo, memory, outputs, a commit, or a reply. Never print it; mask command output.
-- **Never push to `main`, never force-push, never delete branches.** Ian merges.
-- One branch and one PR per session: `claude/YYYY-MM-DD-short-topic`.
-- Commit only what the session produced and Ian approved: snapshots, and code or doc changes he's okayed. Stage files by name, never `git add -A`.
+- **Never force-push and never rewrite history.** History is how a bad commit gets undone. To undo, `git revert <sha>` and push; never `reset`.
+- Start from a fresh clone (section 1) so you commit on top of the current `main`. If the push is rejected because `main` moved, run `git pull -q --rebase` and push again.
+- Commit only what the session produced and Ian approved. Stage files by name, never `git add -A`.
+- Write a clear commit message (what and why), and give Ian the commit link.
 - On a 401/403, the token is missing a permission or has expired. Tell Ian; don't retry with guesses.
 
 ```bash
-# after Ian pastes the token: sandbox-only file, outside the repo, deleted at the end
-printf '%s' 'TOKEN_FROM_IAN' > /home/claude/.gh_token && chmod 600 /home/claude/.gh_token
+# sandbox-only file, outside the repo, deleted at the end
+printf '%s' 'TOKEN_FROM_PROJECT_INSTRUCTIONS' > /home/claude/.gh_token && chmod 600 /home/claude/.gh_token
 cd /home/claude/mtg-data
-BR=claude/2026-09-26-short-topic
-git checkout -q -b "$BR"
-git add edhrec_snapshots/some-commander__all__2026-09-26.txt      # by name
+git add path/to/file1 path/to/file2                       # by name
 git -c user.name="Claude (for Ian)" -c user.email="claude@mtg-data.invalid" commit -q -m "What and why"
 TOKEN=$(cat /home/claude/.gh_token)
-GIT_TERMINAL_PROMPT=0 git push -q "https://x-access-token:${TOKEN}@github.com/LilBeaky/mtg-data.git" "HEAD:refs/heads/$BR" 2>&1 \
+GIT_TERMINAL_PROMPT=0 git push -q "https://x-access-token:${TOKEN}@github.com/LilBeaky/mtg-data.git" HEAD:main 2>&1 \
   | sed -E 's/github_pat_[A-Za-z0-9_]+/***/g'
-curl -s -X POST -H "Authorization: Bearer ${TOKEN}" -H "Accept: application/vnd.github+json" \
-  https://api.github.com/repos/LilBeaky/mtg-data/pulls \
-  -d "{\"title\":\"What and why\",\"head\":\"$BR\",\"base\":\"main\",\"body\":\"From a Claude session.\"}" \
-  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('html_url') or d.get('message','PR FAILED'))"
+echo "https://github.com/LilBeaky/mtg-data/commit/$(git rev-parse HEAD)"
 rm -f /home/claude/.gh_token
 ```
 
-If the push fails with "shallow update not allowed", run `git fetch -q --unshallow` and push again. Give Ian the PR link; that's his review and merge button.
+If the push fails with "shallow update not allowed", run `git fetch -q --unshallow` and push again.
 
-**Token setup (Ian's side, once):** GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Repository access: *Only select repositories* → `mtg-data`. Permissions: *Contents: Read and write*, *Pull requests: Read and write* (Metadata read-only gets added automatically). Pick an expiration (90 days is a good default). Revoke it any time from the same page.
+**Token setup (Ian's side):** GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Repository access: *Only select repositories* → `mtg-data`. Permissions: *Contents: Read and write* is the one that matters; *Issues* is optional, for logging backlog items. Metadata read-only gets added automatically. Set an expiration, then paste the new token into the Project instructions when it rotates.
 
 ## 12. Refreshing the data (Ian's side)
 
