@@ -1,0 +1,256 @@
+# commander: Jodah, Archmage Eternal
+# variant: upgraded
+# url: https://edhrec.com/commanders/jodah-archmage-eternal/upgraded
+# decks: 730
+# fetched: 2026-09-27
+Emrakul, the Exigent Doom|10|9|58
+Through the Forest Gate|7.9|7|152
+Nissa, Leyline Tamer|6.8|6|44
+Gleaming Splendor|2.9|-2|139
+Samut, Hazoret's Champion|2.5|1|40
+Omniscience|59|56
+Fist of Suns|58|53
+Ruinous Ultimatum|57|51
+Apex Devastator|47|45
+Zacama, Primal Calamity|45|43
+Genesis Ultimatum|44|41
+One with the Multiverse|41|40
+Maelstrom Wanderer|47|40
+Conflux|42|40
+In Garruk's Wake|41|40
+Farseek|61|19
+Cultivate|49|15
+Faeburrow Elder|47|27
+Birds of Paradise|45|20
+Swords to Plowshares|44|5
+Bloom Tender|42|22
+Leyline of Mutation|41|38
+Lightning Greaves|38|22
+Emergent Ultimatum|38|36
+Jegantha, the Wellspring|37|31
+Smothering Tithe|23|5
+Rhystic Study|18|-1
+Teferi's Protection|14|0
+Cyclonic Rift|11|-3
+Demonic Tutor|11|-6
+Fierce Guardianship|10|-2
+Farewell|7.5|1
+Consecrated Sphinx|7.4|6
+Coalition Victory|7.0|5
+Vampiric Tutor|5.6|-7
+Progenitus|37|34
+Imoti, Celebrant of Bounty|34|33
+Maelstrom Archangel|32|29
+Dryad of the Ilysian Grove|32|20
+Avacyn, Angel of Hope|27|25
+Atraxa, Grand Unifier|27|24
+Kozilek, Butcher of Truth|26|24
+Etali, Primal Conqueror|24|22
+Ulamog, the Ceaseless Hunger|24|21
+Primeval Spawn|23|22
+Bringer of the Black Dawn|23|22
+Etali, Primal Storm|23|21
+Artisan of Kozilek|22|19
+Ramos, Dragon Engine|22|16
+Jin-Gitaxias, Core Augur|22|20
+Sakura-Tribe Elder|21|18
+Nezahal, Primal Tide|20|19
+Nyxbloom Ancient|19|16
+Ulamog, the Infinite Gyre|18|16
+Myojin of Seeing Winds|17|16
+Morophon, the Boundless|16|4
+Ulamog, the Defiler|16|13
+Ignoble Hierarch|16|5
+Emrakul, the Promised End|15|13
+Esika, God of the Tree|15|9
+Myojin of Cryptic Dreams|15|14
+Kozilek, the Great Distortion|14|11
+Void Winnower|14|12
+Delighted Halfling|14|3
+Blazing Archon|13|13
+Bringer of the Blue Dawn|13|13
+Ornithopter of Paradise|13|11
+It That Betrays|13|11
+Blightsteel Colossus|13|12
+Noble Hierarch|12|3
+Elesh Norn, Grand Cenobite|12|10
+Myojin of Life's Web|11|11
+Gisela, Blade of Goldnight|11|9
+Ghalta, Stampede Tyrant|11|10
+Vorinclex, Voice of Hunger|10|9
+Myojin of Night's Reach|10|10
+Jodah, the Unifier|9.2|6
+Archetype of Endurance|9.0|9
+Pathrazer of Ulamog|8.9|8
+Old Gnawbone|8.9|2
+Myojin of Roaring Blades|8.8|8
+Myojin of Grim Betrayal|8.5|8
+Jin-Gitaxias, Progress Tyrant|8.5|7
+Emrakul, the World Anew|7.8|6
+Absolute Virtue|7.7|7|636
+Path to Exile|31|1
+Counterspell|28|5
+Heroic Intervention|20|-3
+Growth Spiral|17|9
+Unite the Coalition|17|15
+Anguished Unmaking|16|9
+Negate|16|7
+An Offer You Can't Refuse|15|3
+Beast Within|14|3
+Swan Song|14|3
+Brainstorm|12|7
+Assassin's Trophy|12|-2
+Deflecting Swat|12|2
+Dovin's Veto|12|6
+Mana Drain|12|3
+Arcane Denial|11|4
+Nexus of Fate|9.2|9
+Generous Gift|8.8|3
+Chaos Warp|8.6|4
+Harrow|7.8|5
+Emergency Powers|7.1|7
+Despark|5.5|2
+Enlightened Tutor|5.3|-8
+Rampant Growth|37|18
+Nature's Lore|36|10
+Kodama's Reach|34|13
+Eerie Ultimatum|32|26
+Three Visits|30|7
+Reshape the Earth|26|24
+Aminatou's Augury|26|26
+Time Stretch|25|24
+Cruel Ultimatum|21|20
+Call Forth the Tempest|17|16
+Inspired Ultimatum|16|16
+Expropriate|15|14
+Rise of the Dark Realms|12|11
+Rise of the Eldrazi|11|10
+Mnemonic Deluge|11|10
+Skyshroud Claim|11|4
+Last March of the Ents|11|9
+Brilliant Ultimatum|10|10
+Enter the Infinite|10|10
+Tempt with Discovery|10|5
+Blasphemous Act|10|-4
+Painful Truths|10|8
+Overflowing Insight|10|9
+Improvisation Capstone|9.4|8|319
+Unexpected Results|9.3|9
+Praetor's Counsel|9.0|9
+Volcanic Vision|9.0|9
+Diabolic Tutor|8.8|5
+Together as One|8.5|8|319
+Explore|8.4|3
+Duneblast|7.7|6
+Plague Wind|7.7|7
+Sea Gate Restoration|7.5|7
+Storm Herd|7.3|7
+Fevered Suspicion|6.2|6
+Insurrection|6.2|6
+Violent Ultimatum|5.9|6
+Ponder|5.6|3
+Hit the Mother Lode|5.6|5
+Migration Path|5.6|4
+Breach the Multiverse|5.6|5
+Circuitous Route|5.5|1
+Search for Tomorrow|5.3|4
+Explosive Vegetation|5.3|3
+Dream Harvest|5.2|5|421
+Merciless Eviction|5.2|3
+Rishkar's Expertise|5.1|2
+Swiftfoot Boots|28|16
+Portal to Phyrexia|8.8|8
+Door to Nothingness|8.5|6
+Chimil, the Inner Sun|6.8|5
+Expedition Map|6.0|2
+The Ten Rings|5.7|5|229
+The Great Henge|5.5|-0
+Sunbird's Invocation|35|34
+Leyline Immersion|32|31
+Leyline of the Guildpact|32|18
+Maelstrom Nexus|25|20
+Up the Beanstalk|24|21
+Temur Ascendancy|17|8
+Prismatic Omen|16|12
+Mirari's Wake|15|8
+Zendikar Resurgent|14|13
+Rhythm of the Wild|12|2
+Garruk's Uprising|12|-1
+Mystic Remora|8.9|-1
+Defense of the Heart|7.8|5
+Mana Reflection|7.5|6
+Swarm Intelligence|7.0|7
+Sandwurm Convergence|6.7|6
+Sylvan Library|6.3|2
+Propaganda|6.0|-1
+Ghostly Prison|5.8|-0
+Leyline of Anticipation|5.3|4
+Nicol Bolas, God-Pharaoh|17|15
+Ugin, the Spirit Dragon|7.1|4
+Nicol Bolas, Planeswalker|6.0|5
+Cascading Cataracts|37|23
+Reliquary Tower|28|3
+Yavimaya, Cradle of Growth|9.5|-0
+Boseiju, Who Endures|6.7|-4
+Urborg, Tomb of Yawgmoth|5.9|-0
+Arcane Signet|79|3
+Chromatic Lantern|70|20
+Sol Ring|63|-16
+Fellwar Stone|47|15
+Chromatic Orrery|39|30
+Timeless Lotus|38|27
+Commander's Sphere|18|4
+Relic of Legends|7.9|1
+Decanter of Endless Water|7.7|4
+Talisman of Curiosity|7.4|2
+Izzet Signet|6.4|5
+Gilded Lotus|5.8|3
+Talisman of Creativity|5.6|3
+Coalition Relic|5.2|4
+Darksteel Ingot|5.1|3
+Azorius Signet|5.1|3
+Command Tower|92|4
+Exotic Orchard|70|6
+Breeding Pool|44|12
+The World Tree|42|16
+Stomping Ground|41|10
+Overgrown Tomb|40|11
+Hallowed Fountain|39|12
+Steam Vents|38|14
+Temple Garden|38|8
+Watery Grave|38|13
+Sacred Foundry|36|12
+Godless Shrine|34|9
+Blood Crypt|32|11
+Windswept Heath|32|5
+Flooded Strand|31|6
+Misty Rainforest|30|3
+City of Brass|29|7
+Mana Confluence|29|9
+Polluted Delta|29|6
+Path of Ancestry|29|-16
+Ketria Triome|28|5
+Wooded Foothills|27|1
+Bloodstained Mire|27|6
+Arid Mesa|26|5
+Verdant Catacombs|26|1
+Reflecting Pool|26|9
+Scalding Tarn|25|3
+Marsh Flats|25|3
+Zagoth Triome|24|5
+Evolving Wilds|24|4
+Spara's Headquarters|22|4
+Raugrin Triome|22|6
+Indatha Triome|22|1
+Jetmir's Garden|20|1
+Frontier Bivouac|19|2
+Jungle Shrine|19|3
+Terramorphic Expanse|19|5
+Ziatora's Proving Ground|19|3
+Opulent Palace|19|3
+Seaside Citadel|18|3
+Savai Triome|18|3
+Mystic Monastery|18|5
+Crumbling Necropolis|16|6
+Sandsteppe Citadel|15|0
+Nomad Outpost|15|4
