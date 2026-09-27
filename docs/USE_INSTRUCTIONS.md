@@ -318,7 +318,13 @@ If the push fails with "shallow update not allowed", run `git fetch -q --unshall
 
 **Token setup (user's side):** GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Repository access: *Only select repositories* → `mtg-data`. Permissions: *Contents: Read and write* is the one that matters; *Issues* is optional, for logging backlog items. Metadata read-only gets added automatically. Set an expiration, then paste the new token into the Project instructions when it rotates.
 
-## 12. Refreshing the data (manual, user's side)
+## 12. Refreshing the data
+
+**Automatic (default):** `.github/workflows/refresh-data.yml` runs daily (~10:00 UTC) on GitHub Actions and refreshes cards, prices, rulings, oracle tags, and Spellbook combos, committing only if something changed. Daily is the ceiling that matters: Scryfall's bulk exports only update about once a day. To refresh on demand, use **Actions → Refresh MTG data → Run workflow**, or dispatch it via the API if your token has *Actions: Read and write*. The Comprehensive Rules file is **not** automated; drop in a new dated `.txt` when WotC updates it.
+
+**Diagnosing a failed run from a sandbox:** raw job logs redirect to blob storage the sandbox can't reach. Read the job's **annotations** through the API instead (`/repos/LilBeaky/mtg-data/check-runs/<job_id>/annotations`); the workflow reports resolved URLs, download sizes, and failures there.
+
+**Manual (fallback):**
 
 | Data | Source | How |
 |---|---|---|
@@ -334,7 +340,7 @@ The combos output is ~3 MB gzipped (~40 MB unzipped). Keep it gzipped, since Git
 
 ## 13. Known limits and access notes
 
-- **Sandbox network:** GitHub (including `api.github.com`), PyPI, and npm are reachable. `json.commanderspellbook.com`, `backend.commanderspellbook.com`, and EDHREC are **blocked** from the sandbox (`host_not_allowed`). Use `web_search` / `web_fetch` for EDHREC (section 9), and have the user download Spellbook data.
+- **Sandbox network:** GitHub (including `api.github.com`), PyPI, and npm are reachable. `json.commanderspellbook.com`, `backend.commanderspellbook.com`, and EDHREC are **blocked** from the sandbox (`host_not_allowed`). Use `web_search` / `web_fetch` for EDHREC (section 9), and rely on the daily refresh workflow (section 12) for Spellbook data.
 - **EDHREC data** isn't bundled because it changes too fast. Snapshots in `snapshots/` are point-in-time copies; anything over 30 days old should be refetched. For commander popularity rank, check live.
 - **Rules file date:** mechanics newer than the Comprehensive Rules file (e.g. prepare, when the file predates it) need an outside rules check. `audit.py` prints the date.
 - **Rules file vs new mechanics:** the 20260227 file has no `prepare` or `Paradigm` text. Use `rulings` for those (they cover it) until the user drops in a newer rules file.
