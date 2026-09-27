@@ -176,6 +176,11 @@ FX = [
      lambda m: ("draw", dyn_key(m.group("what")) or ("unknown",)) if _subj_ok(m) else None),
     (re.compile(SUBJ + r"draws? (?P<n>a|an|one|two|three|four|five|six|seven|eight|x|\d+) (?:additional )?cards?"),
      lambda m: ("draw", num(m.group("n"))) if _subj_ok(m) else None),
+    # Card filtering, not card advantage: Brainstorm-style put-backs and looter discards.
+    (re.compile(r"put (a|an|one|two|three|\w+) cards? from your hand on (?:the )?(?:top|bottom) of (?:your|their owner's) library"),
+     lambda m: ("putback", num(m.group(1)), "bottom" in m.group(0))),
+    (re.compile(r"(?<!whenever you )(?<!if you would )(?<!unless you )(?<!may )(?<!player )(?<!opponent )(?<!opponents )\bdiscard (a|an|one|two|three|x|\d+) cards?"),
+     lambda m: ("discard", num(m.group(1)))),
     (re.compile(r"look at the top (\w+) cards? of your library\.? [^.]*?put (a|one|two|three|up to one|up to two|any number) of (?:them|those cards) into your hand"),
      lambda m: ("look", num(m.group(1)), 2 if "two" in m.group(2) else 3 if "three" in m.group(2) else 1)),
     (re.compile(r"search your library for ([^.]+)"), _fx_search),
@@ -183,7 +188,7 @@ FX = [
     (re.compile(r"\bsurveil (\w+)"), lambda m: ("surveil", num(m.group(1)))),
     (re.compile(r"you may play an additional land this turn"), lambda m: ("extra_land", 1)),
     (re.compile(r"put (?:a|up to one) land card from your hand onto the battlefield"), lambda m: ("land_from_hand", 1)),
-    (re.compile(r"create (a|an|one|two|three|four|five|x|\w+) (?:tapped )?treasure tokens?"), lambda m: ("treasure", num(m.group(1)))),
+    (re.compile(r"create (a|an|one|two|three|four|five|x|\w+) (?:tapped )?(?:(?:food|clue|blood) token or an? )?treasure tokens?"), lambda m: ("treasure", num(m.group(1)))),
     (re.compile(r"\badd ((?:\{[^}]+\})+|one mana of any color|\w+ mana (?:of any one color|in any combination of colors))"), _fx_mana),
     (re.compile(r"\bproliferate(?:,? then proliferate again| twice)?"),
      lambda m: ("prolif", 2 if ("twice" in m.group(0) or "again" in m.group(0)) else 1)),
@@ -197,6 +202,7 @@ def parse_fx(s):
     """Effect text -> ([effect tuples in text order], tax). tax = a Rhystic-style
     'unless that player pays' clause (resolved per trigger with --opp-pay)."""
     s = re.sub(r'"[^"]*"', "", s.lower().strip())
+    s = re.sub(r"[^.]*\binstead\b[^.]*\.?", "", s).strip()
     tax = bool(re.search(r"unless (?:that player|they) pays?|that player may pay \{", s))
     m = re.search(r"you may pay ((?:\{[^}]+\})+)\. if you do,? (.+)", s)
     if m:
@@ -219,6 +225,8 @@ def fx_str(e):
         v = e[1]
         return f"{t} {'/'.join(v) if isinstance(v, tuple) else v}"
     if t == "wheel": return f"wheel {e[1]}"
+    if t == "putback": return f"put back {e[1]}" + (" (bottom)" if e[2] else "")
+    if t == "discard": return f"discard {e[1]}"
     if t == "look": return f"look {e[1]} take {e[2]}"
     if t == "land_search": return f"land x{e[1]}->{e[3]}"
     if t in ("tutor", "tutor_multi"): return f"{t}->{e[2]}" + (" (filter?)" if t == "tutor" and e[1]["unknown"] else "")
@@ -229,7 +237,7 @@ def fx_str(e):
 
 # ---------------------------------------------------------------- card compiler
 RX_MANA = re.compile(r'^(?P<cost>[^:"]*?):\s*(?:(?P<vivid>for each color among permanents you control, add one mana of that color)|add (?P<prod>[^.]+?))\.(?P<rest>.*)$', re.I)
-RX_INTERACT = re.compile(r"\b(destroy (?:target|all|each|up to)|exile (?:target|all|each|up to)|counter target|return (?:target|up to|all|each)[^.]*? to (?:its|their) owner(?:'s|s') hands?|deals? (?:\d+|x) damage|gets? -\d+/-\d+|-x/-x|phase out|gains? (?:hexproof|indestructible|protection|shroud)|(?:opponent|player)s? sacrifices?)")
+RX_INTERACT = re.compile(r"\b(destroy (?:target|all|each|up to)|exile (?:target|all|each|up to)|counter target|return (?:target|up to|all|each)[^.]*? to (?:its|their) owner(?:'s|s') hands?|deals? (?:\d+|x) damage|gets? -\d+/-\d+|gets? -x/-x|phase out|gains? (?:hexproof|indestructible|protection|shroud)|(?:opponent|player)s? sacrifices?)")
 RX_NEUTRAL = re.compile(r"\b(?:ha(?:s|ve)|gains?) (?:indestructible|hexproof|shroud|flying|trample|vigilance|lifelink|deathtouch|haste|ward|first strike|reach|menace)|can't be (?:blocked|countered|the target)|gets? [+-]\d+/[+-]\d+|gets? \+x/\+x|equipped creature|enchanted creature (?:gets|has)|^enchant |protection from|choose a (?:creature type|color|basic land type)|^as ~ enters, choose|for each color among|this spell can't be countered|attacks each combat|you lose \d+ life|you gain \d+ life|if you would get one or more counters")
 
 SUBSTANTIVE = re.compile(r"\b(target|counters?|create|destroy|exile|search|return|damage|copy|discard|put|draw|sacrifice|untap)\b")
@@ -807,8 +815,11 @@ class Game:
 
     def enter(self, k, from_hand=False, x=0):
         if k.is_land: return self.land_enters(k)
+        prev_drops = self.st.extra_land
         p = Perm(k, tapped=bool(k.etap), sick=True, hand=from_hand)
         self.perms.append(p); self._st = None
+        if self.st.extra_land > prev_drops:        # Exploration/Azusa give their drops this turn
+            self.drops += self.st.extra_land - prev_drops
         if k.ctr_enter:
             kind, n, if_cast = k.ctr_enter
             if from_hand or not if_cast: self.add_ctr(p, kind, x if n == "X" else n)
@@ -981,7 +992,7 @@ class Game:
 
     def gain(self, n, name):
         self.extra += n; self.attr[name] += n
-        self.note(f"    +{n} card(s) from {name}")
+        self.note(f"    {n:+d} card(s) from {name}")
 
     def draw(self, n, name=None):
         if self.dry or n <= 0: return
@@ -1068,6 +1079,16 @@ class Game:
                         if c.types & PERMANENT: self.enter(c)
                         else: self.hand.append(c); self.gain(1, name)
                     else: self.hand.append(c); self.gain(1, name)
+            elif t in ("putback", "discard"):
+                n = self.val(e[1], p, x)
+                if self.dry or not isinstance(n, int) or n <= 0: continue
+                n = min(n, len(self.hand))
+                worst = sorted(self.hand, key=self.value)[:n]
+                for c in worst: self.hand.remove(c)
+                if t == "discard": self.gy += worst
+                elif e[2]: self.lib[0:0] = worst          # bottom
+                else: self.lib += worst                   # top (drawn next)
+                self.gain(-n, name)                       # filtering, not advantage
             elif t == "extra_land": self.drops += e[1]
             elif t == "land_from_hand":
                 ls = [c for c in self.hand if c.is_land]
@@ -1219,7 +1240,7 @@ class Sim:
         mulls = bottom = 0
         while True:
             lib = self.deck[:]; rng.shuffle(lib)
-            hand = [lib.pop() for _ in range(7)]
+            hand = [lib.pop() for _ in range(min(7, len(lib)))]   # partial lists can be < 7 cards
             if self.args.no_mulligan or bottom >= 2 or self.keep(hand, bottom): break
             mulls += 1
             if mulls >= 2: bottom += 1          # the first mulligan is free (rule 103.5c)
@@ -1400,8 +1421,14 @@ def main():
     ap.add_argument("--trace", type=int, default=0)
     ap.add_argument("--explain", action="store_true"); ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
+    if not os.path.exists(args.deck): sys.exit(f"deck file not found: {args.deck}")
+    if args.trials < 1: sys.exit("--trials must be at least 1")
+    if args.turns < 1: sys.exit("--turns must be at least 1")
+    if args.opps < 0 or args.opp_casts < 0 or args.opp_hand < 0: sys.exit("--opps, --opp-casts and --opp-hand can't be negative")
+    if not 0 <= args.opp_pay <= 1: sys.exit("--opp-pay is a probability between 0 and 1 (e.g. 0.5)")
 
     entries = mtg.parse_deck(args.deck)
+    if not entries: sys.exit(f"no cards found in {args.deck}")
     skip = {"sideboard", "maybeboard", "considering", "companion"}
     raw_cmd = [n for s, q, n in entries if s in ("commander", "commanders")]
     raw_lib = [n for s, q, n in entries if s not in skip | {"commander", "commanders"} for _ in range(q)]
@@ -1429,7 +1456,10 @@ def main():
     for t in args.track:
         label, sep, rx = t.partition("=")
         if not sep: label, rx = t, "^" + re.escape(found.get(t, {}).get("name", t)) + "$"
-        groups.append((label, re.compile(rx, re.I)))
+        try:
+            groups.append((label, re.compile(rx, re.I)))
+        except re.error as ex:
+            sys.exit(f"--track {t!r}: bad pattern ({ex}). For an exact card, pass just the name.")
     cache = {}
     for n, c in found.items():
         k = compile_card(c, anyc)
