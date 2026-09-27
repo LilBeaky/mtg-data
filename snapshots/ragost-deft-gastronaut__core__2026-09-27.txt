@@ -1,0 +1,273 @@
+# commander: Ragost, Deft Gastronaut
+# variant: core
+# url: https://edhrec.com/commanders/ragost-deft-gastronaut/core
+# decks: 1148
+# fetched: 2026-09-27
+Bag End Banquet|15|14|262
+Getaway Barrel|7.7|6|234
+Ginger, Queen of Sweets|7.2|7|69
+Gleaming Splendor|5.9|-8|236
+Belladonna Took|5.2|0|251
+Weapons Manufacturing|86|79
+Ichor Wellspring|78|71
+Nuka-Cola Vending Machine|71|66
+Academy Manufactor|70|64
+Prized Statue|64|60
+Nutrient Block|59|55|1140
+Basilisk Collar|68|54
+Haliya, Guided by Light|61|53
+Scrap Trawler|56|50
+Myr Retriever|55|50
+Swords to Plowshares|67|1
+Reckless Fireweaver|56|50
+Path to Exile|55|-2
+Solemn Simulacrum|55|35
+Weftstalker Ardent|54|46
+Mycosynth Wellspring|53|49
+Foundry Inspector|53|44
+Loyal Apprentice|53|39
+Dispatch|51|37
+Swiftfoot Boots|51|10
+Crime Novelist|50|46
+Treasure Nabber|49|44
+Astrid Peth|48|45
+Junk Diver|47|43
+The Gaffer|39|36
+Ratchet, Field Medic|37|35
+Syr Ginger, the Meal Ender|37|35
+Stridehangar Automaton|35|32
+Market Gnome|33|31
+Sami, Wildcat Captain|32|28
+Ingenious Artillerist|31|28
+Leonin Elder|30|28
+Circuit Mender|30|26
+Apothecary White|28|26
+Toggo, Goblin Weaponsmith|28|26
+Voyager Quickwelder|27|24
+Goblin Engineer|27|22
+Ravenous Robots|27|25|647
+Workshop Assistant|25|23
+Filigree Familiar|24|23
+Marvin, Murderous Mimic|24|19
+Ornithopter of Paradise|23|10
+Illustrious Wanderglyph|22|19
+Oswald Fiddlebender|22|18
+Anim Pakal, Thousandth Moon|22|11
+Arbaaz Mir|22|18
+Osgir, the Reconstructor|20|18
+Farid, Enterprising Salvager|20|19
+Gold Myr|20|12
+Iron Myr|19|11
+Teshar, Ancestor's Apostle|18|13
+Hellkite Tyrant|17|14
+Soul Warden|16|12
+Rosie Cotton of South Lane|15|12
+Edgar, Master Machinist|15|13
+Chandra's Incinerator|14|13
+Bre of Clan Stoutarm|14|11|680
+Goblin Welder|14|10
+Esper Sentinel|14|-10
+Piggy Bank|14|13
+Hangarback Walker|14|12
+Sierra, Nuka's Biggest Fan|13|12
+Solphim, Mayhem Dominus|12|9
+Splendor Mare|11|11
+Drumbellower|11|8
+Gleaming Barrier|10|9
+Witch Enchanter|10|-4
+Dauntless Scrapbot|9.4|9|1130
+Professional Face-Breaker|8.7|-5
+Torbran, Thane of Red Fell|8.6|5
+Big Score|46|31
+Unexpected Windfall|36|26
+Chaos Warp|34|5
+Boros Charm|29|-17
+Restoration Magic|27|18
+Generous Gift|26|-4
+Demand Answers|17|8
+Stroke of Midnight|16|-0
+Blacksmith's Skill|14|9
+Loran's Escape|13|6
+Wear // Tear|13|-5
+Untimely Malfunction|12|2
+Abrade|11|-2
+Sejiri Shelter|11|2
+Lorehold Charm|11|-1|503
+Hobbit's Sting|10|9
+Deflecting Palm|10|-9
+Bottle-Cap Blast|9.0|8
+Lightning Helix|7.9|-0
+Reprieve|7.9|-1
+Dawn's Truce|7.4|-2
+Gods Willing|7.1|2
+Thrill of Possibility|6.3|-5
+Surge of Salvation|6.1|4
+The Battle of Bywater|41|36
+Blasphemous Act|36|3
+Wake the Past|36|30
+Sevinne's Reclamation|23|9
+Seize the Spoils|19|13
+Reckless Handling|16|13
+Vandalblast|15|0
+Late to Dinner|12|11
+Austere Command|12|-4
+Pirate's Pillage|11|8
+Faithless Looting|10|-7
+Promise of Loyalty|10|5
+Trash for Treasure|7.1|6
+Rip Apart|6.7|-6
+Organic Extinction|6.2|4
+White Sun's Twilight|6.0|5
+Single Combat|5.7|2
+Pursue the Past|5.1|-2|471
+Lembas|49|46
+Servo Schematic|45|42
+Nimblewright Schematic|38|36
+Implement of Improvement|35|34
+Instant Ramen|35|32
+Transmutation Font|33|31
+Lightning Greaves|30|1
+Caduceus, Staff of Hermes|27|21
+Implement of Combustion|26|25
+Sting, the Glinting Dagger|25|23
+Scrapheap|24|23
+Melded Moxite|22|20|1130
+Krark-Clan Ironworks|21|18
+Mystic Forge|19|15
+Illusionist's Bracers|18|15
+Thousand Moons Smithy|18|15
+Idol of Oblivion|17|5
+Shadowspear|17|7
+Thousand-Year Elixir|15|11
+Hot Dog Cart|14|13|916
+Brass's Tunnel-Grinder|14|11
+Mjölnir, Hammer of Thor|14|6|361
+Mouser Foundry|13|12|580
+Experimental Synthesizer|12|11
+Bumbleflower's Sharepot|11|11
+Noble's Purse|11|10
+Thopter Shop|10|9
+Hawkeye's Bow|10|9|351
+Cloud Key|10|8
+Carrot Cake|10|9
+Well of Lost Dreams|10|7
+Ark of Hunger|9.4|2|477
+Aetherflux Reservoir|9.3|6
+Spine of Ish Sah|9.0|8
+Grinding Station|9.0|8
+Wayfarer's Bauble|9.0|-0
+The Underworld Cookbook|8.6|8
+Candy Trail|8.4|8
+Battlemage's Bracers|8.4|6
+Archaeomancer's Map|8.4|-1
+Inspiring Statuary|7.9|6
+Bagel and Schmear|7.6|7|916
+Magewright's Stone|7.6|6
+Dancer's Chakrams|7.4|5
+Trading Post|7.1|6
+Unwinding Clock|6.9|5
+Loxodon Warhammer|6.3|-0
+Collector's Vault|6.3|5
+Spare Supplies|6.2|6
+Sculpting Steel|6.2|3
+Sheltered by Ghosts|37|32
+Spirit Loop|35|33
+Spirit Link|33|31
+Descent into Avernus|27|24
+Lifelink|27|26
+Authority of the Consuls|27|21
+Monologue Tax|25|19
+Felidar Umbra|22|20
+Pia's Revolution|21|19
+Rune of Sustenance|20|18
+Curse of Opulence|13|7
+Of Herbs and Stewed Rabbit|12|11
+Skrelv's Hive|10|8
+Fiery Emancipation|10|5
+Gratuitous Violence|10|7
+City on Fire|8.8|4
+Ghostly Prison|7.8|-1
+Sidequest: Catch a Fish|7.1|6
+Smuggler's Share|5.7|1
+Food Coma|5.1|5
+Daretti, Scrap Savant|18|14
+Tezzeret, Cruel Captain|18|14
+Ancient Den|61|47
+Great Furnace|60|46
+Darksteel Citadel|45|37
+Buried Ruin|40|27
+Treasure Vault|33|28
+Inventors' Fair|29|20
+Ishgard, the Holy See|14|10
+Secluded Starforge|14|12|1120
+Reliquary Tower|13|-5
+Monumental Henge|12|7
+Witch's Clinic|11|10
+Adagia, Windswept Bastion|11|8|1140
+Mines of Moria|8.8|3
+Urza's Saga|8.7|-1
+Adventurer's Inn|7.3|5
+Fountainport|7.2|4
+Temple of the False God|7.2|-1
+Rogue's Passage|6.4|-24
+Fomori Vault|6.1|4
+War Room|5.5|-3
+Sol Ring|86|2
+Arcane Signet|79|-1
+Talisman of Conviction|54|3
+Boros Signet|45|-3
+Mind Stone|30|6
+Liquimetal Torque|29|25
+Chromatic Star|24|22
+Bender's Waterskin|20|14|1010
+Fellwar Stone|19|-5
+Patriar's Seal|17|14
+Slagstone Refinery|14|14
+Pristine Talisman|11|10
+Victory Chimes|11|9
+Commander's Sphere|10|-3
+Golden Egg|10|9
+Thought Vessel|9.2|-4
+Wizard's Rockets|8.6|8
+Terrarion|8.6|8
+Marble Diamond|7.6|2
+Fire Diamond|7.1|2
+Cursed Mirror|7.1|0
+Command Tower|86|-0
+Clifftop Retreat|73|5
+Battlefield Forge|63|6
+Rustvale Bridge|58|46
+Rugged Prairie|53|8
+Sacred Foundry|47|-1
+Furycalm Snarl|44|-0
+Temple of Triumph|38|2
+Sundown Pass|34|-6
+Exotic Orchard|34|4
+Wind-Scarred Crag|32|16
+Sunscorched Divide|30|8
+Radiant Summit|28|3|1140
+Boros Garrison|27|-7
+Spire of Industry|26|20
+Sunbillow Verge|25|1
+Spectator Seating|25|-14
+Evolving Wilds|20|2
+Arid Mesa|16|-12
+Elegant Parlor|15|-5
+Needleverge Pathway|15|-10
+Power Depot|15|12
+Inspiring Vantage|15|-2
+Sunbaked Canyon|15|-2
+Terramorphic Expanse|14|0
+Glittering Massif|12|3|1140
+Myriad Landscape|10|-6
+Fabled Passage|8.5|-3
+The Mycosynth Gardens|7.4|5
+Sacred Peaks|7.3|-4
+Turbulent Steppe|7.1|-10|491
+Scene of the Crime|6.4|5
+Asgardian Citadel|6.0|3|351
+Boros Guildgate|5.8|-2
+Abraded Bluffs|5.7|0
+Dimension X|5.7|4|579
+Castle Doom|5.1|5|356
+Plateau|5.1|-7
