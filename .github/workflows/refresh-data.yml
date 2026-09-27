@@ -27,45 +27,53 @@ jobs:
 
       - name: Resolve Scryfall bulk-data URLs
         id: urls
+        # Scryfall requires a descriptive User-Agent and an Accept header on
+        # API requests. One call to the /bulk-data list covers every type, and
+        # a failure prints the real HTTP status instead of failing silently.
         run: |
           set -euo pipefail
+          UA="mtg-data-refresh/1.0 (github.com/LilBeaky/mtg-data)"
+          status=$(curl -s -o /tmp/bulk.json -w '%{http_code}' \
+            -H "User-Agent: ${UA}" -H "Accept: application/json" \
+            https://api.scryfall.com/bulk-data)
+          if [ "$status" != "200" ]; then
+            echo "::error::Scryfall /bulk-data returned HTTP ${status}"
+            head -c 500 /tmp/bulk.json || true
+            exit 1
+          fi
+          echo "Available bulk types: $(jq -r '[.data[].type] | join(", ")' /tmp/bulk.json)"
+
           for type in oracle_cards default_cards rulings; do
-            url=$(curl -sf "https://api.scryfall.com/bulk-data/${type}" | jq -r '.download_uri // empty')
+            url=$(jq -r --arg t "$type" '.data[] | select(.type==$t) | .download_uri' /tmp/bulk.json)
             if [ -z "$url" ]; then
-              echo "::error::Could not resolve download_uri for required bulk-data type '${type}'"
+              echo "::error::Required bulk-data type '${type}' not in Scryfall's list"
               exit 1
             fi
             echo "${type}_url=${url}" >> "$GITHUB_OUTPUT"
           done
 
-          # oracle_tags is NOT in Scryfall's officially documented bulk-data
-          # list (only oracle_cards/unique_artwork/default_cards/all_cards/
-          # rulings are). The existing data/oracle-tags-*.jsonl file's naming
-          # matches Scryfall's convention, so this type may exist without
-          # being in the current public docs - attempt it, but never fail
-          # the job if it's gone or renamed. Check the Action run log for
-          # "oracle_tags: SKIPPED" to see if this is silently going stale.
-          tags_url=$(curl -sf "https://api.scryfall.com/bulk-data/oracle_tags" | jq -r '.download_uri // empty' || true)
+          # oracle_tags isn't in Scryfall's public bulk-data docs. Use it if the
+          # list includes it; otherwise warn and keep the existing file.
+          tags_url=$(jq -r '.data[] | select(.type=="oracle_tags") | .download_uri' /tmp/bulk.json)
           if [ -n "$tags_url" ]; then
-            echo "oracle_tags: found ($tags_url)"
+            echo "oracle_tags: found"
             echo "tags_url=${tags_url}" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::oracle_tags bulk-data type not found - skipping the oracle-tags refresh this run. data/oracle-tags-*.jsonl will not be updated."
-            echo "oracle_tags: SKIPPED"
+            echo "::warning::oracle_tags not in Scryfall's bulk list - data/oracle-tags-*.jsonl not refreshed this run."
           fi
 
       - name: Download Scryfall bulk files
         run: |
           set -euo pipefail
-          curl -sfL --compressed "${{ steps.urls.outputs.oracle_cards_url }}" -o /tmp/oracle-cards.json
-          curl -sfL --compressed "${{ steps.urls.outputs.default_cards_url }}" -o /tmp/default-cards.json
-          curl -sfL --compressed "${{ steps.urls.outputs.rulings_url }}" -o /tmp/rulings.jsonl
+          curl -sfL --compressed -A "mtg-data-refresh/1.0 (github.com/LilBeaky/mtg-data)" "${{ steps.urls.outputs.oracle_cards_url }}" -o /tmp/oracle-cards.json
+          curl -sfL --compressed -A "mtg-data-refresh/1.0 (github.com/LilBeaky/mtg-data)" "${{ steps.urls.outputs.default_cards_url }}" -o /tmp/default-cards.json
+          curl -sfL --compressed -A "mtg-data-refresh/1.0 (github.com/LilBeaky/mtg-data)" "${{ steps.urls.outputs.rulings_url }}" -o /tmp/rulings.jsonl
           if [ -n "${{ steps.urls.outputs.tags_url }}" ]; then
-            curl -sfL --compressed "${{ steps.urls.outputs.tags_url }}" -o /tmp/oracle-tags.jsonl
+            curl -sfL --compressed -A "mtg-data-refresh/1.0 (github.com/LilBeaky/mtg-data)" "${{ steps.urls.outputs.tags_url }}" -o /tmp/oracle-tags.jsonl
           fi
 
       - name: Download Commander Spellbook combo data
-        run: curl -sfL https://json.commanderspellbook.com/variants.json.gz -o /tmp/variants.json.gz
+        run: curl -sfL -A "mtg-data-refresh/1.0 (github.com/LilBeaky/mtg-data)" https://json.commanderspellbook.com/variants.json.gz -o /tmp/variants.json.gz
 
       - name: Trim Scryfall cards + prices
         run: |
