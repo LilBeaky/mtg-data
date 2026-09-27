@@ -74,6 +74,11 @@ jobs:
               echo "::error::Download failed (curl exit ${rc}) for $2 from $1"
               exit 1
             fi
+            # Scryfall now serves real .jsonl.gz files (not just gzip transfer
+            # encoding), which --compressed doesn't unpack. Unzip if gzipped.
+            if gzip -t "$2" 2>/dev/null; then
+              mv "$2" "$2.gz" && gunzip "$2.gz"
+            fi
             echo "::notice::$2 -> $(du -h "$2" | cut -f1)"
           }
           fetch "${{ steps.urls.outputs.oracle_cards_url }}" /tmp/oracle-cards.json
