@@ -353,7 +353,7 @@ If the push fails with "shallow update not allowed", run `git fetch -q --unshall
 
 ## 12. Refreshing the data
 
-**Automatic (default):** `.github/workflows/refresh-data.yml` runs daily (~10:00 UTC) on GitHub Actions and refreshes cards, prices, rulings, oracle tags, and Spellbook combos, and commits the result. Daily is the ceiling that matters: Scryfall's bulk exports only update about once a day. To refresh on demand, use **Actions → Refresh MTG data → Run workflow**, or dispatch it via the API if your token has *Actions: Read and write*. The Comprehensive Rules file is **not** automated; drop in a new dated `.txt` when WotC updates it.
+**Automatic (default):** `.github/workflows/refresh-data.yml` runs twice daily on GitHub Actions: ~22:23 UTC, shortly after Scryfall's daily export, plus a ~10:47 UTC backup in case GitHub skips a scheduled run (it sometimes does under load) and refreshes cards, prices, rulings, oracle tags, and Spellbook combos, and commits the result. Daily is the ceiling that matters: Scryfall's bulk exports only update about once a day. To refresh on demand, use **Actions → Refresh MTG data → Run workflow**, or dispatch it via the API if your token has *Actions: Read and write*. The Comprehensive Rules file is **not** automated; drop in a new dated `.txt` when WotC updates it.
 
 **What happens when something goes wrong:**
 - A Scryfall problem (API down, bad download, format change) stops the run before anything is committed, so the repo keeps the previous day's good data. Sanity floors on card count, priced-card count, and file sizes catch half-broken downloads.

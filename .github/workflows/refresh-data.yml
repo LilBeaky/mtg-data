@@ -9,7 +9,13 @@ name: Refresh MTG data
 # refresh; cards, prices, rulings, and tags still update.
 on:
   schedule:
-    - cron: '0 10 * * *'   # ~10:00 UTC (GitHub may start scheduled runs late under load)
+    # Scryfall publishes its daily export around 21:00 UTC, so the main run
+    # comes shortly after it. Off-the-hour minutes on purpose: GitHub delays or
+    # drops scheduled runs most often at the top of the hour. The second run is
+    # a backup in case GitHub skips the first; with nothing new it only updates
+    # data_info.json.
+    - cron: '23 22 * * *'  # ~22:23 UTC, main run (fresh prices)
+    - cron: '47 10 * * *'  # ~10:47 UTC, backup
   workflow_dispatch: {}     # "Run workflow" button / API dispatch
 
 permissions:
