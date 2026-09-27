@@ -40,6 +40,7 @@ git clone --depth 1 https://github.com/LilBeaky/mtg-data.git
 cd mtg-data
 python3 scripts/mtg.py card "Sol Ring"
 python3 scripts/audit.py your_decklist.txt --commander "Your Commander"
+python3 scripts/goldfish.py your_decklist.txt --track "Label=Card Name"   # goldfish simulation
 ```
 
 ## Credits

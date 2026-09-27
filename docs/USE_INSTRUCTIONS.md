@@ -25,6 +25,7 @@ git clone -q --depth 1 https://github.com/LilBeaky/mtg-data.git && cd mtg-data
 | Any deck audit | **`audit.py`** (section 5). Always the first step of an audit. |
 | Card text, rulings, tags, search, rules, GCs, combos | **`mtg.py`** (section 4) |
 | Draw odds beyond the audit battery | **`stats_math.py`** (section 6) |
+| How a deck actually plays out: mana, colors, commander timing, card advantage, swap comparisons | **`goldfish.py`** (section 6, Goldfish simulator) |
 | EDHREC comparison | **`edhrec_diff.py`** (section 9). `audit.py` runs the diff automatically when a snapshot exists. |
 
 Only write a custom query if none of these can answer the question. If you do, respect the schema quirks in section 7. If a custom query turns out to be generally useful, suggest adding it to the right tool.
@@ -50,6 +51,7 @@ mtg-data/
 | `stats_math.py` | Probability engine (hypergeometric, Monte Carlo, tag and user-tag counts). `python3 scripts/stats_math.py report DECK` prints each category's K with the matched names. |
 | `categories.py` | Curated role → Scryfall tag mapping (broad/strict pairs, cost reducers, synonyms for the user's #tags). |
 | `edhrec_diff.py` | Validates an EDHREC snapshot and diffs a deck against it. |
+| `goldfish.py` | Monte Carlo goldfish simulator. Compiles each card's Oracle text into behavior and plays the deck thousands of times. See section 6. |
 | `trim.py` | The data-refresh tool (`scryfall` and `spellbook` subcommands). See section 12. |
 
 ### `data/`
@@ -63,6 +65,7 @@ mtg-data/
 | `oracle-tags-YYYYMMDDHHMMSS.jsonl` | Scryfall Tagger oracle tags (e.g. `ramp`, `sweeper`, `monarch matters`). |
 | `spellbook_combos.json.gz` | Commander Spellbook combo database, trimmed and gzipped (~109k combos). |
 | `MagicCompRules YYYYMMDD.txt` | Comprehensive Rules. Note the filename contains a space. |
+| `goldfish_overrides.json` | Per-card fixes for `goldfish.py` where the Oracle-text parser can't read a card. You add an entry per card. |
 
 ### `docs/`
 
@@ -185,7 +188,35 @@ The audit prints the alternative counts under each role and marks **⚠ K-SENSIT
 - Anything more: `python3 -c "import sys; sys.path.insert(0, 'scripts'); import stats_math as sm; ..."` from the repo root. Key functions: `count_population`, `cards_seen`, `hyper_at_least`, `multivariate_at_least` (disjoint categories at once), `turn_curve`, `category_count_from_tag`, `user_tag_map`.
 - Conventions are fixed: 7-card hand, London mulligan, N counted from the list (never assumed).
 - Limits to state out loud: static draws only (no draw engines, untaps, cascade), and colors aren't modeled. Details are in `STATS_MATH.md` §7.
-- A goldfish simulation for card-effect questions (like the Wilson ramp package) isn't in the repo yet. If you build one ad hoc, say so and offer to save it.
+- For anything that depends on what cards *do* (ramp, fixing, draw engines, alt costs, counters), use the goldfish simulator below instead.
+
+### Goldfish simulator — `goldfish.py`
+
+Plays the deck alone thousands of times with a greedy pilot and reports development and card flow. Use it for timing questions ("when is the commander out?", "when does the payoff land?"), color reliability, card-advantage reads, and comparing swaps. Stats Math stays the tool for pure draw odds.
+
+```
+python3 scripts/goldfish.py DECK [--turns 8] [--trials 2000] [--draw] [--seed 1]
+    [--track "Label=REGEX"] [--variant "Label|Out=>In;Out=>In"] [--kill-commander T]
+    [--order commander,track,ramp,draw,other] [--opps 3 --opp-casts 1 --opp-pay 0.5 --opp-hand 4]
+    [--cast-interaction] [--no-mulligan] [--explain] [--trace N] [--json]
+```
+
+- **Always run `--explain` first** on a new list. Each card is marked `modeled`, `partial` (some lines unread), `blank` (cast for its cost, does nothing), `held` (removal/counters/protection instants and sorceries, never cast in a goldfish), or `override`. Tell the user which important cards are partial or blank before quoting numbers.
+- `--track "Myojin=^Myojin of"` reports the first-cast turn for a card group (a bare card name works too). Tracked cards get cast priority right after the commander.
+- `--variant` runs a swapped build on the **same shuffles** and prints a side-by-side table. Use it for every cut-vs-add question. It's far less noisy than two separate runs. `--explain --variant ...` also lists the incoming cards.
+- `--kill-commander T` removes the commander before turn T (recast with tax). Use it to show how much a plan leans on the commander surviving.
+- `--trace N` prints a play-by-play of game N. Use it to audit the pilot whenever a number looks off.
+- Speed: about 2,000 games per build in 3 to 4 seconds.
+
+**What the report means.** Development rows give P10/median/P90. P10 is the floor, which the user cares about most. "Mana" counts sources available at the start of the main phase, and "all colors" counts restricted mana (e.g. Plaza of Heroes' legendary-only colors) as available. "Extra cards" are cards put into hand beyond draw steps, counted net (a wheel counts cards drawn minus the hand it threw away). "Stranded" counts spells you had the mana *amount* for but not the colors. "Discarded" is cleanup discard, a flood signal. "Extra cards by source" names the card-advantage engines.
+
+**Model and fixed conventions.**
+- London mulligan with the free first mulligan (rule 103.5c). Keep 3–5 lands, or 2 lands plus a cheap ramp piece.
+- Opponents only exist as a table model for opponent-triggered cards (Rhystic Study, Smothering Tithe, Consecrated Sphinx): each opponent draws once and casts `--opp-casts` spells per cycle (40% creatures), and pays a tax `--opp-pay` of the time.
+- Summoning sickness, enters-tapped rules (fast/slow/check/reveal/shock/battlebond), fetches, bounce lands, filter lands and converters, restricted mana, colored-only mana, alt costs (Jodah, Fist of Suns), Omniscience-style free casting, cost reducers, extra land drops, rituals (cast only when they enable a spell), X-draw spells (X ≥ 2), counters with Hardened Scales/Doubling Season-style modifiers, proliferate, remove-a-counter draw abilities (keeps one divinity/indestructible counter), planeswalker loyalty, activated draw/proliferate/tutor abilities, triggers on cast/ETB/landfall/upkeep/draw step/end step/proliferate, rebound, and leylines are all modeled.
+- **Not modeled:** combat, opponents' interaction, graveyard recursion, tokens other than Treasures, copies, and anything the explain list marks partial or blank. Say so when these matter to the question.
+
+**Fixing a card: `data/goldfish_overrides.json`.** Key = Oracle name. An entry replaces only the fields it names; always add a `note`. Fields: `mana` (list of `{"colors": "any" | "WU" | "C", "count": n, "restrict": "legendary", "colored_only": false, "sick": true}`), `etb`, `spell` (lists of effect strings), `triggers` (list of `{"on": "cast|etb|landfall|upkeep|end|drawstep|prolif|opp_cast|opp_draw", "filter": "noncreature", "do": [...], "once": false, "tax": false, "each": false}`), `activated` (list of `{"cost": "{2}", "tap": true, "sac": false, "remove": "divinity 1", "do": [...]}`), `hold`, `requires`, `cat`, `skip`, `status`. Effect strings: `draw 2`, `draw permanents` (also lands, creatures, artifacts, power, colors, opp_hand), `scry 2`, `surveil 1`, `look 3 1`, `prolif 1`, `treasure 1`, `extra_land 1`, `land_from_hand 1`, `land basic bf_t 1`, `ctr divinity 1`, `mana WUBRG`. When a parse miss affects many cards, fix the parser in `goldfish.py` instead of piling up overrides.
 
 ## 7. Schema quirks (learned the hard way)
 

@@ -1,0 +1,43 @@
+{
+  "_doc": "Per-card fixes for scripts/goldfish.py. Keys are Oracle names; each entry replaces only the fields it names. Fields and effect strings are documented in docs/USE_INSTRUCTIONS.md section 6. Add a 'note' saying why.",
+  "Leyline Immersion": {
+    "mana": [
+      {
+        "colors": "any",
+        "count": 5,
+        "sick": true
+      }
+    ],
+    "note": "the enchanted legendary creature taps for five; modeled as a 5-mana source usable from your next turn"
+  },
+  "Sylvan Library": {
+    "triggers": [
+      {
+        "on": "drawstep",
+        "do": [
+          "scry 2"
+        ]
+      }
+    ],
+    "note": "draw two, put two back unless you pay 4 life each; modeled as card selection (scry 2), paying life not modeled"
+  },
+  "Mystic Remora": {
+    "triggers": [
+      {
+        "on": "opp_cast",
+        "filter": "noncreature",
+        "do": [
+          "draw 1"
+        ],
+        "tax": true
+      }
+    ],
+    "note": "cumulative upkeep not modeled, so it never leaves; real copies usually die by turn 3-4"
+  },
+  "Fact or Fiction": {
+    "spell": [
+      "look 5 2"
+    ],
+    "note": "an opponent splits the five; modeled as keeping the best two"
+  }
+}
