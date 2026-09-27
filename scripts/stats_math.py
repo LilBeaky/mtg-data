@@ -44,16 +44,21 @@ def cards_seen(turn, on_play=True, hand=7):
 # ---------- Exact hypergeometric ----------
 
 def hyper_pmf(N, K, n, k):
+    n = min(n, N)   # can't draw more cards than the library holds (tiny/partial lists)
     if k > K or k > n or (n - k) > (N - K) or k < 0:
         return 0.0
     return math.comb(K, k) * math.comb(N - K, n - k) / math.comb(N, n)
 
 def hyper_at_least(N, K, n, k):
+    n = min(n, N)
     top = min(K, n)
     return sum(hyper_pmf(N, K, n, i) for i in range(k, top + 1))
 
 def multivariate_at_least(N, cats, n):
     """cats: [(K_i, min_needed_i), ...] disjoint categories."""
+    n = min(n, N)   # can't draw more cards than the library holds (tiny/partial lists)
+    if N <= 0:
+        return 0.0
     K_total = sum(k for k, _ in cats)
     other = N - K_total
     total = math.comb(N, n)

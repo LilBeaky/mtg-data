@@ -1,20 +1,31 @@
 name: Refresh MTG data
 
-# Runs daily and on demand. Daily is the ceiling that actually matters:
-# Scryfall's own bulk exports (including prices) only refresh on their end
-# roughly once every 24 hours, so pulling more often than this can't get
-# fresher data - see https://scryfall.com/docs/api/bulk-data.
+# Daily plus on demand. Daily is the useful ceiling: Scryfall's bulk exports
+# (prices included) refresh about once a day, so running more often can't get
+# fresher data. See https://scryfall.com/docs/api/bulk-data.
+#
+# Failure policy: Scryfall problems stop the run and change nothing, so the
+# repo keeps yesterday's good data. A Spellbook outage only skips the combo
+# refresh; cards, prices, rulings, and tags still update.
 on:
   schedule:
-    - cron: '0 10 * * *'   # ~10:00 UTC daily, comfortably after Scryfall's typical rotation
-  workflow_dispatch: {}     # manual "Run workflow" button for on-demand refreshes
+    - cron: '0 10 * * *'   # ~10:00 UTC (GitHub may start scheduled runs late under load)
+  workflow_dispatch: {}     # "Run workflow" button / API dispatch
 
 permissions:
   contents: write
 
+concurrency:                # a manual run and the daily run never overlap
+  group: refresh-data
+  cancel-in-progress: false
+
+env:
+  UA: "mtg-data-refresh/1.0 (github.com/LilBeaky/mtg-data)"
+
 jobs:
   refresh:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # pinned: ubuntu-latest moves to a new image on 2026-10-19
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -27,12 +38,10 @@ jobs:
 
       - name: Resolve Scryfall bulk-data URLs
         id: urls
-        # Scryfall requires a descriptive User-Agent and an Accept header on
-        # API requests. One call to the /bulk-data list covers every type, and
-        # a failure prints the real HTTP status instead of failing silently.
+        # Scryfall requires a User-Agent and an Accept header. One call to the
+        # /bulk-data list covers every type. Failures print the real HTTP status.
         run: |
           set -euo pipefail
-          UA="mtg-data-refresh/1.0 (github.com/LilBeaky/mtg-data)"
           status=$(curl -s -o /tmp/bulk.json -w '%{http_code}' \
             -H "User-Agent: ${UA}" -H "Accept: application/json" \
             https://api.scryfall.com/bulk-data)
@@ -42,10 +51,14 @@ jobs:
             exit 1
           fi
           echo "::notice::Available bulk types: $(jq -r '[.data[].type] | join(", ")' /tmp/bulk.json)"
-
-          for type in oracle_cards default_cards rulings; do
+          # Prefer jsonl_download_uri (Scryfall's current format); treat null as missing.
+          for type in oracle_cards default_cards rulings oracle_tags; do
             url=$(jq -r --arg t "$type" '.data[] | select(.type==$t) | (.jsonl_download_uri // .download_uri // empty)' /tmp/bulk.json)
             if [ -z "$url" ]; then
+              if [ "$type" = "oracle_tags" ]; then
+                echo "::warning::oracle_tags missing from Scryfall's list; keeping existing tags file."
+                continue
+              fi
               echo "::error::Required bulk-data type '${type}' not in Scryfall's list"
               exit 1
             fi
@@ -53,29 +66,17 @@ jobs:
             echo "${type}_url=${url}" >> "$GITHUB_OUTPUT"
           done
 
-          # oracle_tags isn't in Scryfall's public bulk-data docs. Use it if the
-          # list includes it; otherwise warn and keep the existing file.
-          tags_url=$(jq -r '.data[] | select(.type=="oracle_tags") | (.jsonl_download_uri // .download_uri // empty)' /tmp/bulk.json)
-          if [ -n "$tags_url" ]; then
-            echo "oracle_tags: found"
-            echo "tags_url=${tags_url}" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::oracle_tags not in Scryfall's bulk list - data/oracle-tags-*.jsonl not refreshed this run."
-          fi
-
       - name: Download Scryfall bulk files
         run: |
           set -uo pipefail
-          UA="mtg-data-refresh/1.0 (github.com/LilBeaky/mtg-data)"
           fetch() {
-            curl -sfL --compressed -A "$UA" "$1" -o "$2"
+            curl -sfL --retry 3 --retry-delay 20 --compressed -A "$UA" "$1" -o "$2"
             rc=$?
             if [ $rc -ne 0 ]; then
               echo "::error::Download failed (curl exit ${rc}) for $2 from $1"
               exit 1
             fi
-            # Scryfall now serves real .jsonl.gz files (not just gzip transfer
-            # encoding), which --compressed doesn't unpack. Unzip if gzipped.
+            # Scryfall serves real .jsonl.gz files; --compressed doesn't unpack those.
             if gzip -t "$2" 2>/dev/null; then
               mv "$2" "$2.gz" && gunzip "$2.gz"
             fi
@@ -84,57 +85,106 @@ jobs:
           fetch "${{ steps.urls.outputs.oracle_cards_url }}" /tmp/oracle-cards.json
           fetch "${{ steps.urls.outputs.default_cards_url }}" /tmp/default-cards.json
           fetch "${{ steps.urls.outputs.rulings_url }}" /tmp/rulings.jsonl
-          if [ -n "${{ steps.urls.outputs.tags_url }}" ]; then
-            fetch "${{ steps.urls.outputs.tags_url }}" /tmp/oracle-tags.jsonl
+          if [ -n "${{ steps.urls.outputs.oracle_tags_url }}" ]; then
+            fetch "${{ steps.urls.outputs.oracle_tags_url }}" /tmp/oracle-tags.jsonl
           fi
-
-      - name: Download Commander Spellbook combo data
-        run: curl -sfL -A "mtg-data-refresh/1.0 (github.com/LilBeaky/mtg-data)" https://json.commanderspellbook.com/variants.json.gz -o /tmp/variants.json.gz
 
       - name: Trim Scryfall cards + prices
-        run: |
-          python3 scripts/trim.py scryfall /tmp/oracle-cards.json /tmp/trimmed_scryfall_v2.json --prices /tmp/default-cards.json
+        run: python3 scripts/trim.py scryfall /tmp/oracle-cards.json /tmp/trimmed_scryfall_v2.json --prices /tmp/default-cards.json
 
-      - name: Sanity check before touching committed data
-        # Guards against a truncated/bad download silently wiping out good
-        # data. ~30k oracle cards exist today; floor is set well below that
-        # so it only trips on an actual bad fetch, not normal card-count growth.
+      - name: Sanity-check Scryfall data
+        # Floors sit well below today's numbers (~34.6k cards, ~33k priced,
+        # ~26 MB rulings, ~18 MB tags) so they only trip on a broken download
+        # or a Scryfall format change, never on normal growth.
         run: |
           set -euo pipefail
-          n=$(python3 -c "import json; print(len(json.load(open('/tmp/trimmed_scryfall_v2.json'))))")
-          echo "trimmed card count: $n"
-          if [ "$n" -lt 25000 ]; then
-            echo "::error::Trimmed card count ($n) is suspiciously low - aborting without committing."
-            exit 1
-          fi
+          python3 - << 'PY'
+          import json, os, sys
+          cards = json.load(open("/tmp/trimmed_scryfall_v2.json"))
+          priced = sum(1 for c in cards if "usd" in c)
+          print(f"cards: {len(cards):,} | priced: {priced:,}")
+          bad = []
+          if len(cards) < 25000: bad.append(f"only {len(cards)} cards")
+          if priced < 20000: bad.append(f"only {priced} priced cards (price format change?)")
+          if os.path.getsize("/tmp/rulings.jsonl") < 5_000_000: bad.append("rulings file too small")
+          if os.path.exists("/tmp/oracle-tags.jsonl") and os.path.getsize("/tmp/oracle-tags.jsonl") < 5_000_000:
+              bad.append("oracle tags file too small")
+          for b in bad: print(f"::error::{b} - aborting without committing")
+          sys.exit(1 if bad else 0)
+          PY
 
-      - name: Trim Spellbook combos
-        run: python3 scripts/trim.py spellbook /tmp/variants.json.gz /tmp/spellbook_combos.json.gz
+      - name: Refresh Commander Spellbook combos (non-fatal)
+        id: spellbook
+        run: |
+          set -uo pipefail
+          if ! curl -sfL --retry 3 --retry-delay 20 -A "$UA" https://json.commanderspellbook.com/variants.json.gz -o /tmp/variants.json.gz; then
+            echo "::warning::Spellbook download failed; keeping existing combo data."
+            exit 0
+          fi
+          if ! python3 scripts/trim.py spellbook /tmp/variants.json.gz /tmp/spellbook_combos.json.gz; then
+            echo "::warning::Spellbook trim failed; keeping existing combo data."
+            exit 0
+          fi
+          n=$(python3 -c "import gzip,json; print(len(json.load(gzip.open('/tmp/spellbook_combos.json.gz','rt'))['variants']))")
+          if [ "$n" -lt 50000 ]; then
+            echo "::warning::Only ${n} combos (normally ~109k); keeping existing combo data."
+            exit 0
+          fi
+          echo "ok=true" >> "$GITHUB_OUTPUT"
 
       - name: Update data/ files
         run: |
           set -euo pipefail
           mv /tmp/trimmed_scryfall_v2.json data/trimmed_scryfall_v2.json
-          mv /tmp/spellbook_combos.json.gz data/spellbook_combos.json.gz
-
-          today=$(date -u +%Y%m%d%H%M%S)
-          rm -f data/rulings-*.jsonl
-          mv /tmp/rulings.jsonl "data/rulings-${today}.jsonl"
-
-          if [ -f /tmp/oracle-tags.jsonl ]; then
-            rm -f data/oracle-tags-*.jsonl
-            mv /tmp/oracle-tags.jsonl "data/oracle-tags-${today}.jsonl"
+          if [ "${{ steps.spellbook.outputs.ok }}" = "true" ]; then
+            mv /tmp/spellbook_combos.json.gz data/spellbook_combos.json.gz
           fi
 
-      - name: Commit and push if anything changed
+          # Dated files are named with Scryfall's own export timestamp, and only
+          # replaced when the content actually changed, so an unchanged file is
+          # never renamed (which would make a pointless commit).
+          replace_dated() {  # replace_dated NEW_FILE PREFIX SOURCE_URL
+            local new="$1" prefix="$2" url="$3" old ts
+            old=$(ls data/${prefix}-*.jsonl 2>/dev/null | head -n1 || true)
+            if [ -n "$old" ] && cmp -s "$new" "$old"; then
+              echo "${prefix}: unchanged"; return
+            fi
+            ts=$(basename "$url" | grep -oE '[0-9]{14}' | head -n1 || true)
+            [ -n "$ts" ] || ts=$(date -u +%Y%m%d%H%M%S)
+            rm -f data/${prefix}-*.jsonl
+            mv "$new" "data/${prefix}-${ts}.jsonl"
+            echo "${prefix}: updated -> ${prefix}-${ts}.jsonl"
+          }
+          replace_dated /tmp/rulings.jsonl rulings "${{ steps.urls.outputs.rulings_url }}"
+          if [ -f /tmp/oracle-tags.jsonl ]; then
+            replace_dated /tmp/oracle-tags.jsonl oracle-tags "${{ steps.urls.outputs.oracle_tags_url }}"
+          fi
+
+          # Freshness info read by mtg.py: price date on cost lines, and a
+          # warning in every session if the refresh stops running.
+          jq -n \
+            --arg refreshed "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg prices "$(jq -r '.data[] | select(.type=="default_cards") | .updated_at' /tmp/bulk.json)" \
+            --arg cards "$(jq -r '.data[] | select(.type=="oracle_cards") | .updated_at' /tmp/bulk.json)" \
+            --arg combos_refreshed "${{ steps.spellbook.outputs.ok == 'true' }}" \
+            '{refreshed_at: $refreshed, prices_as_of: $prices, cards_as_of: $cards,
+              spellbook_refreshed_this_run: ($combos_refreshed == "true")}' > data/data_info.json
+
+      - name: Commit and push
         run: |
           set -euo pipefail
           git config user.name "mtg-data-refresh-bot"
           git config user.email "actions@mtg-data.invalid"
-          git add data/
+          git add -A data/
           if git diff --cached --quiet; then
             echo "No changes - nothing to commit."
             exit 0
           fi
           git commit -q -m "Automated data refresh: $(date -u +%Y-%m-%d)"
-          git push
+          # Someone may have pushed during the run; rebase onto it and retry.
+          for i in 1 2 3; do
+            git pull -q --rebase origin main && git push -q && exit 0
+            sleep 10
+          done
+          echo "::error::Push failed after 3 attempts"
+          exit 1

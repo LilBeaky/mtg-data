@@ -4,7 +4,8 @@ mtg.py — query helper for the LilBeaky/mtg-data repo.
 Run from the repo root. Output is compact text, never raw JSON dumps.
 
 COMMANDS
-  card   NAME [NAME ...]        exact lookup (then case-insensitive, then partial)
+  card   NAME [NAME ...]        exact lookup (then case-insensitive, then partial);
+                                shows the cheapest printing's USD price when known
   card   -f LIST.txt            batch lookup from a file (one name per line)
          --brief                strip (reminder text) — use for big batches of
                                 familiar cards; skip it for new/unfamiliar mechanics
@@ -18,6 +19,8 @@ COMMANDS
                                 combos (shows 2-card + bracket 3+; --all-combos for rest);
                                 Companion section: excluded from count, checked for
                                 legality/CI, odd/even condition auto-checked, combos included
+                                Cost: deck total at cheapest printings, most expensive
+                                cards, unpriced cards; checked against a '# budget:' header
                                 Long-form exports with trailing #tags are accepted
                                 (tags are stripped here; audit.py uses them as roles)
   gc                            list all Game Changers
@@ -33,10 +36,14 @@ SEARCH FILTERS (combine freely)
   --cmc 2-4       mana value exact (3) or range (2-4)
   --tag LABEL     has this Scryfall oracle tag (e.g. ramp, removal)
   --gc | --no-gc  Game Changers only / exclude them
+  --max-price 5   cheapest printing at most $5 (unpriced cards are excluded)
+  --min-price 20  cheapest printing at least $20
+  --sort price    cheapest first (default sort: EDHREC popularity)
   --all           include not-legal cards (default: Commander-legal only)
   --limit N       max results (default 20)
   --full          print full oracle text (default: names + mana cost only)
-  Results sorted by EDHREC card rank (popular first).
+  Results sorted by EDHREC card rank (popular first) unless --sort price.
+  Prices are shown on results whenever a price filter or --sort price is used.
   TOKEN TIP: search for names, then `card` only the shortlist you care about.
 
 DECKLIST HEADER (optional, see USE_INSTRUCTIONS §4)
@@ -69,8 +76,56 @@ TAGS_FILE = latest("oracle-tags-*.jsonl")
 RULES_FILE = latest("MagicCompRules*.txt")
 COMBOS_FILE = latest("spellbook_combos*.json*")
 ALIASES_FILE = os.path.join(DATA_DIR, "aliases.txt")
+INFO_FILE = os.path.join(DATA_DIR, "data_info.json")   # written by the daily refresh workflow
+STALE_DAYS = 3
 TAG_NAMES = {"R": "Ruthless", "S": "Spicy", "P": "Powerful", "O": "Oddball",
              "C": "Core", "E": "Exhibition", "B": "Banned"}
+
+# ---------- data freshness ----------
+_info = None
+def data_info():
+    """{'refreshed_at', 'prices_as_of', ...} from the refresh workflow, or {} if absent."""
+    global _info
+    if _info is None:
+        try:
+            _info = json.load(open(INFO_FILE, encoding="utf-8"))
+        except (OSError, ValueError):
+            _info = {}
+    return _info
+
+def _age_days(iso):
+    import datetime
+    try:
+        t = datetime.datetime.fromisoformat(iso.replace("Z", "+00:00"))
+        return (datetime.datetime.now(datetime.timezone.utc) - t).days
+    except (AttributeError, ValueError):
+        return None
+
+def price_date_note():
+    d = data_info().get("prices_as_of")
+    if not d: return "price date unknown"
+    age = _age_days(d)
+    return f"prices as of {d[:10]}" + (f" ({age}d old)" if age else "")
+
+def stale_warning():
+    """One line if the daily refresh looks stopped, else None. Silent when healthy."""
+    age = _age_days(data_info().get("refreshed_at", ""))
+    if age is not None and age > STALE_DAYS:
+        return (f"! data last refreshed {age} days ago; the daily refresh may have stopped "
+                f"(see USE_INSTRUCTIONS section 12)")
+    return None
+
+def price(c):
+    """Cheapest printing's USD price as float, or None if unpriced."""
+    try:
+        return float(c["usd"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+def price_str(c):
+    p = price(c)
+    if p is None: return ""
+    return f"${p:,.2f}" + (" foil-only" if c.get("usd_foil_only") else "")
 
 # ---------- loading ----------
 _cards = None
@@ -174,6 +229,7 @@ def line(c, full=True):
     pt = f" {c['power']}/{c['toughness']}" if c.get("power") is not None else ""
     head = f"{c['name']} {c.get('mana_cost','')} [{ci}]{pt} {c.get('type_line','')}"
     if tags: head += " {" + ",".join(tags) + "}"
+    if price_str(c): head += f" | {price_str(c)}"
     if not full: return head
     body = text_of(c).replace("\n", " / ")
     if BRIEF:
@@ -279,6 +335,8 @@ def parse_opts(args):
         if a in ("--gc", "--no-gc", "--all", "--names", "--full", "--brief", "--all-combos"):
             o[a] = True; i += 1
         else:
+            if i + 1 >= len(args):
+                sys.exit(f"option {a} needs a value")
             o[a] = args[i + 1]; i += 2
     return o
 
@@ -291,6 +349,10 @@ def cmd_search(args):
     if "--cmc" in o:
         parts = o["--cmc"].split("-")
         lo, hi = float(parts[0]), float(parts[-1])
+    pmin = float(o["--min-price"]) if "--min-price" in o else None
+    pmax = float(o["--max-price"]) if "--max-price" in o else None
+    by_price = o.get("--sort") == "price"
+    show_price = by_price or pmin is not None or pmax is not None
     tag_ids = None
     if "--tag" in o:
         t = load_tags(only_label=o["--tag"])
@@ -308,15 +370,25 @@ def cmd_search(args):
         if name and not name.search(c["name"]): continue
         if text and not text.search(text_of(c)): continue
         if tag_ids is not None and c.get("oracle_id") not in tag_ids: continue
+        if show_price:
+            p = price(c)
+            if p is None: continue          # unpriced: can't satisfy a price filter
+            if pmin is not None and p < pmin: continue
+            if pmax is not None and p > pmax: continue
         res.append(c)
-    res.sort(key=lambda c: c.get("edhrec_rank") or 10**7)
+    if by_price:
+        res.sort(key=lambda c: (price(c), c.get("edhrec_rank") or 10**7))
+    else:
+        res.sort(key=lambda c: c.get("edhrec_rank") or 10**7)
     lim = int(o.get("--limit", 20))
-    print(f"{len(res)} match(es){' (showing ' + str(lim) + ')' if len(res) > lim else ''}")
+    print(f"{len(res)} match(es){' (showing ' + str(lim) + ')' if len(res) > lim else ''}"
+          + (f" | {price_date_note()}; unpriced cards excluded" if show_price else ""))
     if "--full" in o:
         for c in res[:lim]:
             print(line(c))
     else:   # default: names + cost only — run `card` on the shortlist for text
-        print("; ".join(f"{c['name']} {c.get('mana_cost','')}".strip() for c in res[:lim]))
+        print("; ".join(f"{c['name']} {c.get('mana_cost','')}".strip()
+                        + (f" {price_str(c)}" if show_price else "") for c in res[:lim]))
 
 LINE_RX = re.compile(r"^\s*(\d+)?x?\s*(.+?)\s*(\([A-Za-z0-9]+\).*)?(\*F\*)?\s*$")
 SECTIONS = {"commander", "commanders", "deck", "mainboard", "main", "sideboard",
@@ -479,6 +551,7 @@ def cmd_deck(args):
     print(f"Game Changers ({len(gcs)}): {', '.join(gcs) or 'none'}")
     print("problems: " + ("none" if not problems else ""))
     for p in problems: print("  - " + p)
+    deck_cost(found, cmd_names, comp_cards, meta)
     global BRIEF
     # companion included: it can be put into hand for {3}, so its combos are live
     names_in_deck = ([c["name"] for _, c in found] + [find(n)[0]["name"] for n in cmd_names if find(n)[0]]
@@ -498,6 +571,35 @@ def cmd_deck(args):
         if any(v.get("templates") for v in dc):
             print("  note: combos with 'requires' need a generic piece — confirm you actually have one")
     print("note: MLD and extra-turn cards are not auto-flagged — review manually.")
+
+
+def deck_cost(found, cmd_names, comp_cards, meta):
+    """Deck cost at each card's cheapest printing. The commander is already in
+    `found` when it's listed in the deck; it's added from cmd_names only if not."""
+    rows = [(q, c) for q, c in found]
+    listed = {c["name"] for _, c in found}
+    for n in cmd_names:
+        c, _ = find(n)
+        if c and c["name"] not in listed: rows.append((1, c))
+    rows += [(1, c) for c in comp_cards]
+    priced = [(q, c, price(c)) for q, c in rows if price(c) is not None]
+    unpriced = sorted({c["name"] for q, c in rows if price(c) is None})
+    if not priced:
+        print("cost: no price data (repo trimmed without --prices?)")
+        return
+    total = sum(q * p for q, c, p in priced)
+    basics = sum(q * p for q, c, p in priced if "Basic" in c.get("type_line", ""))
+    line_ = f"cost: ${total:,.2f} at cheapest printings (${total - basics:,.2f} excluding basics) | {price_date_note()}"
+    b = re.search(r"\d[\d,]*(?:\.\d+)?", meta.get("budget", "")) if meta else None
+    if b:
+        cap = float(b.group().replace(",", ""))
+        line_ += f" | budget ${cap:,.2f}: " + ("OK" if total <= cap else f"OVER by ${total - cap:,.2f}")
+    print(line_)
+    top = sorted(priced, key=lambda x: -x[2])[:5]
+    print("  priciest: " + "; ".join(f"{c['name']} ${p:,.2f}" + (" (foil-only)" if c.get("usd_foil_only") else "")
+                                     for q, c, p in top))
+    if unpriced:
+        print(f"  no price ({len(unpriced)}, excluded from total): {', '.join(unpriced)}")
 
 
 # ---------- Commander Spellbook combos ----------
@@ -597,4 +699,6 @@ CMDS = {"card": cmd_card, "rulings": cmd_rulings, "tags": cmd_tags, "search": cm
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in CMDS:
         print(__doc__); sys.exit(1)
+    _w = stale_warning()
+    if _w: print(_w)
     CMDS[sys.argv[1]](sys.argv[2:])

@@ -8,12 +8,16 @@ deckbuilding and deck audits.
 covers setup, every script's usage, and the schema quirks worth knowing
 before you write a custom query.
 
+Card data, prices, rulings, tags, and combos refresh automatically every day
+via GitHub Actions (see section 12 of the docs). Prices are each card's
+cheapest printing in USD.
+
 ## Layout
 
 ```
 mtg-data/
 ├── scripts/     # everything you execute (mtg.py, audit.py, etc.)
-├── data/        # everything the scripts read (bulk data + your customizations)
+├── data/        # everything the scripts read (refreshed daily, plus aliases.txt)
 ├── docs/        # everything you read (start with USE_INSTRUCTIONS.md)
 └── snapshots/   # EDHREC page transcriptions, one per commander/variant/date
 ```

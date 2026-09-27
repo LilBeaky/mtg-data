@@ -57,7 +57,8 @@ mtg-data/
 | File | What it is |
 |---|---|
 | `aliases.txt` | Reskin names → Oracle names (e.g. Ghal Maraz → Loxodon Warhammer). You add a line per reskin you own. |
-| `trimmed_scryfall_v2.json` | Scryfall oracle cards, trimmed. One entry per card; tokens, art cards, etc. removed. |
+| `trimmed_scryfall_v2.json` | Scryfall oracle cards, trimmed, with cheapest-printing prices. One entry per card; tokens, art cards, etc. removed. |
+| `data_info.json` | Written by the daily refresh: when it last ran and how current prices are. `mtg.py` reads it. |
 | `rulings-YYYYMMDDHHMMSS.jsonl` | Scryfall rulings, one per line, keyed by `oracle_id`. |
 | `oracle-tags-YYYYMMDDHHMMSS.jsonl` | Scryfall Tagger oracle tags (e.g. `ramp`, `sweeper`, `monarch matters`). |
 | `spellbook_combos.json.gz` | Commander Spellbook combo database, trimmed and gzipped (~109k combos). |
@@ -80,18 +81,18 @@ Transcribed EDHREC pages, one file per commander + variant + date. See section 9
 
 | Command | Use it for | Example |
 |---|---|---|
-| `card` | Oracle text, type, P/T, color identity, legality, GC flag | `python3 scripts/mtg.py card "Court of Ire" "Paradox Haze"` |
+| `card` | Oracle text, type, P/T, color identity, legality, GC flag, price | `python3 scripts/mtg.py card "Court of Ire" "Paradox Haze"` |
 | `card -f` | Batch lookup from a file | `python3 scripts/mtg.py card -f list.txt --brief` |
 | `rulings` | Official rulings, only when an interaction is ambiguous | `python3 scripts/mtg.py rulings "Obeka, Splitter of Seconds" --grep untap` |
 | `tags` | Oracle tags on a card | `python3 scripts/mtg.py tags "Court of Ire"` |
-| `search` | Finding cards by color identity, text, type, MV, tag, GC | `python3 scripts/mtg.py search --ci UBR --tag removal --cmc 1-2 --names` |
-| `deck` | Legality, color identity, singleton, GC count, curve, lands, combos | `python3 scripts/mtg.py deck decklist.txt` (`audit.py` runs this for you) |
+| `search` | Finding cards by color identity, text, type, MV, tag, GC, price | `python3 scripts/mtg.py search --ci UBR --tag removal --cmc 1-2 --names` |
+| `deck` | Legality, color identity, singleton, GC count, curve, lands, cost, combos | `python3 scripts/mtg.py deck decklist.txt` (`audit.py` runs this for you) |
 | `combos` | Spellbook combos containing *all* named cards (default 10 shown) | `python3 scripts/mtg.py combos "Obeka, Splitter of Seconds" --bracket 3` |
 | `gc` | The current Game Changer list | `python3 scripts/mtg.py gc` |
 | `rule` | Comprehensive Rules by number or keyword | `python3 scripts/mtg.py rule 702.62a` / `python3 scripts/mtg.py rule --grep "suspended"` |
 
 ### Search filters (combine freely)
-`--ci UBR` (subset; `C` = colorless) · `--text REGEX` · `--type REGEX` · `--name REGEX` · `--cmc 3` or `--cmc 2-4` · `--tag LABEL` · `--gc` / `--no-gc` · `--all` (include non-legal) · `--limit N` (default 20) · `--full` (print oracle text). Results are sorted by EDHREC card rank, most popular first.
+`--ci UBR` (subset; `C` = colorless) · `--text REGEX` · `--type REGEX` · `--name REGEX` · `--cmc 3` or `--cmc 2-4` · `--tag LABEL` · `--gc` / `--no-gc` · `--max-price 5` / `--min-price 20` (cheapest printing, USD) · `--sort price` (cheapest first) · `--all` (include non-legal) · `--limit N` (default 20) · `--full` (print oracle text). Results are sorted by EDHREC card rank, most popular first, unless `--sort price`. Price filters exclude unpriced cards and add prices to the output.
 
 **Default output is names + mana cost only.** Search to build a shortlist, then run `card` on the few you actually care about.
 
@@ -196,7 +197,7 @@ The audit prints the alternative counts under each role and marks **⚠ K-SENSIT
 - **Tags that do exist** (despite earlier notes saying otherwise): `sweeper` for board wipes, and the `recursion` umbrella, which covers regrowth as well as `reanimate`.
 - **`ramp` doesn't include cost reducers** (the Medallions, etc.). They're their own category, `cost_reducers`. Count both when judging a deck's mana.
 - **Layouts:** `prepare` is a real mechanic (46 legal cards). Keep it. `host`/`augment` are Un-cards (not legal) and are kept on purpose.
-- **Prices** exist only if the trim was run with `--prices`. `usd` is the cheapest legal printing found (nonfoil preferred), not any one specific edition. `usd_foil_only: true` means no nonfoil printing exists at all, so that price can't be beaten by finding a plain copy. A card with no `usd` key simply wasn't in the price file. Treat prices older than ~2 weeks as stale.
+- **Prices** exist only if the trim was run with `--prices`. `usd` is the cheapest legal printing found (nonfoil preferred), not any one specific edition. `usd_foil_only: true` means no nonfoil printing exists at all, so that price can't be beaten by finding a plain copy. A card with no `usd` key has no price (mostly meld backs and brand-new cards); tools list these as unpriced, never as $0. Prices refresh daily (section 12). `mtg.py` shows prices on `card`, filters `search` by price, and adds a **cost** line to `deck` (and so to every audit): the total at cheapest printings, the total excluding basics, the five priciest cards, anything unpriced, and a check against a `# budget: 150` header if the list has one. Cheapest printing is a floor, not what the user's copies are worth.
 
 ## 8. Bracket checks — how to verify a Bracket claim
 
@@ -298,6 +299,7 @@ The user keeps a **fine-grained personal access token** (starts with `github_pat
 - **Never force-push and never rewrite history.** History is how a bad commit gets undone. To undo, `git revert <sha>` and push; never `reset`.
 - Start from a fresh clone (section 1) so you commit on top of the current `main`. If the push is rejected because `main` moved, run `git pull -q --rebase` and push again.
 - Commit only what the session produced and the user approved. Stage files by name, never `git add -A`.
+- **Pull before pushing.** The refresh bot commits to `main` daily, so a clone from earlier in the session may be behind. Run `git pull -q --rebase origin main` right before the push (the bot only touches `data/`, so this won't conflict with doc or script edits).
 - Write a clear commit message (what and why), and give the user the commit link.
 - On a 401/403, the token is missing a permission or has expired. Tell the user; don't retry with guesses.
 
@@ -316,11 +318,17 @@ rm -f /home/claude/.gh_token
 
 If the push fails with "shallow update not allowed", run `git fetch -q --unshallow` and push again.
 
-**Token setup (user's side):** GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Repository access: *Only select repositories* → `mtg-data`. Permissions: *Contents: Read and write* is the one that matters; *Issues* is optional, for logging backlog items. Metadata read-only gets added automatically. Set an expiration, then paste the new token into the Project instructions when it rotates.
+**Token setup (user's side):** GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Repository access: *Only select repositories* → `mtg-data`. Permissions: *Contents: Read and write* (edit files), *Workflows: Read and write* (edit anything in `.github/workflows/`), and *Actions: Read and write* (trigger and inspect refresh runs from chat); *Issues* is optional, for logging backlog items. Metadata read-only gets added automatically. Set an expiration, then paste the new token into the Project instructions when it rotates.
 
 ## 12. Refreshing the data
 
-**Automatic (default):** `.github/workflows/refresh-data.yml` runs daily (~10:00 UTC) on GitHub Actions and refreshes cards, prices, rulings, oracle tags, and Spellbook combos, committing only if something changed. Daily is the ceiling that matters: Scryfall's bulk exports only update about once a day. To refresh on demand, use **Actions → Refresh MTG data → Run workflow**, or dispatch it via the API if your token has *Actions: Read and write*. The Comprehensive Rules file is **not** automated; drop in a new dated `.txt` when WotC updates it.
+**Automatic (default):** `.github/workflows/refresh-data.yml` runs daily (~10:00 UTC) on GitHub Actions and refreshes cards, prices, rulings, oracle tags, and Spellbook combos, and commits the result. Daily is the ceiling that matters: Scryfall's bulk exports only update about once a day. To refresh on demand, use **Actions → Refresh MTG data → Run workflow**, or dispatch it via the API if your token has *Actions: Read and write*. The Comprehensive Rules file is **not** automated; drop in a new dated `.txt` when WotC updates it.
+
+**What happens when something goes wrong:**
+- A Scryfall problem (API down, bad download, format change) stops the run before anything is committed, so the repo keeps the previous day's good data. Sanity floors on card count, priced-card count, and file sizes catch half-broken downloads.
+- A Commander Spellbook problem only skips the combo refresh; cards, prices, rulings, and tags still update.
+- Runs never overlap, and the bot rebases onto any commit pushed mid-run before pushing.
+- If the refresh stops entirely, every `mtg.py` command starts printing `! data last refreshed N days ago` once `data/data_info.json` is more than 3 days old. **Pass that warning on to the user.** The likely causes: GitHub pauses scheduled jobs in public repos after 60 days with no repository activity (the daily commits should prevent this; re-enable under Actions → Refresh MTG data), or the workflow is failing (check its annotations, below).
 
 **Diagnosing a failed run from a sandbox:** raw job logs redirect to blob storage the sandbox can't reach. Read the job's **annotations** through the API instead (`/repos/LilBeaky/mtg-data/check-runs/<job_id>/annotations`); the workflow reports resolved URLs, download sizes, and failures there.
 
