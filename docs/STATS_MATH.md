@@ -5,7 +5,7 @@ math: exact hypergeometric calculations, Monte Carlo simulation, and using
 Scryfall Oracle Tags to build category counts straight from a decklist.
 
 **Default use is automatic:** `audit.py` runs the standard battery (lands,
-commander on curve, every role, density/flood) on every deck audit. Ian's
+commander on curve, every role, density/flood) on every deck audit. The user's
 standing preference is to lean toward over-using this tooling, not under-using
 it, so reach for it for any draw-odds question beyond that battery too.
 USE_INSTRUCTIONS.md §6 has the short version; this doc is the engine.
@@ -139,15 +139,15 @@ it can't drift out of sync with the repo's own tag logic.
 | Function | Returns |
 |---|---|
 | `tag_tree(label_or_tuple)` | `{sub_label: oracle_ids}` for one label or a tuple (union), from one pass via `mtg.load_tags_multi` |
-| `tag_oids(...)` / `tag_labels(...)` | The oracle_ids / sub-labels in that tree (labels map Ian's #tags onto categories) |
+| `tag_oids(...)` / `tag_labels(...)` | The oracle_ids / sub-labels in that tree (labels map the user's #tags onto categories) |
 | `category_members(deck, tag_label)` | `([(qty, name), ...], unmatched)`: library cards under the tag subtree |
 | `category_count_from_tag(deck, tag_label)` | `(K, unmatched)`, a thin wrapper over `category_members`, so count and names can't disagree |
 | `category_report(deck, categories=None)` | `{category: {"label", "K", "cards"}}` for every `categories.py` entry (or a subset), from **one** pass over the tag file; prints by default |
-| `user_tag_map(deck)` / `norm_label(s)` | Ian's own `#tags` from a long-form export, normalized (`Removal-Creature` → `removal creature`) |
+| `user_tag_map(deck)` / `norm_label(s)` | The user's own `#tags` from a long-form export, normalized (`Removal-Creature` → `removal creature`) |
 
 Standalone category check (audit.py prints the same lists per role):
 ```
-python3 stats_math.py report DECKLIST [category ...]
+python3 scripts/stats_math.py report DECKLIST [category ...]
 ```
 It prints N, then each category's K **and the matched card names**. Read the
 names before using any K. Tags are a starting point, not a verdict (section 7).
@@ -157,7 +157,7 @@ come in **broad/strict pairs** (`card_draw`/`draw_engine`,
 `ramp`/`mana_producers`), because broad tags answer "does the card have this
 effect?" rather than "does it fill this role here?". See §7 for the numbers.
 
-**Which K wins** (implemented in `audit.py`): Ian's own `#tags` when they
+**Which K wins** (implemented in `audit.py`): the user's own `#tags` when they
 cover ≥50% of nonland cards → a `--k ROLE=N` confirmed count → oracle tags.
 Whenever another source's K would move the odds by ≥15 points, the audit
 prints both and flags the role K-SENSITIVE.
@@ -203,14 +203,14 @@ answer, as it should for a static category.
     overcounted on Wilson. Reliability depends on the deck (an aura deck is
     full of cards that incidentally grant keywords), which is why the names
     get read every time. **Treat broad tag counts as candidate lists, not
-    K.** Ian's `#tags` or a confirmed `--k` are the real K.
+    K.** The user's `#tags` or a confirmed `--k` are the real K.
 - **No card-effect modeling yet.** The Monte Carlo engine handles static
   categories only. Draw engines, untappers, cascade, and ramp that digs
   aren't represented, so engine decks run better than these odds after ~T3.
   The Wilson ramp-package goldfish sim (Sept 2026) was ad hoc and not saved.
   Next step: `goldfish.py`, driven by **roles** (from #tags) rather than
   oracle-text parsing, which keeps it tractable.
-- **Colors aren't modeled.** Pip requirements come from Moxfield (ask Ian).
+- **Colors aren't modeled.** Pip requirements come from Moxfield (ask the user).
 - **Non-Commander formats (e.g. Dandan) aren't tested** beyond a smoke test.
   Population counting works with no `Commander` section (N = full count), and
   `audit.py` skips the commander and EDHREC sections.
@@ -228,9 +228,9 @@ above are summaries, not the source. It holds: population counting
 user-tag helpers (`norm_label`, `user_tag_map`). If behavior changes, edit `stats_math.py` and update the
 matching section here.
 
-- Import it: `python3 -c "import stats_math as sm; ..."` from the repo root.
-- Category check: `python3 stats_math.py report DECK [category ...]`.
-- Quick one-off: `python3 stats_math.py N K n k` prints P(≥k of K in n cards).
+- Import it: `python3 -c "import sys; sys.path.insert(0, 'scripts'); import stats_math as sm; ..."` from the repo root.
+- Category check: `python3 scripts/stats_math.py report DECK [category ...]`.
+- Quick one-off: `python3 scripts/stats_math.py N K n k` prints P(≥k of K in n cards).
 - Running it with no arguments prints usage. There is no self-test anymore;
   the old one pointed at a hardcoded path and printed noise.
 - Full-deck battery: `audit.py`.

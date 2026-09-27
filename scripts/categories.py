@@ -22,7 +22,7 @@ RELIABILITY — two real-deck checks, Sept 2026. Always read the matched names
     protection  11 vs ~7 (Darksteel Mutation, Your Temple Is Under Attack counted)
     ramp        14 vs 11 (Bear Umbra, Krosan Verge, Mark of Sakiko counted)
   Strict mappings fix some of it: draw_engine matched the hand count exactly (9/9).
-  Treat broad counts as candidate lists; Ian's own #tags or a confirmed --k
+  Treat broad counts as candidate lists; the user's own #tags or a confirmed --k
   override are the real K. audit.py flags when the difference changes the odds.
 """
 
@@ -71,7 +71,7 @@ STRICT = {"card_draw": "draw_engine", "ramp": "mana_producers"}
 AUDIT_ROLES = ["ramp", "card_draw", "draw_engine", "removal", "board_wipes", "protection",
                "tutors", "counterspells", "recursion", "graveyard_hate"]
 
-# Common human labels -> category, for Ian's own #tags. Anything under the
+# Common human labels -> category, for the user's own #tags. Anything under the
 # category's Scryfall subtree also matches automatically (e.g. "mana rock",
 # "removal-creature", "draw engine"), so this only needs plain-English extras.
 USER_SYNONYMS = {
@@ -82,7 +82,7 @@ USER_SYNONYMS = {
     "removal":        {"removal", "spot removal", "targeted removal"},
     "board_wipes":    {"board wipe", "boardwipe", "wipe", "wrath", "sweeper", "mass removal"},
     "protection":     {"protection", "protect"},
-    "tutors":         {"tutor", "tutors", "search", "searcher"},   # Ian tags tutors #Search
+    "tutors":         {"tutor", "tutors", "search", "searcher"},   # users often tag tutors #Search
     "counterspells":  {"counter", "counterspell", "counterspells", "counters"},
     "recursion":      {"recursion", "regrowth", "reanimation", "reanimate"},
     "graveyard_hate": {"graveyard hate", "gy hate", "grave hate"},

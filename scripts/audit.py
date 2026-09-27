@@ -11,7 +11,7 @@ OPTIONS
   --draw               odds on the draw (default: on the play)
   --k ROLE=N           confirmed count for a role; overrides tags. Repeatable:
                        --k protection=7 --k ramp=11
-  --snapshot PATH      EDHREC snapshot to diff (default: newest match in edhrec_snapshots/)
+  --snapshot PATH      EDHREC snapshot to diff (default: newest match in snapshots/)
   --no-edhrec          skip the EDHREC section
   --min N / --limit N  passed to edhrec_diff.py diff
   --all-combos         passed to mtg.py deck
@@ -36,7 +36,9 @@ ACCEL_VARIABLE_RX = re.compile(r"add [^.]*\bfor each\b|add x\b|add an amount of 
 GENERIC_RX = re.compile(r"\{(\d+|X)\}")
 HYBRID_GENERIC_RX = re.compile(r"\{\d+/[WUBRG]\}")
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.abspath(__file__))       # .../scripts
+REPO_ROOT = os.path.dirname(ROOT)                        # repo root
+SNAPSHOTS_DIR = os.path.join(REPO_ROOT, "snapshots")
 sys.path.insert(0, ROOT)
 import mtg
 import stats_math as sm
@@ -166,7 +168,7 @@ def main():
         if user_primary and uset[r]:
             return K_of(uset[r]), "your tags", uset[r]
         if user_primary:
-            # Ian tagged nothing for this role: that means "untagged", not "zero cards".
+            # The user tagged nothing for this role: that means "untagged", not "zero cards".
             # Printing K=0 / 0.0% here read as a real result (Sept 2026 Erebos audit).
             return K_of(oset[r]), "oracle*", oset[r]
         return K_of(oset[r]), "oracle tags", oset[r]
@@ -368,7 +370,7 @@ def main():
         snap = o.get("snapshot")
         if not snap:
             found = []
-            for f in glob.glob(os.path.join(ROOT, "edhrec_snapshots", "*.txt")):
+            for f in glob.glob(os.path.join(SNAPSHOTS_DIR, "*.txt")):
                 parts = os.path.basename(f)[:-4].split("__")
                 if len(parts) == 3 and parts[0] in slugs:
                     found.append((parts[1], parts[2], f))
@@ -411,7 +413,7 @@ def main():
           f"mechanics newer than that need an outside rules check")
     print("  - These odds are static draws. They don't model draw engines, untaps, cascade, or tutor chains, "
           "so engine decks run higher than shown after T3. Use a goldfish sim for package questions")
-    print("  - Colors aren't modeled: ask Ian for Moxfield's pip distribution if color requirements matter")
+    print("  - Colors aren't modeled: ask the user for Moxfield's pip distribution if color requirements matter")
 
 
 if __name__ == "__main__":

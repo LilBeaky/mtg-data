@@ -56,17 +56,19 @@ import glob, json, os, re, signal, sys
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)  # quiet when piped to head
 from collections import Counter
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.abspath(__file__))       # .../scripts
+REPO_ROOT = os.path.dirname(ROOT)                        # repo root
+DATA_DIR = os.path.join(REPO_ROOT, "data")
 def latest(pattern):
-    hits = sorted(glob.glob(os.path.join(ROOT, pattern)))
+    hits = sorted(glob.glob(os.path.join(DATA_DIR, pattern)))
     return hits[-1] if hits else None
 
-CARDS_FILE = os.path.join(ROOT, "trimmed_scryfall_v2.json")
+CARDS_FILE = os.path.join(DATA_DIR, "trimmed_scryfall_v2.json")
 RULINGS_FILE = latest("rulings-*.jsonl") or latest("*rulings*.json*")
 TAGS_FILE = latest("oracle-tags-*.jsonl")
 RULES_FILE = latest("MagicCompRules*.txt")
 COMBOS_FILE = latest("spellbook_combos*.json*")
-ALIASES_FILE = os.path.join(ROOT, "aliases.txt")
+ALIASES_FILE = os.path.join(DATA_DIR, "aliases.txt")
 TAG_NAMES = {"R": "Ruthless", "S": "Spicy", "P": "Powerful", "O": "Oddball",
              "C": "Core", "E": "Exhibition", "B": "Banned"}
 

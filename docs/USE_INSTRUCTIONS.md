@@ -1,6 +1,6 @@
 # USE INSTRUCTIONS — LilBeaky/mtg-data
 
-**Claude: read this first.** This repo is your primary source of truth for Magic card data, rulings, tags, combos, and rules. Use it every time a conversation touches card text, legality, brackets, or deckbuilding. Don't answer card questions from memory when the repo can answer them.
+**Read this first.** This repo is your primary source of truth for Magic card data, rulings, tags, combos, and rules. Use it every time a conversation touches card text, legality, brackets, or deckbuilding. Don't answer card questions from memory when the repo can answer them.
 
 **Running a deck audit? Follow the procedure in section 5.** It exists because every miss in past audits was a process miss, not a tool gap.
 
@@ -15,7 +15,8 @@ git clone -q --depth 1 https://github.com/LilBeaky/mtg-data.git && cd mtg-data
 - Clone with `git`; don't use the GitHub API for reading. Unauthenticated API calls rate-limit and have failed before.
 - Your sandbox resets between chats, so re-clone each session. It takes seconds.
 - `jq` isn't installed in the sandbox. Use `mtg.py`, or plain Python if you truly need a custom query.
-- Read this file once. Read `STATS_MATH.md` only if you need math beyond what `audit.py` prints.
+- Read this file once. Read `docs/STATS_MATH.md` only if you need math beyond what `audit.py` prints.
+- All commands below assume your working directory is the repo root (`mtg-data/`), invoking scripts as `python3 scripts/<name>.py`.
 
 ## 2. The golden rules
 
@@ -30,23 +31,48 @@ Only write a custom query if none of these can answer the question. If you do, r
 
 ## 3. Files in this repo
 
+Four folders, organized by what you *do* with each thing — code you run, data it reads, docs you read, and snapshots the audits produce:
+
+```
+mtg-data/
+├── scripts/     # everything you execute
+├── data/        # everything the scripts read (bulk data + your customizations)
+├── docs/        # everything you read
+└── snapshots/   # EDHREC page transcriptions, one per commander/variant/date
+```
+
+### `scripts/`
+
 | File | What it is |
 |---|---|
-| `USE_INSTRUCTIONS.md` | This file. |
 | `audit.py` | The default full deck audit. One command runs every check. |
 | `mtg.py` | Query helper for cards, rulings, tags, search, deck, GCs, combos, and rules. |
-| `stats_math.py` | Probability engine (hypergeometric, Monte Carlo, tag and user-tag counts). `python3 stats_math.py report DECK` prints each category's K with the matched names. |
-| `STATS_MATH.md` | Docs for `stats_math.py`: conventions, functions, known limits. |
-| `categories.py` | Curated role → Scryfall tag mapping (broad/strict pairs, cost reducers, synonyms for Ian's #tags). |
-| `aliases.txt` | Reskin names → Oracle names (e.g. Ghal Maraz → Loxodon Warhammer). Ian adds a line per reskin he owns. |
+| `stats_math.py` | Probability engine (hypergeometric, Monte Carlo, tag and user-tag counts). `python3 scripts/stats_math.py report DECK` prints each category's K with the matched names. |
+| `categories.py` | Curated role → Scryfall tag mapping (broad/strict pairs, cost reducers, synonyms for the user's #tags). |
 | `edhrec_diff.py` | Validates an EDHREC snapshot and diffs a deck against it. |
-| `edhrec_snapshots/` | Transcribed EDHREC pages, one file per commander + variant + date. |
-| `trim.py` | Ian's data-refresh tool (`scryfall` and `spellbook` subcommands). See section 12. |
+| `trim.py` | The data-refresh tool (`scryfall` and `spellbook` subcommands). See section 12. |
+
+### `data/`
+
+| File | What it is |
+|---|---|
+| `aliases.txt` | Reskin names → Oracle names (e.g. Ghal Maraz → Loxodon Warhammer). You add a line per reskin you own. |
 | `trimmed_scryfall_v2.json` | Scryfall oracle cards, trimmed. One entry per card; tokens, art cards, etc. removed. |
 | `rulings-YYYYMMDDHHMMSS.jsonl` | Scryfall rulings, one per line, keyed by `oracle_id`. |
 | `oracle-tags-YYYYMMDDHHMMSS.jsonl` | Scryfall Tagger oracle tags (e.g. `ramp`, `sweeper`, `monarch matters`). |
 | `spellbook_combos.json.gz` | Commander Spellbook combo database, trimmed and gzipped (~109k combos). |
 | `MagicCompRules YYYYMMDD.txt` | Comprehensive Rules. Note the filename contains a space. |
+
+### `docs/`
+
+| File | What it is |
+|---|---|
+| `USE_INSTRUCTIONS.md` | This file. |
+| `STATS_MATH.md` | Docs for `stats_math.py`: conventions, functions, known limits. |
+
+### `snapshots/`
+
+Transcribed EDHREC pages, one file per commander + variant + date. See section 9.
 
 `mtg.py` automatically picks the newest dated rulings, tags, rules, and combos files, so renaming them with new dates won't break it.
 
@@ -54,15 +80,15 @@ Only write a custom query if none of these can answer the question. If you do, r
 
 | Command | Use it for | Example |
 |---|---|---|
-| `card` | Oracle text, type, P/T, color identity, legality, GC flag | `python3 mtg.py card "Court of Ire" "Paradox Haze"` |
-| `card -f` | Batch lookup from a file | `python3 mtg.py card -f list.txt --brief` |
-| `rulings` | Official rulings, only when an interaction is ambiguous | `python3 mtg.py rulings "Obeka, Splitter of Seconds" --grep untap` |
-| `tags` | Oracle tags on a card | `python3 mtg.py tags "Court of Ire"` |
-| `search` | Finding cards by color identity, text, type, MV, tag, GC | `python3 mtg.py search --ci UBR --tag removal --cmc 1-2 --names` |
-| `deck` | Legality, color identity, singleton, GC count, curve, lands, combos | `python3 mtg.py deck decklist.txt` (`audit.py` runs this for you) |
-| `combos` | Spellbook combos containing *all* named cards (default 10 shown) | `python3 mtg.py combos "Obeka, Splitter of Seconds" --bracket 3` |
-| `gc` | The current Game Changer list | `python3 mtg.py gc` |
-| `rule` | Comprehensive Rules by number or keyword | `python3 mtg.py rule 702.62a` / `python3 mtg.py rule --grep "suspended"` |
+| `card` | Oracle text, type, P/T, color identity, legality, GC flag | `python3 scripts/mtg.py card "Court of Ire" "Paradox Haze"` |
+| `card -f` | Batch lookup from a file | `python3 scripts/mtg.py card -f list.txt --brief` |
+| `rulings` | Official rulings, only when an interaction is ambiguous | `python3 scripts/mtg.py rulings "Obeka, Splitter of Seconds" --grep untap` |
+| `tags` | Oracle tags on a card | `python3 scripts/mtg.py tags "Court of Ire"` |
+| `search` | Finding cards by color identity, text, type, MV, tag, GC | `python3 scripts/mtg.py search --ci UBR --tag removal --cmc 1-2 --names` |
+| `deck` | Legality, color identity, singleton, GC count, curve, lands, combos | `python3 scripts/mtg.py deck decklist.txt` (`audit.py` runs this for you) |
+| `combos` | Spellbook combos containing *all* named cards (default 10 shown) | `python3 scripts/mtg.py combos "Obeka, Splitter of Seconds" --bracket 3` |
+| `gc` | The current Game Changer list | `python3 scripts/mtg.py gc` |
+| `rule` | Comprehensive Rules by number or keyword | `python3 scripts/mtg.py rule 702.62a` / `python3 scripts/mtg.py rule --grep "suspended"` |
 
 ### Search filters (combine freely)
 `--ci UBR` (subset; `C` = colorless) · `--text REGEX` · `--type REGEX` · `--name REGEX` · `--cmc 3` or `--cmc 2-4` · `--tag LABEL` · `--gc` / `--no-gc` · `--all` (include non-legal) · `--limit N` (default 20) · `--full` (print oracle text). Results are sorted by EDHREC card rank, most popular first.
@@ -78,37 +104,37 @@ Only write a custom query if none of these can answer the question. If you do, r
 | `--all-combos` | `deck` | By default the audit lists only 2-card and Bracket 3+ combos and summarizes the rest as a count. |
 
 ### Name matching
-Lookup tries an exact name first, then case-insensitive, then `aliases.txt`, then a partial match. If a partial name matches several cards, you get an "ambiguous" message listing them, never a silent wrong pick. Either face of a double-faced card works (e.g. "Search for Azcanta"), and so does Moxfield's single-slash export (`Westvale Abbey / Ormendahl, Profane Prince`). *(Before the Sept 2026 fix, both DFCs in the Erebos list came back NOT FOUND and dropped out of the land count.)*
+Lookup tries an exact name first, then case-insensitive, then `data/aliases.txt`, then a partial match. If a partial name matches several cards, you get an "ambiguous" message listing them, never a silent wrong pick. Either face of a double-faced card works (e.g. "Search for Azcanta"), and so does Moxfield's single-slash export (`Westvale Abbey / Ormendahl, Profane Prince`). *(Before the Sept 2026 fix, both DFCs in the Erebos list came back NOT FOUND and dropped out of the land count.)*
 
 **Full card names always beat face names.** 25 prepare-layout cards reuse a classic spell's name as a face. Before the Sept 2026 fix, 12 of them hijacked the real card: "Rampant Growth" resolved to Studious First-Year // Rampant Growth, and the same happened to Reanimate, Regrowth, Replenish, Channel, Exsanguinate, Sign in Blood, and others. `mtg.py` resolves them correctly now; a naive custom query over `card_faces` will not.
 
-**Reskins:** a Secret Lair / Universes Beyond / Universes Within name that isn't in the repo prints `NOT FOUND`, because Scryfall's Oracle bulk file carries one printing per card. Web-search it once, confirm the Oracle card with `mtg.py card`, then add the line to `aliases.txt` (`Printed Name => Oracle Name`) and push it (section 11). Alias hits print "(reskin: …)" and aren't flagged as problems.
+**Reskins:** a Secret Lair / Universes Beyond / Universes Within name that isn't in the repo prints `NOT FOUND`, because Scryfall's Oracle bulk file carries one printing per card. Web-search it once, confirm the Oracle card with `mtg.py card`, then add the line to `data/aliases.txt` (`Printed Name => Oracle Name`) and push it (section 11). Alias hits print "(reskin: …)" and aren't flagged as problems.
 
 ### Deck file input (mtg.py, audit.py, edhrec_diff.py, stats_math.py)
 - Accepts Moxfield-style lines: `1 Card Name (SET) 123 *F*`, `1x Card`, or bare names.
 - Section headers `Commander`, `Companion`, `Deck`, `Sideboard`, and `Maybeboard` are recognized. Sideboard and Maybeboard are excluded.
-- **Trailing `#tags` are Ian's roles.** In a long-form export like `1 Sol Ring (C21) 263 *F* #Ramp #!Mana Rock`, the tags are stripped from the card name and `audit.py` uses them as role labels. Multi-word tags survive, and a leading `!` is dropped. Ian doesn't always tag; use them when they're there.
+- **Trailing `#tags` are the user's roles.** In a long-form export like `1 Sol Ring (C21) 263 *F* #Ramp #!Mana Rock`, the tags are stripped from the card name and `audit.py` uses them as role labels. Multi-word tags survive, and a leading `!` is dropped. The user doesn't always tag; use them when they're there.
 - **Optional header** above the list, read as metadata rather than cards:
   ```
   # bracket: 4
   # plan: Yusri Omniscience; Lab Man/Thoracle wins
   # pets: Planar Chaos; Okaun, Eye of Chaos
   ```
-  Any `# key: value` line works. Bare `bracket:`, `plan:`, `pets:`, `notes:`, `target:`, and `budget:` lines without the `#` work too (Ian sometimes writes them that way).
+  Any `# key: value` line works. Bare `bracket:`, `plan:`, `pets:`, `notes:`, `target:`, and `budget:` lines without the `#` work too (the user sometimes writes them that way).
   - `bracket` sets the audit's target and lets `edhrec_diff.py` warn when the snapshot isn't that bracket's page. Extra text is kept (`3 (high)` → "B3 (high)").
   - `plan` is the deck's stated direction. Judge suggestions against it.
-  - `pets` are cards Ian keeps on purpose (fun over efficiency). Separate them with `;` or ` + `, never commas, because card names contain commas. `deck` flags any pet that's no longer in the list as stale; `edhrec_diff` and `audit.py` mark pets `[pet]`. Don't recommend cutting a pet on efficiency grounds alone. If it actively fights the plan, raise it as a question.
-  - No header? `deck` says so. Check memory and past chats for the bracket and plan, then ask Ian. Don't guess the bracket.
+  - `pets` are cards the user keeps on purpose (fun over efficiency). Separate them with `;` or ` + `, never commas, because card names contain commas. `deck` flags any pet that's no longer in the list as stale; `edhrec_diff` and `audit.py` mark pets `[pet]`. Don't recommend cutting a pet on efficiency grounds alone. If it actively fights the plan, raise it as a question.
+  - No header? `deck` says so. Check memory and past chats for the bracket and plan, then ask the user. Don't guess the bracket.
 - **Companion** is excluded from the card count but still checked for legality and color identity, and it's included in the combo check (it can be put into hand for {3}, so its combos are live). Odd/even conditions (Obosh, Gyruda) are verified automatically; the other 10 companions print "review manually".
 - If there's no Commander section, pass `--commander "Name"`.
 
 ## 5. Deck audits — `audit.py` (the default)
 
-**Every deck audit starts here.** Ian wants audits as thorough as the tooling allows by default, so don't skip steps to save a call. Run them in order; each one is here because an audit went wrong without it.
+**Every deck audit starts here.** The user wants audits as thorough as the tooling allows by default, so don't skip steps to save a call. Run them in order; each one is here because an audit went wrong without it.
 
 1. **Clone and read this file once** (section 1).
-2. **Write the list to a file exactly as given**, keeping his `#tags`. Add a header (section 4) if he didn't include one: bracket and plan from memory or past chats, or ask. Don't guess the bracket.
-3. **`python3 audit.py deck.txt`** (about 4 seconds). Fix every `NOT FOUND` before going further: reskin → `aliases.txt` (section 4); new set → verify externally. Note stale pets.
+2. **Write the list to a file exactly as given**, keeping their `#tags`. Add a header (section 4) if they didn't include one: bracket and plan from memory or past chats, or ask. Don't guess the bracket.
+3. **`python3 scripts/audit.py deck.txt`** (about 4 seconds). Fix every `NOT FOUND` before going further: reskin → `data/aliases.txt` (section 4); new set → verify externally. Note stale pets.
 4. **EDHREC:** if section 6 says NO SNAPSHOT, fetch the bracket-matched page (section 9), transcribe, `check` until OK, and re-run the audit.
 5. **Read the role card lists and settle K.** Where your tags are primary, note the disagreements. Where oracle tags are primary, correct K by hand wherever tags miss or over-include, and re-run with `--k`. Cost reducers aren't in `ramp`; weigh both. **State every K correction in the write-up.** Then run the odds that matter for *this* deck's plan (section 6), not just the standard battery.
 6. **Pull text only for cards you're evaluating**: unfamiliar mechanics, interaction-heavy pieces, the commander. One batch `mtg.py card -f` call.
@@ -143,19 +169,19 @@ Lookup tries an exact name first, then case-insensitive, then `aliases.txt`, the
 ### Roles: where K comes from (this matters)
 Hypergeometric odds are only as good as K, the number of cards that actually do the job. The sources, in priority order:
 
-1. **Ian's `#tags`**, when they cover ≥50% of the nonland cards. His labels are his intent, so they're the truth. `#Search` counts as tutors. A role he tagged nothing for falls back to oracle tags, marked `oracle*`: untagged isn't zero. Labels under a category's Scryfall subtree (e.g. `mana rock`, `removal-creature`, `draw engine`) and plain-English synonyms (`wipe`, `tutor`, `counter`) map automatically. Any other label becomes its own row (e.g. `#pump`, `#pet`).
-2. **`--k ROLE=N`**, a count you confirmed with Ian or by reading the card list.
+1. **The user's `#tags`**, when they cover ≥50% of the nonland cards. Their labels are their intent, so they're the truth. `#Search` counts as tutors. A role they tagged nothing for falls back to oracle tags, marked `oracle*`: untagged isn't zero. Labels under a category's Scryfall subtree (e.g. `mana rock`, `removal-creature`, `draw engine`) and plain-English synonyms (`wipe`, `tutor`, `counter`) map automatically. Any other label becomes its own row (e.g. `#pump`, `#pet`).
+2. **`--k ROLE=N`**, a count you confirmed with the user or by reading the card list.
 3. **Scryfall oracle tags.** These are broad. They answer "does this card have the effect?" rather than "does it fill this role in this deck?" In the Sept 2026 Wilson spot check, tags said 11 protection pieces against ~7 real ones, which moved "2 protection by T6" from 20% to 40%.
 
-The audit prints the alternative counts under each role and marks **⚠ K-SENSITIVE** when switching sources moves the odds by 15 points or more. For those roles, don't quote the number as settled. Confirm the count from the card list (or ask Ian), re-run with `--k`, and say which K you used. When Ian's tags are primary, the audit also lists cards the oracle tags flag that he didn't tag, and the reverse. Those are worth a sentence, since he may have mis-tagged or may disagree with the tag on purpose.
+The audit prints the alternative counts under each role and marks **⚠ K-SENSITIVE** when switching sources moves the odds by 15 points or more. For those roles, don't quote the number as settled. Confirm the count from the card list (or ask the user), re-run with `--k`, and say which K you used. When the user's tags are primary, the audit also lists cards the oracle tags flag that they didn't tag, and the reverse. Those are worth a sentence, since they may have mis-tagged or may disagree with the tag on purpose.
 
 ## 6. Stats Math — `stats_math.py`
 
-`audit.py` covers the standard battery. **Lean toward using Stats Math more, not less**, for anything else a draw-odds question touches: package coherence ("both halves by T4"), comparing a cut against an add, or mulligan decisions. Ian prefers it be too willing rather than not willing enough.
+`audit.py` covers the standard battery. **Lean toward using Stats Math more, not less**, for anything else a draw-odds question touches: package coherence ("both halves by T4"), comparing a cut against an add, or mulligan decisions. The user prefers it be too willing rather than not willing enough.
 
-- Category check: `python3 stats_math.py report DECK [category ...]` → N, then each category's K **and the matched names**.
-- Quick number: `python3 stats_math.py N K n k` → P(at least k of K in n cards from N).
-- Anything more: `python3 -c "import stats_math as sm; ..."` from the repo root. Key functions: `count_population`, `cards_seen`, `hyper_at_least`, `multivariate_at_least` (disjoint categories at once), `turn_curve`, `category_count_from_tag`, `user_tag_map`.
+- Category check: `python3 scripts/stats_math.py report DECK [category ...]` → N, then each category's K **and the matched names**.
+- Quick number: `python3 scripts/stats_math.py N K n k` → P(at least k of K in n cards from N).
+- Anything more: `python3 -c "import sys; sys.path.insert(0, 'scripts'); import stats_math as sm; ..."` from the repo root. Key functions: `count_population`, `cards_seen`, `hyper_at_least`, `multivariate_at_least` (disjoint categories at once), `turn_curve`, `category_count_from_tag`, `user_tag_map`.
 - Conventions are fixed: 7-card hand, London mulligan, N counted from the list (never assumed).
 - Limits to state out loud: static draws only (no draw engines, untaps, cascade), and colors aren't modeled. Details are in `STATS_MATH.md` §7.
 - A goldfish simulation for card-effect questions (like the Wilson ramp package) isn't in the repo yet. If you build one ad hoc, say so and offer to save it.
@@ -170,7 +196,7 @@ The audit prints the alternative counts under each role and marks **⚠ K-SENSIT
 - **Tags that do exist** (despite earlier notes saying otherwise): `sweeper` for board wipes, and the `recursion` umbrella, which covers regrowth as well as `reanimate`.
 - **`ramp` doesn't include cost reducers** (the Medallions, etc.). They're their own category, `cost_reducers`. Count both when judging a deck's mana.
 - **Layouts:** `prepare` is a real mechanic (46 legal cards). Keep it. `host`/`augment` are Un-cards (not legal) and are kept on purpose.
-- **Prices** exist only if the trim was run with `--prices` (fields `usd`, `usd_foil`). Treat prices older than ~2 weeks as stale.
+- **Prices** exist only if the trim was run with `--prices`. `usd` is the cheapest legal printing found (nonfoil preferred), not any one specific edition. `usd_foil_only: true` means no nonfoil printing exists at all, so that price can't be beaten by finding a plain copy. A card with no `usd` key simply wasn't in the price file. Treat prices older than ~2 weeks as stale.
 
 ## 8. Bracket checks — how to verify a Bracket claim
 
@@ -187,7 +213,7 @@ The audit prints the alternative counts under each role and marks **⚠ K-SENSIT
 
 Every deck audit gets its own EDHREC section. EDHREC is **meta signal, never card truth**: it tells you what the field plays, not what cards do. Verify any card it surfaces with `mtg.py card` before recommending it.
 
-The sandbox can't reach EDHREC, so you fetch the page yourself with the web tools, transcribe it into a snapshot file, and let the script do the math. Ian chose this on purpose so it works without him.
+The sandbox can't reach EDHREC, so you fetch the page yourself with the web tools, transcribe it into a snapshot file, and let the script do the math. This was chosen on purpose so it works without the user needing to.
 
 ### Workflow
 
@@ -197,7 +223,7 @@ The sandbox can't reach EDHREC, so you fetch the page yourself with the web tool
    - *Getting the URL:* `web_fetch` refuses URLs you construct. First `web_search` for the bracket page itself (e.g. "edhrec yusri optimized"). If it doesn't come back, fetch the all-decks page (its bracket, budget, and theme links then count as seen) and fetch the bracket page second. Two fetches is fine to avoid a mismatched baseline; the snapshot is reused for 30 days.
    - `diff` reads the deck's `bracket` header and warns if the snapshot doesn't match.
 3. **Fetch once** with `web_fetch`. Note that `text_content_token_limit` is ignored on EDHREC pages; you get the whole page.
-4. **Transcribe** to `edhrec_snapshots/<commander-slug>__<variant>__<YYYY-MM-DD>.txt`:
+4. **Transcribe** to `snapshots/<commander-slug>__<variant>__<YYYY-MM-DD>.txt`:
    ```
    # commander: Smaug the Impenetrable
    # variant: upgraded
@@ -212,10 +238,10 @@ The sandbox can't reach EDHREC, so you fetch the page yourself with the web tool
    - Add the 4th field **only** when a card's eligible-deck count differs from the page total (new cards, e.g. `4.65K decks / 5.22K decks` → `5220`).
    - A card appearing in two sections is fine; identical duplicates get merged.
 5. **`check` is mandatory** after every transcription:
-   `python3 edhrec_diff.py check edhrec_snapshots/<file>.txt`
+   `python3 scripts/edhrec_diff.py check snapshots/<file>.txt`
    It flags names not in the repo, fuzzy matches, cards outside the commander's color identity, synergy above inclusion (swapped numbers), out-of-range values, and duplicate lines with conflicting numbers. It exits with code 2 on problems. Fix every one and re-run until it prints `OK`.
-6. **Diff:** `audit.py` runs it for you, or run `python3 edhrec_diff.py diff <snapshot> <decklist> [options]` directly.
-7. **Save the snapshot.** Push it (section 11) if you have a token. If not, copy it to outputs and tell Ian so he can commit it and future audits can skip the fetch.
+6. **Diff:** `audit.py` runs it for you, or run `python3 scripts/edhrec_diff.py diff <snapshot> <decklist> [options]` directly.
+7. **Save the snapshot.** Push it (section 11) if you have a token. If not, copy it to outputs and tell the user so they can commit it and future audits can skip the fetch.
 
 ### Options (`diff`)
 
@@ -231,8 +257,8 @@ The sandbox can't reach EDHREC, so you fetch the page yourself with the web tool
 | Section | What it means | How to use it |
 |---|---|---|
 | SUMMARY | % of the deck on EDHREC's list, average inclusion, mainstream index, signature cards run, GC count | Mainstream index 100% = the deck runs the N most-played cards (a netdeck). **Not a quality score**; low can be good. |
-| SKIPPED | Popular cards not in the deck, tagged `signature` (synergy ≥ 40, commander-specific), `generic staple` (synergy ≤ 10), `GC`, `new` | Candidates to *consider*, not must-plays. Check them against the deck's stated direction first; Ian often avoids the popular build on purpose. |
-| OFF-LIST | Deck cards EDHREC doesn't show | Means under ~5% or unplayed, **not** bad. Often where Ian's intentional divergence lives. Report it; don't recommend cuts just for being off-list. |
+| SKIPPED | Popular cards not in the deck, tagged `signature` (synergy ≥ 40, commander-specific), `generic staple` (synergy ≤ 10), `GC`, `new` | Candidates to *consider*, not must-plays. Check them against the deck's stated direction first; the user often avoids the popular build on purpose. |
+| OFF-LIST | Deck cards EDHREC doesn't show | Means under ~5% or unplayed, **not** bad. Often where the user's intentional divergence lives. Report it; don't recommend cuts just for being off-list. |
 | NEGATIVE SYNERGY | Deck cards this commander's players run *less* than the general population does | The most interesting section. Ask why the field avoids it: it may be a real weakness with this commander, or an edge the field missed. |
 | ON-LIST | Overlap with the field, most to least played | Quick sense of where the deck agrees with consensus |
 
@@ -243,7 +269,7 @@ The sandbox can't reach EDHREC, so you fetch the page yourself with the web tool
 - **Staleness:** the header warns past 30 days. Refetch rather than audit on old data.
 - **Blind spots:** numbers are rounded ("4.65K"), cards under ~5% inclusion aren't listed, and charts, combos, salt, and individual decklists aren't visible (JS-rendered or login-only). Use `mtg.py deck` for combos.
 
-## 10. Token conservation (Ian's standing rules)
+## 10. Token conservation (standing rules)
 
 **Rules:**
 - Never load or print whole data files into the conversation. Query for only what you need.
@@ -263,24 +289,24 @@ The sandbox can't reach EDHREC, so you fetch the page yourself with the web tool
 - **Keep bash output quiet:** `git clone -q`, and don't echo file contents you've just written.
 - Measured savings (Sept 2026): search 7,856 → 512 chars; combos 3,983 → 2,024; full-deck `card -f --brief` 18,803 → 14,584.
 
-## 11. Pushing changes to GitHub (Claude)
+## 11. Pushing changes to GitHub
 
-Ian keeps a **fine-grained personal access token** (starts with `github_pat_`) in the Project instructions, scoped to this repo only. If it isn't there, ask. This is a personal project, so **commit straight to `main`**: no branches, no pull requests. Ian only wants the current version, and git history is the undo button.
+The user keeps a **fine-grained personal access token** (starts with `github_pat_`) in the Project instructions, scoped to this repo only. If it isn't there, ask. This is intended as a lightweight personal project, so unless told otherwise, **commit straight to `main`**: no branches, no pull requests. Only the current version matters by default, and git history is the undo button.
 
 **Rules:**
 - The token is a password. **Never** write it into the repo, memory, outputs, a commit, or a reply. Never print it; mask command output.
 - **Never force-push and never rewrite history.** History is how a bad commit gets undone. To undo, `git revert <sha>` and push; never `reset`.
 - Start from a fresh clone (section 1) so you commit on top of the current `main`. If the push is rejected because `main` moved, run `git pull -q --rebase` and push again.
-- Commit only what the session produced and Ian approved. Stage files by name, never `git add -A`.
-- Write a clear commit message (what and why), and give Ian the commit link.
-- On a 401/403, the token is missing a permission or has expired. Tell Ian; don't retry with guesses.
+- Commit only what the session produced and the user approved. Stage files by name, never `git add -A`.
+- Write a clear commit message (what and why), and give the user the commit link.
+- On a 401/403, the token is missing a permission or has expired. Tell the user; don't retry with guesses.
 
 ```bash
 # sandbox-only file, outside the repo, deleted at the end
 printf '%s' 'TOKEN_FROM_PROJECT_INSTRUCTIONS' > /home/claude/.gh_token && chmod 600 /home/claude/.gh_token
 cd /home/claude/mtg-data
 git add path/to/file1 path/to/file2                       # by name
-git -c user.name="Claude (for Ian)" -c user.email="claude@mtg-data.invalid" commit -q -m "What and why"
+git -c user.name="AI Assistant" -c user.email="assistant@mtg-data.invalid" commit -q -m "What and why"
 TOKEN=$(cat /home/claude/.gh_token)
 GIT_TERMINAL_PROMPT=0 git push -q "https://x-access-token:${TOKEN}@github.com/LilBeaky/mtg-data.git" HEAD:main 2>&1 \
   | sed -E 's/github_pat_[A-Za-z0-9_]+/***/g'
@@ -290,15 +316,16 @@ rm -f /home/claude/.gh_token
 
 If the push fails with "shallow update not allowed", run `git fetch -q --unshallow` and push again.
 
-**Token setup (Ian's side):** GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Repository access: *Only select repositories* → `mtg-data`. Permissions: *Contents: Read and write* is the one that matters; *Issues* is optional, for logging backlog items. Metadata read-only gets added automatically. Set an expiration, then paste the new token into the Project instructions when it rotates.
+**Token setup (user's side):** GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Repository access: *Only select repositories* → `mtg-data`. Permissions: *Contents: Read and write* is the one that matters; *Issues* is optional, for logging backlog items. Metadata read-only gets added automatically. Set an expiration, then paste the new token into the Project instructions when it rotates.
 
-## 12. Refreshing the data (Ian's side)
+## 12. Refreshing the data (manual, user's side)
 
 | Data | Source | How |
 |---|---|---|
-| Scryfall cards | Scryfall bulk "Oracle Cards" download | `python3 trim.py scryfall oracle-cards.jsonl trimmed_scryfall_v2.json` (add `--prices` for budget-deck runs) |
+| Scryfall cards | Scryfall bulk "Oracle Cards" download | `python3 scripts/trim.py scryfall oracle-cards.jsonl data/trimmed_scryfall_v2.json` |
+| Scryfall prices | Scryfall bulk "Default Cards" download (every printing, separate file from Oracle Cards) | `python3 scripts/trim.py scryfall oracle-cards.jsonl data/trimmed_scryfall_v2.json --prices default-cards.jsonl` — cross-references every printing to find each card's true cheapest legal price. Oracle Cards' own embedded price is a single arbitrary printing and is intentionally not used |
 | Rulings / Oracle tags | Scryfall bulk downloads | Upload as-is with the date in the filename |
-| Spellbook combos | `https://json.commanderspellbook.com/variants.json.gz` | Download with `curl` (a browser crashes trying to display the 660 MB file): `curl -o variants.json.gz https://json.commanderspellbook.com/variants.json.gz`. Then run `python3 trim.py spellbook variants.json.gz spellbook_combos.json.gz` (needs `pip install ijson`), or drop the `.gz` into a Claude chat and Claude will trim it. |
+| Spellbook combos | `https://json.commanderspellbook.com/variants.json.gz` | Download with `curl` (a browser crashes trying to display the 660 MB file): `curl -o variants.json.gz https://json.commanderspellbook.com/variants.json.gz`. Then run `python3 scripts/trim.py spellbook variants.json.gz data/spellbook_combos.json.gz` (needs `pip install ijson`), or drop the `.gz` into a chat with the assistant and it will trim it. |
 | Comprehensive Rules | WotC rules page | Upload the `.txt` with its date in the name |
 
 The combos output is ~3 MB gzipped (~40 MB unzipped). Keep it gzipped, since GitHub's web upload limit is 25 MB and `mtg.py` reads `.gz` directly. The `combos` output shows the data's age and warns past 30 days.
@@ -307,10 +334,10 @@ The combos output is ~3 MB gzipped (~40 MB unzipped). Keep it gzipped, since Git
 
 ## 13. Known limits and access notes
 
-- **Sandbox network:** GitHub (including `api.github.com`), PyPI, and npm are reachable. `json.commanderspellbook.com`, `backend.commanderspellbook.com`, and EDHREC are **blocked** from the sandbox (`host_not_allowed`). Use `web_search` / `web_fetch` for EDHREC (section 9), and have Ian download Spellbook data.
-- **EDHREC data** isn't bundled because it changes too fast. Snapshots in `edhrec_snapshots/` are point-in-time copies; anything over 30 days old should be refetched. For commander popularity rank, check live.
+- **Sandbox network:** GitHub (including `api.github.com`), PyPI, and npm are reachable. `json.commanderspellbook.com`, `backend.commanderspellbook.com`, and EDHREC are **blocked** from the sandbox (`host_not_allowed`). Use `web_search` / `web_fetch` for EDHREC (section 9), and have the user download Spellbook data.
+- **EDHREC data** isn't bundled because it changes too fast. Snapshots in `snapshots/` are point-in-time copies; anything over 30 days old should be refetched. For commander popularity rank, check live.
 - **Rules file date:** mechanics newer than the Comprehensive Rules file (e.g. prepare, when the file predates it) need an outside rules check. `audit.py` prints the date.
-- **Rules file vs new mechanics:** the 20260227 file has no `prepare` or `Paradigm` text. Use `rulings` for those (they cover it) until Ian drops in a newer rules file.
+- **Rules file vs new mechanics:** the 20260227 file has no `prepare` or `Paradigm` text. Use `rulings` for those (they cover it) until the user drops in a newer rules file.
 - **Prepare cards in Spellbook:** Spellbook lists a prepare card as a stand-in for its spell (every Exsanguinate combo has a Stensian Sanguinist // Exsanguinate twin; Channel combos appear under Yavimaya Bloomsage). A prepare card can only cast that spell as a copy while prepared, never from hand, so treat those variants as conditional.
 - Spellbook's `mv` field shows 0 for some combos (e.g. Obeka's). The meaning is unconfirmed, so don't rely on it.
 - Sandbox RAM is ~3 GB. Stream big files; never `json.load` the raw Spellbook export.

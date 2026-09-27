@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """edhrec_diff.py — compare a decklist against an EDHREC commander-page snapshot.
 
-Claude can't reach EDHREC from the sandbox, so it fetches the page with web_fetch
+The assistant can't reach EDHREC from the sandbox, so it fetches the page with web_fetch
 and transcribes it into a compact snapshot file. This tool validates that
 snapshot against the repo, then diffs a deck against it.
 
@@ -16,7 +16,7 @@ USAGE
     --mv odd|even        companion filter (Obosh = odd, Gyruda = even): hide illegal
                          nonland cards from SKIPPED
 
-SNAPSHOT FORMAT (edhrec_snapshots/<commander-slug>__<variant>__<YYYY-MM-DD>.txt)
+SNAPSHOT FORMAT (snapshots/<commander-slug>__<variant>__<YYYY-MM-DD>.txt)
   # commander: Smaug the Impenetrable      (partner/background: "# commander: A + B")
   # variant: all            (all | exhibition | core | upgraded | optimized | cedh | budget | a theme tag)
   # url: https://edhrec.com/commanders/smaug-the-impenetrable
