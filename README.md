@@ -18,6 +18,17 @@ mtg-data/
 └── snapshots/   # EDHREC page transcriptions, one per commander/variant/date
 ```
 
+## Writing conventions
+
+`docs/USE_INSTRUCTIONS.md` and `docs/STATS_MATH.md` are written to work for
+any deck owner and any AI assistant, not one specific pairing of the two —
+so when editing them:
+
+- Address the assistant directly, in second person ("you") — it's who's
+  reading these docs to do the work.
+- Call the deck owner **"the user"**, never a name.
+- No product names either (e.g. "Claude") — keep it assistant-agnostic.
+
 ## Quick example
 
 ```bash
