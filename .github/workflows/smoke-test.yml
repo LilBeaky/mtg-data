@@ -1,6 +1,7 @@
 name: Smoke test
 
-# Runs every tool against tests/test_deck.txt after each daily data refresh (and on demand).
+# Runs every tool against tests/test_deck.txt after each daily data refresh, on pushes that
+# change the tools or their inputs, and on demand.
 # A failure turns this run red and records it in tests/smoke_status.json, which mtg.py
 # and audit.py surface as a warning in every session until a later run passes.
 # The status file is only committed when the result changes, so passing days add no commits.
@@ -9,6 +10,16 @@ on:
   workflow_run:
     workflows: ["Refresh MTG data"]
     types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - '!tests/smoke_status.json'      # the bot's own status commit must not retrigger this
+      - 'snapshots/**'
+      - 'data/aliases.txt'
+      - 'data/goldfish_overrides.json'
+      - '.github/workflows/smoke-test.yml'
   workflow_dispatch:
 
 permissions:
@@ -35,7 +46,7 @@ jobs:
         id: smoke
         run: |
           set +e                                  # a failing test must still reach the status commit
-          python3 tests/smoke.py --status tests/smoke_status.json > /tmp/smoke.txt 2>&1
+          python3 tests/smoke.py --verbose --status tests/smoke_status.json > /tmp/smoke.txt 2>&1
           rc=$?
           cat /tmp/smoke.txt
           echo "rc=${rc}" >> "$GITHUB_OUTPUT"

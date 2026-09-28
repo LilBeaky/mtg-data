@@ -2,7 +2,8 @@
 """Smoke test for mtg-data: runs every tool against tests/test_deck.txt (plus a few tiny
 throwaway decks) and checks exit codes, crashes, and expected output.
 
-  python3 tests/smoke.py                 # report only; exit 1 on any failure
+  python3 tests/smoke.py                 # failures + one-line summary; exit 1 on any failure
+  python3 tests/smoke.py --verbose       # also list every passing check
   python3 tests/smoke.py --status FILE   # also record pass/fail in FILE (written only when
                                          # the result changes, so passing days commit nothing)
 
@@ -118,16 +119,17 @@ def run(c):
 
 def main():
     status_path = sys.argv[sys.argv.index("--status") + 1] if "--status" in sys.argv else None
-    failures = []
+    verbose = "--verbose" in sys.argv
+    failures, n = [], 0
     for c in checks():
-        f = run(c)
+        f = run(c); n += 1
         tag = " [data-dependent: may be a real change, confirm before editing]" if c.get("data") else ""
-        print(f"{'PASS' if not f else 'FAIL'}  {c['name']}" + ("" if not f else tag))
+        if f or verbose: print(f"{'PASS' if not f else 'FAIL'}  {c['name']}" + ("" if not f else tag))
         for x in f:
             print(f"      {x}")
             failures.append(f"{c['name']}: {x}" + (" (data-dependent)" if c.get("data") else ""))
     ok = not failures
-    print(f"\n{'ALL PASSED' if ok else f'{len(failures)} FAILURE(S)'}")
+    print(f"smoke: {'all ' + str(n) + ' checks passed' if ok else f'{len(failures)} failure(s) across {n} checks'}")
     if status_path:
         path = os.path.join(REPO, status_path)
         try: old = json.load(open(path, encoding="utf-8"))

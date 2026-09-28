@@ -151,7 +151,7 @@ echo "https://github.com/LilBeaky/mtg-data/commit/$(git rev-parse HEAD)"; rm -f 
 
 `.github/workflows/refresh-data.yml` runs twice daily (~22:23 UTC after Scryfall's export, ~10:47 UTC backup) and refreshes cards, prices, rulings, oracle tags, Spellbook combos, and the Comprehensive Rules (scraped from magic.wizards.com/en/rules; only replaced when WotC posts a newer date). Manual run: Actions → Refresh MTG data → Run workflow, or dispatch via API. A Scryfall failure commits nothing (previous data stays); a Spellbook or rules failure only skips that file (check the run's warnings).
 
-A second workflow, `smoke-test.yml`, runs `tests/smoke.py` after every refresh and records the result in `tests/smoke_status.json`.
+A second workflow, `smoke-test.yml`, runs `tests/smoke.py` after every refresh and on every push touching scripts/tests/snapshots/aliases/overrides, and records the result in `tests/smoke_status.json`.
 
 If `mtg.py` or `audit.py` prints `! smoke test failing`, tell the user and read `tests/smoke_status.json`: data-dependent failures may be real-world changes (a ban, a Game Changer update) that need the test updated, not a code fix. If they print `! data last refreshed N days ago`, tell the user. Causes: scheduled jobs paused (re-enable in Actions) or the workflow failing. Diagnose via job annotations (`/repos/LilBeaky/mtg-data/check-runs/<job_id>/annotations`); raw logs aren't reachable from the sandbox.
 
