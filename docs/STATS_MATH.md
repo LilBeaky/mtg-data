@@ -181,6 +181,53 @@ tag tree (Sol Ring, Arcane Signet — Command Tower is fixing, not ramp, so
 correctly excluded). The Monte Carlo run lands within noise of the exact
 answer, as it should for a static category.
 
+## 6b. Colors — castability on curve
+
+`color_report(deck)` (printed by `audit.py` in sections 2 and 3). For every colored
+card it asks: *given you've seen enough lands to cast it on curve (MV lands by turn
+MV), do those lands include a distinct source for every colored pip?* Conditioning on
+land count makes this a pure **color** number; running out of lands is section 3's job.
+
+- **Exact.** Lands are grouped by which of the card's colors they make, and the
+  multivariate hypergeometric is enumerated over those groups. A dual counts for both
+  colors but can only pay one pip, which is checked with Hall's matching condition, so
+  `{U}{G}` off 8 duals, 6 Islands and 6 Forests is computed correctly rather than as
+  two independent odds. Validated against closed-form math (`{U}{U}` on T2: identical to
+  3 decimals) and brute-force simulation (duals, hybrid).
+- **Sources** come from goldfish.py's Oracle compiler, so every tool reads a land the same
+  way: fetches count as every color among the deck's lands they can find; filter lands
+  count their outputs; "any color" lands count every color in the identity (Exotic
+  Orchard assumes opponents cover your colors; Plaza of Heroes is treated as unrestricted).
+- **Pips** are read from the front face's cost: hybrid `{G/W}` is paid by either;
+  Phyrexian `{U/P}` and twobrid `{2/W}` are skipped (payable with life or generic);
+  `{C}` needs a colorless source.
+- **Two columns:** lands only, and with cheap rocks, dorks (MV below the card's) and MDFC
+  land backs also counted as sources.
+- **Flags:** under 90% for the commander and package pieces, under 80% otherwise
+  (`KEY_THRESHOLD`, `OTHER_THRESHOLD`). Each flag gets the fewest land swaps (non-sources
+  of that color turned into sources, up to 8) that reach its threshold, or says none does.
+- **Per color:** land sources, and the odds of 1 pip on T1, 2 on T2, 3 on T3.
+- **Limits:** tapped lands count as usable on the turn they're played (goldfish handles
+  tapped timing); alternative costs (Jodah's WUBRG) and cost reducers aren't considered.
+
+## 6c. Packages — natural draws vs. with tutors
+
+`packages_report(deck)` (audit section 4b). A package is a set of pieces that only matter
+together: every Spellbook combo of up to 3 cards whose cards are all in the list (8 shown,
+the rest counted), plus each `# package:` header line (`Name = Part + Part`; parts are a
+card name, a name pattern `^Myojin of`, `text:<pattern>`, or `tag:<oracle tag>`).
+
+- **Natural:** every piece is among the cards seen by T4 / T6.
+- **With tutors:** each missing piece is covered by a *different* tutor that can find it,
+  checked with Hall's condition. What a tutor can find comes from goldfish's compiler
+  (Demonic any card, Eladamri's Call creatures, Enlightened Tutor artifacts and
+  enchantments, land tutors lands). Tutors whose filter can't be read are left out.
+- **This is a ceiling.** A tutor counts as the piece, ignoring its mana and the turn it
+  costs. Use goldfish for the mana-aware version.
+- A piece that is the commander is always available. A card that's a piece isn't counted
+  as its own tutor. Parts that share cards aren't computed (make them distinct).
+- Exact enumeration; validated against brute-force simulation (10.01% vs 9.95%).
+
 ## 7. Known limits / open items
 
 - **Tag reliability: checked on two real decks (Sept 2026).** Always read the
@@ -204,13 +251,11 @@ answer, as it should for a static category.
     full of cards that incidentally grant keywords), which is why the names
     get read every time. **Treat broad tag counts as candidate lists, not
     K.** The user's `#tags` or a confirmed `--k` are the real K.
-- **No card-effect modeling yet.** The Monte Carlo engine handles static
-  categories only. Draw engines, untappers, cascade, and ramp that digs
-  aren't represented, so engine decks run better than these odds after ~T3.
-  The Wilson ramp-package goldfish sim (Sept 2026) was ad hoc and not saved.
-  Next step: `goldfish.py`, driven by **roles** (from #tags) rather than
-  oracle-text parsing, which keeps it tractable.
-- **Colors aren't modeled.** Pip requirements come from Moxfield (ask the user).
+- **Static draws only.** The Monte Carlo engine handles static categories.
+  Draw engines, untappers, cascade, and ramp that digs are goldfish.py's job
+  (USE_INSTRUCTIONS §6), so engine decks run better than these odds after ~T3.
+- **Colors** are covered by §6b under a hit-your-land-drops assumption; the
+  interaction between color screw and land screw is goldfish.py's territory.
 - **Non-Commander formats (e.g. Dandan) aren't tested** beyond a smoke test.
   Population counting works with no `Commander` section (N = full count), and
   `audit.py` skips the commander and EDHREC sections.
@@ -219,7 +264,7 @@ answer, as it should for a static category.
 
 ## 8. Where the code lives
 
-`stats_math.py` in the repo root is the single executable copy; the snippets
+`scripts/stats_math.py` is the single executable copy; the snippets
 above are summaries, not the source. It holds: population counting
 (`count_population`, `cards_seen`), the exact engine (`hyper_pmf`,
 `hyper_at_least`, `multivariate_at_least`, `turn_curve`), Monte Carlo

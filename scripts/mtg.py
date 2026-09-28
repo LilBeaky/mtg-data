@@ -428,7 +428,8 @@ def parse_deck(path, with_tags=False):
 def parse_deck_meta(path):
     """Optional header lines in a decklist (parse_deck skips them):
     '# key: value' (any key), or bare 'bracket: / plan: / pets: / notes: / target: /
-    budget:' lines. 'bracket' -> int 1-5 (full text kept as 'bracket_text' when it
+    budget:' lines. 'package' and 'track' may repeat and come back as lists.
+    'bracket' -> int 1-5 (full text kept as 'bracket_text' when it
     says more, e.g. '3 (high)'); 'pets' -> list of card names split on ';' or ' + '
     (never commas, since names contain them). Other keys stay plain strings."""
     meta = {}
@@ -446,6 +447,8 @@ def parse_deck_meta(path):
                 if v != d.group(): meta["bracket_text"] = v
         elif k == "pets":
             meta[k] = [x.strip() for x in re.split(r"\s*;\s*|\s+\+\s+", v) if x.strip()]
+        elif k in ("package", "packages", "track"):      # repeatable: one line per package / tracked group
+            meta.setdefault("package" if k != "track" else "track", []).append(v)
         else:
             meta[k] = v
     return meta

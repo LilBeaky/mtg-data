@@ -19,10 +19,14 @@ OPTIONS
 
 SECTIONS
   1 Legality & bracket  mtg.py deck + GC allowance, 2-card combos, extra-turn / MLD flags
-  2 Mana base           lands, tapped lands, MDFCs, ramp, opening-hand odds
-  3 Commander on curve  lands-only floor, and with 1-MV accelerants
+  2 Mana base           lands, tapped lands, MDFCs, ramp, opening-hand odds, colors: sources
+                        per color and every card's odds of having its colors on curve
+                        (flagged under 90% for the commander and package pieces, 80% otherwise)
+  3 Commander on curve  lands-only floor, with 1-MV accelerants, and its colors
   4 Roles & odds        K per role from YOUR #tags > --k overrides > Scryfall oracle tags.
                         Flags K-SENSITIVE roles, where the count source moves the odds >= 15 pts
+  4b Packages          Spellbook combos (<= 3 cards) and '# package:' header lines:
+                        odds by T4/T6, natural draws vs. with tutors (a ceiling)
   5 Density & flood     action vs mana in the first 12 cards
   6 EDHREC              edhrec_diff.py against the newest matching snapshot
   7 Manual checklist    what no script here can verify
@@ -108,6 +112,57 @@ def parse_args(argv):
     o["path"] = pos[0]
     return o
 
+
+def print_colors(r, lists=True):
+    if "error" in r:
+        print(f"  colors: not computed ({r['error']})"); return
+    print("  colors (lands that make it; fetches count what they can find | + rocks/dorks/MDFCs):")
+    for col, (ln, alln, ref) in r["per_color"].items():
+        extra = f" (+{alln - ln})" if alln > ln else ""
+        print(f"    {col}: {ln:>2} lands{extra:<6} | 1 pip on T1 {pct(ref[0][1])} | 2 pips on T2 {pct(ref[1][1])} | 3 pips on T3 {pct(ref[2][1])}")
+    fl = r["flagged"]
+    if not fl:
+        print("  on-curve colors: nothing flagged (every colored card ≥ 80%, commander and package pieces ≥ 90%)")
+        return
+    print(f"  on-curve colors flagged ({len(fl)}; given enough lands: lands only / with cheap rocks, dorks, MDFCs):")
+    for row in fl[:10]:
+        tag = " [commander]" if row["cmdr"] else " [package]" if row["key"] else ""
+        fix = row.get("fix")
+        hint = (f" — ~{fix[0]} more {fix[1]} source{'s' if fix[0] > 1 else ''} for {int(row['threshold'] * 100)}%" if fix
+                else " — no single-color land swap of ≤8 fixes it" if "fix" in row else "")
+        print(f"    {row['name']} {row['cost']} on T{row['mv']}{tag}: {pct(row['lands'])} / {pct(row['rocks'])}{hint}")
+    if len(fl) > 10:
+        print(f"    +{len(fl) - 10} more under threshold: " + "; ".join(x["name"] for x in fl[10:22]) + (" …" if len(fl) > 22 else ""))
+
+def print_packages(r, on_play):
+    print(f"\n## 4b. Packages (natural draws → with tutors; tutors counted as the piece they find, so a ceiling)")
+    if "error" in r:
+        print(f"  not computed ({r['error']})"); return
+    pks = r["packages"]
+    if not pks:
+        print("  none: no Spellbook combo of ≤3 cards in the list, and no '# package:' header lines "
+              "(e.g. '# package: Engine = ^Myojin of + text:proliferate')")
+        return
+    for pk in pks:
+        src = "header" if pk["source"] == "header" else "combo"
+        print(f"  [{src}] {pk['label']}")
+        if pk["unresolved"]:
+            print(f"      no card in the deck matches: {'; '.join(pk['unresolved'])}"); continue
+        if pk["overlap"]:
+            print("      parts share cards, so the odds aren't computed; make each part distinct"); continue
+        o = pk["odds"]
+        print("      " + " | ".join(f"by T{T} {pct(a)} → {pct(b)}" for T, (a, b) in o.items()))
+        cm = [p for p, inc in zip(pk["parts"], pk["in_cmd"]) if inc]
+        if cm: print(f"      commander covers: {'; '.join(cm)}")
+        for part, ts in pk["tutors"].items():
+            members = next(m for p, m in zip(pk["parts"], pk["members"]) if p == part)
+            shown = part if part in members else f"{part} ({len(members)}: {'; '.join(sorted(members)[:6])}{' …' if len(members) > 6 else ''})"
+            print(f"      {shown}: tutors {'; '.join(ts) if ts else 'none'}")
+        v = pk.get("combo")
+        if v and v.get("templates"):
+            print(f"      also needs: {'; '.join(v['templates'])}")
+    if r["extra_combos"]:
+        print(f"  +{r['extra_combos']} more combo(s) not shown (list them with: mtg.py deck DECK --all-combos)")
 
 # ---------- main ----------
 def main():
@@ -238,6 +293,21 @@ def main():
         if xturn: print(f"  extra-turn cards: {'; '.join(xturn)}")
         if mld: print(f"  possible MLD — review: {'; '.join(mld)}")
 
+    # ----- colors + packages (stats_math): computed up front, printed in 2, 3 and 4b -----
+    cmd_over = o.get("commander")
+    try:
+        pkr = sm.packages_report(path, cmd_over, on_play)
+    except Exception as ex:
+        pkr = {"error": f"{type(ex).__name__}: {ex}"}
+    key_cards = set()
+    for pk in pkr.get("packages", []):
+        if not pk["unresolved"]:
+            for m in pk["members"]: key_cards |= m
+    try:
+        colr = sm.color_report(path, cmd_over, on_play, key_names=key_cards)
+    except Exception as ex:
+        colr = {"error": f"{type(ex).__name__}: {ex}"}
+
     # ----- 2. mana base -----
     print("\n## 2. Mana base")
     lands = [(q, n, c) for q, n, c, t in lib if is_land(c)]
@@ -288,6 +358,7 @@ def main():
           f"≥1 one-MV accelerant ({A}: {'; '.join(accel) or 'none'}) {pct(sm.hyper_at_least(N, A, 7, 1))}")
     if accel_x:
         print(f"      not counted as accelerants (restricted or scaling mana): {'; '.join(accel_x)}")
+    print_colors(colr, lists)
 
     # ----- 3. commander on curve -----
     if cmdrs:
@@ -303,6 +374,10 @@ def main():
                 extra = sm.multivariate_at_least(N, [(L, m - 1), (A, 1)], n) - sm.multivariate_at_least(N, [(L, m), (A, 1)], n)
                 msg += f" | with a 1-MV accelerant {pct(floor + extra)}"
             print(msg)
+            row = next((r for r in colr.get("rows", []) if r["cmdr"] and r["name"] == c["name"]), None)
+            if row:
+                print(f"      colors {row['cost']} on T{row['mv']} (given enough lands): {pct(row['lands'])} lands only | "
+                      f"{pct(row['rocks'])} with cheap rocks/dorks/MDFCs" + ("  ⚠ under 90%" if row["flag"] else ""))
 
     # ----- 4. roles & odds -----
     t = "play" if on_play else "draw"
@@ -340,6 +415,9 @@ def main():
             a = odds(K_of(names))
             print(f"  #{tg:<14} K={K_of(names):<3} | opener ≥1 {pct(a[0])} | T4 ≥1 {pct(a[2])} | T6 ≥2 {pct(a[3])}"
                   + (f"  — {names_str(names, 12)}" if lists else ""))
+
+    # ----- 4b. packages -----
+    print_packages(pkr, on_play)
 
     # ----- 5. density & flood -----
     print("\n## 5. Density & flood (first 12 cards ≈ T6 on the play)")

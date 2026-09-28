@@ -48,7 +48,7 @@ mtg-data/
 |---|---|
 | `audit.py` | The default full deck audit. One command runs every check. |
 | `mtg.py` | Query helper for cards, rulings, tags, search, deck, GCs, combos, and rules. |
-| `stats_math.py` | Probability engine (hypergeometric, Monte Carlo, tag and user-tag counts). `python3 scripts/stats_math.py report DECK` prints each category's K with the matched names. |
+| `stats_math.py` | Probability engine (hypergeometric, Monte Carlo, tag and user-tag counts, color castability, tutor packages). `python3 scripts/stats_math.py report DECK` prints each category's K with the matched names. |
 | `categories.py` | Curated role → Scryfall tag mapping (broad/strict pairs, cost reducers, synonyms for the user's #tags). |
 | `edhrec_diff.py` | Validates an EDHREC snapshot and diffs a deck against it. |
 | `goldfish.py` | Monte Carlo goldfish simulator. Compiles each card's Oracle text into behavior and plays the deck thousands of times. See section 6. |
@@ -123,11 +123,15 @@ Lookup tries an exact name first, then case-insensitive, then `data/aliases.txt`
   # bracket: 4
   # plan: Yusri Omniscience; Lab Man/Thoracle wins
   # pets: Planar Chaos; Okaun, Eye of Chaos
+  # package: Myojin engine = ^Myojin of + text:proliferate
+  # track: Myojin=^Myojin of
   ```
   Any `# key: value` line works. Bare `bracket:`, `plan:`, `pets:`, `notes:`, `target:`, and `budget:` lines without the `#` work too (the user sometimes writes them that way).
   - `bracket` sets the audit's target and lets `edhrec_diff.py` warn when the snapshot isn't that bracket's page. Extra text is kept (`3 (high)` → "B3 (high)").
   - `plan` is the deck's stated direction. Judge suggestions against it.
   - `pets` are cards the user keeps on purpose (fun over efficiency). Separate them with `;` or ` + `, never commas, because card names contain commas. `deck` flags any pet that's no longer in the list as stale; `edhrec_diff` and `audit.py` mark pets `[pet]`. Don't recommend cutting a pet on efficiency grounds alone. If it actively fights the plan, raise it as a question.
+  - `package` (repeatable, one per line) names a set of cards that only matter together: `Name = Part + Part`. Each part is an exact card name, a name pattern (`^Myojin of`), `text:<pattern>` matched against Oracle text (best for mechanics, e.g. `text:proliferate`), or `tag:<oracle tag>` (Tagger names vary: Evolution Sage is tagged `repeatable-proliferate`, not `proliferate`). The audit reports its odds in section 4b and treats its pieces as key cards for the color check. Parts must not share cards.
+  - `track` (repeatable) is a goldfish tracked group, `Label=pattern`, added to any `--track` flags automatically.
   - No header? `deck` says so. Check memory and past chats for the bracket and plan, then ask the user. Don't guess the bracket.
 - **Companion** is excluded from the card count but still checked for legality and color identity, and it's included in the combo check (it can be put into hand for {3}, so its combos are live). Odd/even conditions (Obosh, Gyruda) are verified automatically; the other 10 companions print "review manually".
 - If there's no Commander section, pass `--commander "Name"`.
@@ -163,9 +167,10 @@ Lookup tries an exact name first, then case-insensitive, then `data/aliases.txt`
 | Section | Contents |
 |---|---|
 | 1 Legality & bracket | `mtg.py deck` output, GC count vs the bracket allowance, 2-card combos, extra-turn cards, possible MLD (regex flag for review) |
-| 2 Mana base | Lands, always- and conditionally-tapped lands (auto-detected), cost reducers plus the cards they can't reduce (no generic cost, rule 118.7a), MDFC land backs, ramp, opener land odds, one-MV accelerants (restricted or scaling mana, e.g. Master of Dark Rites or Songs of the Damned, is listed but not counted) |
-| 3 Commander on curve | Lands-only floor and with a 1-MV accelerant, per commander |
+| 2 Mana base | Lands, always- and conditionally-tapped lands (auto-detected), cost reducers plus the cards they can't reduce (no generic cost, rule 118.7a), MDFC land backs, ramp, opener land odds, one-MV accelerants (restricted or scaling mana, e.g. Master of Dark Rites or Songs of the Damned, is listed but not counted). **Colors:** sources per color (fetches count what they can find, filter lands their outputs), odds of 1/2/3 pips on T1/T2/T3, and every colored card whose colors are there on curve less than 90% (commander, package pieces) or 80% (everything else) of the time, with the fewest land swaps that would fix it |
+| 3 Commander on curve | Lands-only floor and with a 1-MV accelerant, per commander, plus the odds its colors are there on curve |
 | 4 Roles & odds | K and odds (opener, T3, T4, T6 ≥2) for ramp, draw, draw engines, removal, wipes, protection, tutors, counterspells, recursion, graveyard hate, plus any other category present and every custom #tag |
+| 4b Packages | Spellbook combos of up to 3 cards (all in the list) and `# package:` lines: odds by T4 and T6, natural draws → with tutors, and which tutors find each piece. With-tutor odds are a **ceiling** (a tutor counts as the piece, ignoring its mana and the turn it costs); goldfish is the mana-aware check. A piece that's the commander always counts as available |
 | 5 Density & flood | ≥4 non-mana cards in the first 12, flood odds, screw odds, with ramp-count alternatives |
 | 6 EDHREC | `edhrec_diff.py diff` against the newest snapshot for this commander (bracket variant preferred, then `all`) |
 | 7 Manual checklist | What no script here verifies |
@@ -184,10 +189,12 @@ The audit prints the alternative counts under each role and marks **⚠ K-SENSIT
 `audit.py` covers the standard battery. **Lean toward using Stats Math more, not less**, for anything else a draw-odds question touches: package coherence ("both halves by T4"), comparing a cut against an add, or mulligan decisions. The user prefers it be too willing rather than not willing enough.
 
 - Category check: `python3 scripts/stats_math.py report DECK [category ...]` → N, then each category's K **and the matched names**.
+- Colors: `python3 scripts/stats_math.py colors DECK` → per-color sources and every colored card's on-curve odds (the audit prints the flagged ones).
+- Packages: `python3 scripts/stats_math.py packages DECK` → the section 4b numbers on their own.
 - Quick number: `python3 scripts/stats_math.py N K n k` → P(at least k of K in n cards from N).
-- Anything more: `python3 -c "import sys; sys.path.insert(0, 'scripts'); import stats_math as sm; ..."` from the repo root. Key functions: `count_population`, `cards_seen`, `hyper_at_least`, `multivariate_at_least` (disjoint categories at once), `turn_curve`, `category_count_from_tag`, `user_tag_map`.
+- Anything more: `python3 -c "import sys; sys.path.insert(0, 'scripts'); import stats_math as sm; ..."` from the repo root. Key functions: `count_population`, `cards_seen`, `hyper_at_least`, `multivariate_at_least` (disjoint categories at once), `turn_curve`, `category_count_from_tag`, `user_tag_map`, `castable_on_curve`, `color_report`, `package_odds`, `packages_report`.
 - Conventions are fixed: 7-card hand, London mulligan, N counted from the list (never assumed).
-- Limits to state out loud: static draws only (no draw engines, untaps, cascade), and colors aren't modeled. Details are in `STATS_MATH.md` §7.
+- Limits to state out loud: static draws only (no draw engines, untaps, cascade); the color check assumes you hit your land drops and counts tapped lands as usable; with-tutor package odds are a ceiling. Details are in `STATS_MATH.md`.
 - For anything that depends on what cards *do* (ramp, fixing, draw engines, alt costs, counters), use the goldfish simulator below instead.
 
 ### Goldfish simulator — `goldfish.py`

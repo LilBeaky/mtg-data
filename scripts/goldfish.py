@@ -14,7 +14,8 @@ and which cards produced the card advantage). Full docs: USE_INSTRUCTIONS.md §6
   --draw                 you're on the draw (default: on the play)
   --seed N               RNG seed (default 1); every build replays the same shuffles
   --track "Label=REGEX"  first-cast turn for any card whose name matches REGEX
-                         (repeatable; a bare card name also works)
+                         (repeatable; a bare card name also works). '# track: Label=REGEX'
+                         lines in the deck header are added automatically
   --variant "Label|Out=>In;Out=>In"   also run a swapped build, side by side (repeatable)
   --kill-commander T     your commander is removed before your turn T (recast with tax)
   --order LIST           cast priority (default commander,track,ramp,draw,other)
@@ -1453,7 +1454,8 @@ def main():
     anyc = frozenset(ci) or ALL5
     overrides = load_overrides()
     groups = []
-    for t in args.track:
+    header_tracks = mtg.parse_deck_meta(args.deck).get("track", [])     # '# track: Label=REGEX' lines
+    for t in list(dict.fromkeys(header_tracks + args.track)):
         label, sep, rx = t.partition("=")
         if not sep: label, rx = t, "^" + re.escape(found.get(t, {}).get("name", t)) + "$"
         try:
