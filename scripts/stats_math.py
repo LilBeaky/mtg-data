@@ -461,7 +461,7 @@ def packages_report(decklist_path, commander_override=None, on_play=True, turns=
     import tutors as _tu                     # the repo's single tutor reader (cycling, transmute, triggers...)
     cards_by = {c["name"]: c for q, c, k in lib}
     cards_by.update({c["name"]: c for c, k in cmdrs})
-    tut_eff = {n: [t for t in _tu.card_tutors(cards_by[n]) if t.dest != "graveyard"] for n in sorted(lib_names | cmd_names)}
+    tut_eff = {n: [t for t in _tu.card_tutors(cards_by[n]) if t.dest not in _tu.NO_ACCESS] for n in sorted(lib_names | cmd_names)}
     tut_eff = {n: e for n, e in tut_eff.items() if e}
     specs = []
     for v in (meta.get("package") or []):

@@ -37,6 +37,7 @@ import stats_math as sm
 
 CARD_TYPES = {"artifact", "creature", "enchantment", "instant", "sorcery", "land",
               "planeswalker", "battle", "kindred", "tribal"}
+NO_ACCESS = {"graveyard", "exile (no access)"}          # the card doesn't become usable
 PERMANENT_TYPES = {"artifact", "creature", "enchantment", "land", "planeswalker", "battle"}
 SUPERTYPES = {"basic", "legendary", "snow"}
 COLOR_WORDS = {"white": "W", "blue": "U", "black": "B", "red": "R", "green": "G"}
@@ -44,12 +45,13 @@ NUMBER = {"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
           "seven": 7, "eight": 8, "nine": 9, "ten": 10}
 
 SEARCH_RX = re.compile(
-    r"search(?:es)? your library(?: and(?:/or)? (?:your )?graveyard)?(?: and/or graveyard)? for "
+    r"(?:search(?:es)? your library|(?<=each of them )searches their library|(?<=target player )searches their library)"
+    r"(?: and(?:/or)? (?:your )?graveyard)?(?: and/or graveyard)? for "
     r"(?P<what>.+?)(?=, (?:put|reveal|then|and|exile|shuffle|where)\b| and put | and reveal | and exile |\. |\.$|\)|$)", re.I)
 DEST_RX = [("battlefield", re.compile(r"onto the battlefield", re.I)),
            ("hand", re.compile(r"into (?:your|its owner's) hand|put (?:that card|it|them|those cards) in your hand", re.I)),
            ("graveyard", re.compile(r"into your graveyard", re.I)),
-           ("top", re.compile(r"on top(?: of your library)?", re.I)),
+           ("top", re.compile(r"on top(?: of your library)?|(?:second|third|fourth) from the top", re.I)),
            ("exile", re.compile(r"\bexile (?:it|them|that card|those cards)\b", re.I))]
 FLICKER_RX = re.compile(
     r"exile (?:up to (?:one|two|x) )?(?:another )?(?:other )?target (?:nontoken )?(?P<what>creature|artifact|enchantment|"
@@ -84,8 +86,16 @@ class Target:
         self.any = False; self.types = set(); self.non = set(); self.supers = set(); self.subs = set()
         self.colors = set(); self.colorless = False; self.multicolored = False
         self.mv = None; self.power = None; self.tough = None; self.named = None; self.not_named = set()
-        self.mana_ability = False; self.permanent = False; self.historic = False
+        self.mana_ability = False; self.permanent = False; self.historic = False; self.flash = False
         self.count = 1; self.approx = []; self.alts = []
+
+    def broad(self):
+        """Finds (nearly) anything: any card, or any nonland card with no other limit."""
+        if self.alts: return any(a.broad() for a in self.alts)
+        if self.any: return True
+        return (self.non <= {"land"} and not (self.types or self.supers or self.subs or self.colors or self.colorless
+                or self.multicolored or self.permanent or self.historic or self.mv or self.power or self.tough
+                or self.mana_ability or self.flash or self.named))
 
     def matches(self, c):
         if self.alts: return any(a.matches(c) for a in self.alts)
@@ -111,6 +121,7 @@ class Target:
                 op, v = lim; x = pt(c, key)
                 if (op == "<=" and x > v) or (op == ">=" and x < v): return False
         if self.mana_ability and not has_mana_ability(c): return False
+        if self.flash and "flash" not in [k.lower() for k in (c.get("keywords") or [])]: return False
         return True
 
     def describe(self):
@@ -132,6 +143,7 @@ class Target:
         if self.power: bits.append(f"power{self.power[0]}{self.power[1]}")
         if self.tough: bits.append(f"toughness{self.tough[0]}{self.tough[1]}")
         if self.mana_ability: bits.append("with a mana ability")
+        if self.flash: bits.append("with flash")
         if self.not_named: bits.append("not named " + "/".join(n.title() for n in self.not_named))
         return " ".join(bits)
 
@@ -141,6 +153,8 @@ def parse_target(what, self_card):
     raw = what.strip()
     low = raw.lower()
     t = Target()
+    if low.startswith("any number of "):
+        t.count = 99; low = low[len("any number of "):]; raw = raw[len("any number of "):]
     m = re.match(r"(up to )?(x|\d+|a|an|one|two|three|four|five|six|seven)\b ?", low)
     if m:
         w = m.group(2)
@@ -181,6 +195,7 @@ def parse_target(what, self_card):
         elif (mm := cut(rf"with {key} [^,]*")):
             t.approx.append(mm.group(0).strip())
     if cut(r"with a mana ability"): t.mana_ability = True
+    if cut(r"with flash"): t.flash = True
     cut(r"(?:that each have|with) different names")
     for rx, note in ((r"that shares? a (?:creature|card) type[^,]*", "shares a type (read as any)"),
                      (r"with the same name as [^,]*", "same name as a card in play (read as any)"),
@@ -209,8 +224,10 @@ def parse_target(what, self_card):
         o = orig_words.get(w, w)
         if o[:1].isupper(): t.subs.add(w); continue          # Wizard, Equipment, Aura, Forest...
         t.approx.append(f"unread word '{w}'")
+    if re.search(r"\bwith (?!mana value|power|toughness|a mana ability|flash|different|the same)\w+", rest):
+        t.approx.append("unread 'with ...' condition: " + re.search(r"\bwith [^,]*", rest).group(0).strip())
     if not (t.types or t.non or t.supers or t.subs or t.colors or t.colorless or t.multicolored
-            or t.permanent or t.historic or t.mv or t.power or t.tough or t.mana_ability):
+            or t.permanent or t.historic or t.mv or t.power or t.tough or t.mana_ability or t.flash):
         t.any = True
     return t
 
@@ -227,7 +244,7 @@ class Tutor:
 
     def usable_from(self, arrived):
         """Can this tutor still be used if its card was fetched to `arrived`?"""
-        if arrived in ("graveyard", None): return False
+        if arrived in ("graveyard", "exile (no access)", None): return False
         hand_only = self.kind in ("cycling", "transmute", "spell")
         if arrived == "battlefield": return not hand_only
         return True                                       # hand / top / exile (castable)
@@ -248,6 +265,10 @@ def classify(line, prev, c, is_spell):
     L = line.strip(); low = L.lower()
     if L.startswith("•") and prev: return classify(prev, None, c, is_spell)
     nm = "|".join(re.escape(x) for x in _names(c)) + r"|~|this creature|this permanent|this artifact|this enchantment|this land|it"
+    ml = re.match(r"([+−\-]?\d+|[+−\-]x):\s", L, re.I)
+    if ml:
+        emblem = "emblem" in low
+        return "loyalty", not emblem or True, f"loyalty {ml.group(1)}" + (" (emblem; only after this ultimate)" if emblem else "")
     mcyc = re.match(r"(\w[\w ]*?)cycling \{", L, re.I)
     if mcyc: return "cycling", False, f"{mcyc.group(1).strip().lower()}cycling"
     if re.match(r"transmute \{", low): return "transmute", False, "transmute, sorcery speed"
@@ -277,17 +298,24 @@ def card_tutors(c):
         prev = None
         for line in text.split("\n"):
             for m in SEARCH_RX.finditer(line):
-                if re.search(r"(their|target player's|that player's|an opponent's) library", line[max(0, m.start() - 30):m.start() + 25], re.I):
+                self_target = m.group(0).lower().startswith("searches their")
+                if not self_target and re.search(r"(their|target player's|that player's|an opponent's) library",
+                                                 line[max(0, m.start() - 30):m.start() + 25], re.I):
                     continue
                 kind, rep, cond = classify(line, prev, c, is_spell)
+                if rep and re.search(r"an opponent gains control of (?:this|~|it)", line, re.I):
+                    rep, cond = False, (cond + "; an opponent gains control after" if cond else "an opponent gains control after")
                 after = line[m.end():m.end() + 220]
                 dest, first = "hand", 10**9
                 for d, rx in DEST_RX:
                     mm = rx.search(after)
                     if mm and mm.start() < first: dest, first = d, mm.start()
                 if kind == "spell" and re.search(r"\bthen shuffle and put that card on top\b", after, re.I): dest = "top"
+                if dest == "exile" and not re.search(r"\b(?:cast|play)\b[^.]*\b(?:exiled|that card|those cards|it|them)|put the exiled card into your hand|may cast spells? from among", text, re.I):
+                    dest = "exile (no access)"
                 tgt = parse_target(m.group("what"), c)
                 if re.search(r"opponent chooses|target opponent chooses", line, re.I): tgt.approx.append("opponent picks which card you get")
+                if self_target: tgt.approx.append("you must target yourself (the other player also tutors)")
                 out.append(Tutor(c, fi, kind, tgt, dest, rep, cond, line.strip()))
             if not line.strip().startswith("•"): prev = line
     return out
@@ -362,9 +390,9 @@ class Deck:
                 for u, ts in outs.items():
                     if u not in valid: continue
                     for t in ts:
-                        if specific and t.target.any: continue
-                        if u == target: good = t.dest != "graveyard"
-                        else: good = t.dest != "graveyard" and any(t2.usable_from(t.dest) for t2 in valid[u])
+                        if specific and t.target.broad(): continue
+                        if u == target: good = t.dest not in NO_ACCESS
+                        else: good = t.dest not in NO_ACCESS and any(t2.usable_from(t.dest) for t2 in valid[u])
                         if not good: continue
                         if s not in valid: valid[s] = set(); changed = True
                         if t not in valid[s]: valid[s].add(t); changed = True
@@ -400,7 +428,7 @@ def package_odds_chains(deck, pieces, T, on_play, trials, seed=11, use_cmd=True,
         srcs = {}
         for m in mem:
             for s, path in deck.reach(m, specific=specific).items():
-                first = [t for t in deck.edges[s][path[1]] if not (specific and t.target.any)]
+                first = [t for t in deck.edges[s][path[1]] if not (specific and t.target.broad())]
                 rep = any(t.repeatable for t in first)
                 srcs[s] = srcs.get(s, False) or rep
         starts.append(srcs)
@@ -465,7 +493,7 @@ def main():
         nonland = [x for x in tg if not d.is_land[x]]
         where = "commander, " if t.name in d.cmd_names else ""
         nl = len(tg) - len(nonland)
-        print(f"  {t.name} [{where}{t.label()}] → {t.dest}{' (not counted as access)' if t.dest == 'graveyard' else ''}: "
+        print(f"  {t.name} [{where}{t.label()}] → {t.dest}{' (not counted as access)' if t.dest in NO_ACCESS else ''}: "
               f"{t.target.describe()}" + (f" ×{t.target.count}" if t.target.count > 1 else "")
               + f" — {len(nonland)} nonland" + (f" + {nl} land" if nl else "") + " target(s)")
         if lists and nonland: print(f"      {names_list(nonland, lists)}")
@@ -481,7 +509,7 @@ def main():
     if dead: print(f"  ⚠ no targets in this deck: {'; '.join(dead)}")
     if shallow: print(f"  shallow pools (≤2 nonland targets): {'; '.join(shallow)}")
     if not main_t: print("  no tutors outside land search")
-    generic = sorted({t.name for t in main_t if t.target.any and t.dest != "graveyard"})
+    generic = sorted({t.name for t in main_t if t.target.broad() and t.dest not in NO_ACCESS})
     if generic: print(f"  find-anything tutors: {'; '.join(generic)} (sections 3-6 also show the deck without them)")
 
     # ---- 2. chains
@@ -491,7 +519,7 @@ def main():
         found = []
         for u, ts in sorted(outs.items()):
             if u == src or u not in d.tutors or all(d.land_only(t2) for t2 in d.tutors[u]): continue
-            if any(t.dest != "graveyard" and any(t2.usable_from(t.dest) for t2 in d.tutors[u] if not d.land_only(t2)) for t in ts):
+            if any(t.dest not in NO_ACCESS and any(t2.usable_from(t.dest) for t2 in d.tutors[u] if not d.land_only(t2)) for t in ts):
                 found.append(u)
         if found: links.append((src, found))
     reach_all = {x: d.reach(x) for x in d.lib_names}
