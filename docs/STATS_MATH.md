@@ -219,9 +219,11 @@ card name, a name pattern `^Myojin of`, `text:<pattern>`, or `tag:<oracle tag>`)
 
 - **Natural:** every piece is among the cards seen by T4 / T6.
 - **With tutors:** each missing piece is covered by a *different* tutor that can find it,
-  checked with Hall's condition. What a tutor can find comes from goldfish's compiler
-  (Demonic any card, Eladamri's Call creatures, Enlightened Tutor artifacts and
-  enchantments, land tutors lands). Tutors whose filter can't be read are left out.
+  checked with Hall's condition. What a tutor can find comes from tutors.py's reader
+  (spells, ETBs, triggers, activations, typecycling, transmute), so section 4b and
+  tutors.py agree. Graveyard tutors (Entomb) don't count as access. Direct library tutors
+  only: chains and the commander's tutoring are tutors.py's job, and a commander that can
+  fetch a piece is listed under it, not added in.
 - **This is a ceiling.** A tutor counts as the piece, ignoring its mana and the turn it
   costs. Use goldfish for the mana-aware version.
 - A piece that is the commander is always available. A card that's a piece isn't counted

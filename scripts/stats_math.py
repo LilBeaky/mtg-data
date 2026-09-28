@@ -401,30 +401,6 @@ def color_report(decklist_path, commander_override=None, on_play=True, key_names
 
 # ---------- Packages: natural draws vs. with tutors ----------
 
-TUTOR_KINDS = ("tutor", "tutor_multi", "land_search")
-
-def _walk_effects(obj):
-    if isinstance(obj, tuple) and obj and isinstance(obj[0], str) and obj[0] in TUTOR_KINDS:
-        yield obj; return
-    if isinstance(obj, dict):
-        for v in obj.values(): yield from _walk_effects(v)
-    elif isinstance(obj, (list, tuple)):
-        for v in obj: yield from _walk_effects(v)
-
-def tutor_effects(k):
-    """Every tutor effect a compiled card has: spell, ETB, cast, triggers, activations, loyalty."""
-    found = []
-    for field in (k.spell, k.etb, k.castfx, k.trig, k.acts, k.pw):
-        found += list(_walk_effects(field))
-    return found
-
-def can_fetch(effect, target_k):
-    gf = _gf(); t = effect[0]
-    if t == "land_search":
-        return target_k.is_land and effect[3] != "top" and gf.land_ok(target_k, effect[2])
-    filts = [effect[1]] if t == "tutor" else effect[1]
-    return any(not f.get("unknown") and gf.spell_ok(target_k, f) for f in filts) and not target_k.is_land
-
 def parse_package(spec):
     """'Name = A + B' (name optional). Parts: exact card name, a name regex (starts
     with ^ or wrapped in /.../), text:<regex on Oracle text>, or tag:<oracle tag>.
@@ -473,16 +449,19 @@ def package_odds(N, parts, tutors, n):
 def packages_report(decklist_path, commander_override=None, on_play=True, turns=(4, 6), max_combos=8):
     """Packages from Spellbook combos (up to 3 cards, all in the deck) plus '# package:'
     header lines. A commander piece is always available. Tutor odds are a ceiling:
-    tutors are counted as the piece they find, ignoring their mana and the turn spent."""
+    tutors are counted as the piece they find, ignoring their mana and the turn spent.
+    Direct tutors only (no chains) and library tutors only; a commander that can tutor a
+    piece is listed in 'commander_tutors'. tutors.py does chains and commander paths."""
     N, lib, cmdrs, anyc = _deck(decklist_path, commander_override)
     meta = mtg.parse_deck_meta(decklist_path)
     lib_names = {c["name"] for q, c, k in lib}
     cmd_names = {c["name"] for c, k in cmdrs}
     qty = {}
     for q, c, k in lib: qty[c["name"]] = qty.get(c["name"], 0) + q
-    comp = {c["name"]: k for q, c, k in lib}
-    comp.update({c["name"]: k for c, k in cmdrs})
-    tut_eff = {n: tutor_effects(k) for n, k in comp.items() if n in lib_names}
+    import tutors as _tu                     # the repo's single tutor reader (cycling, transmute, triggers...)
+    cards_by = {c["name"]: c for q, c, k in lib}
+    cards_by.update({c["name"]: c for c, k in cmdrs})
+    tut_eff = {n: [t for t in _tu.card_tutors(cards_by[n]) if t.dest != "graveyard"] for n in sorted(lib_names | cmd_names)}
     tut_eff = {n: e for n, e in tut_eff.items() if e}
     specs = []
     for v in (meta.get("package") or []):
@@ -509,10 +488,16 @@ def packages_report(decklist_path, commander_override=None, on_play=True, turns=
         piece_K = [sum(qty[x] for x in lib_members[i]) for i in idx]
         caps = {}
         who = {i: [] for i in idx}
+        cmd_can = {}
         for tname, effs in tut_eff.items():
             if any(tname in lib_members[i] for i in idx): continue      # a piece isn't its own tutor
             can = frozenset(j for j, i in enumerate(idx)
-                            if any(can_fetch(e, comp[m]) for e in effs for m in lib_members[i]))
+                            if any(t.target.matches(cards_by[m]) for t in effs for m in lib_members[i]))
+            if tname in cmd_names:                                     # always available: reported, not added
+                for j in can:
+                    conds = sorted({t.condition for t in effs if t.condition})
+                    cmd_can.setdefault(parts[idx[j]], []).append(tname + (f" ({'; '.join(conds)})" if conds else ""))
+                continue
             if can:
                 caps[can] = caps.get(can, 0) + qty[tname]
                 for j in can: who[idx[j]].append(tname)
@@ -525,7 +510,7 @@ def packages_report(decklist_path, commander_override=None, on_play=True, turns=
             res[T] = package_odds(N, piece_K, [(K, c) for c, K in caps.items()], cards_seen(T, on_play))
         out.append({"source": src, "label": label, "parts": parts, "members": members, "in_cmd": in_cmd,
                     "unresolved": unresolved, "overlap": overlap, "odds": res,
-                    "tutors": {parts[i]: sorted(who[i]) for i in idx},
+                    "tutors": {parts[i]: sorted(who[i]) for i in idx}, "commander_tutors": cmd_can,
                     "combo": spec[3] if src == "combo" else None})
     return {"packages": out, "extra_combos": extra_combos, "tutors_in_deck": sorted(tut_eff)}
 

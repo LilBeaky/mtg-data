@@ -158,11 +158,14 @@ def print_packages(r, on_play):
             members = next(m for p, m in zip(pk["parts"], pk["members"]) if p == part)
             shown = part if part in members else f"{part} ({len(members)}: {'; '.join(sorted(members)[:6])}{' …' if len(members) > 6 else ''})"
             print(f"      {shown}: tutors {'; '.join(ts) if ts else 'none'}")
+        for part, who in (pk.get("commander_tutors") or {}).items():
+            print(f"      {part}: also fetchable by commander {'; '.join(who)} (not in the odds)")
         v = pk.get("combo")
         if v and v.get("templates"):
             print(f"      also needs: {'; '.join(v['templates'])}")
     if r["extra_combos"]:
         print(f"  +{r['extra_combos']} more combo(s) not shown (list them with: mtg.py deck DECK --all-combos)")
+    print("  direct library tutors only; for tutor chains, dependencies and commander paths run: tutors.py DECK")
 
 # ---------- main ----------
 def main():

@@ -41,6 +41,7 @@ cd mtg-data
 python3 scripts/mtg.py card "Sol Ring"
 python3 scripts/audit.py your_decklist.txt --commander "Your Commander"
 python3 scripts/goldfish.py your_decklist.txt --track "Label=Card Name"   # goldfish simulation
+python3 scripts/tutors.py your_decklist.txt                               # tutor chains and access
 ```
 
 ## Credits

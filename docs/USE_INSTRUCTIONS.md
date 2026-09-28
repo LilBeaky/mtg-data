@@ -26,6 +26,7 @@ git clone -q --depth 1 https://github.com/LilBeaky/mtg-data.git && cd mtg-data
 | Card text, rulings, tags, search, rules, GCs, combos | **`mtg.py`** (section 4) |
 | Draw odds beyond the audit battery | **`stats_math.py`** (section 6) |
 | How a deck actually plays out: mana, colors, commander timing, card advantage, swap comparisons | **`goldfish.py`** (section 6, Goldfish simulator) |
+| How well a deck finds its cards: tutor chains, single points of failure, odds of reaching key cards | **`tutors.py`** (section 6, Tutor analysis) |
 | EDHREC comparison | **`edhrec_diff.py`** (section 9). `audit.py` runs the diff automatically when a snapshot exists. |
 
 Only write a custom query if none of these can answer the question. If you do, respect the schema quirks in section 7. If a custom query turns out to be generally useful, suggest adding it to the right tool.
@@ -52,6 +53,7 @@ mtg-data/
 | `categories.py` | Curated role → Scryfall tag mapping (broad/strict pairs, cost reducers, synonyms for the user's #tags). |
 | `edhrec_diff.py` | Validates an EDHREC snapshot and diffs a deck against it. |
 | `goldfish.py` | Monte Carlo goldfish simulator. Compiles each card's Oracle text into behavior and plays the deck thousands of times. See section 6. |
+| `tutors.py` | Tutor analysis: reads every tutor (including typecycling, transmute, attack triggers), maps chains, coverage, dependencies, and access odds. See section 6. |
 | `trim.py` | The data-refresh tool (`scryfall` and `spellbook` subcommands). See section 12. |
 
 ### `data/`
@@ -125,6 +127,7 @@ Lookup tries an exact name first, then case-insensitive, then `data/aliases.txt`
   # pets: Planar Chaos; Okaun, Eye of Chaos
   # package: Myojin engine = ^Myojin of + text:proliferate
   # track: Myojin=^Myojin of
+  # key: Cyclonic Rift; Solitary Confinement
   ```
   Any `# key: value` line works. Bare `bracket:`, `plan:`, `pets:`, `notes:`, `target:`, and `budget:` lines without the `#` work too (the user sometimes writes them that way).
   - `bracket` sets the audit's target and lets `edhrec_diff.py` warn when the snapshot isn't that bracket's page. Extra text is kept (`3 (high)` → "B3 (high)").
@@ -132,6 +135,7 @@ Lookup tries an exact name first, then case-insensitive, then `data/aliases.txt`
   - `pets` are cards the user keeps on purpose (fun over efficiency). Separate them with `;` or ` + `, never commas, because card names contain commas. `deck` flags any pet that's no longer in the list as stale; `edhrec_diff` and `audit.py` mark pets `[pet]`. Don't recommend cutting a pet on efficiency grounds alone. If it actively fights the plan, raise it as a question.
   - `package` (repeatable, one per line) names a set of cards that only matter together: `Name = Part + Part`. Each part is an exact card name, a name pattern (`^Myojin of`), `text:<pattern>` matched against Oracle text (best for mechanics, e.g. `text:proliferate`), or `tag:<oracle tag>` (Tagger names vary: Evolution Sage is tagged `repeatable-proliferate`, not `proliferate`). The audit reports its odds in section 4b and treats its pieces as key cards for the color check. Parts must not share cards.
   - `track` (repeatable) is a goldfish tracked group, `Label=pattern`, added to any `--track` flags automatically.
+  - `key` lists single cards that matter (separate with `;`). `tutors.py` reports access odds for them, along with every package piece.
   - No header? `deck` says so. Check memory and past chats for the bracket and plan, then ask the user. Don't guess the bracket.
 - **Companion** is excluded from the card count but still checked for legality and color identity, and it's included in the combo check (it can be put into hand for {3}, so its combos are live). Odd/even conditions (Obosh, Gyruda) are verified automatically; the other 10 companions print "review manually".
 - If there's no Commander section, pass `--commander "Name"`.
@@ -196,6 +200,26 @@ The audit prints the alternative counts under each role and marks **⚠ K-SENSIT
 - Conventions are fixed: 7-card hand, London mulligan, N counted from the list (never assumed).
 - Limits to state out loud: static draws only (no draw engines, untaps, cascade); the color check assumes you hit your land drops and counts tapped lands as usable; with-tutor package odds are a ceiling. Details are in `STATS_MATH.md`.
 - For anything that depends on what cards *do* (ramp, fixing, draw engines, alt costs, counters), use the goldfish simulator below instead.
+
+### Tutor analysis — `tutors.py`
+
+How well the deck can find its cards. Use it for any deck with more than a couple of tutors, and whenever the user asks about tutor packages, redundancy, or what a tutor is worth. Run it after the audit (the audit's section 4b is direct library tutors only).
+
+```
+python3 scripts/tutors.py DECK [--commander NAME] [--draw] [--turns 4,6] [--no-lists] [--trials 40000]
+```
+
+- **The reader** finds every "search your library" in a card's full text, reminder text included, so typecycling (Step Through's wizardcycling), landcycling, and transmute count. For each effect it records how it's used (spell, ETB, attack/dies/upkeep trigger, activated, cycling, transmute), whether it's **repeatable** (Zur's attack trigger, Survival of the Fittest) or one-shot (a spell, an ETB, an ability that sacrifices its own card), where the card **lands** (hand, top, battlefield, exile, graveyard), and exactly what it can find (types, subtypes, colors, mana value, power/toughness, names, "with a mana ability", alternatives). Validated on ~60 real tutors.
+- **Approximations are always shown**, marked ⚠: "mana value X or less" (read as any mana value), "equal to the sacrificed creature's", "shares a creature type", "opponent picks" (Intuition). Say so when one of those tutors matters to a conclusion.
+- **Chains** follow the rule that a fetched tutor must land where it still works: a graveyard destination ends a chain (Entomb, Buried Alive, and doesn't count as access); a card put onto the battlefield can't be cycled, transmuted, or cast.
+- **Flicker engines** (Astral Slide, Conjurer's Closet, Ephemerate) are detected, and ETB tutors they can re-run are marked re-buyable.
+- **Two views.** Find-anything tutors (Demonic, Vampiric) make every card reachable and hide the package structure, so coverage, dependencies, and odds are also shown with them set aside ("specific tutors only"). That view is where layered packages and single points of failure show up.
+
+**Report sections:** 1 tutor inventory (targets, dead tutors with no targets, shallow pools of ≤2 nonland targets) · 2 chains · 3 coverage (reachable 2+ ways / exactly 1 / draw-only) · 4 dependencies (cards that lose all tutor access without a given card, commander first) · 5 access odds for `# key:` cards and package pieces · 6 packages with chains.
+
+**Reading the odds.** Section 5 is exact: P(by turn T you've drawn the card or a library card with a path to it). Section 6 is sampled (40,000 games, ±~0.5 pts; validated against the exact calculator over 1.6M games): every piece drawn or reached by a *different* chain, where a repeatable tutor can cover several pieces. Both **ignore mana and the turns a chain takes**: they answer "can you get there", and goldfish answers "how fast". The commander's tutoring is never added into the library numbers; it's listed (section 5) or shown as a separate "+ commander tutoring" figure (section 6) that assumes the commander is out and fires as often as needed, so treat it as a ceiling.
+
+**Not modeled:** goldfish doesn't yet use this reader, so in a goldfish run typecycling, transmute, and attack-trigger tutors don't fire. Tutors that search another player's library are ignored. Tutoring from the graveyard (Finale of Devastation's graveyard half) isn't tracked.
 
 ### Goldfish simulator — `goldfish.py`
 
