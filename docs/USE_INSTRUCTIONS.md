@@ -136,14 +136,14 @@ Token: fine-grained PAT in the Project instructions (ask if missing). Commit str
 
 ```bash
 printf '%s' 'TOKEN' > /home/claude/.gh_token && chmod 600 /home/claude/.gh_token
-cd /home/claude/mtg-data && git add path/one path/two
-git -c user.name="AI Assistant" -c user.email="assistant@mtg-data.invalid" commit -q -m "What and why"
+cd /home/claude/mtg-data && git config user.name "AI Assistant" && git config user.email "assistant@mtg-data.invalid"
+git add path/one path/two && git commit -q -m "What and why"
 git pull -q --rebase origin main
 TOKEN=$(cat /home/claude/.gh_token)
 GIT_TERMINAL_PROMPT=0 git push -q "https://x-access-token:${TOKEN}@github.com/LilBeaky/mtg-data.git" HEAD:main 2>&1 | sed -E 's/github_pat_[A-Za-z0-9_]+/***/g'
 echo "https://github.com/LilBeaky/mtg-data/commit/$(git rev-parse HEAD)"; rm -f /home/claude/.gh_token
 ```
-"shallow update not allowed" → `git fetch -q --unshallow` and push again.
+"shallow update not allowed" → `git fetch -q --unshallow` and push again. Set identity with `git config` (not `-c`): the rebase needs it too, and a failed rebase leaves the commit unpushed. Always confirm with `git fetch` + `git log origin/main -1`.
 
 ## 12. Data refresh
 
