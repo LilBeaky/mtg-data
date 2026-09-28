@@ -1,12 +1,14 @@
 # Test deck
 
-`test_deck.txt` is a deliberately broken, edge-case-heavy decklist. It is not a real deck. Run tools against it after any script change and compare with **Expected** below; anything that crashes or differs is a regression. It is also the fixture for the goldfish test battery.
+`test_deck.txt` is a deliberately broken, edge-case-heavy decklist. It is not a real deck.
+
+`smoke.py` runs every tool against it (plus a few throwaway commander decks) and checks exit codes, tracebacks, and expected output. **smoke.py is the source of truth for expected results**; read it for the exact strings. It runs automatically after every daily data refresh (`.github/workflows/smoke-test.yml`) and records the result in `smoke_status.json`. While that says `fail`, mtg.py and audit.py print a warning in every session.
 
 ```bash
-python3 scripts/audit.py tests/test_deck.txt --no-edhrec
-python3 scripts/stats_math.py colors tests/test_deck.txt
-python3 scripts/tutors.py tests/test_deck.txt --no-lists
+python3 tests/smoke.py          # ~40s; run after changing any script, before pushing
 ```
+
+Adding an edge case: add the card to `test_deck.txt` (keep the total at 100 with both commanders), add its expectation to `smoke.py`, run it, push both.
 
 ## What each group exercises
 
@@ -23,17 +25,9 @@ python3 scripts/tutors.py tests/test_deck.txt --no-lists
 | Tutors | find-anything, transmute (Dimir House Guard), typecycling (Step Through), graveyard destination (Entomb), library manipulation that isn't a search (Lim-Dûl's Vault) |
 | Goldfish-only | banding (Benalish Hero), initiative (Feywild Caretaker), Dracogenesis (free-cast) — nothing else reads these yet |
 
-## Expected (verified 2026-09-28)
-
-- Count: 99 found + 1 NOT FOUND (`Totally Fake Card Name`) = 100 with both commanders, so no DECK SIZE problem; CI BRUW; pairing accepted; companion not counted; 31 lands (24 basic).
-- Problems: 9 COLOR IDENTITY lines (all green, incl. Kitchen Finks [GW] and Forest); NOT_LEGAL Knight of the Kitchen Sink; BANNED Mana Crypt; MELD RESULT Brisela; SINGLETON 2x Sol Ring; companion violations listed. **Not** flagged: Falling Star (Maybeboard), Lutri (Sideboard), Rats/Dwarves/Petitioners, basics.
-- Stale pet: Card That Is Not In The Deck. Reskin resolved: Ghal Maraz. GCs 3/3 OK. Combo: Demonic Consultation + Thassa's Oracle (Ruthless). Extra turn: Time Warp. MLD: Armageddon.
-- Unpriced: Brisela, Warrior's Blades.
-- Audit mana: MDFC land backs = Sink into Stupor, Valakut Awakening only (not the transform cards); Cavern of Souls listed as restricted and not counted as a color source; split/adventure cards checked by their easiest castable half (Wear // Tear by {W}), prepare cards by the creature, aftermath without the graveyard half.
-- Package "Prepared pair" reports that its parts share cards (audit and tutors.py alike).
-- tutors.py warns about the fake card and continues: 4 tutor effects (Demonic Tutor, Dimir House Guard, Entomb → graveyard, Step Through), 4 land-only; Lim-Dûl's Vault not a tutor.
-
 ## Known approximations (not bugs)
+
+- goldfish.py stops on NOT FOUND cards (tutors.py and the audit warn and continue), so the smoke test runs goldfish on the deck without the fake card. Crash check only until goldfish gets its own battery.
 
 - Plaza of Heroes' "any color among legendary permanents you control" is read as any color. It needs a legend on the battlefield, so early-turn color odds run slightly high for decks that rely on it.
 - Pairing follows CR 702.124; eligibility follows CR 903.3 (legendary creature, legendary Vehicle, legendary Spacecraft with P/T, or "can be your commander").

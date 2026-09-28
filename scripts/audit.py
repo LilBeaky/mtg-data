@@ -251,6 +251,8 @@ def main():
 
     # ----- header -----
     today = datetime.date.today()
+    _w = mtg.stale_warning()
+    if _w: print(_w)
     print(f"=== AUDIT: {' + '.join(c['name'] for c in cmdrs) or 'no commander'} | N={N} library cards | "
           f"{'on the play' if on_play else 'on the draw'} | {today} ===")
     if any_user:

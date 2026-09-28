@@ -107,13 +107,25 @@ def price_date_note():
     age = _age_days(d)
     return f"prices as of {d[:10]}" + (f" ({age}d old)" if age else "")
 
+SMOKE_FILE = os.path.join(REPO_ROOT, "tests", "smoke_status.json")   # written by the smoke-test workflow
+
 def stale_warning():
-    """One line if the daily refresh looks stopped, else None. Silent when healthy."""
+    """Warning line(s) if the daily refresh looks stopped or the smoke test is failing,
+    else None. Silent when healthy."""
+    out = []
     age = _age_days(data_info().get("refreshed_at", ""))
     if age is not None and age > STALE_DAYS:
-        return (f"! data last refreshed {age} days ago; the daily refresh may have stopped "
-                f"(see USE_INSTRUCTIONS section 12)")
-    return None
+        out.append(f"! data last refreshed {age} days ago; the daily refresh may have stopped "
+                   f"(see USE_INSTRUCTIONS section 12)")
+    try:
+        sm = json.load(open(SMOKE_FILE, encoding="utf-8"))
+    except (OSError, ValueError):
+        sm = {}
+    if sm.get("status") == "fail":
+        n = len(sm.get("failures", []))
+        out.append(f"! smoke test failing since {sm.get('since', '?')[:10]} ({n} check(s)); "
+                   f"tools may be wrong until fixed. Details: tests/smoke_status.json")
+    return "\n".join(out) or None
 
 def price(c):
     """Cheapest printing's USD price as float, or None if unpriced."""

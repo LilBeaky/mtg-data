@@ -1,0 +1,65 @@
+name: Smoke test
+
+# Runs every tool against tests/test_deck.txt after each daily data refresh (and on demand).
+# A failure turns this run red and records it in tests/smoke_status.json, which mtg.py
+# and audit.py surface as a warning in every session until a later run passes.
+# The status file is only committed when the result changes, so passing days add no commits.
+
+on:
+  workflow_run:
+    workflows: ["Refresh MTG data"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: smoke-test
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main              # test what's on main now, including the refresh's own commit
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Run smoke test
+        id: smoke
+        run: |
+          set +e                                  # a failing test must still reach the status commit
+          python3 tests/smoke.py --status tests/smoke_status.json > /tmp/smoke.txt 2>&1
+          rc=$?
+          cat /tmp/smoke.txt
+          echo "rc=${rc}" >> "$GITHUB_OUTPUT"
+          grep -E '^FAIL' /tmp/smoke.txt | while read -r line; do echo "::error::${line}"; done
+          exit 0
+
+      - name: Record status change
+        run: |
+          set -euo pipefail
+          git config user.name "mtg-data-smoke-bot"
+          git config user.email "actions@mtg-data.invalid"
+          git add tests/smoke_status.json
+          if git diff --cached --quiet; then
+            echo "Status unchanged - nothing to commit."; exit 0
+          fi
+          git commit -q -m "Smoke test: $(python3 -c "import json;print(json.load(open('tests/smoke_status.json'))['status'])") ($(date -u +%Y-%m-%d))"
+          for i in 1 2 3; do
+            git pull -q --rebase origin main && git push -q && exit 0
+            sleep 10
+          done
+          echo "::error::Push failed after 3 attempts"; exit 1
+
+      - name: Fail the run if the smoke test failed
+        if: steps.smoke.outputs.rc != '0'
+        run: |
+          echo "::error::Smoke test failed. See the FAIL lines above and tests/smoke_status.json."
+          exit 1
