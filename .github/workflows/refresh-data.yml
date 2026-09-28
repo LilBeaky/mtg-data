@@ -138,12 +138,56 @@ jobs:
           fi
           echo "ok=true" >> "$GITHUB_OUTPUT"
 
+      - name: Refresh Comprehensive Rules (non-fatal)
+        id: rules
+        # WotC links the current rules from magic.wizards.com/en/rules, with the
+        # effective date in the filename. Only downloads when that date is newer
+        # than the file we already have.
+        run: |
+          set -uo pipefail
+          page=$(curl -sfL --retry 3 --retry-delay 20 -A "$UA" https://magic.wizards.com/en/rules) || {
+            echo "::warning::Rules page unreachable; keeping existing rules file."; exit 0; }
+          url=$(printf '%s' "$page" | grep -oE 'https://media\.wizards\.com/[0-9]{4}/downloads/MagicCompRules(%20| )[0-9]{8}\.txt' | head -n1 || true)
+          if [ -z "$url" ]; then
+            echo "::warning::No rules .txt link found on the rules page (layout change?); keeping existing file."; exit 0
+          fi
+          date=$(printf '%s' "$url" | grep -oE '[0-9]{8}\.txt$' | cut -c1-8)
+          have=$(ls data/MagicCompRules*.txt 2>/dev/null | grep -oE '[0-9]{8}' | sort | tail -n1 || true)
+          if [ -n "$have" ] && [ "$date" -le "$have" ]; then
+            echo "Rules unchanged (${have})."; exit 0
+          fi
+          if ! curl -sfL --retry 3 --retry-delay 20 -A "$UA" "${url// /%20}" -o /tmp/rules.txt; then
+            echo "::warning::Rules download failed; keeping existing file."; exit 0
+          fi
+          # Sanity: real rules file, not an error page. Re-encode if WotC ever ships cp1252.
+          if ! python3 - <<'EOF'
+          import sys
+          raw = open("/tmp/rules.txt", "rb").read()
+          try:
+              txt = raw.decode("utf-8-sig")
+          except UnicodeDecodeError:
+              txt = raw.decode("cp1252")
+              open("/tmp/rules.txt", "w", encoding="utf-8-sig", newline="").write(txt)
+          ok = len(raw) > 500_000 and "100.1." in txt and "Glossary" in txt
+          sys.exit(0 if ok else 1)
+          EOF
+          then
+            echo "::warning::Downloaded rules file failed sanity checks; keeping existing file."; exit 0
+          fi
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+          echo "date=${date}" >> "$GITHUB_OUTPUT"
+          echo "Rules: ${have:-none} -> ${date}"
+
       - name: Update data/ files
         run: |
           set -euo pipefail
           mv /tmp/trimmed_scryfall_v2.json data/trimmed_scryfall_v2.json
           if [ "${{ steps.spellbook.outputs.ok }}" = "true" ]; then
             mv /tmp/spellbook_combos.json.gz data/spellbook_combos.json.gz
+          fi
+          if [ "${{ steps.rules.outputs.ok }}" = "true" ]; then
+            rm -f data/MagicCompRules*.txt
+            mv /tmp/rules.txt "data/MagicCompRules ${{ steps.rules.outputs.date }}.txt"
           fi
 
           # Dated files are named with Scryfall's own export timestamp, and only

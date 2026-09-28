@@ -147,7 +147,7 @@ echo "https://github.com/LilBeaky/mtg-data/commit/$(git rev-parse HEAD)"; rm -f 
 
 ## 12. Data refresh
 
-`.github/workflows/refresh-data.yml` runs twice daily (~22:23 UTC after Scryfall's export, ~10:47 UTC backup) and refreshes cards, prices, rulings, oracle tags, and Spellbook combos. Manual run: Actions → Refresh MTG data → Run workflow, or dispatch via API. A Scryfall failure commits nothing (previous data stays); a Spellbook failure only skips combos. The Comprehensive Rules file is **not** refreshed.
+`.github/workflows/refresh-data.yml` runs twice daily (~22:23 UTC after Scryfall's export, ~10:47 UTC backup) and refreshes cards, prices, rulings, oracle tags, Spellbook combos, and the Comprehensive Rules (scraped from magic.wizards.com/en/rules; only replaced when WotC posts a newer date). Manual run: Actions → Refresh MTG data → Run workflow, or dispatch via API. A Scryfall failure commits nothing (previous data stays); a Spellbook or rules failure only skips that file (check the run's warnings).
 
 If `mtg.py` prints `! data last refreshed N days ago`, tell the user. Causes: scheduled jobs paused (re-enable in Actions) or the workflow failing. Diagnose via job annotations (`/repos/LilBeaky/mtg-data/check-runs/<job_id>/annotations`); raw logs aren't reachable from the sandbox.
 
@@ -156,7 +156,7 @@ Manual fallback: `trim.py scryfall ORACLE_CARDS OUT [--prices DEFAULT_CARDS]` an
 ## 13. Known limits
 
 - Sandbox blocks EDHREC and Commander Spellbook hosts; GitHub/PyPI/npm are reachable.
-- Comp Rules file is dated 20260227: no `prepare` or `Paradigm` text. Use `rulings` for those; audit prints the rules date.
+- Rules for a brand-new mechanic may lag until WotC posts an update; audit prints the rules file date. Use `rulings` to fill gaps.
 - Spellbook lists prepare cards as stand-ins for their spell; treat those combos as conditional (castable only as a copy while prepared).
 - Spellbook `mv` shows 0 on some combos; meaning unconfirmed, don't rely on it.
 - Sandbox RAM ~3 GB: stream big files, never `json.load` the raw Spellbook export.
