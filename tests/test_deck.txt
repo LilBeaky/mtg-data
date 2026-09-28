@@ -1,0 +1,97 @@
+# bracket: 3
+# plan: Test fixture. Not a real deck; every line is here to exercise an edge case (see tests/README.md).
+# pets: Mjölnir, Storm Hammer; Kitchen Finks + Card That Is Not In The Deck
+# package: Oracle combo = Thassa's Oracle + Demonic Consultation
+# package: Prepared pair = Studious First-Year // Rampant Growth + tag:ramp
+# track: Rituals=Ritual$
+# key: Demonic Tutor; Stroke of Genius
+
+Commander
+1 The Ur-Dragon (CMM) 361 *F*
+
+Companion
+1 Obosh, the Preypiercer
+
+Deck
+1 Fire // Ice
+1 Wear // Tear (DGM) 135
+1 Commit // Memory
+1 Bottomless Pool // Locker Room
+1 Nezumi Graverobber
+1 Delver of Secrets // Insectile Aberration
+1 Search for Azcanta
+1 Sink into Stupor // Soporific Springs
+1 Valakut Awakening / Valakut Stoneforge
+1 Bruna, the Fading Light
+1 Gisela, the Broken Blade
+1 Bonecrusher Giant // Stomp
+1 History of Benalia
+1 The World Spell
+1 Wizard Class
+1 Case of the Locked Hothouse
+1 Student of Warfare
+1 Gemrazer
+1 Depth Charge Colossus
+1 Invasion of Zendikar
+1 Studious First-Year // Rampant Growth
+1 Rampant Growth #Ramp
+1 Harmonized Trio
+1 Brainstorm
+1 Teferi, Time Raveler
+1 Knight of the Kitchen Sink
+1 Mana Crypt #Ramp #!Mana Rock
+1x Mox Diamond
+1 Sol Ring (C21) 263 *E* #Ramp #!Mana Rock
+1 Sol Ring
+1 Barrage Tyrant
+1 Dryad Arbor
+1 Ancestral Vision
+1 Kitchen Finks
+1 Gitaxian Probe
+1 Phyrexian Infiltrator
+1 Pontiff of Blight
+1 Mjölnir, Storm Hammer
+1 Lim-Dûl's Vault #Search
+1 Æther Vial
+1 Warrior's Blades
+1 Step Through #Search
+1 Dimir House Guard #Search
+1 Demonic Tutor #Search
+1 Entomb #Search
+1 Sapphire Medallion
+1 Flooded Strand
+1 Dimir Aqueduct
+1 Mystic Gate
+1 Plaza of Heroes
+1 Leyline of the Void
+1 Dark Ritual
+1 Cabal Ritual
+1 stroke of genius
+1 Time Warp
+1 Armageddon
+1 Thassa’s Oracle
+1 Demonic Consultation
+1 Benalish Hero
+1 Feywild Caretaker
+1 Ghal Maraz, the Great Shatterer
+1 Westvale Abbey / Ormendahl, Profane Prince
+1 Treasure Map
+1 Totally Fake Card Name
+1 Brisela, Voice of Nightmares
+1 Dracogenesis
+3 Relentless Rats
+2 Seven Dwarves
+2x Persistent Petitioners
+1 Wastes
+2 Snow-Covered Island
+5 Plains
+5 Island
+5 Swamp
+4 Mountain
+4 Forest
+
+Sideboard
+1 Lutri, the Spellchaser
+
+Maybeboard
+1 Falling Star

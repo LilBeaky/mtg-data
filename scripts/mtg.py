@@ -167,6 +167,7 @@ def index():
 def norm(s):
     s = s.strip().lower()
     s = re.sub(r"[’`]", "'", s)
+    s = s.replace("æ", "ae")  # old printings/lists use the ligature (Æther Vial); Oracle uses "Aether"
     # Moxfield exports double-faced cards with ONE slash ("Westvale Abbey / Ormendahl,
     # Profane Prince"); Oracle names use " // ". No Oracle name contains " / ", so
     # normalizing is safe. Found in the Sept 2026 Erebos audit (2 DFCs NOT FOUND).
