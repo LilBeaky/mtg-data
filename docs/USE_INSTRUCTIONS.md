@@ -49,6 +49,8 @@ Custom queries only when no tool answers; respect §7. Suggest folding useful on
 - `budget` — adds a budget check to the cost line.
 - No header: get bracket and plan from memory/past chats or ask. Never guess the bracket.
 
+`deck` also checks commander eligibility (CR 903.3), pairing (partner, partner—X, partner with, background, Doctor's companion), exactly 100 cards, and meld results listed as deck cards.
+
 Companion: excluded from the count, checked for legality/color identity, included in combos. Obosh/Gyruda conditions verified; other companions print "review manually".
 
 ## 5. Audit procedure
@@ -68,7 +70,7 @@ The user wants audits as thorough as the tooling allows. Every step exists becau
 
 **audit.py flags:** `--bracket N` `--k ROLE=N` (repeatable) `--draw` `--commander` `--snapshot PATH` / `--no-edhrec` `--min N` / `--limit N` (EDHREC diff) `--all-combos` `--no-lists` (re-runs).
 
-**Output sections:** 1 legality/bracket (GCs, 2-card combos, extra turns, possible MLD) · 2 mana (lands, tapped lands, reducers, ramp, colors: sources, pip odds, cards under 90%/80% on-curve with fixes) · 3 commander on curve · 4 role odds (+ custom tags) · 4b packages (with-tutor odds are a **ceiling**: ignores mana and turns) · 5 density/flood/screw · 6 EDHREC diff · 7 manual checklist.
+**Output sections:** 1 legality/bracket (commanders, size, GCs, 2-card combos, extra turns, possible MLD) · 2 mana (lands, tapped lands, reducers, ramp, MDFC backs, colors: sources, pip odds, cards under 90%/80% on-curve with fixes; restricted-mana lands listed, not counted; multi-face cards judged by their easiest castable face) · 3 commander on curve · 4 role odds (+ custom tags) · 4b packages (with-tutor odds are a **ceiling**: ignores mana and turns) · 5 density/flood/screw · 6 EDHREC diff · 7 manual checklist.
 
 ## 6. Analysis tools
 
@@ -81,7 +83,7 @@ The user wants audits as thorough as the tooling allows. Every step exists becau
 - Reads every "search your library" including typecycling, transmute, triggers; records repeatable vs one-shot, destination, and exact target filter. Graveyard-destination tutors end chains; battlefield-destination cards can't be cycled/cast onward.
 - ⚠ marks approximations (MV X or less, "shares a type", opponent picks). Flag them when a conclusion rests on one.
 - Report: 1 inventory (dead tutors, shallow pools) · 2 chains · 3 coverage · 4 dependencies (single points of failure) · 5 access odds for `key`/package cards (exact) · 6 package assembly (sampled). A second view sets aside find-anything tutors to expose package structure.
-- Odds ignore mana and chain time ("can you get there", not "how fast"). Commander tutoring is shown separately as a ceiling. Not tracked: searching others' libraries, tutoring from graveyard.
+- NOT FOUND cards are warned about and left out. Odds ignore mana and chain time ("can you get there", not "how fast"). Commander tutoring is shown separately as a ceiling. Not tracked: searching others' libraries, tutoring from graveyard.
 
 **Goldfish (`goldfish.py`)** — see `docs/GOLDFISH.md` before running it. Always `--explain` first on a new list and report partial/blank cards before quoting numbers.
 

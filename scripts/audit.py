@@ -67,7 +67,7 @@ def is_land(c):
 
 def is_mdfc_land(c):
     faces = c.get("card_faces") or []
-    return (not is_land(c)) and len(faces) > 1 and "Land" in (faces[1].get("type_line") or "")
+    return (not is_land(c)) and c.get("layout") == "modal_dfc" and len(faces) > 1 and "Land" in (faces[1].get("type_line") or "")
 
 def tapped_kind(c):
     """'always' / 'conditional' / None, from oracle text."""
@@ -120,6 +120,8 @@ def print_colors(r, lists=True):
     for col, (ln, alln, ref) in r["per_color"].items():
         extra = f" (+{alln - ln})" if alln > ln else ""
         print(f"    {col}: {ln:>2} lands{extra:<6} | 1 pip on T1 {pct(ref[0][1])} | 2 pips on T2 {pct(ref[1][1])} | 3 pips on T3 {pct(ref[2][1])}")
+    if r.get("restricted"):
+        print(f"    not counted (restricted mana, spendable only on some spells): {'; '.join(r['restricted'])} — add them back mentally for the spells they can pay for")
     fl = r["flagged"]
     if not fl:
         print("  on-curve colors: nothing flagged (every colored card ≥ 80%, commander and package pieces ≥ 90%)")
@@ -494,7 +496,6 @@ def main():
           f"mechanics newer than that need an outside rules check")
     print("  - These odds are static draws. They don't model draw engines, untaps, cascade, or tutor chains, "
           "so engine decks run higher than shown after T3. Use a goldfish sim for package questions")
-    print("  - Colors aren't modeled: ask the user for Moxfield's pip distribution if color requirements matter")
 
 
 if __name__ == "__main__":

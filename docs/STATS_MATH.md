@@ -138,7 +138,7 @@ it can't drift out of sync with the repo's own tag logic.
 
 | Function | Returns |
 |---|---|
-| `tag_tree(label_or_tuple)` | `{sub_label: oracle_ids}` for one label or a tuple (union), from one pass via `mtg.load_tags_multi` |
+| `tag_tree(tag_label)` (a label or a tuple of labels) | `{sub_label: oracle_ids}` for one label or a tuple (union), from one pass via `mtg.load_tags_multi` |
 | `tag_oids(...)` / `tag_labels(...)` | The oracle_ids / sub-labels in that tree (labels map the user's #tags onto categories) |
 | `category_members(deck, tag_label)` | `([(qty, name), ...], unmatched)`: library cards under the tag subtree |
 | `category_count_from_tag(deck, tag_label)` | `(K, unmatched)`, a thin wrapper over `category_members`, so count and names can't disagree |
@@ -197,8 +197,12 @@ land count makes this a pure **color** number; running out of lands is section 3
 - **Sources** come from goldfish.py's Oracle compiler, so every tool reads a land the same
   way: fetches count as every color among the deck's lands they can find; filter lands
   count their outputs; "any color" lands count every color in the identity (Exotic
-  Orchard assumes opponents cover your colors; Plaza of Heroes is treated as unrestricted).
-- **Pips** are read from the front face's cost: hybrid `{G/W}` is paid by either;
+  Orchard assumes opponents cover your colors; Plaza of Heroes' "among legendary permanents"
+  is read as any color). Lands whose colors are all spend-restricted (Cavern of Souls) don't
+  count as color sources; `color_report` lists them under `restricted`.
+- **Pips** come from `castable_costs(card)`: the best of the faces castable from hand
+  (either split/room/adventure half, never an aftermath half, never an MDFC land face,
+  only the creature of a prepare card). Hybrid `{G/W}` is paid by either;
   Phyrexian `{U/P}` and twobrid `{2/W}` are skipped (payable with life or generic);
   `{C}` needs a colorless source.
 - **Two columns:** lands only, and with cheap rocks, dorks (MV below the card's) and MDFC

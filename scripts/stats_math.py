@@ -202,7 +202,12 @@ def color_pips(card):
     """Colored requirements of a card's front-face cost, as a list of frozensets
     (one per pip; hybrid {G/W} -> {'G','W'}). Skipped: generic, X, Phyrexian {U/P}
     (payable with life), twobrid {2/W} (payable with generic), snow {S}."""
-    cost = card.get("mana_cost") or ((card.get("card_faces") or [{}])[0].get("mana_cost") or "")
+    faces = card.get("card_faces")
+    cost = (faces[0].get("mana_cost") if faces else card.get("mana_cost")) or ""
+    return cost_pips(cost)
+
+def cost_pips(cost):
+    """color_pips for a raw cost string."""
     out = []
     for sym in _PIP_RX.findall(cost):
         parts = sym.upper().split("/")
@@ -240,10 +245,40 @@ def _produced(k, deck_lands):
         filt = k.fetch[0]
         return frozenset().union(*(_produced(x, ()) for x in deck_lands if gf.land_ok(x, filt) and not x.fetch))
     cols = set()
-    for u in k.units: cols |= set(u[0]) | set(u[1])
+    for u in k.units: cols |= set(u[0])          # u[1] = restricted colors (e.g. legendary-only): not general sources
     for conv in k.convs:
-        for u in conv[1]: cols |= set(u[0]) | set(u[1])
+        for u in conv[1]: cols |= set(u[0])
     return frozenset(cols)
+
+def _restricted_only(k):
+    """Colors this source makes ONLY under a spending restriction."""
+    r = set()
+    for u in k.units: r |= set(u[1])
+    return r - set(_produced(k, ())) if not k.fetch else set()
+
+def castable_costs(card):
+    """[(cost, mv)] for each way the card can be cast from hand. Split/room halves and
+    adventure halves are separate options; an aftermath half is graveyard-only; prepare
+    spells can only be cast as copies; MDFC land faces aren't spells; everything else
+    casts its front face."""
+    faces = card.get("card_faces") or []
+    lay = card.get("layout")
+    def mv(cost):
+        n = 0
+        for sym in _PIP_RX.findall(cost):
+            s = sym.upper()
+            if s.isdigit(): n += int(s)
+            elif s.split("/")[0].isdigit(): n += int(s.split("/")[0])   # twobrid {2/W} is MV 2
+            elif s not in ("X", "Y", "Z"): n += 1
+        return n
+    if faces and lay in ("split", "adventure", "modal_dfc"):
+        opts = [f.get("mana_cost") or "" for f in faces
+                if not (lay == "split" and "Aftermath" in (f.get("oracle_text") or ""))
+                and not (lay == "modal_dfc" and "Land" in (f.get("type_line") or ""))]
+        opts = [c for c in opts if c]
+        if opts: return [(c, mv(c)) for c in opts]
+    cost = (faces[0].get("mana_cost") if faces else card.get("mana_cost")) or ""
+    return [(cost, mv(cost) if faces else int(card.get("cmc", 0)))]
 
 def mana_sources(decklist_path, commander_override=None):
     """Source profile of the library: [(qty, name, colors, kind)] with kind 'land',
@@ -377,19 +412,22 @@ def color_report(decklist_path, commander_override=None, on_play=True, key_names
     key_set = set(key_names) | {c["name"] for c, k in cmdrs}
     items = [(c, 1, True) for c, k in cmdrs] + [(c, q, False) for q, c, k in lib if not k.is_land]
     for c, q, is_cmdr in items:
-        pips = color_pips(c)
-        if not pips: continue
-        mv = max(1, int(c.get("cmc", 0)))
-        n = cards_seen(mv, on_play)
-        sig = (tuple(sorted(tuple(sorted(p)) for p in pips)), mv)
-        if sig not in cache:
-            lo = castable_on_curve(N, [(q2, c2) for q2, c2, _ in land_src], pips, mv, n)
-            hi = castable_on_curve(N, with_rocks(mv), pips, mv, n)
-            cache[sig] = (lo, hi)
-        lo, hi = cache[sig]
+        best = None
+        for cost, face_mv in castable_costs(c):
+            pips = cost_pips(cost)
+            if not pips: continue
+            mv = max(1, face_mv)
+            sig = (tuple(sorted(tuple(sorted(p)) for p in pips)), mv)
+            if sig not in cache:
+                n = cards_seen(mv, on_play)
+                cache[sig] = (castable_on_curve(N, [(q2, c2) for q2, c2, _ in land_src], pips, mv, n),
+                              castable_on_curve(N, with_rocks(mv), pips, mv, n))
+            if best is None or cache[sig][0] > best[0][0]: best = (cache[sig], cost, pips, mv)
+        if best is None: continue
+        (lo, hi), shown_cost, pips, mv = best
         key = c["name"] in key_set
         thr = KEY_THRESHOLD if key else OTHER_THRESHOLD
-        rows.append({"name": c["name"], "cost": c.get("mana_cost") or (c.get("card_faces") or [{}])[0].get("mana_cost", ""),
+        rows.append({"name": c["name"], "cost": shown_cost,
                      "mv": mv, "lands": lo, "rocks": hi, "key": key, "cmdr": is_cmdr, "threshold": thr,
                      "multi": len({x for p in pips for x in p}) > 1, "pips": pips, "flag": lo < thr})
     flagged = sorted((r for r in rows if r["flag"]), key=lambda r: r["lands"])
@@ -397,7 +435,8 @@ def color_report(decklist_path, commander_override=None, on_play=True, key_names
         r["fix"] = _more_needed(N, land_src, r["pips"], r["mv"], cards_seen(r["mv"], on_play), r["threshold"])
     return {"N": N, "per_color": per_color, "rows": rows, "flagged": flagged,
             "rocks": [(name, cols, m) for q, name, cols, kind, m in srcs if kind == "rock"],
-            "mdfc": [name for q, name, cols, kind, m in srcs if kind == "mdfc"]}
+            "mdfc": [name for q, name, cols, kind, m in srcs if kind == "mdfc"],
+            "restricted": sorted({c["name"] for q, c, k in lib if k.is_land and _restricted_only(k)})}
 
 # ---------- Packages: natural draws vs. with tutors ----------
 

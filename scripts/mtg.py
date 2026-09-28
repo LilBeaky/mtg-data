@@ -454,6 +454,44 @@ def parse_deck_meta(path):
             meta[k] = v
     return meta
 
+# ---------- commander eligibility & pairing (CR 903.3, 702.124) ----------
+def _front(c):
+    return (c.get("card_faces") or [c])[0]
+
+def _ability_lines(c):
+    """Oracle lines of the front face, reminder text stripped."""
+    t = _front(c).get("oracle_text") or c.get("oracle_text", "")
+    return [REMINDER_RX.sub("", l).strip() for l in t.split("\n")]
+
+def commander_eligible(c):
+    tl = _front(c).get("type_line", "")
+    if "can be your commander" in text_of(c): return True
+    if "Legendary" not in tl: return False
+    if "Creature" in tl or "Vehicle" in tl: return True
+    return "Spacecraft" in tl and bool(_front(c).get("power"))
+
+def _is_background(c):
+    tl = _front(c).get("type_line", "")
+    return "Legendary" in tl and "Enchantment" in tl and "Background" in tl
+
+def _is_plain_doctor(c):
+    tl = _front(c).get("type_line", "")
+    if "Legendary" not in tl or "Creature" not in tl or "—" not in tl: return False
+    return tl.split("—", 1)[1].split() == ["Time", "Lord", "Doctor"]
+
+def pairing_ok(a, b):
+    """Returns the partner ability that lets a and b be commanders together, or None."""
+    la, lb = _ability_lines(a), _ability_lines(b)
+    if "Partner" in la and "Partner" in lb: return "partner"
+    va = {l for l in la if l.startswith("Partner—")}
+    if va & {l for l in lb if l.startswith("Partner—")}: return (va & set(lb)).pop()
+    if f"Partner with {b['name']}" in la and f"Partner with {a['name']}" in lb: return "partner with"
+    for x, y in ((a, b), (b, a)):
+        lx = _ability_lines(x)
+        if "Choose a Background" in lx and _is_background(y): return "choose a Background"
+        if "Doctor's companion" in lx and _is_plain_doctor(y): return "Doctor's companion"
+    return None
+
 def cmd_deck(args):
     o = parse_opts(args[1:])
     entries = parse_deck(args[0])
@@ -475,6 +513,18 @@ def cmd_deck(args):
         for n in cmd_names:
             c, _ = find(n)
             if c: ci |= set(c.get("color_identity", []))
+        cmd_cards = [c for c in (find(n)[0] for n in cmd_names) if c]
+        if len(cmd_cards) == 1 and not commander_eligible(cmd_cards[0]):
+            problems.append(f"COMMANDER: {cmd_cards[0]['name']} can't be a commander (CR 903.3)")
+        elif len(cmd_cards) == 2:
+            a, b = cmd_cards
+            for c in cmd_cards:
+                if not (commander_eligible(c) or _is_background(c)):
+                    problems.append(f"COMMANDER: {c['name']} can't be a commander (CR 903.3)")
+            if not pairing_ok(a, b):
+                problems.append(f"COMMANDER PAIR: {a['name']} + {b['name']} share no partner ability (CR 702.124)")
+        elif len(cmd_cards) > 2:
+            problems.append(f"COMMANDER: {len(cmd_cards)} commanders listed; the maximum is 2 (CR 702.124g)")
     else:
         problems.append("no commander given (use a 'Commander' section or --commander NAME); CI check skipped")
     total = sum(q for q, _ in found)
@@ -482,6 +532,9 @@ def cmd_deck(args):
     for q, c in found:
         counts[c["name"]] += q
         if legal(c) != "legal": problems.append(f"{legal(c).upper()}: {c['name']}")
+        if (c.get("layout") == "meld" and not c.get("mana_cost") and "Land" not in c.get("type_line", "")
+                and "meld" not in c.get("oracle_text", "").lower()):
+            problems.append(f"MELD RESULT: {c['name']} is the melded back of two cards, not a deck card")
         if ci is not None and not set(c.get("color_identity", [])) <= ci:
             problems.append(f"COLOR IDENTITY: {c['name']} [{''.join(c.get('color_identity', []))}]")
     # companion: outside the deck, but must be legal, in CI, and its condition met
@@ -525,6 +578,8 @@ def cmd_deck(args):
     nl = sum(q for q, _ in nonland)
     avg = sum(q * c.get("cmc", 0) for q, c in nonland) / nl if nl else 0
     missing = sum(q for q, n in main_) - total
+    if cmd_names and total + missing != 100:
+        problems.append(f"DECK SIZE: {total + missing} cards including commander(s); Commander needs exactly 100 (CR 903.5a)")
     print(f"cards: {total}{f' found + {missing} NOT FOUND (excluded from every count below)' if missing > 0 else ''} "
           f"(commander(s): {', '.join(cmd_names) or 'none'}; "
           f"CI {''.join(sorted(ci)) if ci else '?'})")
@@ -574,7 +629,7 @@ def cmd_deck(args):
             print(f"  + {len(dc) - len(show)} lower-bracket combo(s) of 3+ cards hidden (--all-combos to list)")
         if any(v.get("templates") for v in dc):
             print("  note: combos with 'requires' need a generic piece — confirm you actually have one")
-    print("note: MLD and extra-turn cards are not auto-flagged — review manually.")
+    print("note: MLD and extra-turn cards aren't flagged here; audit.py flags candidates for review.")
 
 
 def deck_cost(found, cmd_names, comp_cards, meta):

@@ -345,7 +345,8 @@ class Deck:
             if not c: missing.append(n); continue
             self.qty[c["name"]] = self.qty.get(c["name"], 0) + q
             self.card[c["name"]] = c
-        if missing: sys.exit("NOT FOUND (fix the names or add them to data/aliases.txt): " + "; ".join(missing))
+        self.missing = missing
+        if missing: print("⚠ NOT FOUND, left out of the analysis (fix the names or add them to data/aliases.txt): " + "; ".join(missing))
         for c in self.cmdrs: self.card[c["name"]] = c
         self.cmd_names = {c["name"] for c in self.cmdrs}
         self.lib_names = set(self.qty)
@@ -631,6 +632,8 @@ def main():
         bad = [p for p, m in zip(parts, mem) if not m]
         if bad: print(f"      no card in the deck matches: {'; '.join(bad)}"); continue
         pieces = [set(m) for m in mem]
+        if src == "header" and any(pieces[i] & pieces[j] for i in range(len(pieces)) for j in range(i + 1, len(pieces))):
+            print("      parts share cards, so the odds aren't computed; make each part distinct"); continue
         for T in turns:
             nat, lib_ = package_odds_chains(d, pieces, T, on_play, a.trials, use_cmd=False)
             line = f"by T{T}: drawn {pct(nat)} | with library tutors {pct(lib_)}"

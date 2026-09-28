@@ -7,7 +7,8 @@
 # key: Demonic Tutor; Stroke of Genius
 
 Commander
-1 The Ur-Dragon (CMM) 361 *F*
+1 Kraum, Ludevic's Opus
+1 Tymna the Weaver
 
 Companion
 1 Obosh, the Preypiercer
@@ -63,6 +64,7 @@ Deck
 1 Dimir Aqueduct
 1 Mystic Gate
 1 Plaza of Heroes
+1 Cavern of Souls
 1 Leyline of the Void
 1 Dark Ritual
 1 Cabal Ritual
@@ -84,11 +86,11 @@ Deck
 2x Persistent Petitioners
 1 Wastes
 2 Snow-Covered Island
-5 Plains
+4 Plains
 5 Island
 5 Swamp
 4 Mountain
-4 Forest
+3 Forest
 
 Sideboard
 1 Lutri, the Spellchaser

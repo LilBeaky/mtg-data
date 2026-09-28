@@ -10,7 +10,7 @@ You don't need to run anything. Give your AI assistant (one that can run code, l
 
 Then paste a decklist (a Moxfield export works) and ask for an audit, card lookups, combo checks, bracket checks, or draw odds.
 
-Card data, prices, rulings, tags, and combos refresh automatically every day.
+Card data, prices, rulings, tags, combos, and the Comprehensive Rules refresh automatically every day.
 
 ## Letting the assistant save changes (optional)
 
