@@ -1,5 +1,5 @@
 {
-  "_doc": "Per-card fixes for scripts/goldfish.py. Keys are Oracle names; each entry replaces only the fields it names. Fields and effect strings are documented in docs/USE_INSTRUCTIONS.md section 6. Add a 'note' saying why.",
+  "_doc": "Per-card fixes for scripts/goldfish.py. Keys are Oracle names; each entry replaces only the fields it names. Fields and effect strings are documented in docs/GOLDFISH.md. Add a 'note' saying why.",
   "Leyline Immersion": {
     "mana": [
       {

@@ -1,0 +1,35 @@
+# GOLDFISH — goldfish.py
+
+Companion to `USE_INSTRUCTIONS.md` §6. Read this only when running `goldfish.py`. This doc is expected to change as the simulator is tested and iterated on.
+
+
+Plays the deck alone thousands of times with a greedy pilot and reports development and card flow. Use it for timing questions ("when is the commander out?", "when does the payoff land?"), color reliability, card-advantage reads, and comparing swaps. Stats Math stays the tool for pure draw odds.
+
+```
+python3 scripts/goldfish.py DECK [--turns 8] [--trials 2000] [--draw] [--seed 1]
+    [--track "Label=REGEX"] [--variant "Label|Out=>In;Out=>In"] [--kill-commander T]
+    [--order commander,track,ramp,draw,other] [--opps 3 --opp-casts 1 --opp-pay 0.5 --opp-hand 4]
+    [--cast-interaction] [--no-mulligan] [--explain] [--trace N] [--json]
+```
+
+- **Always run `--explain` first** on a new list. Each card is marked `modeled`, `partial` (some lines unread), `blank` (cast for its cost, does nothing), `held` (removal/counters/protection instants and sorceries, never cast in a goldfish), or `override`. Tell the user which important cards are partial or blank before quoting numbers.
+- `--track "Myojin=^Myojin of"` reports the first-cast turn for a card group (a bare card name works too). Tracked cards get cast priority right after the commander.
+- `--variant` runs a swapped build on the **same shuffles** and prints a side-by-side table. Use it for every cut-vs-add question. It's far less noisy than two separate runs. `--explain --variant ...` also lists the incoming cards.
+- `--kill-commander T` removes the commander before turn T (recast with tax). Use it to show how much a plan leans on the commander surviving.
+- `--trace N` prints a play-by-play of game N. Use it to audit the pilot whenever a number looks off.
+- Speed: about 2,000 games per build in 3 to 4 seconds.
+
+**What the report means.** Development rows give P10/median/P90. P10 is the floor, which the user cares about most. "Mana" counts sources available at the start of the main phase, and "all colors" counts restricted mana (e.g. Plaza of Heroes' legendary-only colors) as available. "Extra cards" are cards put into hand beyond draw steps, counted net: a wheel counts cards drawn minus the hand it threw away, and looting or Brainstorm-style put-backs subtract what leaves your hand, so they show as card filtering rather than card advantage. "Stranded" counts spells you had the mana *amount* for but not the colors. "Discarded" is cleanup discard, a flood signal. "Extra cards by source" names the card-advantage engines.
+
+**Model and fixed conventions.**
+- London mulligan with the free first mulligan (rule 103.5c). Keep 3–5 lands, or 2 lands plus a cheap ramp piece.
+- Opponents only exist as a table model for opponent-triggered cards (Rhystic Study, Smothering Tithe, Consecrated Sphinx): each opponent draws once and casts `--opp-casts` spells per cycle (40% creatures), and pays a tax `--opp-pay` of the time.
+- Summoning sickness, enters-tapped rules (fast/slow/check/reveal/shock/battlebond), fetches, bounce lands, filter lands and converters, restricted mana, colored-only mana, alt costs (Jodah, Fist of Suns), Omniscience-style free casting, cost reducers, extra land drops, rituals (cast only when they enable a spell), X-draw spells (X ≥ 2), counters with Hardened Scales/Doubling Season-style modifiers, proliferate, remove-a-counter draw abilities (keeps one divinity/indestructible counter), planeswalker loyalty, activated draw/proliferate/tutor abilities, triggers on cast/ETB/landfall/upkeep/draw step/end step/proliferate, rebound, and leylines are all modeled.
+- **Not modeled:** combat, opponents' interaction, graveyard recursion, tokens other than Treasures, copies, and anything the explain list marks partial or blank. Say so when these matter to the question.
+- Conditional upgrades ("...instead if" threshold, kicker, delirium, addendum lines) are modeled at their **base** effect only and the upgrade line shows as unmodeled. Cabal Ritual makes BBB, not BBBBB.
+- Permanents that grant extra land drops (Exploration, Azusa) give them the turn they enter.
+
+## Fixing a card
+
+**Fixing a card: `data/goldfish_overrides.json`.** Key = Oracle name. An entry replaces only the fields it names; always add a `note`. Fields: `mana` (list of `{"colors": "any" | "WU" | "C", "count": n, "restrict": "legendary", "colored_only": false, "sick": true}`), `etb`, `spell` (lists of effect strings), `triggers` (list of `{"on": "cast|etb|landfall|upkeep|end|drawstep|prolif|opp_cast|opp_draw", "filter": "noncreature", "do": [...], "once": false, "tax": false, "each": false}`), `activated` (list of `{"cost": "{2}", "tap": true, "sac": false, "remove": "divinity 1", "do": [...]}`), `hold`, `requires`, `cat`, `skip`, `status`. Effect strings: `draw 2`, `draw permanents` (also lands, creatures, artifacts, power, colors, opp_hand), `scry 2`, `surveil 1`, `look 3 1`, `prolif 1`, `treasure 1`, `extra_land 1`, `land_from_hand 1`, `land basic bf_t 1`, `ctr divinity 1`, `mana WUBRG`. When a parse miss affects many cards, fix the parser in `goldfish.py` instead of piling up overrides.
+

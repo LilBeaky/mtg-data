@@ -1,48 +1,24 @@
 # mtg-data
 
-Magic: The Gathering card data, rulings, tags, combos, and rules — trimmed
-down to GitHub-friendly sizes, plus the tooling to query them for Commander
-deckbuilding and deck audits.
+Magic: The Gathering card data (Scryfall cards, prices, rulings, tags), Commander Spellbook combos, and the Comprehensive Rules, plus deckbuilding and deck-audit tools, built to be used **by an AI assistant**, not run by hand.
 
-**Start here → [`docs/USE_INSTRUCTIONS.md`](docs/USE_INSTRUCTIONS.md).** It
-covers setup, every script's usage, and the schema quirks worth knowing
-before you write a custom query.
+## How to use it
 
-Card data, prices, rulings, tags, and combos refresh automatically every day
-via GitHub Actions (see section 12 of the docs). Prices are each card's
-cheapest printing in USD.
+You don't need to run anything. Give your AI assistant (one that can run code, like Claude with code execution turned on) the link to this repo and tell it:
 
-## Layout
+> Clone https://github.com/LilBeaky/mtg-data and follow docs/USE_INSTRUCTIONS.md before answering any card or deck question.
 
-```
-mtg-data/
-├── scripts/     # everything you execute (mtg.py, audit.py, etc.)
-├── data/        # everything the scripts read (refreshed daily, plus aliases.txt)
-├── docs/        # everything you read (start with USE_INSTRUCTIONS.md)
-└── snapshots/   # EDHREC page transcriptions, one per commander/variant/date
-```
+Then paste a decklist (a Moxfield export works) and ask for an audit, card lookups, combo checks, bracket checks, or draw odds.
 
-## Writing conventions
+Card data, prices, rulings, tags, and combos refresh automatically every day.
 
-`docs/USE_INSTRUCTIONS.md` and `docs/STATS_MATH.md` are written to work for
-any deck owner and any AI assistant, not one specific pairing of the two —
-so when editing them:
+## Letting the assistant save changes (optional)
 
-- Address the assistant directly, in second person ("you") — it's who's
-  reading these docs to do the work.
-- Call the deck owner **"the user"**, never a name.
-- No product names either (e.g. "Claude") — keep it assistant-agnostic.
+Only needed if you want the assistant to push updates (new EDHREC snapshots, reskin aliases, fixes). GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Repository access: *Only select repositories* → this repo. Permissions: *Contents*, *Workflows*, and *Actions* all Read and write. Set an expiration, then paste the token into your assistant's project instructions. Treat it like a password.
 
-## Quick example
+## For editors of `docs/`
 
-```bash
-git clone --depth 1 https://github.com/LilBeaky/mtg-data.git
-cd mtg-data
-python3 scripts/mtg.py card "Sol Ring"
-python3 scripts/audit.py your_decklist.txt --commander "Your Commander"
-python3 scripts/goldfish.py your_decklist.txt --track "Label=Card Name"   # goldfish simulation
-python3 scripts/tutors.py your_decklist.txt                               # tutor chains and access
-```
+The docs are written for the assistant: second person ("you"), the deck owner is "the user", no product or personal names. Keep `USE_INSTRUCTIONS.md` minimal; tool-specific detail goes in its own doc (`STATS_MATH.md`, `GOLDFISH.md`). Scripts reference its section numbers, so keep them stable.
 
 ## Credits
 
