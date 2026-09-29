@@ -1,0 +1,279 @@
+# commander: Zur the Enchanter
+# variant: upgraded
+# url: https://edhrec.com/commanders/zur-the-enchanter/upgraded
+# decks: 1210
+# fetched: 2026-09-29
+Wizard's Staff|22|17|249
+Gleaming Splendor|11|1|248
+Avacyn, Angel of Horror|3.6|3|83
+Turbulent Shore|3.6|0|83
+Turbulent Wetlands|2.4|-1|83
+Grasp of Fate|55|49
+All That Glitters|55|47
+Ethereal Armor|51|47
+Steel of the Godhead|47|43
+Imprisoned in the Moon|50|43
+Diplomatic Immunity|43|41
+Mirrormade|50|40
+Darksteel Mutation|46|40
+Copy Enchantment|43|38
+Greater Auramancy|40|36
+Propaganda|65|34
+Swords to Plowshares|63|-5
+Counterspell|60|17
+Ghostly Prison|59|35
+Path to Exile|45|3
+Dovin's Veto|42|15
+Swiftfoot Boots|41|17
+Lightning Greaves|39|16
+An Offer You Can't Refuse|39|10
+Estrid's Invocation|37|33
+Rhystic Study|39|9
+Necropotence|22|16
+Smothering Tithe|16|-14
+Enlightened Tutor|14|-4
+Cyclonic Rift|12|-10
+Demonic Tutor|11|-8
+Fierce Guardianship|11|-9
+Farewell|8.8|-3
+Teferi's Protection|8.7|-7
+Notion Thief|7.4|1
+Sun Titan|32|24
+Mesa Enchantress|30|22
+Entity Tracker|26|20
+Auramancer|26|23
+Archon of Sun's Grace|24|20
+Esper Sentinel|22|-5
+Eidolon of Rhetoric|22|20
+Grand Abolisher|21|7
+Inquisitive Glimmer|21|15
+Ondu Spiritdancer|19|13
+Hanna, Ship's Navigator|17|15
+Grim Guardian|15|13
+Starfield Mystic|15|9
+Aegis of the Gods|13|12
+Zur, Eternal Schemer|13|10
+Delney, Streetwise Lookout|13|5
+Heliod, Sun-Crowned|13|9
+The Master of Keys|12|9
+Spirit of the Labyrinth|11|11
+Aven Mindcensor|11|8
+Callaphe, Beloved of the Sea|11|10
+Doomwake Giant|10|4
+Baleful Strix|9.4|-12
+Killian, Decisive Mentor|9.3|8|664
+Eriette of the Charmed Apple|9.2|8
+Thassa, God of the Sea|9.1|8
+Moon-Blessed Cleric|8.9|5
+Witch Enchanter|8.8|1
+Alseid of Life's Bounty|8.6|7
+Lotho, Corrupt Shirriff|8.5|-9
+Lavinia, Azorius Renegade|8.3|6
+Pearl-Ear, Imperial Advisor|8.2|6
+Solemn Simulacrum|8.0|-4
+Archon of Emeria|7.4|6
+Roaming Throne|7.2|0
+Windborn Muse|7.2|5
+Grand Arbiter Augustin IV|6.9|1
+Voice of Victory|6.9|-1|1130
+Starnheim Courser|6.6|3
+Sram, Senior Edificer|6.4|2
+Archfiend of Ifnir|6.1|-3
+Transcendent Envoy|6.0|5
+Hushbringer|5.9|5
+Walking Ballista|5.9|4
+Heliod, the Radiant Dawn|5.8|3
+Mother of Runes|5.5|2
+Archaeomancer|5.4|3
+Eiganjo Dynastorian|5.3|4|548
+Underworld Coinsmith|5.3|5
+Hateful Eidolon|5.2|4
+Negate|36|20
+Swan Song|30|9
+Arcane Denial|28|8
+Void Rend|24|-11
+Brainstorm|24|7
+Dark Ritual|21|0
+Mana Drain|19|2
+Anguished Unmaking|17|-10
+Dispel|12|9
+Silence|12|2
+Generous Gift|11|-3
+Spell Pierce|11|8
+Muddle the Mixture|11|7
+Sink into Stupor|10|-3
+Force of Negation|10|-2
+Deadly Rollick|10|-7
+Hindering Light|10|8
+Mana Leak|8.8|7
+Mortify|8.5|-0
+Flusterstorm|7.8|0
+Fell the Profane|7.4|-2
+Turn Aside|7.2|7
+Angel's Grace|6.9|4
+Render Silent|6.4|3
+Pact of Negation|6.4|-1
+Despark|6.2|-9
+Mana Sculpt|5.7|3|543
+Miscalculation|5.7|5
+Neutralize|5.5|5
+Forsake the Worldly|5.5|5
+Inkshield|5.5|-5
+Vampiric Tutor|5.2|-11
+Opt|5.0|1
+Winds of Rath|30|28
+Supreme Verdict|26|12
+Toxic Deluge|16|-4
+Damn|15|-5
+Resurgent Belief|15|13
+Sevinne's Reclamation|14|6
+Idyllic Tutor|14|10
+Ponder|13|4
+Replenish|10|8
+Wrath of God|8.3|5
+Preordain|8.2|3
+Windfall|7.9|-5
+Open the Armory|7.5|4
+Diabolic Tutor|7.4|3
+Approach of the Second Sun|7.2|4
+Dance of the Manse|6.6|4
+Brilliant Restoration|6.5|5
+Vindicate|6.4|-5
+Grim Tutor|6.0|2
+Austere Command|5.5|-3
+Divine Reckoning|5.5|5
+Lórien Revealed|5.2|3
+Strionic Resonator|22|19
+Helm of the Gods|9.3|9
+Sensei's Divining Top|6.9|-2
+Wishclaw Talisman|6.5|-1
+Fluctuator|6.3|6
+Wayfarer's Bauble|5.8|-1
+Rest in Peace|35|33
+Mystic Remora|35|15
+Blind Obedience|32|21
+Solemnity|32|29
+Curator's Ward|32|30
+Phyrexian Arena|32|18
+Aura of Silence|30|27
+Rule of Law|27|25
+Phyrexian Unlife|26|24
+Shielded by Faith|25|23
+Daybreak Coronet|25|24
+Timely Ward|24|20
+Aqueous Form|24|21
+Sphere of Safety|23|14
+Authority of the Consuls|22|8
+Battle Mastery|21|20
+Staggering Insight|20|19
+Solitary Confinement|20|17
+Land Tax|19|13
+Vanishing|19|18
+Phyresis|18|16
+Combat Research|18|16
+Karmic Justice|18|16
+Kaya's Ghostform|16|14
+Black Market Connections|16|1
+Sheltered by Ghosts|16|13
+Gift of Immortality|16|14
+Animate Dead|14|5
+Oubliette|14|12
+Banishing Light|13|12
+Arcane Laboratory|12|12
+Spirit Mantle|12|11
+Energy Field|12|11
+Detention Sphere|12|11
+Oblivion Ring|11|10
+Out of Time|11|10
+Seal of Cleansing|10|9
+Witness Protection|10|8
+Curiosity|10|-0
+Monologue Tax|10|3
+Hyena Umbra|8.7|8
+Deafening Silence|8.7|7
+Idolized|8.7|8
+Monastery Siege|8.3|7
+Unquestioned Authority|8.3|7
+Seal from Existence|7.3|7
+Pariah|7.1|7
+Necromancy|7.1|3
+Sigil of the Empty Throne|7.0|2
+Web of Inertia|7.0|7
+Teferi, Time Raveler|6.6|-2
+Narset, Parter of Veils|5.4|2
+Hall of Heliod's Generosity|46|34
+Reliquary Tower|36|2
+Bojuka Bog|23|-3
+Otawara, Soaring City|15|-4
+Rogue's Passage|13|3
+Urborg, Tomb of Yawgmoth|12|-1
+Urza's Saga|10|-2
+Mistveil Plains|9.0|8
+Secluded Steppe|8.3|7
+Lonely Sandbar|7.8|6
+Barren Moor|7.0|5
+Maze of Ith|6.3|4
+Remote Isle|6.0|5
+Drifting Meadow|6.0|5
+Polluted Mire|5.8|5
+Arcane Signet|86|-1
+Sol Ring|86|-4
+Talisman of Progress|54|8
+Talisman of Dominance|52|1
+Talisman of Hierarchy|51|5
+Azorius Signet|48|20
+Dimir Signet|44|15
+Orzhov Signet|43|13
+Fellwar Stone|42|9
+Thought Vessel|24|-2
+Mind Stone|11|0
+Commander's Sphere|11|-5
+Chromatic Lantern|10|-2
+Lotus Petal|9.4|-1
+Command Tower|93|0
+Exotic Orchard|58|-2
+Hallowed Fountain|52|-0
+Godless Shrine|51|-1
+Watery Grave|51|-2
+Arcane Sanctum|50|-3
+Glacial Fortress|48|3
+Isolated Chapel|44|0
+Caves of Koilos|43|7
+Raffine's Tower|40|-0
+Flooded Strand|40|1
+Adarkar Wastes|40|6
+Polluted Delta|39|0
+Prairie Stream|38|-3
+Drowned Catacomb|37|-3
+Marsh Flats|36|0
+Underground River|35|-1
+Sunken Hollow|34|-6
+Sea of Clouds|32|-2
+Vault of Champions|31|-1
+Morphic Pool|30|-4
+Evolving Wilds|22|-2
+Deserted Beach|22|0
+Shipwreck Marsh|19|-2
+Shattered Sanctum|18|-1
+Terramorphic Expanse|17|2
+Temple of Enlightenment|17|2
+Azorius Chancery|17|4
+Tundra|16|0
+Temple of Silence|16|-1
+Contaminated Landscape|16|3
+Underground Sea|16|0
+Scrubland|16|-0
+Orzhov Basilica|15|1
+Temple of Deceit|15|-1
+Skycloud Expanse|14|-1
+Path of Ancestry|14|-14
+City of Brass|14|-1
+Dimir Aqueduct|14|2
+Port Town|14|-3
+Darkwater Catacombs|12|-3
+Fetid Heath|11|-3
+Irrigated Farmland|11|4
+Ash Barrens|11|0
+Reflecting Pool|11|3
+Choked Estuary|11|-6
+Fabled Passage|11|2
