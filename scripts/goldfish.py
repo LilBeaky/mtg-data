@@ -18,11 +18,16 @@ and which cards produced the card advantage). Full docs: USE_INSTRUCTIONS.md §6
                          lines in the deck header are added automatically
   --variant "Label|Out=>In;Out=>In"   also run a swapped build, side by side (repeatable)
   --kill-commander T     every clean game loses its commander after turn T-1 (recast with tax)
-  --disruption MODE      'sample' (default): replay every game with a sampled disruption scenario
-                         (none / commander removal / spot removal / creature wipe / nonland wipe /
-                         counterspell) and report the paired damage; 'off'; or a fixed scenario
-                         for every game, e.g. 'wipe@5;cmd@4'
-  --disruption-trace N   play-by-play of game N's disrupted replay
+  --disruption MODE      'auto' (default): the bracket's interaction ladder when the bracket is 2-4
+                         (header '# bracket:' or --bracket), else 'sample'. 'ladder': per shuffle, 5 clean
+                         baselines + 15 rungs from data/goldfish_gradients.json, with a fold/breakpoint read.
+                         'sample': each game replayed with 0-2 sampled events. 'off'. Or a fixed scenario
+                         for every game, e.g. 'wipe@5;cmd@4;ctrK!@3' (codes: see the gradients file)
+  --bracket N            bracket for the ladder (overrides the header)
+  --shuffles N           ladder shuffles (default from the gradients file: 100)
+  --horizon N            ladder horizon (default per bracket: B2 10, B3 9, B4 8)
+  --ladder-max           every ladder event fires (stress test / pilot audit)
+  --disruption-trace X   play-by-play of a disrupted game: N (sample/fixed) or SHUFFLE:RUNG (ladder)
   --order LIST           cast priority (default commander,track,ramp,draw,other)
   --cast-interaction     also cast held removal / counters / protection spells proactively
   --no-mulligan          keep every opening 7
@@ -68,15 +73,38 @@ _EXPLAIN_DECK = []                              # raw cards of the list, so --ex
 POD, OPP_CREATURE_SHARE, OPP_SECOND, TAX_PAID, OPP_HAND = 3, 0.4, 0.3, 0.75, 4
 OPP_LINE = re.compile(r"\bopponents?\b|attacks you\b|\bother players?\b|each player(?! may)")
 START_LIFE, LIFE_FLOOR = 40, 20
-# Disruption to your own game (sampled per game, replayed on the same shuffles as the clean run):
-# 25% of games have none, 50% one event, 25% two. Events land on turns 3+ (after your turn t, or
-# during it for a counter). Your held counters / protection answer an event if you left mana open
-# (or it's free with a commander out).
+# Disruption to your own game. Two modes (see docs/GOLDFISH.md):
+#  ladder (default when the bracket is 2-4): 5 clean baselines + 15 rungs of the bracket's interaction ladder
+#          (data/goldfish_gradients.json) per shuffle, events firing on per-slot rolls shared across rungs.
+#  sample: 25% of games have none, 50% one event, 25% two, on turns 3+ (the older, bracket-free read).
+# Events land after your turn t (counters during it). Your held counters / protection answer an event if you
+# left mana open (or it's free with a commander out).
 DIS_KINDS = (("cmd", 0.25), ("removal", 0.25), ("wipe", 0.20), ("nuke", 0.10), ("counter", 0.20))
 DIS_NAMES = {"cmd": "commander removal", "removal": "spot removal", "wipe": "creature wipe",
-             "nuke": "nonland wipe", "counter": "counterspell"}
-ANSWERS = {"counter": {"cmd", "removal", "wipe", "nuke", "counter"}, "protect": {"cmd", "removal", "wipe", "nuke"},
-           "redirect": {"cmd", "removal"}}   # the pilot won't pay life below the floor (a goldfish still has a table to survive)
+             "nuke": "nonland wipe", "counter": "counterspell", "removal+": "exile removal (smart)",
+             "nuke+gy": "nonland exile + graveyard exile", "rift": "mass bounce", "gy": "graveyard exile",
+             "ld": "land destruction", "tax": "noncreature tax", "taxall": "spell tax", "lock": "command zone/graveyard lock",
+             "counterK": "held counter (commander/key)"}
+# event codes (ladder file and --disruption) -> (kind, min MV for counters)
+DIS_CODES = {"cmd": ("cmd", 0), "rem": ("removal", 0), "removal": ("removal", 0), "rem+": ("removal+", 0),
+             "wipe": ("wipe", 0), "nuke": ("nuke", 0), "nuke+gy": ("nuke+gy", 0), "rift": ("rift", 0), "gy": ("gy", 0),
+             "ld": ("ld", 0), "tax": ("tax", 0), "taxall": ("taxall", 0), "lock": ("lock", 0), "counter": ("counter", 3),
+             "ctr2": ("counter", 2), "ctr3": ("counter", 3), "ctr4": ("counter", 4), "ctrK": ("counterK", 0)}
+PERSIST = {"tax": "creature", "taxall": "artifact", "lock": "creature"}   # stax effects -> the permanent type behind them
+ANSWERS = {"counter": {"cmd", "removal", "removal+", "wipe", "nuke", "nuke+gy", "rift", "tax", "taxall", "lock",
+                       "counter", "counterK"},
+           "protect": {"cmd", "removal", "removal+", "wipe", "nuke", "nuke+gy", "rift"},
+           "redirect": {"cmd", "removal", "removal+"}}   # the pilot won't pay life below the floor (a goldfish still has a table to survive)
+GRADIENTS_FILE = os.path.join(mtg.DATA_DIR, "goldfish_gradients.json")
+
+def parse_event(tok, slot=None):
+    """'rem+@4', 'wipe!@6' -> (turn, event dict). Raises ValueError on a bad token."""
+    code, _, t = tok.strip().partition("@")
+    backup = code.endswith("!"); code = code.rstrip("!")
+    code = {"commander": "cmd", "spot": "rem", "creature": "wipe", "nonland": "nuke", "counterspell": "counter"}.get(code, code)
+    if code not in DIS_CODES or not t.isdigit() or int(t) < 1: raise ValueError(tok)
+    kind, mv = DIS_CODES[code]
+    return int(t), {"kind": kind, "mv": mv, "backup": backup, "code": code + ("!" if backup else ""), "slot": slot}
 GY_KW = ("flashback", "jump-start", "retrace", "escape", "unearth", "harmonize")
 
 def num(s, default=1):
@@ -363,6 +391,20 @@ class Card:
         self.cum_upkeep = False  # cumulative upkeep: kept for 3 of your upkeeps, then let go (~approx)
         self.answer = None       # counter / protect / redirect: can stop a disruption event
         self.free_cmdr = False   # free while you control a commander (Fierce Guardianship)
+        self.kill = frozenset()  # held removal: permanent types it can remove (clears tax/lock pieces)
+
+RX_KILL = re.compile(r"\b(?:destroy|exile|return) (?:up to (?:one|two|three) |any number of )?(?:other )?targets? ([^.;]{0,60})")
+def kill_types(lt):
+    """Permanent types a held removal spell can take off the table (for clearing tax/lock pieces). ~approx"""
+    out = set()
+    for m in RX_KILL.finditer(lt):
+        obj = m.group(1)
+        if "nonland permanent" in obj or re.search(r"\bpermanent\b", obj) and "land" not in obj.split("permanent")[0]:
+            out |= {"creature", "artifact", "enchantment"}
+        out |= {t for t in ("creature", "artifact", "enchantment") if t in obj}
+    if re.search(r"deals? (?:\d+|x) damage to (?:any target|target creature)|target creature gets -|sacrifices? (?:a|an) creature", lt):
+        out.add("creature")
+    return frozenset(out)
 
 def strip_reminder(t):
     return re.sub(r"\s*\([^()]*\)", "", t)
@@ -664,6 +706,7 @@ def compile_card(c, anyc):
                        r"(?:hexproof|indestructible|protection|shroud)", lt): k.answer = "protect"
         elif "choose new targets for target spell" in lt: k.answer = "redirect"
         if k.answer and "Creature" not in k.types: k.hold = True
+    if k.hold and not k.answer: k.kill = kill_types(lt)
     _CTX.update(saved)
     for a in k.hand_acts:
         if a["kind"] != "transmute": a["fx"] = a["fx"] + k.cycle_fx
@@ -869,7 +912,11 @@ class Game:
         self.attr = Counter(); self.first = {}; self.cmd_first = {}; self.rebound = []
         self.exile, self.unearthed = [], []
         self.recur = 0; self.cycled = 0; self.rattr = Counter(); self.tut = Counter(); self.life = START_LIFE
-        self.events = {}; self.counter_pending = False; self.open_pool = []; self.dis = []
+        self.events = {}; self.open_pool = []; self.dis = []
+        self.ctr_now, self.ctr_held = [], []   # counters live this turn / held for your commander or key cards
+        self.stax = []                          # live tax/lock effects: {"kind", "start", "until", "on"}
+        self.hits = []; self.cleared = 0        # (turn, board before) for each hit that removed permanents
+        self.ctrd = 0                           # your spells countered (still counted in casts/spent)
         self.log = None
 
     @property
@@ -888,6 +935,7 @@ class Game:
         g.cmd_casts = Counter(self.cmd_casts); g.first = dict(self.first); g.cmd_first = dict(self.cmd_first)
         g.attr = Counter(); g.pool = None; g.convs = []; g._st = None
         g.rng = self.sim.dry_rng; g.log = None
+        g.stax = [dict(e) for e in self.stax]; g.ctr_now, g.ctr_held = self.ctr_now[:], self.ctr_held[:]
         return g
 
     # ---- mana
@@ -989,20 +1037,31 @@ class Game:
         return False
 
     # ---- casting
+    def spell_tax(self, k):
+        """Extra generic from live tax effects (Thalia: noncreature spells; Sphere: all spells)."""
+        if not self.stax or k is None: return 0
+        return sum(1 for e in self.stax if self.live(e) and (e["kind"] == "taxall" or e["kind"] == "tax" and "Creature" not in k.types))
+
+    def live(self, e):
+        return e["on"] and e["start"] < self.turn <= e["until"]
+
+    def locked(self):
+        return any(e["kind"] == "lock" and self.live(e) for e in self.stax)
+
     def options(self, k, zone):
         st = self.st
-        tax = 2 * self.cmd_casts[k] if zone == "cmd" else 0
+        tax = (2 * self.cmd_casts[k] if zone == "cmd" else 0) + self.spell_tax(k)
         red = sum(n for f, n in st.reduce if spell_ok(k, f))
         if zone == "gy":
             g = k.gycast
             if g["kw"] == "unearth": return [(g["gen"], g["pips"])]          # an ability: no reducers
             gen, pips = (k.gen, k.pips) if g["gen"] is None else (g["gen"], g["pips"])
-            return [(max(0, gen - red), pips)]
+            return [(max(0, gen - red) + tax, pips)]
         xm = 2 if k.x else 0                          # X spells wait for X >= 2
         opts = [(max(0, k.gen - red) + tax + xm, k.pips)]
         for f, (ag, ap, _, _) in st.alts:
             if spell_ok(k, f): opts.append((max(0, ag - red) + tax, ap))
-        if st.free and zone == "hand": opts.append((0, []))
+        if st.free and zone == "hand": opts.append((tax, []))
         return sorted(opts, key=lambda o: o[0] + len(o[1]))
 
     def has(self, req, k=None):
@@ -1017,6 +1076,7 @@ class Game:
 
     def try_cast(self, k, zone):
         if k.requires and not self.has(k.requires, k): return False
+        if zone != "hand" and self.stax and self.locked() and not (zone == "gy" and k.gycast["kw"] == "unearth"): return False
         if zone == "gy" and not self.gy_extra_ok(k): return False
         for gen, pips in self.options(k, zone):
             if self.pay(k, gen, pips):
@@ -1578,59 +1638,115 @@ class Game:
 
     def answer_cost(self, c):
         """Mana an answer needs right now (0 if it's free with a commander out)."""
-        if c.free_cmdr and any(p.k in self.sim.commanders for p in self.perms): return 0, []
-        return c.gen, c.pips
+        tax = self.spell_tax(c)
+        if c.free_cmdr and any(p.k in self.sim.commanders for p in self.perms): return tax, []
+        return c.gen + tax, c.pips
 
     def reserve(self):
         """Mana the pilot keeps open at end of turn for its cheapest held answer (never taps out to cycle)."""
         costs = [g + len(p) for c in self.hand if c.answer for g, p in [self.answer_cost(c)]]
         return min(costs) if costs else 0
 
-    def try_answer(self, kind, pool):
-        """Use a held answer against a disruption event, paying from `pool`. True if stopped."""
-        for c in sorted((c for c in dict.fromkeys(self.hand) if c.answer and kind in ANSWERS[c.answer]),
-                        key=lambda c: sum(len(x) if isinstance(x, list) else x for x in self.answer_cost(c))):
-            g, p = self.answer_cost(c)
-            saved, self.pool, self.convs = self.pool, pool, []
-            ok = (not g and not p) or self.pay(c, g, p)
-            self.pool = saved
-            if ok:
+    def try_answer(self, ev, pool):
+        """Use held answers against a disruption event, paying from `pool`. Returns the answer type that stopped
+        it, or None. A backed-up event ('!') counters the first answer you throw at it."""
+        kind, backed = ev["kind"], ev.get("backup")
+        while True:
+            for c in sorted((c for c in dict.fromkeys(self.hand) if c.answer and kind in ANSWERS[c.answer]),
+                            key=lambda c: sum(len(x) if isinstance(x, list) else x for x in self.answer_cost(c))):
+                g, p = self.answer_cost(c)
+                saved, self.pool, self.convs = self.pool, pool, []
+                ok = (not g and not p) or self.pay(c, g, p)
+                self.pool = saved
+                if not ok: continue
                 self.hand.remove(c); self.gy.append(c); self.casts += 1; self.spent += g + len(p)
+                if backed:
+                    self.note(f"  {c.name} tries to answer the {DIS_NAMES[kind]}, but it's backed up: countered")
+                    backed = False; self.ctrd += 1; break
                 self.note(f"  {c.name} answers the {DIS_NAMES[kind]}")
-                return True
-        return False
+                return c.answer
+            else:
+                return None
 
-    def leave(self, p, why):
+    def leave(self, p, why, dest="gy"):
         self.perms.remove(p); self._st = None
         if p.k in self.sim.commanders: self.cmd.append(p.k)
-        else: self.gy.append(p.k)
+        else: {"gy": self.gy, "exile": self.exile, "hand": self.hand}[dest].append(p.k)
         self.note(f"    {p.k.name} {why}")
 
-    def disrupt(self, kind):
+    def disrupt(self, ev):
         """A disruption event after your turn. Records (kind, 'hit' / 'answered' / 'no target')."""
-        cmdrs = self.sim.commanders
+        kind, cmdrs = ev["kind"], self.sim.commanders
         if kind == "cmd": targets = [p for p in self.perms if p.k in cmdrs]
-        elif kind == "removal": targets = [p for p in self.perms if p.k not in cmdrs]
+        elif kind in ("removal", "removal+"): targets = [p for p in self.perms if p.k not in cmdrs]
         elif kind == "wipe": targets = [p for p in self.perms if "Creature" in p.k.types]
-        else: targets = list(self.perms)
+        elif kind == "gy": targets = list(self.gy)
+        elif kind == "ld": targets = list(self.lands)
+        elif kind in PERSIST: targets = [True]
+        elif kind == "nuke+gy": targets = list(self.perms) + list(self.gy)
+        else: targets = list(self.perms)                                     # nuke, rift
         if not targets: self.dis.append((kind, "no target")); return
-        self.note(f"  DISRUPTION: {DIS_NAMES[kind]}")
-        if self.try_answer(kind, self.open_pool): self.dis.append((kind, "answered")); return
+        self.note(f"  DISRUPTION: {DIS_NAMES[kind]}" + (" (backed up)" if ev.get("backup") else ""))
+        ans = self.try_answer(ev, self.open_pool)
+        if ans and not (kind == "nuke+gy" and ans == "protect"):
+            self.dis.append((kind, "answered")); return
         self.dis.append((kind, "hit"))
+        before = len(self.perms)
+        r = self.sim.dis_rng
         if kind in ("cmd", "removal"):
-            r = self.sim.dis_rng
             self.leave(max(targets, key=lambda p: (p.k.mv, p.k.name)) if r.random() < 0.5 else r.choice(targets), "is removed")
-        else:
-            for p in targets: self.leave(p, "dies in the wipe")
-            if kind == "nuke": self.treasures = 0
+        elif kind == "removal+":
+            w = self.sim.wanted
+            self.leave(max(targets, key=lambda p: (bool(p.k.groups) or p.k in w, p.k.mv, p.k.name)), "is exiled", "exile")
+        elif kind == "gy":
+            self.note(f"    graveyard exiled ({len(self.gy)} cards)"); self.exile += self.gy; self.gy = []
+        elif kind == "ld":
+            nb = [p for p in self.lands if not p.k.basic]
+            p = max(nb, key=lambda p: (len(set().union(*(u[0] | u[1] for u in p.k.units)) if p.k.units else 0), p.k.name)) \
+                if nb else r.choice(self.lands)
+            self.lands.remove(p); self.gy.append(p.k); self._st = None
+            self.note(f"    {p.k.name} is destroyed")
+        elif kind in PERSIST:
+            n = self.sim.persist
+            self.stax.append({"kind": kind, "start": self.turn, "until": self.turn + n, "on": True})
+            self.note(f"    {DIS_NAMES[kind]} for {n} turns (or until your removal kills it)")
+        elif kind == "rift":
+            for p in list(self.perms): self.leave(p, "returns to hand", "hand")
+            self.treasures = 0
+        else:                                                                   # wipe, nuke, nuke+gy
+            ex = kind == "nuke+gy"
+            for p in targets:
+                if isinstance(p, Perm): self.leave(p, "is exiled" if ex else "dies in the wipe", "exile" if ex else "gy")
+            if kind != "wipe": self.treasures = 0
+            if ex: self.exile += self.gy; self.gy = []
+        if len(self.perms) < before: self.hits.append((self.turn, before))
+
+    def clear_stax(self):
+        """Main phase: kill a live tax/lock piece with held removal that can hit it (Swords on Thalia)."""
+        for e in self.stax:
+            if not self.live(e) or e["until"] == self.turn and e["kind"] != "lock": continue
+            if e["kind"] == "lock" and not self.cmd and not any(c.gycast for c in self.gy): continue
+            want = PERSIST[e["kind"]]
+            for c in sorted((c for c in dict.fromkeys(self.hand) if want in c.kill), key=lambda c: c.mv):
+                opts = self.options(c, "hand")
+                if not any(self.pay(c, g_, p_) for g_, p_ in opts[:1]): continue
+                g_, p_ = opts[0]
+                self.hand.remove(c); self.gy.append(c); self.casts += 1; self.spent += g_ + len(p_)
+                e["on"] = False; self.cleared += 1
+                self.note(f"  {c.name} removes the {DIS_NAMES[e['kind']]} piece")
+                break
 
     def countered(self, k, zone, paid):
-        """Counter event: the first spell of MV 3+ (or your commander) this turn. True if it was countered."""
-        if not self.counter_pending or zone == "gy" or (k.mv < 3 and zone != "cmd") or self.dry: return False
-        self.counter_pending = False
-        self.note(f"  DISRUPTION: counterspell on {k.name}")
-        if self.try_answer("counter", self.pool): self.dis.append(("counter", "answered")); return False
-        self.dis.append(("counter", "hit"))
+        """Counter events: a live counter hits your first spell of its MV or more (or your commander) this turn;
+        a held one (ctrK) waits for your commander or a key/tracked card. True if the spell was countered."""
+        if zone == "gy" or self.dry or not (self.ctr_now or self.ctr_held): return False
+        ev = next((e for e in self.ctr_now if k.mv >= e["mv"] or zone == "cmd"), None)
+        if ev: self.ctr_now.remove(ev)
+        elif self.ctr_held and (zone == "cmd" or k.groups or k in self.sim.wanted): ev = self.ctr_held.pop(0)
+        else: return False
+        self.note(f"  DISRUPTION: {DIS_NAMES[ev['kind']]} on {k.name}" + (" (backed up)" if ev.get("backup") else ""))
+        if self.try_answer(ev, self.pool): self.dis.append((ev["kind"], "answered")); return False
+        self.dis.append((ev["kind"], "hit")); self.ctrd += 1
         if zone == "hand": self.hand.remove(k); self.gy.append(k)
         else: self.cmd_casts[k] += 1
         self.casts += 1; self.spent += paid; self.fire("cast", k)
@@ -1661,8 +1777,11 @@ class Game:
             if self.drops > 0:
                 land = self.choose_land()
                 if land: self.play_land(land)
-            self.counter_pending = "counter" in self.events.get(t, ())
+            evs = self.events.get(t, ())
+            self.ctr_now = [e for e in evs if e["kind"] == "counter"]
+            self.ctr_held += [e for e in evs if e["kind"] == "counterK"]
             self.build_pool()
+            if self.stax and not self.dry: self.clear_stax()
             pool_n = sum(1 for u in self.pool if not u[5])
             cols = set().union(*(u[0] | u[1] for u in self.pool if not u[5])) if self.pool else set()
             if self.st.spend_any and cols - {"C"}: cols |= sim.anyc
@@ -1673,15 +1792,16 @@ class Game:
             self.cast_loop()
             if self.hand_act(): self.cast_loop(activate=False)       # transmute, then cast what it found
             while self.hand_act(eot=True): pass                     # leftover mana: cycle dead cards
-            if self.counter_pending: self.dis.append(("counter", "no target")); self.counter_pending = False
+            for e in self.ctr_now: self.dis.append((e["kind"], "no target"))
+            self.ctr_now = []
             self.open_pool = [u for u in self.pool if not u[5]] if self.pool else []
             self.pool = None; self.convs = []
             self.fire("end")
             for q in self.unearthed:
                 if q in self.perms: self.perms.remove(q); self.exile.append(q.k); self._st = None
             self.unearthed = []
-            for kind in self.events.get(t, ()):
-                if kind != "counter": self.disrupt(kind)
+            for e in evs:
+                if e["kind"] not in ("counter", "counterK"): self.disrupt(e)
             self.open_pool = []
             if not self.st.no_max and len(self.hand) > 7:
                 self.hand.sort(key=self.value)
@@ -1695,8 +1815,38 @@ class Game:
             rec["cmd_out"][t].append(bool(sim.commanders) and all(any(p.k is c for p in self.perms) for c in sim.commanders))
             if self.log is not None and self.perms: self.note("  board: " + "; ".join(p.k.name + (str(p.ctr) if p.ctr else "") for p in self.perms))
             self.opponents()
+        for e in self.ctr_held: self.dis.append((e["kind"], "no target"))
+        self.ctr_held = []
 
 # ---------------------------------------------------------------- simulation
+def blank_rec(turns):
+    return {m: {t: [] for t in range(1, turns + 1)} for m in
+            ("lands", "mana", "colors", "stranded", "hand", "extra", "casts", "spent", "disc", "cmd_out",
+             "gy", "recur", "cycled", "board")}
+
+def load_ladder(bracket, horizon=0):
+    """The bracket's ladder from data/goldfish_gradients.json, with per-rung, per-slot firing odds precomputed
+    (weight x intensity, never decreasing for a slot as the ladder climbs)."""
+    data = json.load(open(GRADIENTS_FILE, encoding="utf-8"))
+    spec = data["brackets"].get(str(bracket))
+    if not spec: return None
+    lo, hi = spec["intensity"]; W, bw = data["weights"], data["backup_weight"]
+    rungs, p, prev = [], [], {}
+    n = len(spec["rungs"])
+    for r, line in enumerate(spec["rungs"]):
+        s_ = lo + (hi - lo) * r / max(1, n - 1)
+        toks, pr = [], {}
+        for part in line.split():
+            slot, _, tok = part.partition("=")
+            t, e = parse_event(tok, slot)
+            w = W["ctr" if e["code"].rstrip("!").startswith("ctr") else e["code"].rstrip("!")]
+            pr[slot] = prev[slot] = max(prev.get(slot, 0), min(1.0, w * s_))
+            if e["backup"]: pr[slot + "!"] = prev[slot + "!"] = max(prev.get(slot + "!", 0), min(1.0, bw * s_))
+            toks.append((slot, tok))
+        rungs.append(toks); p.append(pr)
+    return {"bracket": bracket, "horizon": horizon or spec["horizon"], "rungs": rungs, "p": p, "intensity": (lo, hi),
+            "baselines": data["baselines"], "shuffles": data["shuffles"], "fold": data["fold"], "persist": data["persist_turns"]}
+
 def load_overrides():
     if not os.path.exists(OVERRIDES_FILE): return {}
     data = json.load(open(OVERRIDES_FILE, encoding="utf-8"))
@@ -1713,6 +1863,7 @@ class Sim:
         self.dry_rng = random.Random(0)
         self.tm = {}
         self.dis_rng = random.Random(0)
+        self.persist = 3
         self.keys, self.packages = want or (set(), [])
         self.wanted = set(self.keys) | {c for parts in self.packages for part in parts for c in part}
         uniq = list(dict.fromkeys(self.deck + self.commanders))
@@ -1723,8 +1874,8 @@ class Sim:
             if tgs: self.finds[k] = {c for c in uniq if any(self.tmatch(tg, c) for tg in tgs)}
 
     def scenario(self, i, seed, turns, fixed=None):
-        """Disruption events for game i: {turn: [kinds]}. Its own RNG, so the shuffle matches the clean game."""
-        if fixed is not None: evs = fixed
+        """Sampled-mode disruption for game i: {turn: [events]}. Its own RNG, so the shuffle matches the clean game."""
+        if fixed is not None: evs = [(t, dict(e)) for t, e in fixed]
         else:
             r = random.Random(seed * 7919 + i * 31 + 5)
             x = r.random(); n = 0 if x < 0.25 else 1 if x < 0.75 else 2
@@ -1735,10 +1886,23 @@ class Sim:
                     if y < w: kind = kk; break
                     y -= w
                 last = turns if kind == "counter" else turns - 1
-                evs.append((r.randint(min(3, last), max(3, last)), kind))
+                evs.append(parse_event(f"{kind}@{r.randint(min(3, last), max(3, last))}"))
         out = {}
-        for t, kind in evs: out.setdefault(t, []).append(kind)
+        for t, e in evs: out.setdefault(t, []).append(e)
         return out
+
+    def ladder_events(self, i, seed, lad, rung, force=False):
+        """Rung `rung` of the ladder for shuffle i: ({turn: [events]}, fired tokens). One roll per slot per shuffle,
+        shared by every rung, so a slot that fires at a rung fires at every higher rung."""
+        out, fired = {}, []
+        for slot, tok in lad["rungs"][rung]:
+            t, e = parse_event(tok, slot)
+            if not force and random.Random(f"{seed}|{i}|{slot}").random() >= lad["p"][rung][slot]: continue
+            if e["backup"] and not force and random.Random(f"{seed}|{i}|{slot}!").random() >= lad["p"][rung][slot + "!"]:
+                e["backup"] = False
+            fired.append(f"{slot}={e['code'] if e['backup'] else e['code'].rstrip('!')}@{t}")
+            out.setdefault(t, []).append(e)
+        return out, fired
 
     def tmatch(self, tg, k):
         key = (id(tg), id(k))
@@ -1776,18 +1940,26 @@ class Sim:
             lib[0:0] = hand[:bottom]; hand = hand[bottom:]
         return hand, lib, 7 - bottom, mulls
 
-    def game(self, i, seed, turns, rec, events=None, trace=False):
+    def game(self, i, seed, turns, rec, events=None, trace=False, reseed=0):
         rng = random.Random(seed * 1_000_003 + i)
         hand, lib, size, mulls = self.opening(rng)
+        if reseed: rng = random.Random(f"{seed}|{i}|baseline {reseed}")   # same library, fresh in-game randomness
         g = Game(self, hand, lib, rng)
         if events: g.events = events
         self.dis_rng = random.Random(seed * 104_729 + i)
         if trace: g.log = [f"game {i + 1}: kept {len(hand)} after {mulls} mulligan(s)"
-                           + (f"; disruption {', '.join(f'{DIS_NAMES[k]}@T{t}' for t, ks in sorted(events.items()) for k in ks)}" if events else "")]
+                           + (f"; disruption {', '.join(DIS_NAMES[e['kind']] + ('!' if e.get('backup') else '') + f'@T{t}' for t, es in sorted(events.items()) for e in es)}" if events else "")]
         g.play(turns, rec)
         if g.log: print("\n".join(g.log)); print()
+        ct = [0] + [rec["casts"][t][-1] for t in range(1, turns + 1)]
+        bt = [None] + [rec["board"][t][-1] for t in range(1, turns + 1)]
+        rebuild = None
+        if g.hits:
+            h, before = g.hits[0]
+            rebuild = next((u - h for u in range(h + 1, turns + 1) if bt[u] >= before), -1)   # -1: not by the horizon
         g.final = {"cmd_out": rec["cmd_out"][turns][-1], "cmd_turns": sum(rec["cmd_out"][t][-1] for t in range(1, turns + 1)), "casts": g.casts, "spent": g.spent, "extra": g.extra,
-                   "board": len(g.perms), "recur": g.recur,
+                   "board": len(g.perms), "recur": g.recur, "dead": sum(1 for t in range(1, turns + 1) if ct[t] == ct[t - 1]),
+                   "rebuild": rebuild, "dis": list(g.dis), "cleared": g.cleared, "resolved": g.casts - g.ctrd,
                    "first": {gi: g.first.get(gi) for gi in range(len(self.groups))}}
         return g, size, mulls
 
@@ -1801,7 +1973,7 @@ class Sim:
         attr, kept, mull_n, rattr, tut = Counter(), Counter(), 0, Counter(), Counter()
         finals = []
         for i in range(trials):
-            fixed = {self.kill_turn - 1: ["cmd"]} if self.kill_turn and self.kill_turn > 1 else None
+            fixed = {self.kill_turn - 1: [parse_event(f"cmd@{self.kill_turn - 1}")[1]]} if self.kill_turn and self.kill_turn > 1 else None
             g, size, mulls = self.game(i, seed, turns, rec, events=fixed,
                                        trace=self.args.trace == i + 1)
             kept[size] += 1; mull_n += mulls > 0
@@ -1818,12 +1990,29 @@ class Sim:
         for i in range(trials):
             ev = self.scenario(i, seed, turns, fixed)
             if not ev: out.append(([], [], clean_finals[i], clean_finals[i])); continue
-            scratch = {m: {t: [] for t in range(1, turns + 1)} for m in
-                       ("lands", "mana", "colors", "stranded", "hand", "extra", "casts", "spent", "disc", "cmd_out",
-                        "gy", "recur", "cycled", "board")}
-            g, _, _ = self.game(i, seed, turns, scratch, events=ev, trace=self.args.disruption_trace == i + 1)
-            kinds = [k for t in sorted(ev) for k in ev[t]]
+            scratch = blank_rec(turns)
+            g, _, _ = self.game(i, seed, turns, scratch, events=ev, trace=self.args.disruption_trace == str(i + 1))
+            kinds = [e["kind"] for t in sorted(ev) for e in ev[t]]
             out.append((kinds, g.dis, clean_finals[i], g.final))
+        return out
+
+    def run_ladder(self, lad, shuffles, seed, force=False):
+        """Per shuffle: `baselines` clean games (same library, reseeded in-game randomness) and every rung of the
+        ladder. A rung where nothing fires is the first baseline game exactly, so it isn't replayed."""
+        turns, nb = lad["horizon"], lad["baselines"]
+        tr = self.args.disruption_trace
+        tr_s, _, tr_r = tr.partition(":") if tr else ("", "", "")
+        out = []
+        for i in range(shuffles):
+            base = [self.game(i, seed, turns, blank_rec(turns), reseed=b)[0].final for b in range(nb)]
+            rungs = []
+            for r in range(len(lad["rungs"])):
+                ev, fired = self.ladder_events(i, seed, lad, r, force)
+                if not ev: rungs.append((fired, base[0])); continue
+                trace = tr_s == str(i + 1) and tr_r == str(r + 1)
+                g, _, _ = self.game(i, seed, turns, blank_rec(turns), events=ev, trace=trace)
+                rungs.append((fired, g.final))
+            out.append((base, rungs))
         return out
 
 # ---------------------------------------------------------------- report
@@ -1938,6 +2127,83 @@ def print_disruption(label, ds, T, fixed):
           "your commander out). 'answered' = your held counters/protection stopped it (mana left open, or free with a commander "
           "out); 'no target' = nothing there to hit. Positive Δspells/Δmana after a hit usually means rebuilding with spare mana.")
 
+def sd(v):
+    m = mean(v); return (sum((x - m) ** 2 for x in v) / (len(v) - 1)) ** 0.5 if len(v) > 1 else 0.0
+
+def ladder_summary(out, lad):
+    """Per rung: events fired / hit / answered, Δ vs the shuffle's baseline mean, fold rate, rebuild; per shuffle:
+    the breakpoint (first folding rung) and what changed at it."""
+    keys = ("resolved", "spent", "extra", "board", "recur", "cmd_turns", "dead")
+    base_casts = sorted(b["resolved"] for base, _ in out for b in base)
+    floor_pct = lad["fold"]["casts_below_clean_pct"]
+    p10 = q(base_casts, floor_pct / 100)
+    lost = lad["fold"]["cmd_turns_lost"]
+    bm = [{k: mean([b[k] for b in base]) for k in keys} for base, _ in out]
+    noise = {k: round(mean([sd([b[k] for b in base]) for base, _ in out]), 2) for k in ("resolved", "cmd_turns")}
+    weak = mean([1 if m["resolved"] < p10 else 0 for m in bm])
+    def folds(d, m):
+        if not any(r == "hit" for _, r in d["dis"]): return False
+        return (d["resolved"] < p10 <= m["resolved"]) or (m["cmd_turns"] - d["cmd_turns"] >= lost)
+    rows = []
+    for r in range(len(lad["rungs"])):
+        games = [(rungs[r], bm[i]) for i, (_, rungs) in enumerate(out)]
+        evs = [x for (f, d), _ in games for x in d["dis"]]
+        live = [x for x in evs if x[1] != "no target"]
+        reb = [d["rebuild"] for (f, d), _ in games if d["rebuild"] is not None]
+        row = {"rung": r + 1, "fired": round(mean([len(f) for (f, _), _ in games]), 2),
+               "hits": round(mean([sum(1 for x in d["dis"] if x[1] == "hit") for (f, d), _ in games]), 2),
+               "answered": round(len([x for x in live if x[1] == "answered"]) / len(live), 3) if live else 0,
+               "fold": round(mean([1 if folds(d, m) else 0 for (f, d), m in games]), 3),
+               "rebuilt": round(mean([1 if x >= 0 else 0 for x in reb]), 3) if reb else None,
+               "rebuild_med": q(sorted(x for x in reb if x >= 0), 0.5) if any(x >= 0 for x in reb) else None,
+               "cleared": round(mean([d["cleared"] for (f, d), _ in games]), 2)}
+        for k in keys: row["d_" + k] = round(mean([d[k] - m[k] for (f, d), m in games]), 2)
+        rows.append(row)
+    bps, blame = [], Counter()
+    for i, (_, rungs) in enumerate(out):
+        bp = next((r for r in range(len(rungs)) if folds(rungs[r][1], bm[i])), None)
+        bps.append(bp)
+        if bp is not None:
+            prev = set(rungs[bp - 1][0]) if bp else set()
+            for tok in set(rungs[bp][0]) - prev: blame[tok] += 1
+    hit = sorted(b + 1 for b in bps if b is not None)
+    return {"bracket": lad["bracket"], "horizon": lad["horizon"], "shuffles": len(out), "baselines": lad["baselines"],
+            "p10_casts": p10, "cmd_lost": lost, "floor_pct": floor_pct, "noise": noise, "weak": round(weak, 3),
+            "base": {k: round(mean([m[k] for m in bm]), 2) for k in keys}, "rungs": rows,
+            "never": round(mean([1 if b is None else 0 for b in bps]), 3),
+            "bp": {"p25": q(hit, 0.25), "med": q(hit, 0.5), "p75": q(hit, 0.75)} if hit else None,
+            "blame": blame.most_common(8), "forced": lad.get("forced", False)}
+
+def print_ladder(label, ls):
+    n, T = ls["shuffles"], ls["horizon"]
+    print(f"\n## {label}: disruption ladder, Bracket {ls['bracket']} ({n} shuffles × ({ls['baselines']} clean + "
+          f"{len(ls['rungs'])} rungs) = {n * (ls['baselines'] + len(ls['rungs']))} games; horizon T{T}"
+          + ("; --ladder-max: every event fires" if ls["forced"] else "") + ")")
+    b = ls["base"]
+    print(f"clean baseline (mean of {ls['baselines']} per shuffle): {b['resolved']:.1f} spells, {b['cmd_turns']:.1f} commander turns, "
+          f"{b['dead']:.1f} dead turns by T{T}. noise band (avg per-shuffle SD across baselines): ±{ls['noise']['resolved']} spells, "
+          f"±{ls['noise']['cmd_turns']} cmdr turns. clean floor (P{ls['floor_pct']}) = {ls['p10_casts']} spells.")
+    print(f"{'rung':>4}{'fired':>7}{'hit':>6}{'answered':>10}{'Δspells':>9}{'Δmana':>8}{'Δcards':>8}{'Δboard':>8}{'Δrecur':>8}"
+          f"{'Δcmdr t':>9}{'Δdead t':>9}{'rebuilt':>9}{'in':>4}{'fold':>8}")
+    for r in ls["rungs"]:
+        rb = "  -" if r["rebuilt"] is None else pct(r["rebuilt"]).strip()
+        print(f"{r['rung']:>4}{r['fired']:>7.2f}{r['hits']:>6.2f}{pct(r['answered']):>10}{r['d_resolved']:>+9.2f}{r['d_spent']:>+8.2f}"
+              f"{r['d_extra']:>+8.2f}{r['d_board']:>+8.2f}{r['d_recur']:>+8.2f}{r['d_cmd_turns']:>+9.2f}{r['d_dead']:>+9.2f}"
+              f"{rb:>9}{(str(r['rebuild_med']) if r['rebuild_med'] is not None else '-'):>4}{pct(r['fold']):>8}")
+    bp = ls["bp"]
+    print(f"breakpoint (first rung that folds, per shuffle): " +
+          (f"P25 {bp['p25']} / median {bp['med']} / P75 {bp['p75']}; " if bp else "") + f"never folded: {pct(ls['never']).strip()}"
+          + (f"; {pct(ls['weak']).strip()} of shuffles start below the floor clean (they fold only on commander turns)" if ls["weak"] else ""))
+    if ls["blame"]:
+        print("what changed at the breakpoint (new or moved events, shuffles): " + "; ".join(f"{t} {c}" for t, c in ls["blame"]))
+    if any(r["cleared"] for r in ls["rungs"]):
+        print("tax/lock pieces killed by your held removal (per game, top rung): " + f"{ls['rungs'][-1]['cleared']:.2f}")
+    print(f"fold = a hit event pushed the game below the clean floor (from at/above it), or cost {ls['cmd_lost']}+ commander turns vs "
+          f"the shuffle's baseline mean. Δ = rung game minus that baseline mean (Δ smaller than the noise band is noise); spells = "
+          f"spells that resolved (countered ones don't count; their mana does). fired = "
+          "events that rolled in; hit = landed unanswered on something. rebuilt/in = games whose first board hit got back to the "
+          "pre-hit board size by the horizon / median turns it took. Events: data/goldfish_gradients.json (docs/GOLDFISH.md).")
+
 def mean_leq1(d):
     return d["hand"].get("leq1", 0.0)
 
@@ -1966,6 +2232,13 @@ def compare_table(builds, groups, T):
         rows.append((f"disrupted: Δspells T{T}", [f"{sm['disruption']['any disruption']['d_casts']:+.2f}" for _, sm in builds]))
         rows.append((f"disrupted: Δcmdr turns", [f"{sm['disruption']['any disruption']['d_cmd_turns']:+.2f}" for _, sm in builds]))
         rows.append(("disrupted: answered", [pct(sm['disruption']['any disruption']['answered']).strip() for _, sm in builds]))
+    if all("ladder" in sm for _, sm in builds):
+        L = [sm["ladder"] for _, sm in builds]
+        rows.append(("ladder: median breakpoint", [str(l["bp"]["med"]) if l["bp"] else "none" for l in L]))
+        rows.append(("ladder: never folded", [pct(l["never"]).strip() for l in L]))
+        rows.append(("ladder: fold (avg over rungs)", [pct(mean([r["fold"] for r in l["rungs"]])).strip() for l in L]))
+        rows.append(("ladder: fold at top rung", [pct(l["rungs"][-1]["fold"]).strip() for l in L]))
+        rows.append(("ladder: Δcmdr turns top rung", [f"{l['rungs'][-1]['d_cmd_turns']:+.2f}" for l in L]))
     w = max(len(r[0]) for r in rows) + 2
     cw = max(10, max(len(l) for l in labels) + 2)
     print(f"{'':<{w}}" + "".join(f"{l:>{cw}}" for l in labels))
@@ -2018,7 +2291,7 @@ def explain(cache, names, commanders):
         if k.requires == "gy": bits.append("needs a target in your graveyard")
         elif k.requires == "gy_payoff": bits.append("cast only with a graveyard payoff (recursion in hand/play or a flashback-style card to fetch)")
         elif k.requires: bits.append("needs a " + k.requires)
-        if k.hold: bits.append("held (interaction)")
+        if k.hold: bits.append("held (interaction)" + (f"; can kill tax/lock pieces: {'/'.join(sorted(k.kill))}" if k.kill else ""))
         if k.answer: bits.append(f"answers disruption: {k.answer}" + (" (free with a commander out)" if k.free_cmdr else ""))
         if k.cum_upkeep: bits.append("cumulative upkeep: let go after 3 upkeeps ~approx")
         if k.opp_approx and not any("~opp" in b for b in bits): bits.append("~opp")
@@ -2067,7 +2340,9 @@ def main():
     ap.add_argument("--draw", action="store_true"); ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--track", action="append", default=[]); ap.add_argument("--variant", action="append", default=[])
     ap.add_argument("--kill-commander", type=int, default=0); ap.add_argument("--order", default=ORDER_DEFAULT)
-    ap.add_argument("--disruption", default="sample"); ap.add_argument("--disruption-trace", type=int, default=0)
+    ap.add_argument("--disruption", default="auto"); ap.add_argument("--disruption-trace", default="")
+    ap.add_argument("--bracket", type=int, default=0); ap.add_argument("--shuffles", type=int, default=0)
+    ap.add_argument("--horizon", type=int, default=0); ap.add_argument("--ladder-max", action="store_true")
     ap.add_argument("--cast-interaction", action="store_true"); ap.add_argument("--no-mulligan", action="store_true")
     ap.add_argument("--trace", type=int, default=0)
     ap.add_argument("--explain", action="store_true"); ap.add_argument("--json", action="store_true")
@@ -2076,14 +2351,13 @@ def main():
     if args.trials < 1: sys.exit("--trials must be at least 1")
     if args.turns < 1: sys.exit("--turns must be at least 1")
     fixed = None
-    if args.disruption not in ("sample", "off"):
+    if args.disruption not in ("auto", "ladder", "sample", "off"):
         fixed = []
-        rev = {v.split()[0]: k for k, v in DIS_NAMES.items()} | {k: k for k in DIS_NAMES}
         for part in args.disruption.replace(",", ";").split(";"):
-            kind, _, t = part.strip().partition("@")
-            if kind not in rev or not t.isdigit() or int(t) < 1:
-                sys.exit(f"--disruption {part!r}: use KIND@TURN with KIND one of {', '.join(DIS_NAMES)} (e.g. 'wipe@5;cmd@4'), 'sample' or 'off'")
-            fixed.append((int(t), rev[kind]))
+            try: fixed.append(parse_event(part))
+            except ValueError:
+                sys.exit(f"--disruption {part!r}: use KIND@TURN with KIND one of {', '.join(DIS_CODES)} (add ! for backed up; "
+                         "e.g. 'wipe@5;cmd@4;ctrK!@3'), 'ladder', 'sample' or 'off'")
 
     entries = mtg.parse_deck(args.deck)
     if not entries: sys.exit(f"no cards found in {args.deck}")
@@ -2129,6 +2403,21 @@ def main():
     if args.explain:
         explain(cache, raw_lib + [i for _, pairs in variants for _, i in pairs], raw_cmd); return
     want = header_wants(args.deck, found, cache, raw_lib + raw_cmd)
+    bracket = args.bracket or (mtg.parse_deck_meta(args.deck).get("bracket") or 0)
+    lad, mode, mode_note = None, args.disruption if fixed is None else "fixed", ""
+    if mode in ("auto", "ladder"):
+        lad = load_ladder(bracket, args.horizon) if bracket else None
+        if lad: mode = "ladder"
+        elif mode == "ladder":
+            sys.exit(f"--disruption ladder needs Bracket 2, 3 or 4 (# bracket: header or --bracket); got {bracket or 'none'}")
+        else:
+            mode = "sample"
+            mode_note = (f"no disruption ladder for Bracket {bracket} (ladders: 2-4); " if bracket else
+                         "no bracket in the header or --bracket, so no disruption ladder; ") + "using the sampled disruption read"
+    if mode == "ladder":
+        if args.disruption_trace and not re.fullmatch(r"\d+:\d+", args.disruption_trace):
+            sys.exit("--disruption-trace in ladder mode: SHUFFLE:RUNG, e.g. 3:12")
+        if args.ladder_max: lad["forced"] = True
     prio_txt = "; ".join((["key: " + ", ".join(sorted(k.name for k in want[0]))] if want[0] else [])
                          + ([f"{len(want[1])} package(s)"] if want[1] else []))
     nonland = [cache[n] for n in dict.fromkeys(raw_lib) if not cache[n].is_land]
@@ -2137,7 +2426,7 @@ def main():
             "trials": args.trials, "turns": args.turns, "draw": args.draw, "seed": args.seed, "kill": args.kill_commander,
             "opp_n": sum(1 for k in nonland if k.opp_approx) + sum(1 for n in raw_cmd if cache[n].opp_approx),
             "vac_n": sum(1 for k in nonland if k.status == "vacuum"),
-            "priorities": prio_txt,
+            "priorities": prio_txt, "disruption_mode": mode, "mode_note": mode_note,
             "model": f"{len(nonland)} nonland cards: {st['modeled']} modeled, {st['partial']} partial, {st['blank']} blank, "
                      f"{st['vacuum']} vacuum, {st['held']} held as interaction; {sum(k.override for k in cache.values())} overrides"}
     builds = [("base", raw_lib)]
@@ -2153,7 +2442,10 @@ def main():
         sim = Sim(lib, raw_cmd, args, groups, cache, anyc, want=want)
         res = sim.run(args.trials, args.turns, args.seed)
         sm = summary(res, groups)
-        if args.disruption != "off":
+        if mode == "ladder":
+            sim.persist = lad["persist"]
+            sm["ladder"] = ladder_summary(sim.run_ladder(lad, args.shuffles or lad["shuffles"], args.seed, args.ladder_max), lad)
+        elif mode != "off":
             sm["disruption"] = disruption_summary(sim.run_disruption(args.trials, args.turns, args.seed, res["finals"], fixed), groups)
         for t in sm["turns"]:
             sm["turns"][t]["hand"]["leq1"] = round(mean([1 if h <= 1 else 0 for h in res["rec"]["hand"][t]]), 4)
@@ -2162,7 +2454,10 @@ def main():
         print(json.dumps({"meta": meta, "builds": {l: s for l, s in results}}, indent=1)); return
     for i, (label, sm) in enumerate(results):
         print_report(label, sm, meta, groups, show_header=(i == 0))
-        if "disruption" in sm: print_disruption(label, sm["disruption"], args.turns, args.disruption if fixed else None)
+        if "disruption" in sm:
+            if mode_note and i == 0: print(f"\nnote: {mode_note}")
+            print_disruption(label, sm["disruption"], args.turns, args.disruption if fixed else None)
+        if "ladder" in sm: print_ladder(label, sm["ladder"])
     if len(results) > 1: compare_table(results, groups, args.turns)
     print("\nscope: plays alone by design (opponents are approximations, never decisions). not modeled: combat, tokens beyond Treasures; "
           "partial/blank cards are cast for their mana cost only. Treat numbers as a floor/ceiling sketch, not a prediction.")
