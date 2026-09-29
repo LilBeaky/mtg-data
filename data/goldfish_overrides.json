@@ -32,7 +32,7 @@
         "tax": true
       }
     ],
-    "note": "cumulative upkeep not modeled, so it never leaves; real copies usually die by turn 3-4"
+    "note": "draws off opponents' noncreature spells (fixed ~opp approximation); cumulative upkeep handled generically (kept 3 upkeeps)"
   },
   "Fact or Fiction": {
     "spell": [

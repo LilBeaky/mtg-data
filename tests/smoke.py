@@ -101,7 +101,8 @@ def checks():
         # ---- goldfish. It stops on NOT FOUND, so it gets the deck without the fake card.
         dict(name="goldfish explain", cmd=S("goldfish.py", nofake, "--explain"),
              must=["Entomb — tutor->graveyard", "Step Through — wizardcycling {2}: tutor->hand: Wizard",
-                   "Dimir House Guard — transmute {3}: tutor->hand: card MV=4", "Demonic Tutor — tutor->hand: any card"]),
+                   "Dimir House Guard — transmute {3}: tutor->hand: card MV=4", "Demonic Tutor — tutor->hand: any card",
+                   "Kraum, Ludevic's Opus — on opp_second: draw 1; ~opp", "vacuum   other  Tymna the Weaver"]),
         dict(name="goldfish run", cmd=S("goldfish.py", nofake, "--trials", "300"),
              must=["tutor priorities from the list header: key: Demonic Tutor, Stroke of Genius; 2 package(s)", "tutor targets"],
              must_not=["Entomb 0."]),                       # a graveyard tutor is never card advantage
@@ -115,6 +116,11 @@ def checks():
         dict(name="goldfish gy run", cmd=S("goldfish.py", "tests/goldfish_gy_deck.txt", "--trials", "300",
                                            "--variant", "no Entomb|Entomb=>Swamp"),
              must=["recursion by source", "tutor targets", "Builds compared", "recursion T8"]),
+        dict(name="goldfish disruption fixed", cmd=S("goldfish.py", "tests/goldfish_gy_deck.txt", "--trials", "200",
+                                                    "--disruption", "wipe@5"),
+             must=["fixed scenario for every game: wipe@5", "creature wipe", "Δcmdr turns"], must_not=["table model"]),
+        dict(name="goldfish disruption bad spec", cmd=S("goldfish.py", "tests/goldfish_gy_deck.txt", "--disruption", "meteor@3"),
+             expect_rc=1, must=["use KIND@TURN"]),
         dict(name="goldfish gy trace", cmd=S("goldfish.py", "tests/goldfish_gy_deck.txt", "--trials", "2", "--trace", "2"),
              must=["Entomb finds Griselbrand -> graveyard", "Demonic Tutor finds Reanimate -> hand", "cast Reanimate"]),
     ]
@@ -126,7 +132,7 @@ def run(c):
     except subprocess.TimeoutExpired:
         return ["timed out after 300s"]
     fails = []
-    if rc != 0: fails.append(f"exit code {rc}: {out.strip().splitlines()[-1][:160] if out.strip() else ''}")
+    if rc != c.get("expect_rc", 0): fails.append(f"exit code {rc}: {out.strip().splitlines()[-1][:160] if out.strip() else ''}")
     if "Traceback" in out: fails.append("Python traceback: " + out.strip().splitlines()[-1][:160])
     fails += [f"missing: {m!r}" for m in c.get("must", []) if m not in out]
     fails += [f"unexpected: {m!r}" for m in c.get("must_not", []) if m in out]

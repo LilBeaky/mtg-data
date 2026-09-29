@@ -17,12 +17,14 @@ and which cards produced the card advantage). Full docs: USE_INSTRUCTIONS.md §6
                          (repeatable; a bare card name also works). '# track: Label=REGEX'
                          lines in the deck header are added automatically
   --variant "Label|Out=>In;Out=>In"   also run a swapped build, side by side (repeatable)
-  --kill-commander T     your commander is removed before your turn T (recast with tax)
+  --kill-commander T     every clean game loses its commander after turn T-1 (recast with tax)
+  --disruption MODE      'sample' (default): replay every game with a sampled disruption scenario
+                         (none / commander removal / spot removal / creature wipe / nonland wipe /
+                         counterspell) and report the paired damage; 'off'; or a fixed scenario
+                         for every game, e.g. 'wipe@5;cmd@4'
+  --disruption-trace N   play-by-play of game N's disrupted replay
   --order LIST           cast priority (default commander,track,ramp,draw,other)
-  --opps N --opp-casts N --opp-pay P --opp-hand N
-                         table model for opponent-triggered cards (defaults: 3 opponents,
-                         1 spell each per turn cycle, 50% pay a tax, 4 cards in hand)
-  --cast-interaction     also cast held removal / counters / protection spells
+  --cast-interaction     also cast held removal / counters / protection spells proactively
   --no-mulligan          keep every opening 7
   --explain              print how each card was modeled, then exit
   --trace N              print a play-by-play of game N (to audit the pilot)
@@ -58,7 +60,23 @@ OVERRIDES_FILE = os.path.join(mtg.DATA_DIR, "goldfish_overrides.json")
 ORDER_DEFAULT = "commander,track,ramp,draw,other"
 _CTX = {"raw": None, "text": "", "orig": None}   # card being compiled; original-case effect text for parse_fx
 _EXPLAIN_DECK = []                              # raw cards of the list, so --explain can count tutor hits
-START_LIFE, LIFE_FLOOR = 40, 20   # the pilot won't pay life below the floor (a goldfish still has a table to survive)
+# Opponents are not simulated. Cards that only work off other players get these fixed approximations
+# (no knobs; tagged ~opp in --explain): 3 other turns per round (a 4-player pod: turn structure);
+# each opponent draws 1 and casts 1 spell a turn (40% creatures), a second spell 30% of the time;
+# taxes (Rhystic, Tithe) are paid 75% of the time, so each lands about once a round; an opponent
+# holds 4 cards; an opponent's land count is their turn count.
+POD, OPP_CREATURE_SHARE, OPP_SECOND, TAX_PAID, OPP_HAND = 3, 0.4, 0.3, 0.75, 4
+OPP_LINE = re.compile(r"\bopponents?\b|attacks you\b|\bother players?\b|each player(?! may)")
+START_LIFE, LIFE_FLOOR = 40, 20
+# Disruption to your own game (sampled per game, replayed on the same shuffles as the clean run):
+# 25% of games have none, 50% one event, 25% two. Events land on turns 3+ (after your turn t, or
+# during it for a counter). Your held counters / protection answer an event if you left mana open
+# (or it's free with a commander out).
+DIS_KINDS = (("cmd", 0.25), ("removal", 0.25), ("wipe", 0.20), ("nuke", 0.10), ("counter", 0.20))
+DIS_NAMES = {"cmd": "commander removal", "removal": "spot removal", "wipe": "creature wipe",
+             "nuke": "nonland wipe", "counter": "counterspell"}
+ANSWERS = {"counter": {"cmd", "removal", "wipe", "nuke", "counter"}, "protect": {"cmd", "removal", "wipe", "nuke"},
+           "redirect": {"cmd", "removal"}}   # the pilot won't pay life below the floor (a goldfish still has a table to survive)
 GY_KW = ("flashback", "jump-start", "retrace", "escape", "unearth", "harmonize")
 
 def num(s, default=1):
@@ -259,6 +277,11 @@ def parse_fx(s):
     s = s0.lower()
     if len(s) != len(s0): s0 = s
     tax = bool(re.search(r"unless (?:that player|they) pays?|that player may pay \{", s))
+    m = re.match(r"(?:you may )?if an opponent controls more lands than you,? (.+)$", s)
+    if m:
+        inner, t2 = parse_fx(s0[m.start(1):])
+        return ([("cond", "opp_lands", inner)] if inner else []), tax or t2
+    if re.match(r"(?:you may )?if (?:an|each) opponent (?:controls|has) more\b", s): return [], tax
     m = re.search(r"you may pay ((?:\{[^}]+\})+)\. if you do,? (.+)", s)
     if m:
         g, p, _, _ = parse_cost(m.group(1))
@@ -280,7 +303,7 @@ def fx_str(e):
     if t in ("draw", "scry", "surveil", "prolif", "treasure", "extra_land", "land_from_hand", "free_cast"):
         v = e[1]
         return f"{t} {'/'.join(v) if isinstance(v, tuple) else v}"
-    if t == "wheel": return f"wheel {e[1]}"
+    if t == "wheel": return f"wheel {e[1]}" + (" ~opp" if e[1] == "max" else "")
     if t == "putback": return f"put back {e[1]}" + (" (bottom)" if e[2] else "")
     if t == "discard": return f"discard {e[1]}"
     if t == "look": return f"look {e[1]} take {e[2]}"
@@ -295,6 +318,7 @@ def fx_str(e):
     if t == "recur":
         return f"recur->{e[2]}: {e[3]}x {e[1].describe()}".replace(": 1x ", ": ") + (" ~" + "; ".join(e[1].approx) if e[1].approx else "")
     if t == "mill": return f"mill {e[1]}"
+    if t == "cond": return "if an opponent has more lands ~opp: " + ", ".join(fx_str(x) for x in e[2])
     if t == "dig_gy": return f"reveal {e[1]}, take {e[2].describe()}, rest to graveyard"
     if t == "mana": return "mana " + "".join("".join(sorted(u)) if len(u) == 1 else "*" for u in e[1])
     if t == "ctr": return f"+{e[2]} {e[1]} ctr"
@@ -335,6 +359,10 @@ class Card:
         self.recur_fx = []       # every recursion effect on the card (for reanimation-aware tutoring)
         self.cycle_fx = []       # "when you cycle ~" riders (Krosan Tusker)
         self.life_per_mv = False # Reanimate: lose life equal to the returned card's mana value
+        self.opp_approx = False  # leans on the fixed opponent approximations (~opp)
+        self.cum_upkeep = False  # cumulative upkeep: kept for 3 of your upkeeps, then let go (~approx)
+        self.answer = None       # counter / protect / redirect: can stop a disruption event
+        self.free_cmdr = False   # free while you control a commander (Fierce Guardianship)
 
 def strip_reminder(t):
     return re.sub(r"\s*\([^()]*\)", "", t)
@@ -464,6 +492,9 @@ def parse_trigger(k, lo):
     m = re.match(r"^whenever you proliferate,\s*(.+)$", lo)
     if m:
         fx, tax = parse_fx(m.group(1)); k.trig.append(("prolif", None, fx, False, tax, False)); return bool(fx)
+    m = re.match(r"^whenever an opponent casts their second spell each turn,\s*(.+)$", lo)
+    if m:
+        fx, tax = parse_fx(m.group(1)); k.trig.append(("opp_second", None, fx, False, tax, False)); return bool(fx)
     m = re.match(r"^whenever an opponent casts (a|an|their first) ?(.*?)spells?(?: each turn)?,\s*(.+)$", lo)
     if m:
         fx, tax = parse_fx(m.group(3)); f = parse_filter(m.group(2)) if m.group(2).strip() else None
@@ -575,7 +606,7 @@ def compile_card(c, anyc):
     k.raw = c
     k.life_per_mv = bool(re.search(r"lose life equal to (?:its|that card's) mana value", text.lower()))
     saved = dict(_CTX); _CTX.update(raw=c, text=text)
-    abil, done, missed = [], 0, 0
+    abil, done, missed, vac = [], 0, 0, 0
     for L in (l.strip() for l in text.split("\n")):
         if not L: continue
         kw = keyword_line(k, L, c)
@@ -583,12 +614,16 @@ def compile_card(c, anyc):
             if kw: done += 1
             else: missed += 1; k.notes.append("unmodeled: " + L[:72])
             continue
+        if re.fullmatch(r"if you control a commander, you may cast ~ without paying its mana cost\.?", L.lower()):
+            k.free_cmdr = True; done += 1; continue
         r = parse_line(k, L, anyc, abil)
         if r is True: done += 1
         elif r is False:
             if all(any(part.strip().startswith(w) for w in kws) for part in re.split(r"[,;]", L.lower()) if part.strip()):
                 continue                                   # keyword line (Flying, Ward {2}, Equip {1}...)
-            missed += 1; k.notes.append("unmodeled: " + L[:72])
+            missed += 1
+            if OPP_LINE.search(L.lower()): vac += 1; k.notes.append("needs opponents: " + L[:72])
+            else: k.notes.append("unmodeled: " + L[:72])
     if k.is_land and k.land_types:
         abil.append(([frozenset(BASIC[t] for t in k.land_types)], None, False, 0))
     plain = [a for a in abil if not a[3]]
@@ -617,9 +652,18 @@ def compile_card(c, anyc):
     if len(faces) > 1 and c.get("layout") == "modal_dfc" and "Land" in (faces[1].get("type_line") or "") and not k.is_land:
         back = dict(faces[1]); back.setdefault("cmc", 0)
         k.mdfc = compile_card(dict(back, name=faces[1]["name"], layout="normal", keywords=c.get("keywords")), anyc)
+    k.cum_upkeep = "cumulative upkeep" in kws
     if k.types & {"Instant", "Sorcery"}:
         k.ritual = bool(k.spell) and all(e[0] == "mana" for e in k.spell)
         k.hold = bool(RX_INTERACT.search(text.lower())) and not k.ritual
+    lt = text.lower()
+    if "Instant" in k.types or "flash" in kws:
+        if re.search(r"counter target [^.]*?spell\b", lt): k.answer = "counter"
+        elif re.search(r"phase out|(?:creatures|permanents) you control gain [^.]*?(?:hexproof|indestructible|protection|shroud)"
+                       r"|(?:you and )?permanents you control gain|target (?:creature|permanent) you control gains? [^.]*?"
+                       r"(?:hexproof|indestructible|protection|shroud)", lt): k.answer = "protect"
+        elif "choose new targets for target spell" in lt: k.answer = "redirect"
+        if k.answer and "Creature" not in k.types: k.hold = True
     _CTX.update(saved)
     for a in k.hand_acts:
         if a["kind"] != "transmute": a["fx"] = a["fx"] + k.cycle_fx
@@ -632,6 +676,7 @@ def compile_card(c, anyc):
         if all(e[0] == "tutor" and e[2] == "graveyard" for e in k.spell): k.requires = "gy_payoff"
     categorize(k)
     k.status = "blank" if missed and not done and not k.units else "partial" if missed else "modeled"
+    if k.status == "blank" and vac == missed: k.status = "vacuum"
     if k.hold: k.status = "held"
     return k
 
@@ -684,14 +729,21 @@ def keyword_line(k, L, c):
     k.gycast = gc
     return True
 
+def flat(fxs):
+    out = []
+    for e in fxs: out += [e] + (flat(e[2]) if e[0] == "cond" else flat(e[3]) if e[0] == "paid" else [])
+    return out
+
 def all_fx(k):
-    return k.etb + k.castfx + k.spell + [e for t in k.trig for e in t[2]] + [e for a in k.acts for e in a["fx"]] \
-        + [e for _, f in k.pw for e in f] + [e for a in k.hand_acts for e in a["fx"]]
+    return flat(k.etb + k.castfx + k.spell + [e for t in k.trig for e in t[2]] + [e for a in k.acts for e in a["fx"]] \
+        + [e for _, f in k.pw for e in f] + [e for a in k.hand_acts for e in a["fx"]])
 
 def categorize(k):
-    fxs = k.etb + k.castfx + k.spell + [e for t in k.trig for e in t[2]] + [e for a in k.acts for e in a["fx"]] \
-        + [e for _, f in k.pw for e in f]
+    fxs = flat(k.etb + k.castfx + k.spell + [e for t in k.trig for e in t[2]] + [e for a in k.acts for e in a["fx"]] \
+        + [e for _, f in k.pw for e in f])
     kinds = {e[0] for e in fxs}
+    k.opp_approx = any(t[0] in ("opp_cast", "opp_draw", "opp_second") or t[4] for t in k.trig) \
+        or any(e[0] == "cond" or e[0] == "wheel" and e[1] == "max" or e[0] == "draw" and e[1] == ("opp_hand",) for e in fxs)
     ramp = (not k.is_land and (k.units or k.vivid or k.convs)) or kinds & {"land_search", "extra_land", "land_from_hand", "treasure"} \
         or any(s[0] in ("lands_any", "lands_any_n", "spend_any", "reduce", "alt", "free", "extra_land") for s in k.statics)
     draws = kinds & {"draw", "look", "tutor_multi", "wheel"} or any(
@@ -817,6 +869,7 @@ class Game:
         self.attr = Counter(); self.first = {}; self.cmd_first = {}; self.rebound = []
         self.exile, self.unearthed = [], []
         self.recur = 0; self.cycled = 0; self.rattr = Counter(); self.tut = Counter(); self.life = START_LIFE
+        self.events = {}; self.counter_pending = False; self.open_pool = []; self.dis = []
         self.log = None
 
     @property
@@ -973,7 +1026,8 @@ class Game:
                     rest = [x_[0] for x_ in self.cands(k) if not x_[2]]
                     for i in rest: self.use_unit(i)
                     x = len(rest) + 2
-                self.resolve(k, zone, gen + len(pips) + x - (2 if k.x else 0), x)
+                paid = gen + len(pips) + x - (2 if k.x else 0)
+                if not self.countered(k, zone, paid): self.resolve(k, zone, paid, x)
                 return True
         return False
 
@@ -1203,7 +1257,7 @@ class Game:
         if key == "creatures": return sum("Creature" in q.k.types for q in self.perms)
         if key == "artifacts": return sum("Artifact" in q.k.types for q in self.perms)
         if key == "enchantments": return sum("Enchantment" in q.k.types for q in self.perms)
-        if key == "opp_hand": return self.sim.opp_hand
+        if key == "opp_hand": return OPP_HAND
         if key == "power": return max((q.k.power + (q.ctr or {}).get("+1/+1", 0) for q in self.perms if "Creature" in q.k.types), default=0)
         if key == "colors": return len(self.perm_colors())
         if key == "ctr": return (p.ctr or {}).get(v[1], 0) if isinstance(p, Perm) else 0
@@ -1325,6 +1379,7 @@ class Game:
                         if not need_land and self.value(card) > (45 if payoff else 20): continue
                     elif self.value(card) > (45 if payoff else 20): continue
                 if ab.get("life") and self.life - ab["life"] < LIFE_FLOOR: continue
+                if eot and sum(1 for u in self.pool if not u[5]) - ab["gen"] - len(ab["pips"]) < self.reserve(): continue
                 if not self.pay(None, ab["gen"], ab["pips"]): continue
                 self.life -= ab.get("life", 0)
                 self.hand.remove(card); self.gy.append(card); self.gain(-1, card.name)
@@ -1347,7 +1402,7 @@ class Game:
                 if e[2]:
                     self.lib += self.hand + self.gy; self.gy = []; self.rng.shuffle(self.lib)
                 else: self.gy += self.hand
-                n = e[1] if isinstance(e[1], int) else max(size, self.sim.opp_hand)
+                n = e[1] if isinstance(e[1], int) else max(size, OPP_HAND)
                 self.hand = []; self.draw(n)                       # count only the net gain
                 self.gain(max(0, n - size), name)
             elif t in ("scry", "surveil"):
@@ -1424,6 +1479,8 @@ class Game:
                         elif pick.types & PERMANENT: self.enter(pick)
                         else: self.gy.append(pick)
                     else: self.hand.append(pick); self.gain(1, name)
+            elif t == "cond":
+                if self.opp_lands() > len(self.lands): self.do(e[2], k, p, x)
             elif t == "dig_gy":
                 if self.dry: continue
                 top = [self.lib.pop() for _ in range(min(e[1], len(self.lib)))]
@@ -1502,19 +1559,85 @@ class Game:
                     if p.once is None: p.once = set()
                     if (ev, self.phase) in p.once: continue
                     p.once.add((ev, self.phase))
-                if tax and self.rng.random() < self.sim.opp_pay: continue
+                if tax and self.rng.random() < TAX_PAID: continue
                 self.do(fx, p.k, p)
 
     # ---- turn structure
     def opponents(self):
-        sim = self.sim
-        for _ in range(sim.opps):
+        """The other turns of the round: 'each upkeep / end step' triggers, plus the fixed approximations
+        for opponent-triggered cards (see POD). No opponent decisions are simulated."""
+        for _ in range(POD):
             self.phase += 1
             self.fire("upkeep", each_only=True)
             self.fire("opp_draw")
-            for _ in range(sim.opp_casts):
-                self.fire("opp_cast", OPP_CREATURE if self.rng.random() < 0.4 else OPP_SPELL)
+            self.fire("opp_cast", OPP_CREATURE if self.rng.random() < OPP_CREATURE_SHARE else OPP_SPELL)
+            if self.rng.random() < OPP_SECOND:
+                self.fire("opp_cast", OPP_CREATURE if self.rng.random() < OPP_CREATURE_SHARE else OPP_SPELL)
+                self.fire("opp_second")
             self.fire("end", each_only=True)
+
+    def answer_cost(self, c):
+        """Mana an answer needs right now (0 if it's free with a commander out)."""
+        if c.free_cmdr and any(p.k in self.sim.commanders for p in self.perms): return 0, []
+        return c.gen, c.pips
+
+    def reserve(self):
+        """Mana the pilot keeps open at end of turn for its cheapest held answer (never taps out to cycle)."""
+        costs = [g + len(p) for c in self.hand if c.answer for g, p in [self.answer_cost(c)]]
+        return min(costs) if costs else 0
+
+    def try_answer(self, kind, pool):
+        """Use a held answer against a disruption event, paying from `pool`. True if stopped."""
+        for c in sorted((c for c in dict.fromkeys(self.hand) if c.answer and kind in ANSWERS[c.answer]),
+                        key=lambda c: sum(len(x) if isinstance(x, list) else x for x in self.answer_cost(c))):
+            g, p = self.answer_cost(c)
+            saved, self.pool, self.convs = self.pool, pool, []
+            ok = (not g and not p) or self.pay(c, g, p)
+            self.pool = saved
+            if ok:
+                self.hand.remove(c); self.gy.append(c); self.casts += 1; self.spent += g + len(p)
+                self.note(f"  {c.name} answers the {DIS_NAMES[kind]}")
+                return True
+        return False
+
+    def leave(self, p, why):
+        self.perms.remove(p); self._st = None
+        if p.k in self.sim.commanders: self.cmd.append(p.k)
+        else: self.gy.append(p.k)
+        self.note(f"    {p.k.name} {why}")
+
+    def disrupt(self, kind):
+        """A disruption event after your turn. Records (kind, 'hit' / 'answered' / 'no target')."""
+        cmdrs = self.sim.commanders
+        if kind == "cmd": targets = [p for p in self.perms if p.k in cmdrs]
+        elif kind == "removal": targets = [p for p in self.perms if p.k not in cmdrs]
+        elif kind == "wipe": targets = [p for p in self.perms if "Creature" in p.k.types]
+        else: targets = list(self.perms)
+        if not targets: self.dis.append((kind, "no target")); return
+        self.note(f"  DISRUPTION: {DIS_NAMES[kind]}")
+        if self.try_answer(kind, self.open_pool): self.dis.append((kind, "answered")); return
+        self.dis.append((kind, "hit"))
+        if kind in ("cmd", "removal"):
+            r = self.sim.dis_rng
+            self.leave(max(targets, key=lambda p: (p.k.mv, p.k.name)) if r.random() < 0.5 else r.choice(targets), "is removed")
+        else:
+            for p in targets: self.leave(p, "dies in the wipe")
+            if kind == "nuke": self.treasures = 0
+
+    def countered(self, k, zone, paid):
+        """Counter event: the first spell of MV 3+ (or your commander) this turn. True if it was countered."""
+        if not self.counter_pending or zone == "gy" or (k.mv < 3 and zone != "cmd") or self.dry: return False
+        self.counter_pending = False
+        self.note(f"  DISRUPTION: counterspell on {k.name}")
+        if self.try_answer("counter", self.pool): self.dis.append(("counter", "answered")); return False
+        self.dis.append(("counter", "hit"))
+        if zone == "hand": self.hand.remove(k); self.gy.append(k)
+        else: self.cmd_casts[k] += 1
+        self.casts += 1; self.spent += paid; self.fire("cast", k)
+        return True
+
+    def opp_lands(self):
+        return min(self.turn - (1 if self.sim.on_play else 0), 8)
 
     def play(self, turns, rec):
         sim = self.sim
@@ -1522,12 +1645,12 @@ class Game:
             self.hand.remove(k); self.enter(k)
         for t in range(1, turns + 1):
             self.turn = t; self.phase += 1
-            if t == sim.kill_turn:
-                for p in [q for q in self.perms if q.k in sim.commanders]:
-                    self.perms.remove(p); self.cmd.append(p.k); self._st = None
             for p in self.lands: p.tapped = False
             for p in self.perms: p.tapped = False; p.sick = False
             self.drops = 1 + self.st.extra_land
+            for q in [q for q in self.perms if q.k.cum_upkeep]:
+                q.ctr = q.ctr or {}; q.ctr["age"] = q.ctr.get("age", 0) + 1
+                if q.ctr["age"] > 3: self.perms.remove(q); self.gy.append(q.k); self._st = None
             self.fire("upkeep")
             for k in self.rebound:
                 self.fire("cast", k); self.do(k.spell, k); self.gy.append(k)
@@ -1538,6 +1661,7 @@ class Game:
             if self.drops > 0:
                 land = self.choose_land()
                 if land: self.play_land(land)
+            self.counter_pending = "counter" in self.events.get(t, ())
             self.build_pool()
             pool_n = sum(1 for u in self.pool if not u[5])
             cols = set().union(*(u[0] | u[1] for u in self.pool if not u[5])) if self.pool else set()
@@ -1549,11 +1673,16 @@ class Game:
             self.cast_loop()
             if self.hand_act(): self.cast_loop(activate=False)       # transmute, then cast what it found
             while self.hand_act(eot=True): pass                     # leftover mana: cycle dead cards
+            if self.counter_pending: self.dis.append(("counter", "no target")); self.counter_pending = False
+            self.open_pool = [u for u in self.pool if not u[5]] if self.pool else []
             self.pool = None; self.convs = []
             self.fire("end")
             for q in self.unearthed:
                 if q in self.perms: self.perms.remove(q); self.exile.append(q.k); self._st = None
             self.unearthed = []
+            for kind in self.events.get(t, ()):
+                if kind != "counter": self.disrupt(kind)
+            self.open_pool = []
             if not self.st.no_max and len(self.hand) > 7:
                 self.hand.sort(key=self.value)
                 n = len(self.hand) - 7
@@ -1562,6 +1691,7 @@ class Game:
             rec["casts"][t].append(self.casts); rec["spent"][t].append(self.spent)
             rec["disc"][t].append(self.disc)
             rec["gy"][t].append(len(self.gy)); rec["recur"][t].append(self.recur); rec["cycled"][t].append(self.cycled)
+            rec["board"][t].append(len(self.perms))
             rec["cmd_out"][t].append(bool(sim.commanders) and all(any(p.k is c for p in self.perms) for c in sim.commanders))
             if self.log is not None and self.perms: self.note("  board: " + "; ".join(p.k.name + (str(p.ctr) if p.ctr else "") for p in self.perms))
             self.opponents()
@@ -1580,9 +1710,9 @@ class Sim:
         self.land_cards = [k for k in dict.fromkeys(self.deck) if k.is_land]
         self.order = {c: i for i, c in enumerate(args.order.split(","))}
         self.on_play, self.kill_turn, self.cast_hold = not args.draw, args.kill_commander, args.cast_interaction
-        self.opps, self.opp_casts, self.opp_pay, self.opp_hand = args.opps, args.opp_casts, args.opp_pay, args.opp_hand
         self.dry_rng = random.Random(0)
         self.tm = {}
+        self.dis_rng = random.Random(0)
         self.keys, self.packages = want or (set(), [])
         self.wanted = set(self.keys) | {c for parts in self.packages for part in parts for c in part}
         uniq = list(dict.fromkeys(self.deck + self.commanders))
@@ -1591,6 +1721,24 @@ class Sim:
         for k in uniq:
             tgs = [e[1] for e in all_fx(k) if e[0] == "tutor" and e[2] not in ("graveyard", "none")]
             if tgs: self.finds[k] = {c for c in uniq if any(self.tmatch(tg, c) for tg in tgs)}
+
+    def scenario(self, i, seed, turns, fixed=None):
+        """Disruption events for game i: {turn: [kinds]}. Its own RNG, so the shuffle matches the clean game."""
+        if fixed is not None: evs = fixed
+        else:
+            r = random.Random(seed * 7919 + i * 31 + 5)
+            x = r.random(); n = 0 if x < 0.25 else 1 if x < 0.75 else 2
+            evs = []
+            for _ in range(n):
+                y, kind = r.random(), DIS_KINDS[-1][0]
+                for kk, w in DIS_KINDS:
+                    if y < w: kind = kk; break
+                    y -= w
+                last = turns if kind == "counter" else turns - 1
+                evs.append((r.randint(min(3, last), max(3, last)), kind))
+        out = {}
+        for t, kind in evs: out.setdefault(t, []).append(kind)
+        return out
 
     def tmatch(self, tg, k):
         key = (id(tg), id(k))
@@ -1628,27 +1776,55 @@ class Sim:
             lib[0:0] = hand[:bottom]; hand = hand[bottom:]
         return hand, lib, 7 - bottom, mulls
 
+    def game(self, i, seed, turns, rec, events=None, trace=False):
+        rng = random.Random(seed * 1_000_003 + i)
+        hand, lib, size, mulls = self.opening(rng)
+        g = Game(self, hand, lib, rng)
+        if events: g.events = events
+        self.dis_rng = random.Random(seed * 104_729 + i)
+        if trace: g.log = [f"game {i + 1}: kept {len(hand)} after {mulls} mulligan(s)"
+                           + (f"; disruption {', '.join(f'{DIS_NAMES[k]}@T{t}' for t, ks in sorted(events.items()) for k in ks)}" if events else "")]
+        g.play(turns, rec)
+        if g.log: print("\n".join(g.log)); print()
+        g.final = {"cmd_out": rec["cmd_out"][turns][-1], "cmd_turns": sum(rec["cmd_out"][t][-1] for t in range(1, turns + 1)), "casts": g.casts, "spent": g.spent, "extra": g.extra,
+                   "board": len(g.perms), "recur": g.recur,
+                   "first": {gi: g.first.get(gi) for gi in range(len(self.groups))}}
+        return g, size, mulls
+
     def run(self, trials, turns, seed):
         T = range(1, turns + 1)
         rec = {m: {t: [] for t in T} for m in
                ("lands", "mana", "colors", "stranded", "hand", "extra", "casts", "spent", "disc", "cmd_out",
-                "gy", "recur", "cycled")}
+                "gy", "recur", "cycled", "board")}
         first = {gi: [] for gi in range(len(self.groups))}
         cmd_first = {c.name: [] for c in self.commanders}
         attr, kept, mull_n, rattr, tut = Counter(), Counter(), 0, Counter(), Counter()
+        finals = []
         for i in range(trials):
-            rng = random.Random(seed * 1_000_003 + i)
-            hand, lib, size, mulls = self.opening(rng)
+            fixed = {self.kill_turn - 1: ["cmd"]} if self.kill_turn and self.kill_turn > 1 else None
+            g, size, mulls = self.game(i, seed, turns, rec, events=fixed,
+                                       trace=self.args.trace == i + 1)
             kept[size] += 1; mull_n += mulls > 0
-            g = Game(self, hand, lib, rng)
-            if self.args.trace == i + 1: g.log = [f"game {i + 1}: kept {len(hand)} after {mulls} mulligan(s)"]
-            g.play(turns, rec)
-            if g.log: print("\n".join(g.log)); print()
             for gi in first: first[gi].append(g.first.get(gi))
             for c in cmd_first: cmd_first[c].append(g.cmd_first.get(c))
             attr.update(g.attr); rattr.update(g.rattr); tut.update(g.tut)
+            finals.append(g.final)
         return {"rec": rec, "first": first, "cmd_first": cmd_first, "attr": attr, "kept": kept, "rattr": rattr, "tut": tut,
-                "mulliganed": mull_n / trials, "trials": trials, "turns": turns}
+                "mulliganed": mull_n / trials, "trials": trials, "turns": turns, "finals": finals}
+
+    def run_disruption(self, trials, turns, seed, clean_finals, fixed=None):
+        """Replay each game on the same shuffle with its sampled disruption; pair it with the clean game."""
+        out = []
+        for i in range(trials):
+            ev = self.scenario(i, seed, turns, fixed)
+            if not ev: out.append(([], [], clean_finals[i], clean_finals[i])); continue
+            scratch = {m: {t: [] for t in range(1, turns + 1)} for m in
+                       ("lands", "mana", "colors", "stranded", "hand", "extra", "casts", "spent", "disc", "cmd_out",
+                        "gy", "recur", "cycled", "board")}
+            g, _, _ = self.game(i, seed, turns, scratch, events=ev, trace=self.args.disruption_trace == i + 1)
+            kinds = [k for t in sorted(ev) for k in ev[t]]
+            out.append((kinds, g.dis, clean_finals[i], g.final))
+        return out
 
 # ---------------------------------------------------------------- report
 def pct(v): return f"{100 * v:5.1f}%"
@@ -1689,8 +1865,9 @@ def print_report(label, sm, meta, groups, show_header=True):
               + ", ".join(f"{k}: {pct(v).strip()}" for k, v in sm["kept_hand_size"].items())
               + "  (London, first mulligan free per rule 103.5c)")
         if meta.get("priorities"): print(f"tutor priorities from the list header: {meta['priorities']}")
-        print(f"table model: {meta['opps']} opponents, {meta['opp_casts']} spell(s) each per cycle, "
-              f"{int(meta['opp_pay'] * 100)}% pay a tax, {meta['opp_hand']} cards in an opponent's hand")
+        print(f"opponents: not simulated. {meta['opp_n']} card(s) use the fixed opponent approximations (~opp in --explain); "
+              f"{meta['vac_n']} need opponents and do nothing here (vacuum)")
+        if meta.get("kill"): print(f"--kill-commander {meta['kill']}: every clean game loses the commander after turn {meta['kill'] - 1}")
     print(f"\n## {label}: development (P10/median/P90; lands and mana at the start of your main phase)")
     print(f"{'turn':<5}{'lands':<10}{'mana':<10}{'all colors':>11}{'cmdr out':>10}   {'spells cast':<13}{'mana spent':<12}")
     for t in range(1, T + 1):
@@ -1720,6 +1897,47 @@ def print_report(label, sm, meta, groups, show_header=True):
         print(f"tutor targets (times fetched, avg per game): "
               + " | ".join(f"{k} {v:.2f}" for k, v in sm["tutor_targets"].items()))
 
+def disruption_summary(pairs, groups):
+    """Per scenario: games, events answered / with no target, and the average change vs the same clean game."""
+    buckets = {}
+    for kinds, res, c, d in pairs:
+        label = "none" if not kinds else DIS_NAMES[kinds[0]] if len(kinds) == 1 else "two events"
+        buckets.setdefault(label, []).append((res, c, d))
+        if kinds: buckets.setdefault("any disruption", []).append((res, c, d))
+    out = {}
+    for label, rows in buckets.items():
+        n = len(rows)
+        evs = [r for res, _, _ in rows for r in res]
+        live = [r for r in evs if r[1] != "no target"]
+        dm = lambda key: round(mean([d[key] - c[key] for _, c, d in rows]), 2)
+        out[label] = {"games": n, "share": 0, "no_target": round(len([r for r in evs if r[1] == "no target"]) / len(evs), 3) if evs else 0,
+                      "answered": round(len([r for r in live if r[1] == "answered"]) / len(live), 3) if live else 0,
+                      "d_casts": dm("casts"), "d_spent": dm("spent"), "d_extra": dm("extra"), "d_board": dm("board"),
+                      "d_recur": dm("recur"), "d_cmd_turns": dm("cmd_turns"),
+                      "tracked": {groups[gi][0]: [round(mean([1 if c["first"][gi] is not None else 0 for _, c, _ in rows]), 3),
+                                                  round(mean([1 if d["first"][gi] is not None else 0 for _, _, d in rows]), 3)]
+                                  for gi in range(len(groups))}}
+    for v in out.values(): v["share"] = round(v["games"] / len(pairs), 3)
+    return out
+
+def print_disruption(label, ds, T, fixed):
+    order = ["none"] + [DIS_NAMES[k] for k, _ in DIS_KINDS] + ["two events", "any disruption"]
+    head = (f"fixed scenario for every game: {fixed}" if fixed else
+            "sampled per game: 25% none, 50% one event, 25% two; events on turns 3+")
+    print(f"\n## {label}: disruption (same shuffles as the clean games; {head})")
+    print(f"{'scenario':<19}{'games':>7}{'answered':>10}{'no target':>11}{'Δspells':>9}{'Δmana':>8}{'Δcards':>8}"
+          f"{'Δboard':>8}{'Δrecur':>8}{'Δcmdr turns':>13}")
+    for name in order:
+        v = ds.get(name)
+        if not v: continue
+        print(f"{name:<19}{v['games']:>7}{pct(v['answered']):>10}{pct(v['no_target']):>11}{v['d_casts']:>+9.2f}{v['d_spent']:>+8.2f}"
+              f"{v['d_extra']:>+8.2f}{v['d_board']:>+8.2f}{v['d_recur']:>+8.2f}{v['d_cmd_turns']:>+13.2f}")
+    for g, (a, b) in (ds.get("any disruption", {}).get("tracked") or {}).items():
+        print(f"tracked {g} by T{T} (games with disruption): {pct(a).strip()} clean → {pct(b).strip()} disrupted")
+    print(f"Δ = disrupted minus the same clean game, averaged over T1-T{T} (board: at end of T{T}; cmdr turns: turns ending with "
+          "your commander out). 'answered' = your held counters/protection stopped it (mana left open, or free with a commander "
+          "out); 'no target' = nothing there to hit. Positive Δspells/Δmana after a hit usually means rebuilding with spare mana.")
+
 def mean_leq1(d):
     return d["hand"].get("leq1", 0.0)
 
@@ -1744,6 +1962,10 @@ def compare_table(builds, groups, T):
     rows.append((f"mana spent T{T} median", [str(sm['turns'][T]['spent']['med']) for _, sm in builds]))
     rows.append((f"recursion T{T} (avg)", [f"{sm['turns'][T]['recur']['mean']:.2f}" for _, sm in builds]))
     rows.append((f"cards cycled T{T} (avg)", [f"{sm['turns'][T]['cycled']['mean']:.2f}" for _, sm in builds]))
+    if all("disruption" in sm and "any disruption" in sm["disruption"] for _, sm in builds):
+        rows.append((f"disrupted: Δspells T{T}", [f"{sm['disruption']['any disruption']['d_casts']:+.2f}" for _, sm in builds]))
+        rows.append((f"disrupted: Δcmdr turns", [f"{sm['disruption']['any disruption']['d_cmd_turns']:+.2f}" for _, sm in builds]))
+        rows.append(("disrupted: answered", [pct(sm['disruption']['any disruption']['answered']).strip() for _, sm in builds]))
     w = max(len(r[0]) for r in rows) + 2
     cw = max(10, max(len(l) for l in labels) + 2)
     print(f"{'':<{w}}" + "".join(f"{l:>{cw}}" for l in labels))
@@ -1797,6 +2019,9 @@ def explain(cache, names, commanders):
         elif k.requires == "gy_payoff": bits.append("cast only with a graveyard payoff (recursion in hand/play or a flashback-style card to fetch)")
         elif k.requires: bits.append("needs a " + k.requires)
         if k.hold: bits.append("held (interaction)")
+        if k.answer: bits.append(f"answers disruption: {k.answer}" + (" (free with a commander out)" if k.free_cmdr else ""))
+        if k.cum_upkeep: bits.append("cumulative upkeep: let go after 3 upkeeps ~approx")
+        if k.opp_approx and not any("~opp" in b for b in bits): bits.append("~opp")
         if k.ritual: bits.append("ritual (cast only to enable a spell)")
         if k.mdfc: bits.append("MDFC land back")
         if k.rebound: bits.append("rebound")
@@ -1842,8 +2067,7 @@ def main():
     ap.add_argument("--draw", action="store_true"); ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--track", action="append", default=[]); ap.add_argument("--variant", action="append", default=[])
     ap.add_argument("--kill-commander", type=int, default=0); ap.add_argument("--order", default=ORDER_DEFAULT)
-    ap.add_argument("--opps", type=int, default=3); ap.add_argument("--opp-casts", type=int, default=1)
-    ap.add_argument("--opp-pay", type=float, default=0.5); ap.add_argument("--opp-hand", type=int, default=4)
+    ap.add_argument("--disruption", default="sample"); ap.add_argument("--disruption-trace", type=int, default=0)
     ap.add_argument("--cast-interaction", action="store_true"); ap.add_argument("--no-mulligan", action="store_true")
     ap.add_argument("--trace", type=int, default=0)
     ap.add_argument("--explain", action="store_true"); ap.add_argument("--json", action="store_true")
@@ -1851,8 +2075,15 @@ def main():
     if not os.path.exists(args.deck): sys.exit(f"deck file not found: {args.deck}")
     if args.trials < 1: sys.exit("--trials must be at least 1")
     if args.turns < 1: sys.exit("--turns must be at least 1")
-    if args.opps < 0 or args.opp_casts < 0 or args.opp_hand < 0: sys.exit("--opps, --opp-casts and --opp-hand can't be negative")
-    if not 0 <= args.opp_pay <= 1: sys.exit("--opp-pay is a probability between 0 and 1 (e.g. 0.5)")
+    fixed = None
+    if args.disruption not in ("sample", "off"):
+        fixed = []
+        rev = {v.split()[0]: k for k, v in DIS_NAMES.items()} | {k: k for k in DIS_NAMES}
+        for part in args.disruption.replace(",", ";").split(";"):
+            kind, _, t = part.strip().partition("@")
+            if kind not in rev or not t.isdigit() or int(t) < 1:
+                sys.exit(f"--disruption {part!r}: use KIND@TURN with KIND one of {', '.join(DIS_NAMES)} (e.g. 'wipe@5;cmd@4'), 'sample' or 'off'")
+            fixed.append((int(t), rev[kind]))
 
     entries = mtg.parse_deck(args.deck)
     if not entries: sys.exit(f"no cards found in {args.deck}")
@@ -1903,11 +2134,12 @@ def main():
     nonland = [cache[n] for n in dict.fromkeys(raw_lib) if not cache[n].is_land]
     st = Counter(k.status for k in nonland)
     meta = {"commander": " + ".join(found[n]["name"] for n in raw_cmd) or "(no commander)", "n": len(raw_lib),
-            "trials": args.trials, "turns": args.turns, "draw": args.draw, "seed": args.seed, "opps": args.opps,
-            "opp_casts": args.opp_casts, "opp_pay": args.opp_pay, "opp_hand": args.opp_hand,
+            "trials": args.trials, "turns": args.turns, "draw": args.draw, "seed": args.seed, "kill": args.kill_commander,
+            "opp_n": sum(1 for k in nonland if k.opp_approx) + sum(1 for n in raw_cmd if cache[n].opp_approx),
+            "vac_n": sum(1 for k in nonland if k.status == "vacuum"),
             "priorities": prio_txt,
             "model": f"{len(nonland)} nonland cards: {st['modeled']} modeled, {st['partial']} partial, {st['blank']} blank, "
-                     f"{st['held']} held as interaction; {sum(k.override for k in cache.values())} overrides"}
+                     f"{st['vacuum']} vacuum, {st['held']} held as interaction; {sum(k.override for k in cache.values())} overrides"}
     builds = [("base", raw_lib)]
     for label, pairs in variants:
         lib = list(raw_lib)
@@ -1921,6 +2153,8 @@ def main():
         sim = Sim(lib, raw_cmd, args, groups, cache, anyc, want=want)
         res = sim.run(args.trials, args.turns, args.seed)
         sm = summary(res, groups)
+        if args.disruption != "off":
+            sm["disruption"] = disruption_summary(sim.run_disruption(args.trials, args.turns, args.seed, res["finals"], fixed), groups)
         for t in sm["turns"]:
             sm["turns"][t]["hand"]["leq1"] = round(mean([1 if h <= 1 else 0 for h in res["rec"]["hand"][t]]), 4)
         results.append((label, sm))
@@ -1928,8 +2162,9 @@ def main():
         print(json.dumps({"meta": meta, "builds": {l: s for l, s in results}}, indent=1)); return
     for i, (label, sm) in enumerate(results):
         print_report(label, sm, meta, groups, show_header=(i == 0))
+        if "disruption" in sm: print_disruption(label, sm["disruption"], args.turns, args.disruption if fixed else None)
     if len(results) > 1: compare_table(results, groups, args.turns)
-    print("\nnot modeled: combat, opponents' interaction, tokens beyond Treasures, removal of your own permanents; "
+    print("\nscope: plays alone by design (opponents are approximations, never decisions). not modeled: combat, tokens beyond Treasures; "
           "partial/blank cards are cast for their mana cost only. Treat numbers as a floor/ceiling sketch, not a prediction.")
 
 if __name__ == "__main__":
