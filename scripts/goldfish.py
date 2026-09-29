@@ -292,8 +292,15 @@ def _fx_recur(m):
 def _fx_token(m):
     """'create two 1/1 green Elf Warrior creature tokens' / 'create a Clue token' -> ('token', n, power, subtypes, text)."""
     desc, rest = m.group("desc"), m.group("rest")
+    before = m.string[:m.start()]
+    if re.search(r"\b(?:destroy|exile) (?:another )?target|if (?:that|the) creature (?:dies|died)|that creature's power|its controller", before[-160:]):
+        return None                                   # the token comes off someone else's creature: not in a vacuum
     if re.search(r"\bcop(?:y|ies)\b", desc + rest): return None               # copies aren't modeled
     n = num(m.group("n")); n = "X" if m.group("n") == "x" else n if isinstance(n, int) else 1
+    fe = re.search(r"\bfor each (.+)$", rest)
+    if fe:
+        n = dyn_key(fe.group(1))
+        if not n: return None                                               # counts things the sim can't see
     quotes = _CTX.get("quotes") or []
     qm = re.search(r"@q(\d+)@", rest)
     text = quotes[int(qm.group(1))] if qm and int(qm.group(1)) < len(quotes) else ""
@@ -591,6 +598,8 @@ def parse_trigger(k, lo):
     if m:
         fx, _ = parse_fx(m.group(1)); k.castfx += fx; return bool(fx)
     m = re.match(r"^at the beginning of (your|each|each player's) (upkeep|end step|draw step)[^,]*,\s*(.+)$", lo)
+    if m and re.match(r"if (?!an opponent controls more lands)", m.group(3)):
+        k.notes.append("conditional trigger (intervening 'if') not modeled"); return False
     if m:
         fx, tax = parse_fx(m.group(3))
         ev = {"upkeep": "upkeep", "end step": "end", "draw step": "drawstep"}[m.group(2)]
@@ -604,6 +613,13 @@ def parse_trigger(k, lo):
     m = re.match(r"^whenever (a|an|another|one or more) (?P<subj>.+?) enters?(?: the battlefield)?(?: under your control)?(?: this turn)?,\s*(?P<fx>.+)$", lo)
     if m:
         subj = m.group("subj")
+        if re.match(r"lands? an opponent controls$", subj):               # ~opp: each opponent drops a land a turn
+            fxt = m.group("fx")
+            cm = re.match(r"if that player controls more lands than you,\s*(.+)$", fxt)
+            fx, tax = parse_fx(cm.group(1) if cm else fxt)
+            if cm and fx: fx = [("cond", "opp_lands", fx)]
+            if fx: k.trig.append(("opp_land", None, fx, False, tax, False))
+            return bool(fx)
         if re.search(r"opponent|each player|a player", subj): return False       # others' permanents aren't simulated
         tm = re.search(r"\b(creature|artifact|enchantment|permanent|land|planeswalker)s?\b", subj)
         subs = {x for x in (as_subtype(w) for w in re.findall(r"[a-z\-']+", subj)) if x}
@@ -720,7 +736,8 @@ def parse_line(k, L, anyc, abil):
     return "neutral" if is_neutral(lo) else False
 
 MODAL_RX = re.compile(r"^(?:(?P<pre>.*?),\s*)?choose (?P<n>one or both|one or more|any number|one|two|three)(?: or more)?\s*(?:—|-)\s*$", re.I)
-MODE_RANK = ("draw", "look", "tutor", "tutor_multi", "recur", "land_search", "treasure", "token", "mana", "extra_land", "scry", "surveil")
+MODE_RANK = ("draw", "look", "tutor", "tutor_multi", "recur", "land_search", "treasure", "token", "mana", "extra_land",
+             "prolif", "ctr", "scry", "surveil", "mill")
 
 def modal_lines(lines):
     """Fold 'Choose one —' + its bullet lines into one ('MODAL', prefix, n, [bullets]) item."""
@@ -746,7 +763,7 @@ def parse_modal(k, item, anyc, abil):
         fx, _ = parse_fx(b)
         kinds = [e[0] for e in fx]
         return min((MODE_RANK.index(t) for t in kinds if t in MODE_RANK), default=99), fx
-    ranked = sorted(bullets, key=lambda b: score(b)[0])
+    ranked = sorted(bullets, key=lambda b: (score(b)[0], not score(b)[1]))
     chosen = [b for b in ranked[:take] if score(b)[1]]
     if not chosen: return False
     text = " ".join(b if b.endswith(".") else b + "." for b in chosen)
@@ -925,7 +942,7 @@ def categorize(k):
     fxs = flat(k.etb + k.castfx + k.spell + [e for t in k.trig for e in t[2]] + [e for a in k.acts for e in a["fx"]] \
         + [e for _, f in k.pw for e in f])
     kinds = {e[0] for e in fxs}
-    k.opp_approx = any(t[0] in ("opp_cast", "opp_draw", "opp_second") or t[4] for t in k.trig) \
+    k.opp_approx = any(t[0] in ("opp_cast", "opp_draw", "opp_second", "opp_land") or t[4] for t in k.trig) \
         or any(e[0] == "cond" or e[0] == "wheel" and e[1] == "max" or e[0] == "draw" and e[1] == ("opp_hand",) for e in fxs)
     ramp = (not k.is_land and (k.units or k.vivid or k.convs)) or kinds & {"land_search", "extra_land", "land_from_hand", "treasure"} \
         or any(s[0] in ("lands_any", "lands_any_n", "spend_any", "reduce", "alt", "free", "extra_land",
@@ -1817,6 +1834,7 @@ class Game:
             self.phase += 1
             self.fire("upkeep", each_only=True)
             self.fire("opp_draw")
+            if self.opp_lands() < 8: self.fire("opp_land")
             self.fire("opp_cast", OPP_CREATURE if self.rng.random() < OPP_CREATURE_SHARE else OPP_SPELL)
             if self.rng.random() < OPP_SECOND:
                 self.fire("opp_cast", OPP_CREATURE if self.rng.random() < OPP_CREATURE_SHARE else OPP_SPELL)
@@ -2678,7 +2696,7 @@ def main():
             print_disruption(label, sm["disruption"], args.turns, args.disruption if fixed else None)
         if "ladder" in sm: print_ladder(label, sm["ladder"])
     if len(results) > 1: compare_table(results, groups, args.turns)
-    print("\nscope: plays alone by design (opponents are approximations, never decisions). not modeled: combat, tokens beyond Treasures; "
+    print("\nscope: plays alone by design (opponents are approximations, never decisions). not modeled: combat, token copies and noncreature tokens other than Treasure/Clue/Gold; "
           "partial/blank cards are cast for their mana cost only. Treat numbers as a floor/ceiling sketch, not a prediction.")
 
 if __name__ == "__main__":
