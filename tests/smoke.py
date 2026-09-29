@@ -98,10 +98,25 @@ def checks():
         *[dict(name=f"snapshot {os.path.basename(f)[:30]}", data=True, cmd=S("edhrec_diff.py", "check", "snapshots/" + os.path.basename(f)), must=["OK"])
           for f in sorted(os.listdir(os.path.join(REPO, "snapshots"))) if f.endswith(".txt")],
         dict(name="edhrec diff", cmd=S("edhrec_diff.py", "diff", "snapshots/erebos-god-of-the-dead__all__2026-09-26.txt", DECK)),
-        # ---- goldfish: crash check only (its own test battery comes later). It stops on NOT FOUND,
-        #      so it gets the deck without the fake card.
-        dict(name="goldfish explain", cmd=S("goldfish.py", nofake, "--explain")),
-        dict(name="goldfish run", cmd=S("goldfish.py", nofake, "--trials", "300")),
+        # ---- goldfish. It stops on NOT FOUND, so it gets the deck without the fake card.
+        dict(name="goldfish explain", cmd=S("goldfish.py", nofake, "--explain"),
+             must=["Entomb — tutor->graveyard", "Step Through — wizardcycling {2}: tutor->hand: Wizard",
+                   "Dimir House Guard — transmute {3}: tutor->hand: card MV=4", "Demonic Tutor — tutor->hand: any card"]),
+        dict(name="goldfish run", cmd=S("goldfish.py", nofake, "--trials", "300"),
+             must=["tutor priorities from the list header: key: Demonic Tutor, Stroke of Genius; 2 package(s)", "tutor targets"],
+             must_not=["Entomb 0."]),                       # a graveyard tutor is never card advantage
+        # ---- goldfish graveyard fixture
+        dict(name="goldfish gy explain", cmd=S("goldfish.py", "tests/goldfish_gy_deck.txt", "--explain"),
+             must=["Exhume — recur->bf: creature", "Street Wraith — cycling 2 life: draw 1", "Griselbrand — act [7 life]: draw 7",
+                   "Krosan Tusker — cycling {3}: draw 1, land x1->hand", "Unburial Rites — recur->bf: creature",
+                   "flashback from graveyard (4)", "unearth from graveyard (2)", "retrace from graveyard (mana cost, discard a land)",
+                   "Satyr Wayfinder — ETB reveal 4, take land, rest to graveyard", "Buried Alive — tutor->graveyard: 3x creature",
+                   "Animate Dead — ETB recur->bf: creature", "Meren of Clan Nel Toth — on end: recur->hand"]),
+        dict(name="goldfish gy run", cmd=S("goldfish.py", "tests/goldfish_gy_deck.txt", "--trials", "300",
+                                           "--variant", "no Entomb|Entomb=>Swamp"),
+             must=["recursion by source", "tutor targets", "Builds compared", "recursion T8"]),
+        dict(name="goldfish gy trace", cmd=S("goldfish.py", "tests/goldfish_gy_deck.txt", "--trials", "2", "--trace", "2"),
+             must=["Entomb finds Griselbrand -> graveyard", "Demonic Tutor finds Reanimate -> hand", "cast Reanimate"]),
     ]
 
 def run(c):

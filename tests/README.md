@@ -27,7 +27,7 @@ Adding an edge case: add the card to `test_deck.txt` (keep the total at 100 with
 
 ## Known approximations (not bugs)
 
-- goldfish.py stops on NOT FOUND cards (tutors.py and the audit warn and continue), so the smoke test runs goldfish on the deck without the fake card. Crash check only until goldfish gets its own battery.
+- goldfish.py stops on NOT FOUND cards (tutors.py and the audit warn and continue), so the smoke test runs goldfish on the deck without the fake card. `goldfish_gy_deck.txt` is a second fixture for goldfish's graveyard, tutor and cycling model; the gy trace check pins the pilot's Entomb → Demonic Tutor → Reanimate line on a fixed seed, so a pilot change that moves it will show up there first.
 
 - Plaza of Heroes' "any color among legendary permanents you control" is read as any color. It needs a legend on the battlefield, so early-turn color odds run slightly high for decks that rely on it.
 - Pairing follows CR 702.124; eligibility follows CR 903.3 (legendary creature, legendary Vehicle, legendary Spacecraft with P/T, or "can be your commander").

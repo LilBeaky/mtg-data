@@ -85,7 +85,7 @@ The user wants audits as thorough as the tooling allows. Every step exists becau
 - Report: 1 inventory (dead tutors, shallow pools) · 2 chains · 3 coverage · 4 dependencies (single points of failure) · 5 access odds for `key`/package cards (exact) · 6 package assembly (sampled). A second view sets aside find-anything tutors to expose package structure.
 - NOT FOUND cards are warned about and left out. Odds ignore mana and chain time ("can you get there", not "how fast"). Commander tutoring is shown separately as a ceiling. Not tracked: searching others' libraries, tutoring from graveyard.
 
-**Goldfish (`goldfish.py`)** — see `docs/GOLDFISH.md` before running it. Always `--explain` first on a new list and report partial/blank cards before quoting numbers.
+**Goldfish (`goldfish.py`)** — see `docs/GOLDFISH.md` before running it. Always `--explain` first on a new list and report partial/blank cards before quoting numbers. It reads `key`/`package` header lines as tutor priorities; report its "tutor targets" line when tutoring matters.
 
 ## 7. Schema quirks
 

@@ -28,6 +28,10 @@ and which cards produced the card advantage). Full docs: USE_INSTRUCTIONS.md §6
   --trace N              print a play-by-play of game N (to audit the pilot)
   --json                 machine-readable output
 
+Tutors read targets and destinations with tutors.py's parser and fetch '# key:' cards and
+missing '# package:' pieces first. The graveyard is a zone: recursion, reanimation and
+flashback-family casting are modeled, as are cycling, typecycling and transmute.
+
 Card behavior is compiled from Oracle text once per card. data/goldfish_overrides.json
 replaces the parse for the cards it names. --explain marks each card modeled / partial /
 blank; a blank is still cast (it costs its mana) but does nothing.
@@ -36,6 +40,8 @@ import argparse, json, os, random, re, sys
 from collections import Counter
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mtg
+import tutors as tu          # tutor targets and destinations are read exactly as tutors.py reads them
+import stats_math as sm      # '# package:' part resolution
 
 COLORS = "WUBRG"
 ALL5 = frozenset(COLORS)
@@ -50,6 +56,10 @@ COLOR_WORDS = {"white": "W", "blue": "U", "black": "B", "red": "R", "green": "G"
 SYM = re.compile(r"\{([^}]+)\}")
 OVERRIDES_FILE = os.path.join(mtg.DATA_DIR, "goldfish_overrides.json")
 ORDER_DEFAULT = "commander,track,ramp,draw,other"
+_CTX = {"raw": None, "text": "", "orig": None}   # card being compiled; original-case effect text for parse_fx
+_EXPLAIN_DECK = []                              # raw cards of the list, so --explain can count tutor hits
+START_LIFE, LIFE_FLOOR = 40, 20   # the pilot won't pay life below the floor (a goldfish still has a table to survive)
+GY_KW = ("flashback", "jump-start", "retrace", "escape", "unearth", "harmonize")
 
 def num(s, default=1):
     s = (s or "").strip().lower()
@@ -142,25 +152,61 @@ SUBJ = r"(?P<subj>\b(?:target opponent|each opponent|an opponent|that player|tar
 def _subj_ok(m):
     return (m.group("subj") or "").strip() not in OPP_SUBJ
 
+def _orig(m, g):
+    """Group g of a parse_fx match in its original case (tutors.py reads subtypes by capital letter)."""
+    o = _CTX["orig"]
+    return o[m.start(g):m.end(g)] if o and len(o) == len(m.string) else m.group(g)
+
+def tutor_dest(after):
+    """Where a searched card goes: tutors.py's destination reader, mapped to goldfish zones.
+    hand / top / bf / bf_t / graveyard / exile (castable, treated like hand) / none (exiled, no access)."""
+    dest, first = "hand", 10**9
+    for d, rx in tu.DEST_RX:
+        mm = rx.search(after)
+        if mm and mm.start() < first: dest, first = d, mm.start()
+    if dest == "battlefield": return "bf_t" if re.search(r"onto the battlefield tapped", after, re.I) else "bf"
+    if dest == "exile":
+        castable = re.search(r"\b(?:cast|play)\b[^.]*\b(?:exiled|that card|those cards|it|them)|put the exiled card into your hand"
+                             r"|may cast spells? from among", _CTX["text"], re.I)
+        return "exile" if castable else "none"
+    return dest
+
+LAND_WORDS = re.compile(r"\b(land|plains|island|swamp|mountain|forest|gate)s?\b")
+NONLAND_WORDS = re.compile(r"\b(creature|artifact|enchantment|instant|sorcery|planeswalker|permanent|battle|card with)\b")
+
 def _fx_search(m):
     s = m.group(1)
     head = s.split(" card")[0]
-    mc = re.match(r"(up to )?(\w+) ", head + " ")
-    count = num(mc.group(2)) if mc and mc.group(2) not in ("a", "an") else 1
-    if not isinstance(count, int): count = 1
-    dest = ("split" if re.search(r"one onto the battlefield tapped and the other into your hand", s)
-            else "top" if "on top" in s else "bf_t" if "onto the battlefield tapped" in s
-            else "bf" if "onto the battlefield" in s else "hand")
-    if re.search(r"\b(land|plains|island|swamp|mountain|forest|gate)s?\b", head):
-        return ("land_search", count, land_filter(head), dest)
+    dest = tutor_dest(s)
+    if dest != "graveyard" and LAND_WORDS.search(head) and not NONLAND_WORDS.search(head):
+        mc = re.match(r"(up to )?(\w+) ", head + " ")
+        count = num(mc.group(2)) if mc and mc.group(2) not in ("a", "an") else 1
+        if not isinstance(count, int): count = 1
+        ldest = ("split" if re.search(r"one onto the battlefield tapped and the other into your hand", s)
+                 else "top" if "on top" in s else "bf_t" if "onto the battlefield tapped" in s
+                 else "bf" if "onto the battlefield" in s else "hand")
+        return ("land_search", count, land_filter(head), ldest)
     multi = re.findall(r"an? ([a-z]+) card", s)
     if len(multi) > 1 and all(w in COLOR_WORDS for w in multi):
         return ("tutor_multi", [parse_filter(w) for w in multi], dest)
-    f = parse_filter(re.sub(r"^(up to )?\w+ ", "", head + " ").strip())
-    m = re.search(r"with mana value (\d+) or less", s)
-    if m: f["mv_max"] = int(m.group(1))
-    if re.search(r"mana value (?:less|greater) than|with power|named|with the same name", s): f["unknown"] = True
-    return ("tutor", f, dest, count)
+    orig = "search your library for " + _orig(m, 1)
+    tm = tu.SEARCH_RX.search(orig)
+    tg = tu.parse_target(tm.group("what") if tm else _orig(m, 1), _CTX["raw"] or {})
+    return ("tutor", tg, dest, max(1, min(tg.count, 7)))
+
+def tutor_unread(tg):
+    """A target with words tutors.py couldn't read: the ability isn't used (other approximations are)."""
+    return any(a.startswith("unread") for a in tg.approx)
+
+RECUR_RX = re.compile(r"(?:returns?|puts?) (?P<what>[^.]*?\bcards?\b[^.]*?) from (?P<whose>your|a|their) graveyards? "
+                      r"(?:to|into|onto) (?P<dest>your hand|its owner's hand|their owners' hands|the battlefield)")
+
+def _fx_recur(m):
+    what = re.sub(r"\b(?:another )?target ", "", _orig(m, "what"), flags=re.I)
+    what = re.sub(r"^all ", "any number of ", what, flags=re.I)
+    tg = tu.parse_target(what, _CTX["raw"] or {})
+    if m.group("whose") != "your": tg.approx.append("only your own graveyard is modeled")
+    return ("recur", tg, "bf" if "battlefield" in m.group("dest") else "hand", max(1, min(tg.count, 7)))
 
 def _fx_mana(m):
     units, _ = parse_prod(m.group(1), ALL5)
@@ -185,6 +231,12 @@ FX = [
     (re.compile(r"look at the top (\w+) cards? of your library\.? [^.]*?put (a|one|two|three|up to one|up to two|any number) of (?:them|those cards) into your hand"),
      lambda m: ("look", num(m.group(1)), 2 if "two" in m.group(2) else 3 if "three" in m.group(2) else 1)),
     (re.compile(r"search your library for ([^.]+)"), _fx_search),
+    (RECUR_RX, _fx_recur),
+    (re.compile(r"reveal the top (\w+) cards? of your library\. you may put (?P<what>an? [^.]+?) cards? from among them into your hand"
+                r"[^.]*\. put the rest into your graveyard"),
+     lambda m: ("dig_gy", num(m.group(1)), tu.parse_target(_orig(m, "what") + " card", _CTX["raw"] or {}))),
+    (re.compile(SUBJ + r"mills? (?P<n>a|an|one|two|three|four|five|six|seven|eight|nine|ten|x|\d+) cards?"),
+     lambda m: ("mill", num(m.group("n"))) if _subj_ok(m) else None),
     (re.compile(r"\bscry (\w+)"), lambda m: ("scry", num(m.group(1)))),
     (re.compile(r"\bsurveil (\w+)"), lambda m: ("surveil", num(m.group(1)))),
     (re.compile(r"you may play an additional land this turn"), lambda m: ("extra_land", 1)),
@@ -202,18 +254,21 @@ FX = [
 def parse_fx(s):
     """Effect text -> ([effect tuples in text order], tax). tax = a Rhystic-style
     'unless that player pays' clause (resolved per trigger with --opp-pay)."""
-    s = re.sub(r'"[^"]*"', "", s.lower().strip())
-    s = re.sub(r"[^.]*\binstead\b[^.]*\.?", "", s).strip()
+    s0 = re.sub(r'"[^"]*"', "", s.strip())
+    s0 = re.sub(r"[^.]*\binstead\b[^.]*\.?", "", s0, flags=re.I).strip()
+    s = s0.lower()
+    if len(s) != len(s0): s0 = s
     tax = bool(re.search(r"unless (?:that player|they) pays?|that player may pay \{", s))
     m = re.search(r"you may pay ((?:\{[^}]+\})+)\. if you do,? (.+)", s)
     if m:
         g, p, _, _ = parse_cost(m.group(1))
-        inner, _ = parse_fx(m.group(2))
-        pre, _ = parse_fx(s[:m.start()]) if m.start() else ([], False)
+        inner, _ = parse_fx(s0[m.start(2):m.end(2)])
+        pre, _ = parse_fx(s0[:m.start()]) if m.start() else ([], False)
         return pre + ([("paid", g, p, inner)] if inner else []), tax
     out, masked = [], s
     for rx, fn in FX:
         for mm in rx.finditer(masked):
+            _CTX["orig"] = s0
             e = fn(mm)
             if e: out.append((mm.start(), e))
         masked = rx.sub(lambda mm: "#" * len(mm.group(0)), masked)
@@ -230,7 +285,17 @@ def fx_str(e):
     if t == "discard": return f"discard {e[1]}"
     if t == "look": return f"look {e[1]} take {e[2]}"
     if t == "land_search": return f"land x{e[1]}->{e[3]}"
-    if t in ("tutor", "tutor_multi"): return f"{t}->{e[2]}" + (" (filter?)" if t == "tutor" and e[1]["unknown"] else "")
+    if t == "tutor":
+        tg = e[1]
+        hits = f", {sum(1 for c in _EXPLAIN_DECK if tg.matches(c))} in list" if _EXPLAIN_DECK else ""
+        cnt = f"{e[3]}x " if e[3] > 1 else ""
+        return (f"tutor->{e[2]}: {cnt}{tg.describe()}{hits}" + (" (filter unread; not used)" if tutor_unread(tg) else "")
+                + (" ~" + "; ".join(a for a in tg.approx if not a.startswith("unread")) if any(not a.startswith("unread") for a in tg.approx) else ""))
+    if t == "tutor_multi": return f"tutor_multi->{e[2]}"
+    if t == "recur":
+        return f"recur->{e[2]}: {e[3]}x {e[1].describe()}".replace(": 1x ", ": ") + (" ~" + "; ".join(e[1].approx) if e[1].approx else "")
+    if t == "mill": return f"mill {e[1]}"
+    if t == "dig_gy": return f"reveal {e[1]}, take {e[2].describe()}, rest to graveyard"
     if t == "mana": return "mana " + "".join("".join(sorted(u)) if len(u) == 1 else "*" for u in e[1])
     if t == "ctr": return f"+{e[2]} {e[1]} ctr"
     if t == "paid": return f"pay {e[1] + len(e[2])}: " + ", ".join(fx_str(x) for x in e[3])
@@ -263,6 +328,13 @@ class Card:
         self.trig = []; self.acts = []; self.pw = []; self.statics = []
         self.requires = None; self.rebound = False; self.hold = False; self.ritual = False
         self.cat = "other"; self.groups = (); self.status = "modeled"; self.notes = []; self.override = False
+        self.raw = None          # the card's data, for tutors.py target matching
+        self.hand_acts = []      # cycling / typecycling / transmute: [{"kind", "label", "gen", "pips", "fx"}]
+        self.gycast = None       # flashback-style casting from the graveyard (see GY_KW)
+        self.gy_need = None      # recursion spell: a Target that must be in the graveyard to cast it
+        self.recur_fx = []       # every recursion effect on the card (for reanimation-aware tutoring)
+        self.cycle_fx = []       # "when you cycle ~" riders (Krosan Tusker)
+        self.life_per_mv = False # Reanimate: lose life equal to the returned card's mana value
 
 def strip_reminder(t):
     return re.sub(r"\s*\([^()]*\)", "", t)
@@ -383,6 +455,12 @@ def parse_trigger(k, lo):
         f = {"type": tm.group(1).capitalize(), "another": m.group(1) == "another",
              "power": int(pw.group(1)) if pw else 0}
         k.trig.append(("etb", f, fx, False, tax, False)); return bool(fx)
+    m = re.match(r"^when you cycle ~,\s*(?:you may )?(.+)$", lo)
+    if m:
+        fx, _ = parse_fx(m.group(1)); k.cycle_fx += fx; return bool(fx)
+    m = re.match(r"^whenever (?:you|a player) cycles?(?: or discards?)? (?:a|another) card,\s*(.+)$", lo)
+    if m:
+        fx, tax = parse_fx(m.group(1)); k.trig.append(("cycle", None, fx, False, tax, False)); return bool(fx)
     m = re.match(r"^whenever you proliferate,\s*(.+)$", lo)
     if m:
         fx, tax = parse_fx(m.group(1)); k.trig.append(("prolif", None, fx, False, tax, False)); return bool(fx)
@@ -446,11 +524,18 @@ def parse_line(k, L, anyc, abil):
         tap, g, p, sac, rm, other = ab_cost(m.group("cost"))
         fx, _ = parse_fx(m.group("fx"))
         if other or not fx: return "neutral" if is_neutral(lo) else False
-        if any(e[0] == "tutor" and e[1]["unknown"] for e in fx):
+        if any(e[0] == "tutor" and tutor_unread(e[1]) for e in fx):
             k.notes.append("tutor filter not fully read; ability not used"); return False
         if not tap and not g and not p and sac and not rm and any(e[0] == "land_search" for e in fx):
             k.etb += fx; k.sac_etb = True; return True        # Sakura-Tribe Elder style: sacrifice at once
-        k.acts.append({"tap": tap, "gen": g, "pips": p, "sac": sac, "rm": rm, "fx": fx})
+        lm = re.search(r"pay (\d+) life", m.group("cost").lower())
+        k.acts.append({"tap": tap, "gen": g, "pips": p, "sac": sac, "rm": rm, "fx": fx, "life": int(lm.group(1)) if lm else 0})
+        return True
+    if "Aura" in k.subtypes and re.match(r"^enchant creature card in a graveyard$", lo):
+        tg = tu.parse_target("a creature card", {}); tg.approx.append("only your own graveyard is modeled")
+        k.etb.append(("recur", tg, "bf", 1)); k.requires = "gy"; k.gy_need = tg
+        return True
+    if k.requires == "gy" and "return enchanted creature card to the battlefield" in lo:
         return True
     if "Aura" in k.subtypes:
         m = re.match(r"^enchant (.+)$", lo)
@@ -487,9 +572,17 @@ def compile_card(c, anyc):
     k.loyalty = int(loy) if loy and str(loy).isdigit() else 0
     text = tildify(strip_reminder(face.get("oracle_text") or c.get("oracle_text") or ""),
                    [c["name"], face.get("name", ""), c["name"].split(",")[0].split(" // ")[0]])
+    k.raw = c
+    k.life_per_mv = bool(re.search(r"lose life equal to (?:its|that card's) mana value", text.lower()))
+    saved = dict(_CTX); _CTX.update(raw=c, text=text)
     abil, done, missed = [], 0, 0
     for L in (l.strip() for l in text.split("\n")):
         if not L: continue
+        kw = keyword_line(k, L, c)
+        if kw is not None:
+            if kw: done += 1
+            else: missed += 1; k.notes.append("unmodeled: " + L[:72])
+            continue
         r = parse_line(k, L, anyc, abil)
         if r is True: done += 1
         elif r is False:
@@ -527,10 +620,73 @@ def compile_card(c, anyc):
     if k.types & {"Instant", "Sorcery"}:
         k.ritual = bool(k.spell) and all(e[0] == "mana" for e in k.spell)
         k.hold = bool(RX_INTERACT.search(text.lower())) and not k.ritual
+    _CTX.update(saved)
+    for a in k.hand_acts:
+        if a["kind"] != "transmute": a["fx"] = a["fx"] + k.cycle_fx
+    allfx = k.etb + k.castfx + k.spell + [e for t in k.trig for e in t[2]] + [e for a in k.acts for e in a["fx"]] \
+        + [e for _, f in k.pw for e in f]
+    k.recur_fx = [e for e in allfx if e[0] == "recur"]
+    if k.types & {"Instant", "Sorcery"} and k.spell:
+        rec = [e for e in k.spell if e[0] == "recur"]
+        if rec and not k.requires: k.requires, k.gy_need = "gy", rec[0][1]
+        if all(e[0] == "tutor" and e[2] == "graveyard" for e in k.spell): k.requires = "gy_payoff"
     categorize(k)
     k.status = "blank" if missed and not done and not k.units else "partial" if missed else "modeled"
     if k.hold: k.status = "held"
     return k
+
+def keyword_line(k, L, c):
+    """Hand and graveyard keyword lines (cycling, typecycling, transmute, flashback family).
+    None = not one of these; True = modeled; False = recognized but its cost isn't readable."""
+    lo = L.lower()
+    m = re.match(r"^([a-z ]*?)cycling[ —-]*(.*)$", lo)
+    if m and not lo.startswith(("whenever", "when ", "at the")):
+        prefix, cost = m.group(1).strip(), m.group(2).strip().rstrip(".")
+        cm = re.fullmatch(r"((?:\{[^}]+\})+)|pay (\d+) life", cost)
+        if not cm: return False
+        g, p, _, _ = parse_cost(cm.group(1) or "")
+        life = int(cm.group(2) or 0)
+        if not prefix:
+            k.hand_acts.append({"kind": "cycle", "label": "cycling", "gen": g, "pips": p, "fx": [("draw", 1)], "life": life})
+            return True
+        t = next((t for t in tu.card_tutors(c) if t.kind == "cycling" and t.condition == prefix + "cycling"), None)
+        if not t: return False
+        k.hand_acts.append({"kind": "typecycle", "label": prefix + "cycling", "gen": g, "pips": p,
+                            "fx": [("tutor", t.target, "hand", 1)], "life": life})
+        return True
+    m = re.match(r"^transmute ((?:\{[^}]+\})+)$", lo)
+    if m:
+        t = next((t for t in tu.card_tutors(c) if t.kind == "transmute"), None)
+        if not t: return False
+        g, p, _, _ = parse_cost(m.group(1))
+        k.hand_acts.append({"kind": "transmute", "label": "transmute", "gen": g, "pips": p,
+                            "fx": [("tutor", t.target, "hand", 1)]})
+        return True
+    m = re.match(r"^(" + "|".join(GY_KW) + r")\b[ —-]*(.*)$", lo)
+    if not m: return None
+    kw, rest = m.group(1), m.group(2).strip().rstrip(".")
+    gc = {"kw": kw, "gen": None, "pips": None, "discard": None, "exile_n": 0}
+    if kw == "jump-start": gc["discard"] = "card"
+    elif kw == "retrace": gc["discard"] = "land"
+    else:
+        cm = re.match(r"((?:\{[^}]+\})+)", rest)
+        if not cm: return False
+        gc["gen"], gc["pips"], _, _ = parse_cost(cm.group(1))
+        extra = rest[cm.end():].strip(" ,")
+        if extra:
+            em = re.fullmatch(r"exile (\w+) other cards? from your graveyard", extra)
+            if em: gc["exile_n"] = num(em.group(1))
+            elif re.fullmatch(r"pay \d+ life", extra): pass
+            elif extra == "discard a card": gc["discard"] = "card"
+            else: return False
+    if kw == "unearth" and "Creature" not in k.types: return False
+    gc["exile_after"] = kw != "retrace" and not (kw == "escape" and k.types & PERMANENT)
+    k.gycast = gc
+    return True
+
+def all_fx(k):
+    return k.etb + k.castfx + k.spell + [e for t in k.trig for e in t[2]] + [e for a in k.acts for e in a["fx"]] \
+        + [e for _, f in k.pw for e in f] + [e for a in k.hand_acts for e in a["fx"]]
 
 def categorize(k):
     fxs = k.etb + k.castfx + k.spell + [e for t in k.trig for e in t[2]] + [e for a in k.acts for e in a["fx"]] \
@@ -538,7 +694,8 @@ def categorize(k):
     kinds = {e[0] for e in fxs}
     ramp = (not k.is_land and (k.units or k.vivid or k.convs)) or kinds & {"land_search", "extra_land", "land_from_hand", "treasure"} \
         or any(s[0] in ("lands_any", "lands_any_n", "spend_any", "reduce", "alt", "free", "extra_land") for s in k.statics)
-    draws = kinds & {"draw", "look", "tutor", "tutor_multi", "wheel"}
+    draws = kinds & {"draw", "look", "tutor_multi", "wheel"} or any(
+        e[0] == "tutor" and e[2] not in ("graveyard", "none") or e[0] == "recur" and e[2] == "hand" for e in fxs)
     k.cat = "ramp" if ramp and not k.ritual else "draw" if draws else "other"
 
 def apply_override(k, spec, anyc):
@@ -578,7 +735,8 @@ def apply_override(k, spec, anyc):
 
 def dsl(s):
     """Override effect strings: 'draw 2', 'draw permanents', 'scry 2', 'look 3 1', 'prolif 1',
-    'treasure 1', 'extra_land 1', 'land basic bf_t 1', 'ctr divinity 1', 'mana WUBRG'."""
+    'treasure 1', 'extra_land 1', 'land basic bf_t 1', 'ctr divinity 1', 'mana WUBRG',
+    'tutor DEST TARGET' / 'recur DEST TARGET' (DEST hand/top/bf/graveyard; TARGET in Oracle words), 'mill 3'."""
     w = s.split()
     t = w[0]
     if t == "draw": return [("draw", int(w[1]) if w[1].isdigit() else (w[1],))]
@@ -587,6 +745,10 @@ def dsl(s):
     if t == "land": return [("land_search", int(w[3]) if len(w) > 3 else 1, land_filter(w[1]), w[2])]
     if t == "ctr": return [("ctr", w[1], int(w[2]))]
     if t == "mana": return [("mana", [frozenset(ch) for ch in w[1]])]
+    if t in ("tutor", "recur"):           # 'tutor hand a creature card' / 'recur bf a creature card'
+        tg = tu.parse_target(" ".join(s.split()[2:]), {})
+        return [(t, tg, w[1], max(1, min(tg.count, 7)))]
+    if t == "mill": return [("mill", int(w[1]))]
     raise ValueError("goldfish override: unknown effect " + repr(s))
 
 # ---------------------------------------------------------------- mana solver
@@ -653,6 +815,8 @@ class Game:
         self.pool = None; self.convs = []; self.dry = False; self._st = None
         self.extra = 0; self.drawn = len(hand); self.casts = 0; self.spent = 0; self.disc = 0
         self.attr = Counter(); self.first = {}; self.cmd_first = {}; self.rebound = []
+        self.exile, self.unearthed = [], []
+        self.recur = 0; self.cycled = 0; self.rattr = Counter(); self.tut = Counter(); self.life = START_LIFE
         self.log = None
 
     @property
@@ -666,6 +830,8 @@ class Game:
         mp = {id(p): p.copy() for p in self.lands + self.perms}
         g.lands = [mp[id(p)] for p in self.lands]; g.perms = [mp[id(p)] for p in self.perms]
         g.hand, g.lib, g.gy, g.cmd, g.rebound = self.hand[:], self.lib[:], self.gy[:], self.cmd[:], self.rebound[:]
+        g.exile, g.unearthed = self.exile[:], [mp[id(p)] for p in self.unearthed if id(p) in mp]
+        g.rattr = Counter(); g.tut = Counter()
         g.cmd_casts = Counter(self.cmd_casts); g.first = dict(self.first); g.cmd_first = dict(self.cmd_first)
         g.attr = Counter(); g.pool = None; g.convs = []; g._st = None
         g.rng = self.sim.dry_rng; g.log = None
@@ -774,6 +940,11 @@ class Game:
         st = self.st
         tax = 2 * self.cmd_casts[k] if zone == "cmd" else 0
         red = sum(n for f, n in st.reduce if spell_ok(k, f))
+        if zone == "gy":
+            g = k.gycast
+            if g["kw"] == "unearth": return [(g["gen"], g["pips"])]          # an ability: no reducers
+            gen, pips = (k.gen, k.pips) if g["gen"] is None else (g["gen"], g["pips"])
+            return [(max(0, gen - red), pips)]
         xm = 2 if k.x else 0                          # X spells wait for X >= 2
         opts = [(max(0, k.gen - red) + tax + xm, k.pips)]
         for f, (ag, ap, _, _) in st.alts:
@@ -781,15 +952,22 @@ class Game:
         if st.free and zone == "hand": opts.append((0, []))
         return sorted(opts, key=lambda o: o[0] + len(o[1]))
 
-    def has(self, req):
+    def has(self, req, k=None):
         if req == "land": return bool(self.lands)
+        if req == "gy":
+            if k is None or k.gy_need is None: return False
+            if any(e[0] == "recur" and e[2] == "bf" for e in k.spell + k.etb): return self.worth_target(k)
+            return any(self.sim.tmatch(k.gy_need, c) for c in self.gy)
+        if req == "gy_payoff": return self.gy_payoff()
         leg = req.startswith("legendary")
         return any("Creature" in p.k.types and (p.k.legendary or not leg) for p in self.perms)
 
     def try_cast(self, k, zone):
-        if k.requires and not self.has(k.requires): return False
+        if k.requires and not self.has(k.requires, k): return False
+        if zone == "gy" and not self.gy_extra_ok(k): return False
         for gen, pips in self.options(k, zone):
             if self.pay(k, gen, pips):
+                if zone == "gy": self.gy_extra_pay(k)
                 x = 0
                 if k.x:
                     rest = [x_[0] for x_ in self.cands(k) if not x_[2]]
@@ -800,6 +978,11 @@ class Game:
         return False
 
     def resolve(self, k, zone, paid, x=0):
+        if zone == "gy":
+            self.gy.remove(k); self.recurred(k.name + " (" + k.gycast["kw"] + ")")
+            if k.gycast["kw"] == "unearth":
+                self.spent += paid; self.note(f"  unearth {k.name} (paid {paid})")
+                self.unearthed.append(self.enter(k)); return
         if zone == "hand": self.hand.remove(k)
         elif zone == "cmd":
             self.cmd.remove(k); self.cmd_casts[k] += 1; self.cmd_first.setdefault(k.name, self.turn)
@@ -812,13 +995,15 @@ class Game:
             self.enter(k, from_hand=(zone == "hand"), x=x)
         else:
             self.do(k.spell, k, None, x)
-            (self.rebound if k.rebound and zone == "hand" else self.gy).append(k)
+            if zone == "gy" and k.gycast["exile_after"]: self.exile.append(k)
+            else: (self.rebound if k.rebound and zone == "hand" else self.gy).append(k)
 
     def enter(self, k, from_hand=False, x=0):
         if k.is_land: return self.land_enters(k)
         prev_drops = self.st.extra_land
         p = Perm(k, tapped=bool(k.etap), sick=True, hand=from_hand)
         self.perms.append(p); self._st = None
+        for gi in k.groups: self.first.setdefault(gi, self.turn)
         if self.st.extra_land > prev_drops:        # Exploration/Azusa give their drops this turn
             self.drops += self.st.extra_land - prev_drops
         if k.ctr_enter:
@@ -912,12 +1097,16 @@ class Game:
             if self.drops > 0 and any(c.is_land for c in self.hand):
                 self.play_land(self.choose_land() if not self.dry else next(c for c in self.hand if c.is_land))
                 continue
+            if self.drops > 0 and not self.dry and self.hand_act(land_only=True): continue
             avail = sum(1 for u in self.pool if not u[5])
             cands = []
             for k in dict.fromkeys(self.hand):
                 if k.is_land or k.ritual or (k.hold and not sim.cast_hold): continue
                 cands.append((sim.prio(k, "hand"), k, "hand"))
             for k in self.cmd: cands.append((sim.prio(k, "cmd"), k, "cmd"))
+            for k in dict.fromkeys(self.gy):
+                if k.gycast and not k.ritual and not (k.hold and not sim.cast_hold):
+                    cands.append((sim.prio(k, "gy"), k, "gy"))
             cands.sort(key=lambda t: t[0])
             for _, k, zone in cands:
                 if min(g_ + len(p_) for g_, p_ in self.options(k, zone)) > avail: continue
@@ -946,7 +1135,7 @@ class Game:
         for k in set(self.hand):
             if k.is_land or k.hold or k.ritual: continue
             opts = self.options(k, "hand")
-            if min(g_ + len(p_) for g_, p_ in opts) > avail or (k.requires and not self.has(k.requires)): continue
+            if min(g_ + len(p_) for g_, p_ in opts) > avail or (k.requires and not self.has(k.requires, k)): continue
             if any(self.pay(k, g_, p_, commit=False) for g_, p_ in opts): continue
             n += self.hand.count(k)
         return n
@@ -958,7 +1147,8 @@ class Game:
             k = p.k
             for ab in k.acts:
                 fx = ab["fx"]; kinds = {e[0] for e in fx}
-                if not (kinds & {"draw", "look", "tutor", "tutor_multi", "land_search", "treasure"}
+                recur_ok = any(e[0] == "recur" and any(self.sim.tmatch(e[1], c) for c in self.gy) for e in fx)
+                if not (kinds & {"draw", "look", "tutor", "tutor_multi", "land_search", "treasure"} or recur_ok
                         or ("prolif" in kinds and prolif_useful) or ("ctr" in kinds and "draw" in kinds)):
                     continue
                 if ab["sac"] and "draw" in kinds and not (len(self.hand) <= 1 and self.turn >= 5): continue
@@ -969,7 +1159,9 @@ class Game:
                         kind, n = ab["rm"]
                         keep = 1 if kind in ("divinity", "indestructible") else 0
                         if (p.ctr or {}).get(kind, 0) - n < keep: break
+                    if ab.get("life") and self.life - ab["life"] < LIFE_FLOOR: break
                     if not self.pay(None, ab["gen"], ab["pips"]): break
+                    self.life -= ab.get("life", 0)
                     if ab["tap"]:
                         p.tapped = True
                         for u in self.pool:
@@ -1028,7 +1220,123 @@ class Game:
         if k.hold: return 35
         return 40 + min(k.mv, 7) if k.mv <= len(self.lands) + 2 else 20
 
-    def do(self, fx, k, p=None, x=0):
+    # ---- tutoring and the graveyard
+    def have(self):
+        """Cards you already have access to: hand, battlefield, command zone."""
+        return set(self.hand) | {p.k for p in self.perms} | {p.k for p in self.lands} | set(self.cmd)
+
+    def want_bonus(self, c, have):
+        """Tutor priority from the list header: '# key:' cards, then the missing piece of a '# package:'
+        (more when the rest is already assembled), then a tutor that can reach a missing key/package card."""
+        sim, b = self.sim, 0
+        if c in have: return 0
+        if c in sim.keys: b = 80
+        for parts in sim.packages:
+            slots = [i for i, part in enumerate(parts) if c in part]
+            if not slots or any(have & parts[i] for i in slots): continue
+            filled = sum(1 for part in parts if have & part)
+            b = max(b, 70 + 20 * filled / len(parts))
+        if not b and c in sim.finds:
+            missing = sim.wanted - have
+            if missing and sim.finds[c] & missing: b = 50
+        return b
+
+    def tutor_value(self, c, dest, have):
+        if c.is_land:                                   # a land only when you're actually short
+            short = not any(x.is_land for x in self.hand) and len(self.lands) < min(self.turn + 1, 4)
+            return 75 if short else 5
+        v = self.value(c) + self.want_bonus(c, have)
+        if c in have: v -= 30                           # a second copy of something already in hand or play
+        if dest in ("hand", "top", "exile"):
+            reach = len(self.lands) + sum(1 for p in self.perms if p.k.units) + 1
+            if c.mv > reach + 1: v -= 15                # can't cast it soon
+        return v
+
+    def reanimator_for(self, c):
+        """How well you can use c from the graveyard: 2 = a recursion card in hand/play, 1 = in the library."""
+        src = list(self.hand) + [p.k for p in self.perms]
+        if any(self.sim.tmatch(e[1], c) for x in src for e in x.recur_fx): return 2
+        if any(self.sim.tmatch(e[1], c) for x in self.sim.recursion for e in x.recur_fx): return 1
+        return 0
+
+    def gy_usable(self, c):
+        """A flashback-style card you could actually cast from the graveyard (its own target included)."""
+        return bool(c.gycast) and not (c.gy_need and not any(self.sim.tmatch(c.gy_need, x) for x in self.gy))
+
+    def gy_value(self, c):
+        """Pilot's pick for a card sent to the graveyard (Entomb, Buried Alive): a reanimation target
+        you can reach beats a flashback card, which beats anything else."""
+        r = self.reanimator_for(c) if "Creature" in c.types or c.types & PERMANENT else 0
+        if r: return 50 * r + 3 * c.mv + c.power
+        if self.gy_usable(c): return 60 + c.mv
+        return c.mv
+
+    def gy_payoff(self):
+        """Worth putting a card in the graveyard: recursion in hand, play or library (Entomb before you draw
+        Reanimate is the normal line), or a flashback-style card you could cast from there."""
+        if any(x.recur_fx for x in self.hand) or any(p.k.recur_fx for p in self.perms): return True
+        lib = set(self.lib)
+        return any(x in lib for x in self.sim.recursion) or any(self.gy_usable(c) for c in lib)
+
+    def worth_target(self, k):
+        """Reanimation onto the battlefield waits for a real target: MV 4+, or anything from turn 6."""
+        return any(self.sim.tmatch(k.gy_need, c) and (c.mv >= 4 or self.turn >= 6) for c in self.gy)
+
+    def recurred(self, src, n=1):
+        self.recur += n; self.rattr[src] += n
+        self.note(f"    {n} card(s) back from the graveyard via {src}")
+
+    def gy_extra_ok(self, k):
+        g = k.gycast
+        if g["discard"] == "card" and not self.hand: return False
+        if g["discard"] == "land":
+            spare = sum(c.is_land for c in self.hand) - (1 if self.drops > 0 else 0)
+            if spare < 1 and not (any(c.is_land for c in self.hand) and len(self.lands) >= 6): return False
+        return len(self.gy) - 1 >= g["exile_n"]
+
+    def gy_extra_pay(self, k):
+        g = k.gycast
+        if g["discard"]:
+            pool = [c for c in self.hand if c.is_land] if g["discard"] == "land" else self.hand
+            worst = min(pool, key=self.value); self.hand.remove(worst); self.gy.append(worst); self.gain(-1, k.name)
+        if g["exile_n"]:
+            rest = sorted((c for c in self.gy if c is not k), key=self.gy_value)[:g["exile_n"]]
+            for c in rest: self.gy.remove(c); self.exile.append(c)
+
+    def hand_act(self, land_only=False, eot=False):
+        """Cycling, typecycling and transmute from hand. land_only: find a land for a missed drop.
+        eot: end of turn, spend leftover mana on dead cards (more freely with a cycling payoff out).
+        Main phase: transmute toward a wanted card. Returns True if something was used."""
+        if self.pool is None: return False
+        have = self.have()
+        payoff = any(t[0] == "cycle" for p in self.perms for t in p.k.trig)
+        for card in sorted(dict.fromkeys(c for c in self.hand if c.hand_acts), key=self.value):
+            for ab in card.hand_acts:
+                tut = [e for e in ab["fx"] if e[0] == "tutor"]
+                if land_only:
+                    if not tut or not any(c.is_land and self.sim.tmatch(tut[0][1], c) for c in self.lib): continue
+                elif ab["kind"] == "transmute":
+                    if eot or not any(self.want_bonus(c, have) >= 50 and self.sim.tmatch(tut[0][1], c) for c in self.lib):
+                        continue
+                elif not eot: continue
+                else:
+                    need_land = not any(c.is_land for c in self.hand) and len(self.lands) < 7
+                    if tut and any(c.is_land and self.sim.tmatch(tut[0][1], c) for c in self.lib):
+                        if not need_land and self.value(card) > (45 if payoff else 20): continue
+                    elif self.value(card) > (45 if payoff else 20): continue
+                if ab.get("life") and self.life - ab["life"] < LIFE_FLOOR: continue
+                if not self.pay(None, ab["gen"], ab["pips"]): continue
+                self.life -= ab.get("life", 0)
+                self.hand.remove(card); self.gy.append(card); self.gain(-1, card.name)
+                self.note(f"  {ab['label']} {card.name}")
+                if ab["kind"] != "transmute": self.cycled += 1
+                self.do(ab["fx"], card, None, 0, land_first=land_only or ab["kind"] == "typecycle" and not
+                        any(c.is_land for c in self.hand))
+                if ab["kind"] != "transmute": self.fire("cycle", card)
+                return True
+        return False
+
+    def do(self, fx, k, p=None, x=0, land_first=False):
         name = k.name
         for e in fx:
             t = e[0]
@@ -1065,21 +1373,69 @@ class Game:
                     elif dest == "top": self.lib.append(pick)
                     else: self.land_enters(pick, force_tapped=dest in ("bf_t", "split"))
                 if dest != "top": self.rng.shuffle(self.lib)
-            elif t in ("tutor", "tutor_multi"):
-                filts = [e[1]] * e[3] if t == "tutor" else e[1]
+            elif t == "tutor":
+                _, tg, dest, count = e
+                if tutor_unread(tg): continue
+                have = self.have(); picks = []
+                for _ in range(count):
+                    cands = [c for c in self.lib if self.sim.tmatch(tg, c) and c not in picks]
+                    if not cands: break
+                    if dest == "graveyard": pick = max(cands, key=self.gy_value)
+                    elif land_first and any(c.is_land for c in cands):
+                        pick = max((c for c in cands if c.is_land), key=lambda c: self.tutor_value(c, dest, have))
+                    else: pick = max(cands, key=lambda c: self.tutor_value(c, dest, have))
+                    self.lib.remove(pick); picks.append(pick); have.add(pick)
+                self.rng.shuffle(self.lib)
+                for c in picks:
+                    if not self.dry: self.tut[c.name] += 1
+                    self.note(f"    {name} finds {c.name} -> {dest}")
+                    if dest == "top": self.lib.append(c)
+                    elif dest in ("bf", "bf_t"):
+                        if c.is_land: self.land_enters(c, force_tapped=dest == "bf_t")
+                        elif c.types & PERMANENT: self.enter(c)
+                        else: self.hand.append(c); self.gain(1, name)
+                    elif dest == "graveyard": self.gy.append(c)
+                    elif dest == "none": self.exile.append(c)
+                    else: self.hand.append(c); self.gain(1, name)
+            elif t == "tutor_multi":
                 picks = []
-                for f in filts:
-                    if f["unknown"]: continue
-                    targets = [c for c in self.lib if spell_ok(c, f)]
+                for f in e[1]:
+                    targets = [c for c in self.lib if spell_ok(c, f) and c not in picks]
                     if targets:
                         pick = max(targets, key=self.value); self.lib.remove(pick); picks.append(pick)
                 self.rng.shuffle(self.lib)
                 for c in picks:
                     if e[2] == "top": self.lib.append(c)
-                    elif e[2] in ("bf", "bf_t"):
-                        if c.types & PERMANENT: self.enter(c)
-                        else: self.hand.append(c); self.gain(1, name)
+                    elif e[2] in ("bf", "bf_t") and c.types & PERMANENT: self.enter(c)
+                    elif e[2] == "graveyard": self.gy.append(c)
                     else: self.hand.append(c); self.gain(1, name)
+            elif t == "recur":
+                _, tg, dest, count = e
+                if tutor_unread(tg): continue
+                for _ in range(count):
+                    cands = [c for c in self.gy if self.sim.tmatch(tg, c)]
+                    if not cands: break
+                    if dest == "bf": pick = max(cands, key=lambda c: (c.mv, c.power, self.value(c)))
+                    else: pick = max(cands, key=self.value)
+                    self.gy.remove(pick); self.recurred(name)
+                    if k.life_per_mv: self.life -= pick.mv
+                    if dest == "bf":
+                        if pick.is_land: self.land_enters(pick)
+                        elif pick.types & PERMANENT: self.enter(pick)
+                        else: self.gy.append(pick)
+                    else: self.hand.append(pick); self.gain(1, name)
+            elif t == "dig_gy":
+                if self.dry: continue
+                top = [self.lib.pop() for _ in range(min(e[1], len(self.lib)))]
+                ok = [c for c in top if self.sim.tmatch(e[2], c)]
+                if ok:
+                    pick = max(ok, key=lambda c: self.tutor_value(c, "hand", self.have()))
+                    top.remove(pick); self.hand.append(pick); self.gain(1, name)
+                self.gy += top
+            elif t == "mill":
+                n = self.val(e[1], p, x)
+                if self.dry or not isinstance(n, int) or n <= 0: continue
+                for _ in range(min(n, len(self.lib))): self.gy.append(self.lib.pop())
             elif t in ("putback", "discard"):
                 n = self.val(e[1], p, x)
                 if self.dry or not isinstance(n, int) or n <= 0: continue
@@ -1112,7 +1468,7 @@ class Game:
                         for kind, n in list(q.ctr.items()): self.add_ctr(q, kind, n)
             elif t == "free_cast":
                 opts = [c for c in dict.fromkeys(self.hand) if not c.is_land and not c.hold and c.mv <= e[1]
-                        and not (c.requires and not self.has(c.requires))]
+                        and not (c.requires and not self.has(c.requires, c))]
                 if opts: self.resolve(min(opts, key=lambda c: self.sim.prio(c, "hand")), "hand", 0)
             elif t == "paid":
                 if self.pool is not None and self.pay(None, e[1], e[2]): self.do(e[3], k, p, x)
@@ -1191,8 +1547,13 @@ class Game:
             rec["stranded"][t].append(self.stranded())
             self.note(f"  mana {pool_n} ({''.join(sorted(cols))}) at the start of main")
             self.cast_loop()
+            if self.hand_act(): self.cast_loop(activate=False)       # transmute, then cast what it found
+            while self.hand_act(eot=True): pass                     # leftover mana: cycle dead cards
             self.pool = None; self.convs = []
             self.fire("end")
+            for q in self.unearthed:
+                if q in self.perms: self.perms.remove(q); self.exile.append(q.k); self._st = None
+            self.unearthed = []
             if not self.st.no_max and len(self.hand) > 7:
                 self.hand.sort(key=self.value)
                 n = len(self.hand) - 7
@@ -1200,6 +1561,7 @@ class Game:
             rec["hand"][t].append(len(self.hand)); rec["extra"][t].append(self.extra)
             rec["casts"][t].append(self.casts); rec["spent"][t].append(self.spent)
             rec["disc"][t].append(self.disc)
+            rec["gy"][t].append(len(self.gy)); rec["recur"][t].append(self.recur); rec["cycled"][t].append(self.cycled)
             rec["cmd_out"][t].append(bool(sim.commanders) and all(any(p.k is c for p in self.perms) for c in sim.commanders))
             if self.log is not None and self.perms: self.note("  board: " + "; ".join(p.k.name + (str(p.ctr) if p.ctr else "") for p in self.perms))
             self.opponents()
@@ -1211,7 +1573,7 @@ def load_overrides():
     return {mtg.norm(k): v for k, v in data.items() if not k.startswith("_")}
 
 class Sim:
-    def __init__(self, names, commanders, args, groups, cache, anyc):
+    def __init__(self, names, commanders, args, groups, cache, anyc, want=None):
         self.args, self.anyc, self.groups = args, anyc, groups
         self.deck = [cache[n] for n in names]
         self.commanders = [cache[n] for n in commanders]
@@ -1220,6 +1582,21 @@ class Sim:
         self.on_play, self.kill_turn, self.cast_hold = not args.draw, args.kill_commander, args.cast_interaction
         self.opps, self.opp_casts, self.opp_pay, self.opp_hand = args.opps, args.opp_casts, args.opp_pay, args.opp_hand
         self.dry_rng = random.Random(0)
+        self.tm = {}
+        self.keys, self.packages = want or (set(), [])
+        self.wanted = set(self.keys) | {c for parts in self.packages for part in parts for c in part}
+        uniq = list(dict.fromkeys(self.deck + self.commanders))
+        self.recursion = [k for k in uniq if k.recur_fx]
+        self.finds = {}
+        for k in uniq:
+            tgs = [e[1] for e in all_fx(k) if e[0] == "tutor" and e[2] not in ("graveyard", "none")]
+            if tgs: self.finds[k] = {c for c in uniq if any(self.tmatch(tg, c) for tg in tgs)}
+
+    def tmatch(self, tg, k):
+        key = (id(tg), id(k))
+        r = self.tm.get(key)
+        if r is None: r = self.tm[key] = bool(k.raw) and tg.matches(k.raw)
+        return r
 
     def prio(self, k, zone):
         o = self.order
@@ -1254,10 +1631,11 @@ class Sim:
     def run(self, trials, turns, seed):
         T = range(1, turns + 1)
         rec = {m: {t: [] for t in T} for m in
-               ("lands", "mana", "colors", "stranded", "hand", "extra", "casts", "spent", "disc", "cmd_out")}
+               ("lands", "mana", "colors", "stranded", "hand", "extra", "casts", "spent", "disc", "cmd_out",
+                "gy", "recur", "cycled")}
         first = {gi: [] for gi in range(len(self.groups))}
         cmd_first = {c.name: [] for c in self.commanders}
-        attr, kept, mull_n = Counter(), Counter(), 0
+        attr, kept, mull_n, rattr, tut = Counter(), Counter(), 0, Counter(), Counter()
         for i in range(trials):
             rng = random.Random(seed * 1_000_003 + i)
             hand, lib, size, mulls = self.opening(rng)
@@ -1268,8 +1646,8 @@ class Sim:
             if g.log: print("\n".join(g.log)); print()
             for gi in first: first[gi].append(g.first.get(gi))
             for c in cmd_first: cmd_first[c].append(g.cmd_first.get(c))
-            attr.update(g.attr)
-        return {"rec": rec, "first": first, "cmd_first": cmd_first, "attr": attr, "kept": kept,
+            attr.update(g.attr); rattr.update(g.rattr); tut.update(g.tut)
+        return {"rec": rec, "first": first, "cmd_first": cmd_first, "attr": attr, "kept": kept, "rattr": rattr, "tut": tut,
                 "mulliganed": mull_n / trials, "trials": trials, "turns": turns}
 
 # ---------------------------------------------------------------- report
@@ -1278,6 +1656,10 @@ def q(vals, p):
     s = sorted(vals); return s[min(len(s) - 1, int(p * (len(s) - 1) + 0.5))]
 def mean(v): return sum(v) / len(v) if v else 0
 def by_turn(turns_list, t): return mean([1 if x is not None and x <= t else 0 for x in turns_list])
+
+def nz(counter):
+    """Drop entries that round to nothing (cycling nets 0 extra cards; it is filtering, not advantage)."""
+    return Counter({k: v for k, v in counter.items() if abs(v) >= 1})
 
 def summary(res, groups):
     rec, T = res["rec"], res["turns"]
@@ -1288,7 +1670,9 @@ def summary(res, groups):
                            for m, v in ((m, rec[m][t]) for m in rec)}
     out["commander_by_turn"] = {c: {t: round(by_turn(v, t), 4) for t in range(1, T + 1)} for c, v in res["cmd_first"].items()}
     out["tracked_by_turn"] = {groups[gi][0]: {t: round(by_turn(v, t), 4) for t in range(1, T + 1)} for gi, v in res["first"].items()}
-    out["extra_card_sources"] = {k: round(v / res["trials"], 3) for k, v in res["attr"].most_common(12)}
+    out["extra_card_sources"] = {k: round(v / res["trials"], 3) for k, v in nz(res["attr"]).most_common(12)}
+    out["recursion_sources"] = {k: round(v / res["trials"], 3) for k, v in nz(res["rattr"]).most_common(10)}
+    out["tutor_targets"] = {k: round(v / res["trials"], 3) for k, v in nz(res["tut"]).most_common(10)}
     out["kept_hand_size"] = {k: round(v / res["trials"], 4) for k, v in sorted(res["kept"].items(), reverse=True)}
     out["mulligan_rate"] = round(res["mulliganed"], 4)
     return out
@@ -1304,6 +1688,7 @@ def print_report(label, sm, meta, groups, show_header=True):
         print(f"mulligans: {pct(sm['mulligan_rate']).strip()} of games mulligan; kept size "
               + ", ".join(f"{k}: {pct(v).strip()}" for k, v in sm["kept_hand_size"].items())
               + "  (London, first mulligan free per rule 103.5c)")
+        if meta.get("priorities"): print(f"tutor priorities from the list header: {meta['priorities']}")
         print(f"table model: {meta['opps']} opponents, {meta['opp_casts']} spell(s) each per cycle, "
               f"{int(meta['opp_pay'] * 100)}% pay a tax, {meta['opp_hand']} cards in an opponent's hand")
     print(f"\n## {label}: development (P10/median/P90; lands and mana at the start of your main phase)")
@@ -1317,15 +1702,23 @@ def print_report(label, sm, meta, groups, show_header=True):
     for g, v in sm["tracked_by_turn"].items():
         print(f"tracked {g}: " + " | ".join(f"<=T{t} {pct(v[t]).strip()}" for t in turns_show))
     print(f"\n## {label}: card flow (end of turn; extra = cards put in hand beyond draw steps)")
-    print(f"{'turn':<5}{'extra (cum)':<13}{'mean':>6}{'hand':>10}{'hand<=1':>9}{'stranded':>10}{'discarded':>11}")
+    print(f"{'turn':<5}{'extra (cum)':<13}{'mean':>6}{'hand':>10}{'hand<=1':>9}{'stranded':>10}{'discarded':>11}"
+          f"{'graveyard':>11}{'recursion':>11}{'cycled':>8}")
     for t in range(1, T + 1):
         d = tt[t]
         print(f"T{t:<4}{trio(t, 'extra'):<13}{d['extra']['mean']:>6.2f}{trio(t, 'hand'):>10}"
-              f"{pct(mean_leq1(d)):>9}{d['stranded']['mean']:>10.2f}{d['disc']['mean']:>11.2f}")
+              f"{pct(mean_leq1(d)):>9}{d['stranded']['mean']:>10.2f}{d['disc']['mean']:>11.2f}"
+              f"{trio(t, 'gy'):>11}{d['recur']['mean']:>11.2f}{d['cycled']['mean']:>8.2f}")
     src = sm["extra_card_sources"]
     if src:
         print(f"extra cards by source (avg per game over {T} turns): "
               + " | ".join(f"{k} {v:.2f}" for k, v in src.items()))
+    if sm.get("recursion_sources"):
+        print(f"recursion by source (cards back from the graveyard, avg per game): "
+              + " | ".join(f"{k} {v:.2f}" for k, v in sm["recursion_sources"].items()))
+    if sm.get("tutor_targets"):
+        print(f"tutor targets (times fetched, avg per game): "
+              + " | ".join(f"{k} {v:.2f}" for k, v in sm["tutor_targets"].items()))
 
 def mean_leq1(d):
     return d["hand"].get("leq1", 0.0)
@@ -1349,6 +1742,8 @@ def compare_table(builds, groups, T):
     rows.append((f"stranded T{t4} (avg)", [f"{sm['turns'][t4]['stranded']['mean']:.2f}" for _, sm in builds]))
     rows.append((f"extra cards T{T} P10/med/P90", [f"{sm['turns'][T]['extra']['p10']}/{sm['turns'][T]['extra']['med']}/{sm['turns'][T]['extra']['p90']}" for _, sm in builds]))
     rows.append((f"mana spent T{T} median", [str(sm['turns'][T]['spent']['med']) for _, sm in builds]))
+    rows.append((f"recursion T{T} (avg)", [f"{sm['turns'][T]['recur']['mean']:.2f}" for _, sm in builds]))
+    rows.append((f"cards cycled T{T} (avg)", [f"{sm['turns'][T]['cycled']['mean']:.2f}" for _, sm in builds]))
     w = max(len(r[0]) for r in rows) + 2
     cw = max(10, max(len(l) for l in labels) + 2)
     print(f"{'':<{w}}" + "".join(f"{l:>{cw}}" for l in labels))
@@ -1356,6 +1751,7 @@ def compare_table(builds, groups, T):
         print(f"{name:<{w}}" + "".join(f"{v:>{cw}}" for v in vals))
 
 def explain(cache, names, commanders):
+    _EXPLAIN_DECK[:] = [cache[n].raw for n in dict.fromkeys(commanders + names)]
     counts = Counter()
     seen = list(dict.fromkeys(commanders + names))
     print(f"{'status':<9}{'role':<7}card — model")
@@ -1389,18 +1785,29 @@ def explain(cache, names, commanders):
                         + ", ".join(fx_str(e) for e in fx))
         for a in k.acts:
             cost = ("T " if a["tap"] else "") + (f"{a['gen'] + len(a['pips'])} " if a["gen"] or a["pips"] else "") \
-                   + ("sac " if a["sac"] else "") + (f"-{a['rm'][1]} {a['rm'][0]} " if a["rm"] else "")
+                   + ("sac " if a["sac"] else "") + (f"-{a['rm'][1]} {a['rm'][0]} " if a["rm"] else "") \
+                   + (f"{a['life']} life " if a.get("life") else "")
             bits.append(f"act [{cost.strip()}]: " + ", ".join(fx_str(e) for e in a["fx"]))
         for c_, fx in k.pw: bits.append(f"loyalty {c_:+d}: " + ", ".join(fx_str(e) for e in fx))
         if k.ctr_enter: bits.append(f"enters with {k.ctr_enter[1]} {k.ctr_enter[0]}" + (" if cast from hand" if k.ctr_enter[2] else ""))
         for s in k.statics:
             if s[0] != "aura_mana": bits.append(s[0])
         if k.leyline: bits.append("leyline")
-        if k.requires: bits.append("needs a " + k.requires)
+        if k.requires == "gy": bits.append("needs a target in your graveyard")
+        elif k.requires == "gy_payoff": bits.append("cast only with a graveyard payoff (recursion in hand/play or a flashback-style card to fetch)")
+        elif k.requires: bits.append("needs a " + k.requires)
         if k.hold: bits.append("held (interaction)")
         if k.ritual: bits.append("ritual (cast only to enable a spell)")
         if k.mdfc: bits.append("MDFC land back")
         if k.rebound: bits.append("rebound")
+        for a in k.hand_acts:
+            cost = f"{a['life']} life" if a.get("life") else f"{{{a['gen'] + len(a['pips'])}}}"
+            bits.append(f"{a['label']} {cost}: " + ", ".join(fx_str(e) for e in a["fx"]))
+        if k.gycast:
+            g = k.gycast
+            cost = "mana cost" if g["gen"] is None else str(g["gen"] + len(g["pips"]))
+            bits.append(f"{g['kw']} from graveyard ({cost}" + (f", discard a {g['discard']}" if g["discard"] else "")
+                        + (f", exile {g['exile_n']} others" if g["exile_n"] else "") + ")")
         role = "land" if k.is_land else k.cat
         status = ("override" if k.override else k.status) if not k.is_land else ("land" if not k.notes else "land*")
         line = f"{status:<9}{role:<7}{k.name} — {'; '.join(bits) or 'body only'}"
@@ -1409,6 +1816,25 @@ def explain(cache, names, commanders):
     print("\nnonland: " + ", ".join(f"{v} {s}" for s, v in counts.most_common()))
 
 # ---------------------------------------------------------------- main
+def header_wants(path, found, cache, names):
+    """'# key:' and '# package:' header lines -> (set of key Cards, [package: [set of Cards per part]])."""
+    meta = mtg.parse_deck_meta(path)
+    by_name = {}
+    for n in names: by_name.setdefault(found[n]["name"], cache[n])
+    keys = set()
+    for v in (meta.get("key") or "").replace(" + ", ";").split(";"):
+        c = mtg.find(v.strip())[0] if v.strip() else None
+        if c and c["name"] in by_name: keys.add(by_name[c["name"]])
+    specs = [sm.parse_package(v) for v in (meta.get("package") or [])]
+    trees = None
+    if any(p.lower().startswith("tag:") for _, parts in specs for p in parts):
+        trees = mtg.load_tags_multi(sorted({p[4:].strip() for _, parts in specs for p in parts if p.lower().startswith("tag:")}))
+    pk = []
+    for _, parts in specs:
+        mem = [{by_name[n] for n in sm._part_members(p, set(by_name), trees)} for p in parts]
+        if all(mem): pk.append(mem)
+    return keys, pk
+
 def main():
     ap = argparse.ArgumentParser(description="Monte Carlo goldfish simulator (see module docstring)")
     ap.add_argument("deck")
@@ -1471,11 +1897,15 @@ def main():
         cache[n] = k
     if args.explain:
         explain(cache, raw_lib + [i for _, pairs in variants for _, i in pairs], raw_cmd); return
+    want = header_wants(args.deck, found, cache, raw_lib + raw_cmd)
+    prio_txt = "; ".join((["key: " + ", ".join(sorted(k.name for k in want[0]))] if want[0] else [])
+                         + ([f"{len(want[1])} package(s)"] if want[1] else []))
     nonland = [cache[n] for n in dict.fromkeys(raw_lib) if not cache[n].is_land]
     st = Counter(k.status for k in nonland)
     meta = {"commander": " + ".join(found[n]["name"] for n in raw_cmd) or "(no commander)", "n": len(raw_lib),
             "trials": args.trials, "turns": args.turns, "draw": args.draw, "seed": args.seed, "opps": args.opps,
             "opp_casts": args.opp_casts, "opp_pay": args.opp_pay, "opp_hand": args.opp_hand,
+            "priorities": prio_txt,
             "model": f"{len(nonland)} nonland cards: {st['modeled']} modeled, {st['partial']} partial, {st['blank']} blank, "
                      f"{st['held']} held as interaction; {sum(k.override for k in cache.values())} overrides"}
     builds = [("base", raw_lib)]
@@ -1488,7 +1918,7 @@ def main():
         builds.append((label, lib))
     results = []
     for label, lib in builds:
-        sim = Sim(lib, raw_cmd, args, groups, cache, anyc)
+        sim = Sim(lib, raw_cmd, args, groups, cache, anyc, want=want)
         res = sim.run(args.trials, args.turns, args.seed)
         sm = summary(res, groups)
         for t in sm["turns"]:
@@ -1499,7 +1929,7 @@ def main():
     for i, (label, sm) in enumerate(results):
         print_report(label, sm, meta, groups, show_header=(i == 0))
     if len(results) > 1: compare_table(results, groups, args.turns)
-    print("\nnot modeled: combat, opponents' interaction, graveyard recursion, tokens beyond Treasures; "
+    print("\nnot modeled: combat, opponents' interaction, tokens beyond Treasures, removal of your own permanents; "
           "partial/blank cards are cast for their mana cost only. Treat numbers as a floor/ceiling sketch, not a prediction.")
 
 if __name__ == "__main__":

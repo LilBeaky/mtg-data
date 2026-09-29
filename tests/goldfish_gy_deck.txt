@@ -1,0 +1,39 @@
+# Goldfish graveyard fixture. Not a real deck: exercises graveyard tutors, reanimation, flashback-family casting,
+# cycling/typecycling, self-mill, and life-cost abilities in goldfish.py (see tests/README.md).
+# key: Griselbrand
+# package: Entomb line = Entomb + Reanimate
+
+Commander
+1 Meren of Clan Nel Toth
+
+Deck
+1 Entomb
+1 Buried Alive
+1 Reanimate
+1 Animate Dead
+1 Exhume
+1 Eternal Witness
+1 Regrowth
+1 Unburial Rites
+1 Deep Analysis
+1 Faithless Looting
+1 Griselbrand
+1 Archon of Cruelty
+1 Sheoldred, Whispering One
+1 Twisted Abomination
+1 Krosan Tusker
+1 Viscera Dragger
+1 Stitcher's Supplier
+1 Gravedigger
+1 Raise Dead
+1 Demonic Tutor
+1 Worm Harvest
+1 Moan of the Unhallowed
+1 Sol Ring
+1 Llanowar Elves
+1 Satyr Wayfinder
+1 Dread Return
+1 Street Wraith
+1 Grisly Salvage
+32 Forest
+33 Swamp

@@ -39,5 +39,16 @@
       "look 5 2"
     ],
     "note": "an opponent splits the five; modeled as keeping the best two"
+  },
+  "Meren of Clan Nel Toth": {
+    "triggers": [
+      {
+        "on": "end",
+        "do": [
+          "recur hand a creature card"
+        ]
+      }
+    ],
+    "note": "end step: return a creature card to hand (no experience counters, since creatures dying isn't modeled); experience-based reanimation to the battlefield not modeled"
   }
 }
