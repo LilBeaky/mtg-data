@@ -258,7 +258,7 @@ def cmd_card(args):
         BRIEF = True; args = [a for a in args if a != "--brief"]
     names = []
     if args[:1] == ["-f"]:
-        names = [l.strip() for l in open(args[1]) if l.strip()]
+        names = list(dict.fromkeys(e[2] for e in parse_deck(args[1])))      # deck files: headers, sections, qty, set codes
     else:
         names = args
     for nm in names:

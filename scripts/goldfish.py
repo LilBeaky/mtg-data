@@ -220,12 +220,21 @@ def restr_ok(r, k, sim):
 def dyn_key(what):
     w = what.lower()
     for rx, key in ((r"(\S+) counters? on (?:it|~)", "ctr"), (r"cards? in [^.]*?opponent's hand", "opp_hand"),
-                    (r"greatest power", "power"), (r"(?:^|\beach )cards? in your graveyard", "gy"), (r"colors? among", "colors"), (r"lands? you control", "lands"),
+                    (r"greatest power", "power"),
+                    (r"^creature cards? in your graveyard", "gy_creature"), (r"^land cards? in your graveyard", "gy_land"),
+                    (r"^instant and(?:/or)? sorcery cards? in your graveyard", "gy_instsorc"),
+                    (r"(?:^|\beach )cards? in your graveyard", "gy"), (r"colors? among", "colors"), (r"lands? you control", "lands"),
                     (r"creatures? you control", "creatures"), (r"artifacts? you control", "artifacts"),
                     (r"enchantments? you control", "enchantments"), (r"permanents? you control", "permanents")):
         m = re.search(rx, w)
         if m: return ("ctr", m.group(1)) if key == "ctr" else (key,)
     return None
+
+QUALIFIED = re.compile(r"\b(attacking|blocking|tapped|untapped|with|that|other|another|opponents?|each player|died|this turn|named|modified|type|party|among|exiled)\b")
+
+def clean_dyn(what):
+    """dyn_key for counts the sim can read exactly; a qualified count ('attacking creature', 'creature with a counter') is None."""
+    return None if QUALIFIED.search(what.lower()) else dyn_key(what)
 
 OPP_SUBJ = ("target opponent", "each opponent", "an opponent", "that player")
 SUBJ = r"(?P<subj>\b(?:target opponent|each opponent|an opponent|that player|target player|each player|you)\s+)?(?:may )?"
@@ -299,10 +308,10 @@ def _fx_token(m):
     n = num(m.group("n")); n = "X" if m.group("n") == "x" else n if isinstance(n, int) else 1
     fe = re.search(r"\bfor each (.+)$", rest)
     if fe:
-        n = dyn_key(fe.group(1))
+        n = clean_dyn(fe.group(1))
         if not n: return None                                               # counts things the sim can't see
     quotes = _CTX.get("quotes") or []
-    qm = re.search(r"@q(\d+)@", rest)
+    qm = re.search(r"@q(\d+)@", rest) or re.match(r"\.?\s*(?:it|they|those tokens|each of them) (?:has|have) @q(\d+)@", m.string[m.end():])
     text = quotes[int(qm.group(1))] if qm and int(qm.group(1)) < len(quotes) else ""
     if m.group("p") is not None or "creature" in desc:
         pw = m.group("p")
@@ -484,7 +493,7 @@ def strip_reminder(t):
 def tildify(text, names):
     for n in sorted({n for n in names if n}, key=len, reverse=True):
         text = re.sub(r"(?<![\w'])" + re.escape(n) + r"(?![\w'])", "~", text)
-    return re.sub(r"\bthis (?:creature|artifact|enchantment|land|permanent|card|spell|aura|equipment|vehicle|planeswalker|battle|siege|saga|class|case|room|kindred)\b",
+    return re.sub(r"\bthis (?:creature|artifact|enchantment|land|permanent|card|spell|aura|equipment|vehicle|planeswalker|battle|siege|saga|class|case|room|kindred|token)\b",
                   "~", text, flags=re.I)
 
 def parse_prod(prod, anyc):
@@ -513,6 +522,7 @@ def dyn_prod(prod):
     m = re.search(r"(?:for each|where x is(?: the number of)?|equal to(?: the number of)?) (.+)$", p)
     if not m: return None
     what = m.group(1)
+    if QUALIFIED.search(what) and "greatest power" not in what: return None
     key = dyn_key(what)
     if key: return key
     ms = re.match(r"(\w+?)s? (?:on the battlefield|you control)$", what)
@@ -605,7 +615,7 @@ def parse_trigger(k, lo):
         ev = {"upkeep": "upkeep", "end step": "end", "draw step": "drawstep"}[m.group(2)]
         if fx: k.trig.append((ev, None, fx, False, tax, m.group(1) != "your"))
         return bool(fx)
-    m = re.match(r"^whenever you cast (?:or copy )?(a|an|your first|your second)? ?(.*?)spells?(?: each turn)?(?: from [^,]+)?,\s*(.+)$", lo)
+    m = re.match(r"^whenever you cast (?:or copy )?(an|a|your first|your second)?\b ?(.*?)spells?(?: each turn)?(?: from [^,]+)?,\s*(.+)$", lo)
     if m:
         fx, tax = parse_fx(m.group(3)); f = parse_filter(m.group(2)) if m.group(2).strip() else None
         if f and f["unknown"]: k.notes.append("cast-trigger filter partly unread: " + m.group(2).strip())
@@ -644,10 +654,11 @@ def parse_trigger(k, lo):
     m = re.match(r"^whenever an opponent casts their second spell each turn,\s*(.+)$", lo)
     if m:
         fx, tax = parse_fx(m.group(1)); k.trig.append(("opp_second", None, fx, False, tax, False)); return bool(fx)
-    m = re.match(r"^whenever an opponent casts (a|an|their first) ?(.*?)spells?(?: each turn)?,\s*(.+)$", lo)
+    m = re.match(r"^whenever an opponent casts (an|a|their first)\b ?(.*?)spells?(?: each turn)?,\s*(.+)$", lo)
     if m:
         fx, tax = parse_fx(m.group(3)); f = parse_filter(m.group(2)) if m.group(2).strip() else None
-        k.trig.append(("opp_cast", f, fx, "first" in m.group(1), tax, False)); return bool(fx)
+        if fx: k.trig.append(("opp_cast", f, fx, "first" in m.group(1), tax, False))
+        return bool(fx)
     m = re.match(r"^whenever an opponent draws a card,\s*(.+)$", lo)
     if m:
         fx, tax = parse_fx(m.group(1)); k.trig.append(("opp_draw", None, fx, False, tax, False)); return bool(fx)
@@ -689,8 +700,8 @@ def parse_line(k, L, anyc, abil):
     if re.search(r"when ~ enters, return a land you control to its owner's hand", lo):
         k.bounce = True; return True
     m = re.match(r"^(?:~|this spell) costs \{(\d+)\} less to cast for each (.+?)\.?$", lo)
-    if m and dyn_key(m.group(2)):
-        k.self_red = (int(m.group(1)), dyn_key(m.group(2))); return True
+    if m and clean_dyn(m.group(2)):
+        k.self_red = (int(m.group(1)), clean_dyn(m.group(2))); return True
     for rx, fn in STATIC_RX:
         m = rx.search(lo)
         if m:
@@ -907,6 +918,13 @@ def keyword_line(k, L, c):
         k.hand_acts.append({"kind": "transmute", "label": "transmute", "gen": g, "pips": p,
                             "fx": [("tutor", t.target, "hand", 1)]})
         return True
+    m = re.match(r"^affinity for (\w+)$", lo)
+    if m:
+        w = m.group(1)
+        key = ("artifacts",) if w == "artifacts" else ("sub", as_subtype(w)) if as_subtype(w) else None
+        if not key: return False
+        k.self_red = (1, key); return True
+    if lo in ("convoke", "improvise"): return False          # tapping creatures/artifacts to pay isn't modeled
     m = re.match(r"^(" + "|".join(GY_KW) + r")\b[ —-]*(.*)$", lo)
     if not m: return None
     kw, rest = m.group(1), m.group(2).strip().rstrip(".")
@@ -1513,6 +1531,9 @@ class Game:
         if key == "power": return max((q.k.power + (q.ctr or {}).get("+1/+1", 0) for q in self.perms if "Creature" in q.k.types), default=0)
         if key == "colors": return len(self.perm_colors())
         if key == "gy": return len(self.gy)
+        if key == "gy_creature": return sum("Creature" in c.types for c in self.gy)
+        if key == "gy_land": return sum(c.is_land for c in self.gy)
+        if key == "gy_instsorc": return sum(bool(c.types & {"Instant", "Sorcery"}) for c in self.gy)
         if key == "sub": return sum(v[1] in q.k.subtypes for q in self.perms)
         if key == "devotion": return sum(1 for q in self.perms for pip in q.k.pips if v[1] in pip)
         if key == "ctr": return (p.ctr or {}).get(v[1], 0) if isinstance(p, Perm) else 0

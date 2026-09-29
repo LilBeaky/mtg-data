@@ -5,7 +5,7 @@
 `smoke.py` runs every tool against it (plus a few throwaway commander decks) and checks exit codes, tracebacks, and expected output. **smoke.py is the source of truth for expected results**; read it for the exact strings. It runs automatically after every daily data refresh and on every push that changes scripts, tests, snapshots, aliases, or goldfish overrides (`.github/workflows/smoke-test.yml`) and records the result in `smoke_status.json`. While that says `fail`, mtg.py and audit.py print a warning in every session.
 
 ```bash
-python3 tests/smoke.py          # ~40s; prints only failures + a summary. --verbose lists every check
+python3 tests/smoke.py          # ~60s; prints only failures + a summary. --verbose lists every check
 ```
 
 Adding an edge case: add the card to `test_deck.txt` (keep the total at 100 with both commanders), add its expectation to `smoke.py`, run it, push both.
@@ -23,7 +23,13 @@ Adding an edge case: add the card to `test_deck.txt` (keep the total at 100 with
 | Bracket | 3 Game Changers, 2-card combo (Oracle + Consultation), extra turn (Time Warp), MLD (Armageddon) |
 | Mana | fetch, bounce, filter land, conditional any-color (Plaza of Heroes), truly restricted mana (Cavern of Souls), always-tapped, land creature (Dryad Arbor), rituals, Leyline, cost reducer, X spell, no price (Warrior's Blades) |
 | Tutors | find-anything, transmute (Dimir House Guard), typecycling (Step Through), graveyard destination (Entomb), library manipulation that isn't a search (Lim-Dûl's Vault) |
-| Goldfish-only | banding (Benalish Hero), initiative (Feywild Caretaker), Dracogenesis (free-cast) — nothing else reads these yet |
+| Goldfish-only | banding (Benalish Hero), initiative (Feywild Caretaker), Dracogenesis (free-cast) |
+
+## Goldfish mechanics fixture and unit checks
+
+`goldfish_mech_deck.txt` (Klauth, mono-mechanic cards) pins the parser work of 2026-09-29 through `--explain` strings: mana multipliers and per-tap extras, scaling mana abilities, conditional reducers (subtype, power floor, first-each-turn), affinity and graveyard-count self-reducers, filtered free casting, creature/Clue tokens, subtype and nontoken enter triggers, modal spells, X-tutors, `non-Human` and "library and/or graveyard" tutors, opponent landfall (~opp), and a reskin (The Cloudsea Djinn). It also holds **guard cards that must stay unread**: Kalitas and Glen Elendra's Answer (tokens off opponents' things), Syndicate Heavy and Thopter Assembly (intervening "if"), Embercleave (qualified count), Chord of Calling (convoke flagged).
+
+`goldfish_units.py` builds exact board states and asserts numbers (Nyxbloom on a Forest = 3 mana; Goreclaw takes exactly 2 off a 4-power creature; an X=2 Nature's Rhythm can't find a 7-drop; tokens never reach the graveyard). No shuffles, no RNG, no pilot choices, so a failure there is a mechanics bug, not noise. Run against the pre-2026-09-29 goldfish.py it fails 26 of 31. Add a check whenever a mechanic is added or a parse bug is fixed.
 
 ## Known approximations (not bugs)
 

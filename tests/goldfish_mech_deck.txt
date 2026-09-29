@@ -1,0 +1,49 @@
+# Goldfish mechanics fixture. Not a real deck: one card per goldfish.py mechanic added Sept 29 2026, plus
+# guard cards that must NOT be read (see tests/README.md). Off-identity cards are here for --explain only.
+# bracket: 3
+# key: Nyxbloom Ancient
+
+Commander
+1 Klauth, Unrivaled Ancient
+
+Deck
+1 Goreclaw, Terror of Qal Sisma
+1 Shadow in the Warp
+1 Dragonspeaker Shaman
+1 Emerald Medallion
+1 Dracogenesis
+1 Omniscience
+1 Mana Reflection
+1 Vorinclex, Voice of Hunger
+1 Zendikar Resurgent
+1 Selvala, Heart of the Wilds
+1 Priest of Titania
+1 Karametra's Acolyte
+1 Gaea's Cradle
+1 Lathliss, Dragon Queen
+1 Deranged Hermit
+1 Tireless Tracker
+1 Awakening Zone
+1 Young Pyromancer
+1 Kalitas, Bloodchief of Ghet
+1 Glen Elendra's Answer
+1 Return of the Wildspeaker
+1 Unbounded Potential
+1 Nature's Rhythm
+1 Green Sun's Zenith
+1 Finale of Devastation
+1 Chord of Calling
+1 Dragonstorm
+1 Invasion of Ikoria
+1 Sire of Stagnation
+1 Syndicate Heavy
+1 Thopter Assembly
+1 Frogmite
+1 Ghoultree
+1 Embercleave
+1 Tolarian Terror
+1 Smothering Tithe
+1 Land Tax
+1 The Cloudsea Djinn
+38 Forest
+23 Mountain

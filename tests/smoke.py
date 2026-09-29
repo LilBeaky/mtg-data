@@ -33,6 +33,8 @@ def deck_without_fake():
 
 def S(*args): return ["scripts/" + args[0]] + list(args[1:])
 
+MECH = "tests/goldfish_mech_deck.txt"
+
 def checks():
     nofake = deck_without_fake()
     return [
@@ -64,23 +66,33 @@ def checks():
              must=["maximum is 2", "DECK SIZE: 99"]),
         # ---- name lookups that have broken before
         dict(name="name traps", cmd=S("mtg.py", "card", "Rampant Growth", "Brainstorm", "Æther Vial",
-                                       "stroke of genius", "Thassa’s Oracle", "Westvale Abbey / Ormendahl, Profane Prince", "--brief"),
+                                       "stroke of genius", "Thassa’s Oracle", "Westvale Abbey / Ormendahl, Profane Prince", "The Cloudsea Djinn", "--brief"),
              must=["Rampant Growth {1}{G}", "Brainstorm {U}", "Aether Vial {1}", "Stroke of Genius {X}{2}{U}",
-                   "Thassa's Oracle {U}{U}", "Westvale Abbey // Ormendahl"],
+                   "Thassa's Oracle {U}{U}", "Westvale Abbey // Ormendahl", "Nyxbloom Ancient {4}{G}{G}{G}",
+                   "reskin: 'The Cloudsea Djinn' is this card"],
              must_not=["NOT FOUND", "ambiguous", "Studious", "Harmonized"]),
         dict(name="rules", cmd=S("mtg.py", "rule", "702.124h"), must=["Partner"]),
         dict(name="rules current", cmd=S("mtg.py", "rule", "--grep", "prepare spell"), must=["722."]),
         dict(name="search", cmd=S("mtg.py", "search", "--ci", "UB", "--tag", "removal", "--cmc", "1-2", "--limit", "3")),
         dict(name="gc list", cmd=S("mtg.py", "gc")),
+        dict(name="search gc + price", cmd=S("mtg.py", "search", "--gc", "--max-price", "5", "--limit", "3"), must=["prices as of"]),
+        dict(name="combos by bracket", cmd=S("mtg.py", "combos", "Thassa's Oracle", "--bracket", "3"), must=["Ruthless→B4"]),
+        dict(name="rulings grep", cmd=S("mtg.py", "rulings", "Plaza of Heroes", "--grep", "legendary")),
+        dict(name="card -f batch", cmd=S("mtg.py", "card", "-f", MECH, "--brief"),
+             must=["Nyxbloom Ancient", "Dracogenesis", "reskin: 'The Cloudsea Djinn' is this card"],
+             must_not=["NOT FOUND"]),
         dict(name="combos", cmd=S("mtg.py", "combos", "Thassa's Oracle")),
         dict(name="rulings", cmd=S("mtg.py", "rulings", "Plaza of Heroes")),
         dict(name="tags", cmd=S("mtg.py", "tags", "Sol Ring")),
         # ---- audit
         dict(name="audit", cmd=S("audit.py", DECK, "--no-edhrec"),
-             must=["## 7. Manual checklist", "MDFC land backs (2", "not counted (restricted mana", "Cavern of Souls",
+             must=["## 2. Mana base", "on-curve colors flagged", "## 3. Commander on curve", "## 4b. Packages", "K-SENSITIVE",
+                   "## 7. Manual checklist", "MDFC land backs (2", "not counted (restricted mana", "Cavern of Souls",
                    "extra-turn cards", "Time Warp", "possible MLD", "Armageddon", "parts share cards",
                    "Comprehensive Rules file is dated"],
              must_not=["Colors aren't modeled", "Traceback"]),
+        dict(name="audit flags", cmd=S("audit.py", DECK, "--no-edhrec", "--no-lists", "--k", "ramp=9", "--bracket", "4"),
+             must=["confirmed overrides: ramp=9", "bracket target 4"]),
         dict(name="audit + EDHREC", cmd=S("audit.py", DECK, "--snapshot", "snapshots/yusri-fortunes-flame__all__2026-09-25.txt"),
              must=["## 6. EDHREC", "EDHREC snapshot: Yusri"]),
         # ---- stats_math
@@ -94,10 +106,16 @@ def checks():
              must=["NOT FOUND, left out", "Dimir House Guard [transmute", "Step Through [cycling",
                    "Entomb [spell, one-shot] → graveyard", "parts share cards"],
              must_not=["Lim-Dûl's Vault ["]),
+        dict(name="tutors options", cmd=S("tutors.py", DECK, "--trials", "300", "--no-lists", "--commander", "Kraum, Ludevic's Opus",
+                                          "--turns", "4,6", "--draw"),
+             must=["on the draw", "## 5. Access odds", "by T4, T6", "Demonic Tutor: T4"]),
         # ---- EDHREC snapshots still resolve against today's data
         *[dict(name=f"snapshot {os.path.basename(f)[:30]}", data=True, cmd=S("edhrec_diff.py", "check", "snapshots/" + os.path.basename(f)), must=["OK"])
           for f in sorted(os.listdir(os.path.join(REPO, "snapshots"))) if f.endswith(".txt")],
         dict(name="edhrec diff", cmd=S("edhrec_diff.py", "diff", "snapshots/erebos-god-of-the-dead__all__2026-09-26.txt", DECK)),
+        dict(name="edhrec diff flags", cmd=S("edhrec_diff.py", "diff", "snapshots/erebos-god-of-the-dead__all__2026-09-26.txt", DECK,
+                                             "--min", "20", "--limit", "5", "--mv", "odd"),
+             must=["EDHREC snapshot: Erebos", "deck names not found in repo: Totally Fake Card Name"]),
         # ---- goldfish. It stops on NOT FOUND, so it gets the deck without the fake card.
         dict(name="goldfish explain", cmd=S("goldfish.py", nofake, "--explain"),
              must=["Entomb — tutor->graveyard", "Step Through — wizardcycling {2}: tutor->hand: Wizard",
@@ -134,6 +152,34 @@ def checks():
              must=["DISRUPTION: command zone/graveyard lock", "command zone/graveyard lock for 3 turns", "fixed scenario for every game"]),
         dict(name="goldfish disruption bad spec", cmd=S("goldfish.py", "tests/goldfish_gy_deck.txt", "--disruption", "meteor@3"),
              expect_rc=1, must=["use KIND@TURN"]),
+        dict(name="goldfish flags", cmd=S("goldfish.py", nofake, "--trials", "50", "--disruption", "off", "--track", "Rituals=Ritual$",
+                                         "--kill-commander", "4"),
+             must=["--kill-commander 4: every clean game loses the commander after turn 3", "tracked Rituals:"]),
+        dict(name="goldfish pilot flags", cmd=S("goldfish.py", nofake, "--trials", "50", "--disruption", "off", "--draw", "--no-mulligan",
+                                               "--cast-interaction", "--order", "ramp,draw,commander,track,other"),
+             must=["on the draw", "0.0% of games mulligan"]),
+        dict(name="goldfish json", cmd=S("goldfish.py", nofake, "--trials", "50", "--disruption", "off", "--json"), must=['"kill": 0']),
+        # ---- goldfish mechanics fixture (Sept 29 2026 parser work) + deterministic unit checks
+        dict(name="goldfish units", cmd=["tests/goldfish_units.py"], must=["units: all"]),
+        dict(name="goldfish mech explain", cmd=S("goldfish.py", MECH, "--explain"),
+             must=["Nyxbloom Ancient — mana x3 (permanents)",
+                   "Mana Reflection — mana x2 (permanents)", "Vorinclex, Voice of Hunger — mana +1 per tap (lands)",
+                   "Selvala, Heart of the Wilds — filter 1->X; X = power", "Priest of Titania — mana G; X = sub Elf",
+                   "Karametra's Acolyte — mana G; X = devotion G", "Goreclaw, Terror of Qal Sisma — reduce {2}: Creature power>=4",
+                   "reduce {2}: Creature (first each turn)", "Dragonspeaker Shaman — reduce {2}: Dragon",
+                   "Dracogenesis — free: Dragon spells (command zone too)", "Omniscience — free: all spells from hand",
+                   "Lathliss, Dragon Queen — on etb(another nontoken Dragon ): token 1x Dragon 5/-",
+                   "Deranged Hermit — ETB token 4x Squirrel", "Tireless Tracker — on landfall: token 1x Clue",
+                   "Young Pyromancer — on cast(instant,sorcery): token 1x Elemental", "Unbounded Potential — prolif 1",
+                   "Dragonstorm — tutor->bf: Dragon permanent", "non-Human creature", "Sire of Stagnation — on opp_land: draw 2; ~opp",
+                   "Frogmite — costs {1} less per artifacts", "Ghoultree — costs {1} less per gy_creature",
+                   "Tolarian Terror — costs {1} less per gy_instsorc", "unmodeled: Convoke",
+                   "conditional trigger (intervening 'if') not modeled", "Land Tax — on upkeep: if an opponent has more lands ~opp",
+                   "Smothering Tithe — on opp_draw taxed: treasure 1; ~opp"],
+             must_not=["partly unread: n instant", "Kalitas, Bloodchief of Ghet — act", "Glen Elendra's Answer — token",
+                       "Embercleave — costs", "on opp_cast(noncreature) 1/turn: ;"]),
+        dict(name="goldfish mech run", cmd=S("goldfish.py", MECH, "--trials", "200", "--shuffles", "10"),
+             must=["tutor priorities from the list header: key: Nyxbloom Ancient", "disruption ladder, Bracket 3", "tutor targets"]),
         dict(name="goldfish gy trace", cmd=S("goldfish.py", "tests/goldfish_gy_deck.txt", "--trials", "2", "--trace", "2"),
              must=["Entomb finds Griselbrand -> graveyard", "Demonic Tutor finds Reanimate -> hand", "cast Reanimate"]),
     ]

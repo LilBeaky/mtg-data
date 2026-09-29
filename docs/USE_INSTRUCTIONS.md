@@ -25,7 +25,7 @@ Custom queries only when no tool answers; respect §7. Suggest folding useful on
 
 ## 3. Layout
 
-`scripts/` (code) · `data/` (bulk data + `aliases.txt`, `goldfish_overrides.json`) · `docs/` · `snapshots/` (EDHREC transcriptions) · `tests/` (edge-case test deck + `smoke.py`; run `python3 tests/smoke.py` after changing any script, before pushing). Scripts pick the newest dated rulings/tags/rules files automatically.
+`scripts/` (code) · `data/` (bulk data + `aliases.txt`, `goldfish_overrides.json`) · `docs/` · `snapshots/` (EDHREC transcriptions) · `tests/` (edge-case test deck, goldfish fixtures, `goldfish_units.py` + `smoke.py`; run `python3 tests/smoke.py` after changing any script, before pushing). Scripts pick the newest dated rulings/tags/rules files automatically.
 
 ## 4. mtg.py and deck files
 
