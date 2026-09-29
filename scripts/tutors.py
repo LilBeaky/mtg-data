@@ -83,7 +83,7 @@ def has_mana_ability(c):
 class Target:
     """What one search can find. `approx` lists clauses read loosely (never silently)."""
     def __init__(self):
-        self.any = False; self.types = set(); self.non = set(); self.supers = set(); self.subs = set()
+        self.any = False; self.types = set(); self.non = set(); self.supers = set(); self.subs = set(); self.non_subs = set()
         self.colors = set(); self.colorless = False; self.multicolored = False
         self.mv = None; self.power = None; self.tough = None; self.named = None; self.not_named = set()
         self.mana_ability = False; self.permanent = False; self.historic = False; self.flash = False
@@ -108,6 +108,7 @@ class Target:
         if self.non & typ: return False
         if self.supers and not self.supers <= sup: return False
         if self.subs and not (sub & self.subs): return False
+        if self.non_subs & sub: return False
         if self.historic and not ({"artifact"} & typ or "legendary" in sup or "saga" in sub): return False
         cols = set(front(c).get("colors") or c.get("colors") or [])
         if self.colors and not self.colors <= cols: return False
@@ -134,6 +135,7 @@ class Target:
             if self.colors: bits.append("/".join(sorted(self.colors)))
             if self.colorless: bits.append("colorless")
             if self.non: bits.append(" ".join("non" + t for t in sorted(self.non)))
+            if self.non_subs: bits.append(" ".join("non-" + t.title() for t in sorted(self.non_subs)))
             if self.subs: bits.append("/".join(s.title() for s in sorted(self.subs)))
             if self.types: bits.append("/".join(sorted(self.types)))
             if self.permanent: bits.append("permanent")
@@ -214,6 +216,8 @@ def parse_target(what, self_card):
             continue
         if w.startswith("non") and w[3:].strip("-") in CARD_TYPES:
             t.non.add(w[3:].strip("-")); continue
+        if w.startswith("non-"):                            # non-Human, non-Dragon: a subtype exclusion
+            t.non_subs.add(w[4:]); continue
         if w in CARD_TYPES: t.types.add("kindred" if w == "tribal" else w); continue
         if w in SUPERTYPES: t.supers.add(w); continue
         if w in COLOR_WORDS: t.colors.add(COLOR_WORDS[w]); continue
