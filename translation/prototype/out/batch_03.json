@@ -1,0 +1,110 @@
+[
+ {"gef":"0.1","name":"Savage Ventmaw","source":"llm","notes":"The clause that the mana does not empty until end of turn is marked format_gap.","abilities":[
+  {"kind":"keyword","text":"Flying","keyword":"flying"},
+  {"kind":"triggered","text":"Whenever this creature attacks, add {R}{R}{R}{G}{G}{G}. Until end of turn, you don't lose this mana as steps and phases end.","event":{"on":"attacks","subject":"self"},"effects":[
+   {"do":"mana","produce":{"units":["R","R","R","G","G","G"]}},
+   {"do":"unexpressible","text":"Until end of turn, you don't lose this mana as steps and phases end.","reason":"mana persisting through steps and phases has no construct","scope":"format_gap"}]}]},
+
+ {"gef":"0.1","name":"Scourge of the Throne","source":"llm","notes":"The most-life condition is expressed with opponent_state text.","abilities":[
+  {"kind":"keyword","text":"Flying","keyword":"flying"},
+  {"kind":"keyword","text":"Dethrone","keyword":"dethrone"},
+  {"kind":"triggered","text":"Whenever this creature attacks for the first time each turn, if it's attacking the player with the most life or tied for most life, untap all attacking creatures. After this phase, there is an additional combat phase.","event":{"on":"attacks","subject":"self","first_each_turn":true},"if":{"if":"opponent_state","text":"it is attacking the player with the most life or tied for most life"},"effects":[
+   {"do":"untap","what":{"ref":"attackers"}},
+   {"do":"extra_combat","n":1,"untap":"none"}]}]},
+
+ {"gef":"0.1","name":"Selvala, Heart of the Wilds","source":"llm","notes":"First line unexpressible: its controller (possibly an opponent) draws on a comparison of power to each other creature's power, which no condition holds.","abilities":[
+  {"kind":"unexpressible","text":"Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power.","reason":"draw by the entering creature's controller conditional on its power exceeding every other creature's power","scope":"format_gap"},
+  {"kind":"mana","text":"{G}, {T}: Add X mana in any combination of colors, where X is the greatest power among creatures you control.","cost":{"mana":"{G}","tap":true},"produce":{"units":["any"],"amount":{"count":"greatest_power","filter":{"types":["creature"],"controller":"you"}},"any_combination":true}}]},
+
+ {"gef":"0.1","name":"Shadow in the Warp","source":"llm","abilities":[
+  {"kind":"static","text":"The first creature spell you cast each turn costs {2} less to cast.","effect":{"static":"cost_reduction","spells":{"types":["creature"]},"amount":2,"first_each_turn":true,"applies_to":"spells"}},
+  {"kind":"triggered","text":"Whenever an opponent casts their first noncreature spell each turn, this enchantment deals 2 damage to that player.","event":{"on":"opponent_casts","spell":{"non_types":["creature"]},"first_each_turn":true},"effects":[{"do":"damage","n":2,"to":"that_player","source":"self"}]}]},
+
+ {"gef":"0.1","name":"Shamanic Revelation","source":"llm","notes":"Ferocious line is a count of creatures with power 4 or greater times 4; it has no separate condition.","abilities":[
+  {"kind":"spell","text":"Draw a card for each creature you control.","effects":[{"do":"draw","n":{"count":"permanents_you_control","filter":{"types":["creature"],"controller":"you"}}}]},
+  {"kind":"spell","text":"Ferocious — You gain 4 life for each creature you control with power 4 or greater.","effects":[{"do":"gain_life","n":{"count":"permanents_you_control","filter":{"types":["creature"],"controller":"you","power":{"min":4}},"times":4},"who":"you"}]}]},
+
+ {"gef":"0.1","name":"Shared Animosity","source":"llm","notes":"No count for other attackers sharing a creature type.","abilities":[
+  {"kind":"unexpressible","text":"Whenever a creature you control attacks, it gets +1/+0 until end of turn for each other attacking creature that shares a creature type with it.","reason":"no count of attacking creatures sharing a creature type with the pumped creature","scope":"format_gap"}]},
+
+ {"gef":"0.1","name":"Signal the Clans","source":"llm","notes":"Random choice among three revealed cards with a different-names condition is not expressible.","abilities":[
+  {"kind":"unexpressible","text":"Search your library for three creature cards and reveal them. If you reveal three cards with different names, choose one of them at random and put that card into your hand. Shuffle the rest into your library.","reason":"random pick of one of three revealed cards conditional on different names, rest shuffled back","scope":"format_gap"}]},
+
+ {"gef":"0.1","name":"Sol Ring","source":"llm","abilities":[
+  {"kind":"mana","text":"{T}: Add {C}{C}.","cost":{"tap":true},"produce":{"units":["C","C"]}}]},
+
+ {"gef":"0.1","name":"Somberwald Sage","source":"llm","abilities":[
+  {"kind":"mana","text":"{T}: Add three mana of any one color. Spend this mana only to cast creature spells.","cost":{"tap":true},"produce":{"units":["any_one_color"],"amount":3,"restrict":"creature spells only"}}]},
+
+ {"gef":"0.1","name":"Spinerock Knoll","source":"llm","notes":"The hideaway play ability refers to the exiled card, which GEF cannot reference.","abilities":[
+  {"kind":"keyword","text":"Hideaway 4","keyword":"hideaway","n":4},
+  {"kind":"static","text":"This land enters tapped.","effect":{"static":"enters_tapped"}},
+  {"kind":"mana","text":"{T}: Add {R}.","cost":{"tap":true},"produce":{"units":["R"]}},
+  {"kind":"unexpressible","text":"{R}, {T}: You may play the exiled card without paying its mana cost if an opponent was dealt 7 or more damage this turn.","reason":"plays the hideaway-exiled card, conditional on damage dealt to an opponent this turn; neither is expressible","scope":"format_gap"}]},
+
+ {"gef":"0.1","name":"Stormscale Scion","source":"llm","abilities":[
+  {"kind":"keyword","text":"Flying","keyword":"flying"},
+  {"kind":"static","text":"Other Dragons you control get +1/+1.","effect":{"static":"anthem","filter":{"subtypes":["Dragon"],"another":true,"controller":"you"},"power":1,"toughness":1}},
+  {"kind":"keyword","text":"Storm","keyword":"storm"}]},
+
+ {"gef":"0.1","name":"Strength of the Tajuru","source":"llm","notes":"Number of targets depends on times kicked, and a Target count cannot hold that.","abilities":[
+  {"kind":"keyword","text":"Multikicker {1}","keyword":"multikicker","cost":"{1}"},
+  {"kind":"unexpressible","text":"Choose target creature, then choose another target creature for each time this spell was kicked. Put X +1/+1 counters on each of them.","reason":"number of targets equals one plus times kicked; no target count construct for that","scope":"format_gap"}]},
+
+ {"gef":"0.1","name":"Terror of the Peaks","source":"llm","abilities":[
+  {"kind":"keyword","text":"Flying","keyword":"flying"},
+  {"kind":"unexpressible","text":"Spells your opponents cast that target this creature cost an additional 3 life to cast.","reason":"only concerns opponents' spells","scope":"out_of_scope"},
+  {"kind":"triggered","text":"Whenever another creature you control enters, this creature deals damage equal to that creature's power to any target.","event":{"on":"enters","subject":{"types":["creature"],"another":true,"controller":"you"}},"effects":[{"do":"damage","n":{"count":"power_of_that"},"to":"any_target","source":"self"}]}]},
+
+ {"gef":"0.1","name":"Nyxbloom Ancient","source":"llm","abilities":[
+  {"kind":"keyword","text":"Trample","keyword":"trample"},
+  {"kind":"static","text":"If you tap a permanent for mana, it produces three times as much of that mana instead.","effect":{"static":"mana_multiplier","factor":3,"sources":"permanents you tap for mana"}}]},
+
+ {"gef":"0.1","name":"Thrakkus the Butcher","source":"llm","notes":"Doubling each Dragon's own power has no construct.","abilities":[
+  {"kind":"keyword","text":"Trample","keyword":"trample"},
+  {"kind":"unexpressible","text":"Whenever Thrakkus attacks, double the power of each Dragon you control until end of turn.","reason":"doubling each Dragon's own power; pump cannot take a per-creature amount","scope":"format_gap"}]},
+
+ {"gef":"0.1","name":"Three Visits","source":"llm","abilities":[
+  {"kind":"spell","text":"Search your library for a Forest card, put it onto the battlefield, then shuffle.","effects":[{"do":"tutor","filter":{"subtypes":["Forest"]},"n":1,"to":"battlefield"}]}]},
+
+ {"gef":"0.1","name":"Unnatural Growth","source":"llm","notes":"Doubling each creature's power and toughness has no construct.","abilities":[
+  {"kind":"unexpressible","text":"At the beginning of each combat, double the power and toughness of each creature you control until end of turn.","reason":"doubling each creature's own power and toughness; pump cannot take a per-creature amount","scope":"format_gap"}]},
+
+ {"gef":"0.1","name":"Utvara Hellkite","source":"llm","abilities":[
+  {"kind":"keyword","text":"Flying","keyword":"flying"},
+  {"kind":"triggered","text":"Whenever a Dragon you control attacks, create a 6/6 red Dragon creature token with flying.","event":{"on":"attacks","subject":{"subtypes":["Dragon"],"controller":"you"}},"effects":[{"do":"token","n":1,"token":{"types":["creature"],"subtypes":["Dragon"],"colors":["R"],"power":6,"toughness":6,"keywords":["flying"]}}]}]},
+
+ {"gef":"0.1","name":"Valakut Awakening // Valakut Stoneforge","source":"llm","notes":"Valakut Awakening draws a number depending on how many cards were put back, which has no amount key.","faces":[
+  {"name":"Valakut Awakening","abilities":[
+   {"kind":"unexpressible","text":"Put any number of cards from your hand on the bottom of your library, then draw that many cards plus one.","reason":"draw count depends on the number of cards chosen from hand; no such count","scope":"format_gap"}]},
+  {"name":"Valakut Stoneforge","abilities":[
+   {"kind":"static","text":"This land enters tapped.","effect":{"static":"enters_tapped"}},
+   {"kind":"mana","text":"{T}: Add {R}.","cost":{"tap":true},"produce":{"units":["R"]}}]}]},
+
+ {"gef":"0.1","name":"Vorinclex, Voice of Hunger","source":"llm","notes":"Line 2 adds a mana matching what the tapped land produced, which has no construct; line 3 only concerns opponents' lands.","abilities":[
+  {"kind":"keyword","text":"Trample","keyword":"trample"},
+  {"kind":"unexpressible","text":"Whenever you tap a land for mana, add one mana of any type that land produced.","reason":"adds one extra mana of the type the land produced; no construct for matching the produced type","scope":"format_gap"},
+  {"kind":"unexpressible","text":"Whenever an opponent taps a land for mana, that land doesn't untap during its controller's next untap step.","reason":"only concerns opponents' lands","scope":"out_of_scope"}]},
+
+ {"gef":"0.1","name":"Worldly Tutor","source":"llm","abilities":[
+  {"kind":"spell","text":"Search your library for a creature card, reveal it, then shuffle and put the card on top.","effects":[{"do":"tutor","filter":{"types":["creature"]},"n":1,"to":"library_top","reveal":true}]}]},
+
+ {"gef":"0.1","name":"Wrathful Red Dragon","source":"llm","notes":"The 'isn't a Dragon' restriction on the any-target cannot be held, so the line is not loosened.","abilities":[
+  {"kind":"keyword","text":"Flying","keyword":"flying"},
+  {"kind":"unexpressible","text":"Whenever a Dragon you control is dealt damage, it deals that much damage to any target that isn't a Dragon.","reason":"target restriction 'that isn't a Dragon' on any target has no construct","scope":"format_gap"}]},
+
+ {"gef":"0.1","name":"Wulfgar of Icewind Dale","source":"llm","abilities":[
+  {"kind":"keyword","text":"Melee","keyword":"melee"},
+  {"kind":"static","text":"If a creature you control attacking causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.","effect":{"static":"trigger_doubler","cause":"attacks","filter":{"types":["creature"],"controller":"you"}}}]},
+
+ {"gef":"0.1","name":"Yusri, Fortune's Flame","source":"llm","abilities":[
+  {"kind":"keyword","text":"Flying","keyword":"flying"},
+  {"kind":"triggered","text":"Whenever Yusri attacks, choose a number between 1 and 5. Flip that many coins. For each flip you win, draw a card. For each flip you lose, Yusri deals 2 damage to you. If you won five flips this way, you may cast spells from your hand this turn without paying their mana costs.","event":{"on":"attacks","subject":"self"},"effects":[
+   {"do":"choose_number","min":1,"max":5},
+   {"do":"flip_coins","n":{"count":"number_chosen"},"on_win":[{"do":"draw","n":1}],"on_lose":[{"do":"damage","n":2,"to":"you","source":"self"}]},
+   {"do":"if","cond":{"if":"amount_at_least","amount":{"count":"coin_flips_won"},"n":5},"then":[{"do":"free_cast_permission","spells":{"any":true},"from":"hand","duration":"end_of_turn"}]}]}]},
+
+ {"gef":"0.1","name":"Academy Ruins","source":"llm","abilities":[
+  {"kind":"mana","text":"{T}: Add {C}.","cost":{"tap":true},"produce":{"units":["C"]}},
+  {"kind":"activated","text":"{1}{U}, {T}: Put target artifact card from your graveyard on top of your library.","cost":{"mana":"{1}{U}","tap":true},"effects":[{"do":"recur","filter":{"types":["artifact"]},"n":1,"to":"library_top","from":"your_graveyard"}]}]}
+]

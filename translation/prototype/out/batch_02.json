@@ -1,0 +1,209 @@
+[
+ {"gef": "0.1", "name": "Finale of Devastation", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library and/or graveyard for a creature card with mana value X or less and put it onto the battlefield. If you search your library this way, shuffle. If X is 10 or more, creatures you control get +X/+X and gain haste until end of turn.",
+    "effects": [
+     {"do": "tutor", "filter": {"types": ["creature"], "mana_value": {"max": "X"}}, "n": 1, "from": ["library", "graveyard"], "to": "battlefield"},
+     {"do": "if", "cond": {"if": "x_at_least", "n": 10},
+      "then": [{"do": "pump_team", "filter": {"types": ["creature"], "controller": "you"}, "power": "X", "toughness": "X", "keywords": ["haste"], "duration": "end_of_turn"}]}]}]},
+
+ {"gef": "0.1", "name": "Garruk's Uprising", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "When this enchantment enters, if you control a creature with power 4 or greater, draw a card.",
+    "event": {"on": "enters", "subject": "self"},
+    "if": {"if": "control", "filter": {"types": ["creature"], "controller": "you", "power": {"min": 4}}},
+    "effects": [{"do": "draw", "n": 1}]},
+   {"kind": "static", "text": "Creatures you control have trample.",
+    "effect": {"static": "grant_abilities", "filter": {"types": ["creature"], "controller": "you"},
+               "abilities": [{"kind": "keyword", "text": "Trample", "keyword": "trample"}]}},
+   {"kind": "triggered", "text": "Whenever a creature you control with power 4 or greater enters, draw a card.",
+    "event": {"on": "enters", "subject": {"types": ["creature"], "controller": "you", "power": {"min": 4}}},
+    "effects": [{"do": "draw", "n": 1}]}]},
+
+ {"gef": "0.1", "name": "Goreclaw, Terror of Qal Sisma", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Creature spells you cast with power 4 or greater cost {2} less to cast.",
+    "effect": {"static": "cost_reduction", "spells": {"types": ["creature"], "power": {"min": 4}}, "amount": 2, "applies_to": "spells"}},
+   {"kind": "triggered", "text": "Whenever Goreclaw attacks, each creature you control with power 4 or greater gets +1/+1 and gains trample until end of turn.",
+    "event": {"on": "attacks", "subject": "self"},
+    "effects": [{"do": "pump_team", "filter": {"types": ["creature"], "controller": "you", "power": {"min": 4}}, "power": 1, "toughness": 1, "keywords": ["trample"], "duration": "end_of_turn"}]}]},
+
+ {"gef": "0.1", "name": "Green Sun's Zenith", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for a green creature card with mana value X or less, put it onto the battlefield, then shuffle. Shuffle Green Sun's Zenith into its owner's library.",
+    "effects": [
+     {"do": "tutor", "filter": {"types": ["creature"], "colors": ["G"], "mana_value": {"max": "X"}}, "n": 1, "from": ["library"], "to": "battlefield"},
+     {"do": "self_to_library", "where": "shuffle"}]}]},
+
+ {"gef": "0.1", "name": "Gwenna, Eyes of Gaea", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add two mana in any combination of colors. Spend this mana only to cast creature spells or activate abilities of creature sources.",
+    "cost": {"tap": true},
+    "produce": {"units": ["any"], "amount": 2, "any_combination": true, "restrict": "Spend this mana only to cast creature spells or activate abilities of creature sources."}},
+   {"kind": "triggered", "text": "Whenever you cast a creature spell with power 5 or greater, put a +1/+1 counter on Gwenna and untap it.",
+    "event": {"on": "cast", "who": "you", "spell": {"types": ["creature"], "power": {"min": 5}}},
+    "effects": [
+     {"do": "counters", "kind": "+1/+1", "n": 1, "on": {"ref": "self"}},
+     {"do": "untap", "what": {"ref": "self"}}]}]},
+
+ {"gef": "0.1", "name": "Hunter's Insight", "source": "llm",
+  "notes": "Whole line unexpressible: the delayed trigger is tied to the chosen creature and also counts damage to planeswalkers, and the event construct can't hold either.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Choose target creature you control. Whenever that creature deals combat damage to a player or planeswalker this turn, draw that many cards.",
+    "reason": "delayed trigger bound to the chosen creature, for combat damage to a player or planeswalker, drawing that many; no event construct holds this", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Invasion of Ikoria // Zilortha, Apex of Ikoria", "source": "llm",
+  "notes": "Siege reminder line omitted. Zilortha's damage-assignment line is a format gap.",
+  "faces": [
+   {"name": "Invasion of Ikoria",
+    "abilities": [
+     {"kind": "triggered", "text": "When this Siege enters, search your library and/or graveyard for a non-Human creature card with mana value X or less and put it onto the battlefield. If you search your library this way, shuffle.",
+      "event": {"on": "enters", "subject": "self"},
+      "effects": [{"do": "tutor", "filter": {"types": ["creature"], "non_subtypes": ["Human"], "mana_value": {"max": "X"}}, "n": 1, "from": ["library", "graveyard"], "to": "battlefield"}]}]},
+   {"name": "Zilortha, Apex of Ikoria",
+    "abilities": [
+     {"kind": "keyword", "text": "Reach", "keyword": "reach"},
+     {"kind": "unexpressible", "text": "For each non-Human creature you control, you may have that creature assign its combat damage as though it weren't blocked.",
+      "reason": "combat damage assignment as though unblocked; no construct", "scope": "format_gap"}]}]},
+
+ {"gef": "0.1", "name": "Jeska's Will", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Choose one. If you control a commander as you cast this spell, you may choose both instead.\n• Add {R} for each card in target opponent's hand.\n• Exile the top three cards of your library. You may play them this turn.",
+    "effects": [
+     {"do": "if", "cond": {"if": "you_control_commander"},
+      "then": [{"do": "choose", "n": 2, "up_to": true, "modes": [
+        [{"do": "mana", "produce": {"units": ["R"], "amount": {"count": "cards_in_opponent_hand"}}}],
+        [{"do": "impulse", "n": 3, "until": "end_of_turn"}]]}],
+      "else": [{"do": "choose", "n": 1, "modes": [
+        [{"do": "mana", "produce": {"units": ["R"], "amount": {"count": "cards_in_opponent_hand"}}}],
+        [{"do": "impulse", "n": 3, "until": "end_of_turn"}]]}]}]}]},
+
+ {"gef": "0.1", "name": "Kessig Wolf Run", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "activated", "text": "{X}{R}{G}, {T}: Target creature gets +X/+0 and gains trample until end of turn.",
+    "cost": {"mana": "{X}{R}{G}", "tap": true},
+    "effects": [{"do": "pump", "target": {"ref": "target", "filter": {"types": ["creature"]}}, "power": "X", "keywords": ["trample"], "duration": "end_of_turn"}]}]},
+
+ {"gef": "0.1", "name": "Klauth's Will", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Choose one. If you control a commander as you cast this spell, you may choose both instead.\n• Breathe Flame — Klauth's Will deals X damage to each creature without flying.\n• Smash Relics — Destroy up to X target artifacts and/or enchantments.",
+    "effects": [
+     {"do": "if", "cond": {"if": "you_control_commander"},
+      "then": [{"do": "choose", "n": 2, "up_to": true, "modes": [
+        [{"do": "wipe", "how": "damage", "filter": {"types": ["creature"], "without_keywords": ["flying"]}, "amount": "X"}],
+        [{"do": "remove", "how": "destroy", "target": {"ref": "target", "n": "X", "up_to": true, "filter": {"types": ["artifact", "enchantment"]}}}]]}],
+      "else": [{"do": "choose", "n": 1, "modes": [
+        [{"do": "wipe", "how": "damage", "filter": {"types": ["creature"], "without_keywords": ["flying"]}, "amount": "X"}],
+        [{"do": "remove", "how": "destroy", "target": {"ref": "target", "n": "X", "up_to": true, "filter": {"types": ["artifact", "enchantment"]}}}]]}]}]}]},
+
+ {"gef": "0.1", "name": "Knollspine Dragon", "source": "llm",
+  "notes": "The draw amount (damage dealt to target opponent this turn) has no count key, so that part is unexpressible.",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "triggered", "text": "When this creature enters, you may discard your hand and draw cards equal to the damage dealt to target opponent this turn.",
+    "event": {"on": "enters", "subject": "self"}, "optional": true,
+    "effects": [
+     {"do": "discard", "n": "hand"},
+     {"do": "unexpressible", "text": "draw cards equal to the damage dealt to target opponent this turn", "reason": "no count for damage dealt to a target opponent this turn", "scope": "format_gap"}]}]},
+
+ {"gef": "0.1", "name": "Last March of the Ents", "source": "llm",
+  "abilities": [
+   {"kind": "unexpressible", "text": "This spell can't be countered.",
+    "reason": "only matters against opponents' counterspells, which a goldfish never has", "scope": "out_of_scope"},
+   {"kind": "spell", "text": "Draw cards equal to the greatest toughness among creatures you control, then put any number of creature cards from your hand onto the battlefield.",
+    "effects": [
+     {"do": "draw", "n": {"count": "greatest_toughness", "filter": {"types": ["creature"], "controller": "you"}}},
+     {"do": "put_from_hand", "filter": {"types": ["creature"]}, "n": "any"}]}]},
+
+ {"gef": "0.1", "name": "Lathliss, Dragon Queen", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "triggered", "text": "Whenever another nontoken Dragon you control enters, create a 5/5 red Dragon creature token with flying.",
+    "event": {"on": "enters", "subject": {"subtypes": ["Dragon"], "another": true, "nontoken": true, "controller": "you"}},
+    "effects": [{"do": "token", "n": 1, "token": {"types": ["creature"], "subtypes": ["Dragon"], "colors": ["R"], "power": 5, "toughness": 5, "keywords": ["flying"]}}]},
+   {"kind": "activated", "text": "{1}{R}: Dragons you control get +1/+0 until end of turn.",
+    "cost": {"mana": "{1}{R}"},
+    "effects": [{"do": "pump_team", "filter": {"subtypes": ["Dragon"], "controller": "you"}, "power": 1, "duration": "end_of_turn"}]}]},
+
+ {"gef": "0.1", "name": "Llanowar Elves", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {G}.", "cost": {"tap": true}, "produce": {"units": ["G"]}}]},
+
+ {"gef": "0.1", "name": "Maelstrom of the Spirit Dragon", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "mana", "text": "{T}: Add one mana of any color. Spend this mana only to cast a Dragon spell or an Omen spell.",
+    "cost": {"tap": true}, "produce": {"units": ["any"], "restrict": "Spend this mana only to cast a Dragon spell or an Omen spell."}},
+   {"kind": "activated", "text": "{4}, {T}, Sacrifice this land: Search your library for a Dragon card, reveal it, put it into your hand, then shuffle.",
+    "cost": {"mana": "{4}", "tap": true, "sacrifice": "self"},
+    "effects": [{"do": "tutor", "filter": {"subtypes": ["Dragon"]}, "n": 1, "from": ["library"], "to": "hand", "reveal": true}]}]},
+
+ {"gef": "0.1", "name": "Mossfire Valley", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{1}, {T}: Add {R}{G}.", "cost": {"mana": "{1}", "tap": true}, "produce": {"units": ["R", "G"]}}]},
+
+ {"gef": "0.1", "name": "Mosswort Bridge", "source": "llm",
+  "notes": "The last line needs a total-power condition (creatures you control have total power 10 or greater) and playing the hideaway card; marked a format gap.",
+  "abilities": [
+   {"kind": "keyword", "text": "Hideaway 4", "keyword": "hideaway", "n": 4},
+   {"kind": "static", "text": "This land enters tapped.", "effect": {"static": "enters_tapped"}},
+   {"kind": "mana", "text": "{T}: Add {G}.", "cost": {"tap": true}, "produce": {"units": ["G"]}},
+   {"kind": "unexpressible", "text": "{G}, {T}: You may play the exiled card without paying its mana cost if creatures you control have total power 10 or greater.",
+    "reason": "condition on the total power of creatures you control has no construct, and no construct plays the hideaway-exiled card", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Nature's Rhythm", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for a creature card with mana value X or less, put it onto the battlefield, then shuffle.",
+    "effects": [{"do": "tutor", "filter": {"types": ["creature"], "mana_value": {"max": "X"}}, "n": 1, "from": ["library"], "to": "battlefield"}]},
+   {"kind": "keyword", "text": "Harmonize {X}{G}{G}{G}{G}", "keyword": "harmonize", "cost": "{X}{G}{G}{G}{G}"}]},
+
+ {"gef": "0.1", "name": "Ohran Frostfang", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Attacking creatures you control have deathtouch.",
+    "effect": {"static": "grant_abilities", "filter": {"types": ["creature"], "controller": "you", "attacking": true},
+               "abilities": [{"kind": "keyword", "text": "Deathtouch", "keyword": "deathtouch"}]}},
+   {"kind": "triggered", "text": "Whenever a creature you control deals combat damage to a player, draw a card.",
+    "event": {"on": "combat_damage_to_player", "subject": {"types": ["creature"], "controller": "you"}},
+    "effects": [{"do": "draw", "n": 1}]}]},
+
+ {"gef": "0.1", "name": "Overwhelming Stampede", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Until end of turn, creatures you control gain trample and get +X/+X, where X is the greatest power among creatures you control.",
+    "effects": [{"do": "pump_team", "filter": {"types": ["creature"], "controller": "you"},
+                 "power": {"count": "greatest_power", "filter": {"types": ["creature"], "controller": "you"}},
+                 "toughness": {"count": "greatest_power", "filter": {"types": ["creature"], "controller": "you"}},
+                 "keywords": ["trample"], "duration": "end_of_turn"}]}]},
+
+ {"gef": "0.1", "name": "Rampant Growth", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+    "effects": [{"do": "tutor", "filter": {"types": ["land"], "supertypes": ["basic"]}, "n": 1, "to": "battlefield_tapped"}]}]},
+
+ {"gef": "0.1", "name": "Return of the Wildspeaker", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Choose one —\n• Draw cards equal to the greatest power among non-Human creatures you control.\n• Non-Human creatures you control get +3/+3 until end of turn.",
+    "effects": [{"do": "choose", "n": 1, "modes": [
+      [{"do": "draw", "n": {"count": "greatest_power", "filter": {"types": ["creature"], "non_subtypes": ["Human"], "controller": "you"}}}],
+      [{"do": "pump_team", "filter": {"types": ["creature"], "non_subtypes": ["Human"], "controller": "you"}, "power": 3, "toughness": 3, "duration": "end_of_turn"}]]}]}]},
+
+ {"gef": "0.1", "name": "Rhythm of the Wild", "source": "llm",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Creature spells you control can't be countered.",
+    "reason": "only matters against opponents' counterspells, which a goldfish never has", "scope": "out_of_scope"},
+   {"kind": "static", "text": "Nontoken creatures you control have riot.",
+    "effect": {"static": "grant_abilities", "filter": {"types": ["creature"], "nontoken": true, "controller": "you"},
+               "abilities": [{"kind": "keyword", "text": "Riot", "keyword": "riot"}]}}]},
+
+ {"gef": "0.1", "name": "Rishkar's Expertise", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Draw cards equal to the greatest power among creatures you control.",
+    "effects": [{"do": "draw", "n": {"count": "greatest_power", "filter": {"types": ["creature"], "controller": "you"}}}]},
+   {"kind": "spell", "text": "You may cast a spell with mana value 5 or less from your hand without paying its mana cost.",
+    "effects": [{"do": "cast_free", "filter": {"mana_value": {"max": 5}}, "from": "hand", "n": 1}]}]},
+
+ {"gef": "0.1", "name": "Ruby Medallion", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Red spells you cast cost {1} less to cast.",
+    "effect": {"static": "cost_reduction", "spells": {"colors": ["R"]}, "amount": 1, "applies_to": "spells"}}]}
+]

@@ -1,0 +1,155 @@
+[
+ {"gef": "0.1", "name": "New Perspectives", "source": "llm",
+  "notes": "Second line is a conditional cycling-cost replacement with no matching construct, so it is a format gap.",
+  "abilities": [
+   {"kind": "triggered", "text": "When this enchantment enters, draw three cards.", "event": {"on": "enters", "subject": "self"}, "effects": [{"do": "draw", "n": 3}]},
+   {"kind": "unexpressible", "text": "As long as you have seven or more cards in hand, you may pay {0} rather than pay cycling costs.", "reason": "conditional alternative cost of {0} for cycling; cost_reduction cannot say 'pay {0} instead' with a hand-size condition exactly", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Patron Wizard", "source": "llm",
+  "abilities": [
+   {"kind": "activated", "text": "Tap an untapped Wizard you control: Counter target spell unless its controller pays {1}.",
+    "cost": {"tap_untapped": {"n": 1, "filter": {"subtypes": ["Wizard"], "controller": "you"}}},
+    "effects": [{"do": "counter_spell", "unless_pays": "{1}"}]}]},
+
+ {"gef": "0.1", "name": "Personal Tutor", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for a sorcery card, reveal it, then shuffle and put that card on top.",
+    "effects": [{"do": "tutor", "filter": {"types": ["sorcery"]}, "n": 1, "to": "library_top", "reveal": true}]}]},
+
+ {"gef": "0.1", "name": "Pest Control", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Destroy all nonland permanents with mana value 1 or less.",
+    "effects": [{"do": "wipe", "how": "destroy", "filter": {"non_types": ["land"], "mana_value": {"max": 1}}}]},
+   {"kind": "keyword", "text": "Cycling {2}", "keyword": "cycling", "cost": "{2}"}]},
+
+ {"gef": "0.1", "name": "Prairie Stream", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "({T}: Add {W} or {U}.)", "cost": {"tap": true}, "produce": {"units": ["WU"]}},
+   {"kind": "static", "text": "This land enters tapped unless you control two or more basic lands.",
+    "effect": {"static": "enters_tapped", "unless": {"if": "control", "filter": {"types": ["land"], "supertypes": ["basic"], "controller": "you"}, "min": 2}}}]},
+
+ {"gef": "0.1", "name": "Requisition Raid", "source": "llm",
+  "notes": "Spree mode costs ({1} each) have no field, so they are not recorded on the modes; the third mode (counters on each creature a target player controls) is unexpressible because the filter cannot name a target player's creatures.",
+  "abilities": [
+   {"kind": "keyword", "text": "Spree", "keyword": "spree"},
+   {"kind": "spell", "text": "+ {1} — Destroy target artifact.\n+ {1} — Destroy target enchantment.\n+ {1} — Put a +1/+1 counter on each creature target player controls.",
+    "effects": [{"do": "choose", "n": 3, "up_to": true, "modes": [
+      [{"do": "remove", "how": "destroy", "target": {"ref": "target", "filter": {"types": ["artifact"]}}}],
+      [{"do": "remove", "how": "destroy", "target": {"ref": "target", "filter": {"types": ["enchantment"]}}}],
+      [{"do": "unexpressible", "text": "Put a +1/+1 counter on each creature target player controls.", "reason": "creatures controlled by a chosen target player cannot be filtered", "scope": "format_gap"}]]}]}]},
+
+ {"gef": "0.1", "name": "Rule of Law", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Each player can't cast more than one spell each turn.", "effect": {"static": "restriction", "who": "each_player", "text": "can't cast more than one spell each turn"}}]},
+
+ {"gef": "0.1", "name": "Scheming Symmetry", "source": "llm",
+  "notes": "Two chosen players each search their own library; tutor has no player field.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Choose two target players. Each of them searches their library for a card, then shuffles and puts that card on top.", "reason": "each of two target players searches their own library; no construct for another player's search", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Skycloud Expanse", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{1}, {T}: Add {W}{U}.", "cost": {"mana": "{1}", "tap": true}, "produce": {"units": ["W", "U"]}}]},
+
+ {"gef": "0.1", "name": "Solitary Confinement", "source": "llm",
+  "notes": "Shroud on you and damage prevention only affect opponents' actions, so they are out of scope.",
+  "abilities": [
+   {"kind": "triggered", "text": "At the beginning of your upkeep, sacrifice this enchantment unless you discard a card.", "event": {"on": "upkeep", "whose": "your"},
+    "effects": [{"do": "may_pay", "cost": {"discard": {"n": 1}}, "then": [], "else": [{"do": "sacrifice", "what": {"ref": "self"}}], "who": "you"}]},
+   {"kind": "static", "text": "Skip your draw step.", "effect": {"static": "restriction", "who": "you", "text": "Skip your draw step."}},
+   {"kind": "unexpressible", "text": "You have shroud.", "reason": "only stops opponents from targeting you", "scope": "out_of_scope"},
+   {"kind": "unexpressible", "text": "Prevent all damage that would be dealt to you.", "reason": "damage to you is only dealt by opponents", "scope": "out_of_scope"}]},
+
+ {"gef": "0.1", "name": "Solve the Equation", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for an instant or sorcery card, reveal it, put it into your hand, then shuffle.",
+    "effects": [{"do": "tutor", "filter": {"types": ["instant", "sorcery"]}, "n": 1, "to": "hand", "reveal": true}]}]},
+
+ {"gef": "0.1", "name": "Spellseeker", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "When this creature enters, you may search your library for an instant or sorcery card with mana value 2 or less, reveal it, put it into your hand, then shuffle.",
+    "event": {"on": "enters", "subject": "self"}, "optional": true,
+    "effects": [{"do": "tutor", "filter": {"types": ["instant", "sorcery"], "mana_value": {"max": 2}}, "n": 1, "to": "hand", "reveal": true}]}]},
+
+ {"gef": "0.1", "name": "Step Through", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Return two target creatures to their owners' hands.",
+    "effects": [{"do": "remove", "how": "bounce", "target": {"ref": "target", "n": 2, "filter": {"types": ["creature"]}}}]},
+   {"kind": "keyword", "text": "Wizardcycling {2}", "keyword": "typecycling", "cost": "{2}", "detail": "Wizard"}]},
+
+ {"gef": "0.1", "name": "Sunken Hollow", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "({T}: Add {U} or {B}.)", "cost": {"tap": true}, "produce": {"units": ["UB"]}},
+   {"kind": "static", "text": "This land enters tapped unless you control two or more basic lands.",
+    "effect": {"static": "enters_tapped", "unless": {"if": "control", "filter": {"types": ["land"], "supertypes": ["basic"], "controller": "you"}, "min": 2}}}]},
+
+ {"gef": "0.1", "name": "Talisman of Dominance", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "activated", "text": "{T}: Add {U} or {B}. This artifact deals 1 damage to you.", "cost": {"tap": true},
+    "effects": [{"do": "mana", "produce": {"units": ["UB"]}}, {"do": "damage", "n": 1, "to": "you", "source": "self"}]}]},
+
+ {"gef": "0.1", "name": "Talisman of Progress", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "activated", "text": "{T}: Add {W} or {U}. This artifact deals 1 damage to you.", "cost": {"tap": true},
+    "effects": [{"do": "mana", "produce": {"units": ["WU"]}}, {"do": "damage", "n": 1, "to": "you", "source": "self"}]}]},
+
+ {"gef": "0.1", "name": "Triskaidekaphile", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "You have no maximum hand size.", "effect": {"static": "no_max_hand_size"}},
+   {"kind": "triggered", "text": "At the beginning of your upkeep, if you have exactly thirteen cards in your hand, you win the game.", "event": {"on": "upkeep", "whose": "your"},
+    "if": {"if": "hand_exactly", "n": 13}, "effects": [{"do": "win_game"}]},
+   {"kind": "activated", "text": "{3}{U}: Draw a card.", "cost": {"mana": "{3}{U}"}, "effects": [{"do": "draw", "n": 1}]}]},
+
+ {"gef": "0.1", "name": "Unearth", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Return target creature card with mana value 3 or less from your graveyard to the battlefield.",
+    "effects": [{"do": "recur", "filter": {"types": ["creature"], "mana_value": {"max": 3}}, "n": 1, "to": "battlefield", "from": "your_graveyard"}]},
+   {"kind": "keyword", "text": "Cycling {2}", "keyword": "cycling", "cost": "{2}"}]},
+
+ {"gef": "0.1", "name": "Unquestioned Authority", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Enchant creature", "keyword": "enchant", "detail": "creature"},
+   {"kind": "triggered", "text": "When this Aura enters, draw a card.", "event": {"on": "enters", "subject": "self"}, "effects": [{"do": "draw", "n": 1}]},
+   {"kind": "static", "text": "Enchanted creature has protection from creatures.",
+    "effect": {"static": "attached_bonus", "abilities": [{"kind": "keyword", "text": "protection from creatures", "keyword": "protection", "detail": "creatures"}]}}]},
+
+ {"gef": "0.1", "name": "Vedalken Aethermage", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Flash", "keyword": "flash"},
+   {"kind": "triggered", "text": "When this creature enters, return target Sliver to its owner's hand.", "event": {"on": "enters", "subject": "self"},
+    "effects": [{"do": "remove", "how": "bounce", "target": {"ref": "target", "filter": {"subtypes": ["Sliver"]}}}]},
+   {"kind": "keyword", "text": "Wizardcycling {3}", "keyword": "typecycling", "cost": "{3}", "detail": "Wizard"}]},
+
+ {"gef": "0.1", "name": "Wander in Death", "source": "llm",
+  "notes": "'Up to two' is written as n 2; recur has no up_to field.",
+  "abilities": [
+   {"kind": "spell", "text": "Return up to two target creature cards from your graveyard to your hand.",
+    "effects": [{"do": "recur", "filter": {"types": ["creature"]}, "n": 2, "to": "hand", "from": "your_graveyard"}]},
+   {"kind": "keyword", "text": "Cycling {2}", "keyword": "cycling", "cost": "{2}"}]},
+
+ {"gef": "0.1", "name": "Wishclaw Talisman", "source": "llm",
+  "notes": "The opponent gaining control of the artifact is a format gap (gain_control is for you taking control).",
+  "abilities": [
+   {"kind": "static", "text": "This artifact enters with three wish counters on it.", "effect": {"static": "enters_with_counters", "kind": "wish", "n": 3}},
+   {"kind": "activated", "text": "{1}, {T}, Remove a wish counter from this artifact: Search your library for a card, put it into your hand, then shuffle. An opponent gains control of this artifact. Activate only during your turn.",
+    "cost": {"mana": "{1}", "tap": true, "remove_counters": {"kind": "wish", "n": 1, "from": "self"}},
+    "if": {"if": "your_turn"},
+    "effects": [{"do": "tutor", "filter": {"any": true}, "n": 1, "to": "hand"},
+                {"do": "unexpressible", "text": "An opponent gains control of this artifact.", "reason": "control of your own permanent passes to an opponent", "scope": "format_gap"}]}]},
+
+ {"gef": "0.1", "name": "Words of Worship", "source": "llm",
+  "abilities": [
+   {"kind": "unexpressible", "text": "{1}: The next time you would draw a card this turn, you gain 5 life instead.", "reason": "one-shot draw replacement effect; no construct for it", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Swords to Plowshares", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Exile target creature. Its controller gains life equal to its power.",
+    "effects": [{"do": "remove", "how": "exile", "target": {"ref": "target", "filter": {"types": ["creature"]}}, "controller_compensation": "its controller gains life equal to its power"}]}]},
+
+ {"gef": "0.1", "name": "Swiftfoot Boots", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Equipped creature has hexproof and haste.", "effect": {"static": "attached_bonus", "keywords": ["hexproof", "haste"]}},
+   {"kind": "keyword", "text": "Equip {1}", "keyword": "equip", "cost": "{1}"}]}
+]

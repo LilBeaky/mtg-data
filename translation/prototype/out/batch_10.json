@@ -1,0 +1,151 @@
+[
+ {"gef": "0.1", "name": "Urborg, Tomb of Yawgmoth", "source": "llm", "abilities": [
+  {"kind": "static", "text": "Each land is a Swamp in addition to its other land types.",
+   "effect": {"static": "type_grant", "filter": {"types": ["land"], "controller": "any"}, "add_types": ["Swamp"]}}]},
+
+ {"gef": "0.1", "name": "Boseiju, Who Endures", "source": "llm",
+  "notes": "The cost reduction per legendary creature and the opponent's optional land search are marked unexpressible inside the channel ability.",
+  "abilities": [
+  {"kind": "mana", "text": "{T}: Add {G}.", "cost": {"tap": true}, "produce": {"units": ["G"]}},
+  {"kind": "activated", "from_zone": "hand",
+   "text": "Channel — {1}{G}, Discard this card: Destroy target artifact, enchantment, or nonbasic land an opponent controls. That player may search their library for a land card with a basic land type, put it onto the battlefield, then shuffle. This ability costs {1} less to activate for each legendary creature you control.",
+   "cost": {"mana": "{1}{G}", "discard": {"n": 1, "filter": {"name": "Boseiju, Who Endures"}}},
+   "effects": [
+    {"do": "remove", "how": "destroy", "target": {"ref": "target", "filter": {"controller": "opponent", "any_of": [{"types": ["artifact"]}, {"types": ["enchantment"]}, {"types": ["land"], "supertypes": ["nonbasic"]}]}}},
+    {"do": "unexpressible", "text": "That player may search their library for a land card with a basic land type, put it onto the battlefield, then shuffle.", "reason": "the opponent's own library search", "scope": "out_of_scope"},
+    {"do": "unexpressible", "text": "This ability costs {1} less to activate for each legendary creature you control.", "reason": "no construct for an activated ability's cost reduction by a count", "scope": "format_gap"}]}]},
+
+ {"gef": "0.1", "name": "Yavimaya, Cradle of Growth", "source": "llm", "abilities": [
+  {"kind": "static", "text": "Each land is a Forest in addition to its other land types.",
+   "effect": {"static": "type_grant", "filter": {"types": ["land"], "controller": "any"}, "add_types": ["Forest"]}}]},
+
+ {"gef": "0.1", "name": "Esper Sentinel", "source": "llm",
+  "notes": "The tax is {X} where X is this creature's power, which a mana-cost string cannot hold.",
+  "abilities": [
+  {"kind": "unexpressible", "text": "Whenever an opponent casts their first noncreature spell each turn, draw a card unless that player pays {X}, where X is this creature's power.",
+   "reason": "the payment amount is this creature's power, but unless_opponent_pays only takes a fixed mana cost", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Fierce Guardianship", "source": "llm", "abilities": [
+  {"kind": "alt_cost", "text": "If you control a commander, you may cast this spell without paying its mana cost.", "cost": {}, "if": {"if": "you_control_commander"}},
+  {"kind": "spell", "text": "Counter target noncreature spell.", "effects": [{"do": "counter_spell", "filter": {"non_types": ["creature"]}}]}]},
+
+ {"gef": "0.1", "name": "Chromatic Lantern", "source": "llm", "abilities": [
+  {"kind": "static", "text": "Lands you control have \"{T}: Add one mana of any color.\"",
+   "effect": {"static": "grant_abilities", "filter": {"types": ["land"], "controller": "you"},
+    "abilities": [{"kind": "mana", "text": "{T}: Add one mana of any color.", "cost": {"tap": true}, "produce": {"units": ["any"]}}]}},
+  {"kind": "mana", "text": "{T}: Add one mana of any color.", "cost": {"tap": true}, "produce": {"units": ["any"]}}]},
+
+ {"gef": "0.1", "name": "Otawara, Soaring City", "source": "llm",
+  "notes": "The cost reduction per legendary creature is marked unexpressible inside the channel ability.",
+  "abilities": [
+  {"kind": "mana", "text": "{T}: Add {U}.", "cost": {"tap": true}, "produce": {"units": ["U"]}},
+  {"kind": "activated", "from_zone": "hand",
+   "text": "Channel — {3}{U}, Discard this card: Return target artifact, creature, enchantment, or planeswalker to its owner's hand. This ability costs {1} less to activate for each legendary creature you control.",
+   "cost": {"mana": "{3}{U}", "discard": {"n": 1, "filter": {"name": "Otawara, Soaring City"}}},
+   "effects": [
+    {"do": "remove", "how": "bounce", "target": {"ref": "target", "filter": {"any_of": [{"types": ["artifact"]}, {"types": ["creature"]}, {"types": ["enchantment"]}, {"types": ["planeswalker"]}]}}},
+    {"do": "unexpressible", "text": "This ability costs {1} less to activate for each legendary creature you control.", "reason": "no construct for an activated ability's cost reduction by a count", "scope": "format_gap"}]}]},
+
+ {"gef": "0.1", "name": "Smoldering Marsh", "source": "llm",
+  "notes": "The first line is only reminder text for the land types, so it is not translated; the second line is the enters-tapped condition.",
+  "abilities": [
+  {"kind": "static", "text": "This land enters tapped unless you control two or more basic lands.",
+   "effect": {"static": "enters_tapped", "unless": {"if": "control", "filter": {"types": ["land"], "supertypes": ["basic"], "controller": "you"}, "min": 2}}}]},
+
+ {"gef": "0.1", "name": "The One Ring", "source": "llm",
+  "notes": "The protection-from-everything ETB is marked out_of_scope since it only guards against opponents' actions, and its 'if you cast it' condition has no construct.",
+  "abilities": [
+  {"kind": "keyword", "text": "Indestructible", "keyword": "indestructible"},
+  {"kind": "unexpressible", "text": "When The One Ring enters, if you cast it, you gain protection from everything until your next turn.",
+   "reason": "protection from everything only stops opponents' actions, which a goldfish never has", "scope": "out_of_scope"},
+  {"kind": "triggered", "text": "At the beginning of your upkeep, you lose 1 life for each burden counter on The One Ring.",
+   "event": {"on": "upkeep", "whose": "your"},
+   "effects": [{"do": "lose_life", "n": {"count": "counters_on_self", "kind": "burden"}, "who": "you"}]},
+  {"kind": "activated", "text": "{T}: Put a burden counter on The One Ring, then draw a card for each burden counter on The One Ring.",
+   "cost": {"tap": true},
+   "effects": [
+    {"do": "counters", "kind": "burden", "n": 1, "on": {"ref": "self"}},
+    {"do": "draw", "n": {"count": "counters_on_self", "kind": "burden"}}]}]},
+
+ {"gef": "0.1", "name": "Faithless Looting", "source": "llm", "abilities": [
+  {"kind": "spell", "text": "Draw two cards, then discard two cards.", "effects": [{"do": "draw", "n": 2}, {"do": "discard", "n": 2}]},
+  {"kind": "keyword", "text": "Flashback {2}{R}", "keyword": "flashback", "cost": "{2}{R}"}]},
+
+ {"gef": "0.1", "name": "Frantic Search", "source": "llm", "abilities": [
+  {"kind": "spell", "text": "Draw two cards, then discard two cards. Untap up to three lands.",
+   "effects": [{"do": "draw", "n": 2}, {"do": "discard", "n": 2},
+    {"do": "untap", "what": {"ref": "target", "n": 3, "up_to": true, "filter": {"types": ["land"]}}}]}]},
+
+ {"gef": "0.1", "name": "Vandalblast", "source": "llm", "abilities": [
+  {"kind": "spell", "text": "Destroy target artifact you don't control.",
+   "effects": [{"do": "remove", "how": "destroy", "target": {"ref": "target", "filter": {"types": ["artifact"], "controller": "opponent"}}}]},
+  {"kind": "keyword", "text": "Overload {4}{R}", "keyword": "overload", "cost": "{4}{R}"}]},
+
+ {"gef": "0.1", "name": "Elvish Mystic", "source": "llm", "abilities": [
+  {"kind": "mana", "text": "{T}: Add {G}.", "cost": {"tap": true}, "produce": {"units": ["G"]}}]},
+
+ {"gef": "0.1", "name": "Phyrexian Arena", "source": "llm", "abilities": [
+  {"kind": "triggered", "text": "At the beginning of your upkeep, you draw a card and lose 1 life.",
+   "event": {"on": "upkeep", "whose": "your"},
+   "effects": [{"do": "draw", "n": 1}, {"do": "lose_life", "n": 1, "who": "you"}]}]},
+
+ {"gef": "0.1", "name": "Canopy Vista", "source": "llm",
+  "notes": "The first line is only reminder text for the land types, so it is not translated; the second line is the enters-tapped condition.",
+  "abilities": [
+  {"kind": "static", "text": "This land enters tapped unless you control two or more basic lands.",
+   "effect": {"static": "enters_tapped", "unless": {"if": "control", "filter": {"types": ["land"], "supertypes": ["basic"], "controller": "you"}, "min": 2}}}]},
+
+ {"gef": "0.1", "name": "Deadly Rollick", "source": "llm", "abilities": [
+  {"kind": "alt_cost", "text": "If you control a commander, you may cast this spell without paying its mana cost.", "cost": {}, "if": {"if": "you_control_commander"}},
+  {"kind": "spell", "text": "Exile target creature.",
+   "effects": [{"do": "remove", "how": "exile", "target": {"ref": "target", "filter": {"types": ["creature"]}}}]}]},
+
+ {"gef": "0.1", "name": "Teferi's Protection", "source": "llm",
+  "notes": "Life total locking and phasing out your permanents have no construct (format_gap); self-exile on resolution also has none.",
+  "abilities": [
+  {"kind": "unexpressible", "text": "Until your next turn, your life total can't change and you gain protection from everything. All permanents you control phase out.",
+   "reason": "locks your own life total and phases out your permanents; GEF has no construct for either", "scope": "format_gap"},
+  {"kind": "spell", "text": "Exile Teferi's Protection.",
+   "effects": [{"do": "unexpressible", "text": "Exile Teferi's Protection.", "reason": "no construct for exiling the resolving spell itself", "scope": "format_gap"}]}]},
+
+ {"gef": "0.1", "name": "Propaganda", "source": "llm", "abilities": [
+  {"kind": "unexpressible", "text": "Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you.",
+   "reason": "a tax on opponents' attacks against you, which never happen in a goldfish", "scope": "out_of_scope"}]},
+
+ {"gef": "0.1", "name": "Sakura-Tribe Elder", "source": "llm", "abilities": [
+  {"kind": "activated", "text": "Sacrifice this creature: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+   "cost": {"sacrifice": "self"},
+   "effects": [{"do": "tutor", "filter": {"types": ["land"], "supertypes": ["basic"]}, "n": 1, "to": "battlefield_tapped"}]}]},
+
+ {"gef": "0.1", "name": "Vampiric Tutor", "source": "llm", "abilities": [
+  {"kind": "spell", "text": "Search your library for a card, then shuffle and put that card on top. You lose 2 life.",
+   "effects": [{"do": "tutor", "filter": {"any": true}, "n": 1, "to": "library_top"}, {"do": "lose_life", "n": 2, "who": "you"}]}]},
+
+ {"gef": "0.1", "name": "Mana Drain", "source": "llm",
+  "notes": "The delayed mana at the next main phase equal to the countered spell's mana value has no construct, so it is marked format_gap.",
+  "abilities": [
+  {"kind": "spell", "text": "Counter target spell. At the beginning of your next main phase, add an amount of {C} equal to that spell's mana value.",
+   "effects": [
+    {"do": "counter_spell"},
+    {"do": "unexpressible", "text": "At the beginning of your next main phase, add an amount of {C} equal to that spell's mana value.", "reason": "delayed mana at the next main phase, scaled by the countered spell's mana value; delayed has no main-phase timing", "scope": "format_gap"}]}]},
+
+ {"gef": "0.1", "name": "Eternal Witness", "source": "llm", "abilities": [
+  {"kind": "triggered", "text": "When this creature enters, you may return target card from your graveyard to your hand.",
+   "event": {"on": "enters", "subject": "self"}, "optional": true,
+   "effects": [{"do": "recur", "filter": {"any": true}, "n": 1, "to": "hand", "from": "your_graveyard"}]}]},
+
+ {"gef": "0.1", "name": "Lotus Petal", "source": "llm", "abilities": [
+  {"kind": "mana", "text": "{T}, Sacrifice this artifact: Add one mana of any color.", "cost": {"tap": true, "sacrifice": "self"}, "produce": {"units": ["any"]}}]},
+
+ {"gef": "0.1", "name": "Assassin's Trophy", "source": "llm",
+  "notes": "The opponent's basic land search is marked out_of_scope.",
+  "abilities": [
+  {"kind": "spell", "text": "Destroy target permanent an opponent controls. Its controller may search their library for a basic land card, put it onto the battlefield, then shuffle.",
+   "effects": [
+    {"do": "remove", "how": "destroy", "target": {"ref": "target", "filter": {"types": ["permanent"], "controller": "opponent"}}},
+    {"do": "unexpressible", "text": "Its controller may search their library for a basic land card, put it onto the battlefield, then shuffle.", "reason": "the opponent's own library search", "scope": "out_of_scope"}]}]},
+
+ {"gef": "0.1", "name": "Enlightened Tutor", "source": "llm", "abilities": [
+  {"kind": "spell", "text": "Search your library for an artifact or enchantment card, reveal it, then shuffle and put that card on top.",
+   "effects": [{"do": "tutor", "filter": {"any_of": [{"types": ["artifact"]}, {"types": ["enchantment"]}]}, "n": 1, "to": "library_top", "reveal": true}]}]}
+]

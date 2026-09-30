@@ -1,0 +1,157 @@
+[
+ {"gef": "0.1", "name": "Krark's Thumb", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "If you would flip a coin, instead flip two coins and ignore one.",
+    "effect": {"static": "replacement", "text": "If you would flip a coin, instead flip two coins and ignore one.", "kind": "other"}}]},
+
+ {"gef": "0.1", "name": "Laboratory Maniac", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "If you would draw a card while your library has no cards in it, you win the game instead.",
+    "effect": {"static": "lab_man"}}]},
+
+ {"gef": "0.1", "name": "Library of Leng", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "You have no maximum hand size.", "effect": {"static": "no_max_hand_size"}},
+   {"kind": "static", "text": "If an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard.",
+    "effect": {"static": "replacement", "text": "If an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard.", "kind": "discard"}}]},
+
+ {"gef": "0.1", "name": "Lightning Greaves", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Equipped creature has haste and shroud.",
+    "effect": {"static": "attached_bonus", "keywords": ["haste", "shroud"]}},
+   {"kind": "keyword", "text": "Equip {0}", "keyword": "equip", "cost": "{0}"}]},
+
+ {"gef": "0.1", "name": "Long-Term Plans", "source": "llm",
+  "notes": "No zone for 'third from the top' of the library, so the line is a format gap.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Search your library for a card, then shuffle and put that card third from the top.",
+    "reason": "puts the found card third from the top of the library; GEF only has library_top, library_bottom and library_shuffled", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Muddle the Mixture", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Counter target instant or sorcery spell.",
+    "effects": [{"do": "counter_spell", "filter": {"any_of": [{"types": ["instant"]}, {"types": ["sorcery"]}]}}]},
+   {"kind": "keyword", "text": "Transmute {1}{U}{U}", "keyword": "transmute", "cost": "{1}{U}{U}"}]},
+
+ {"gef": "0.1", "name": "Mystic Remora", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Cumulative upkeep {1}", "keyword": "cumulative upkeep", "cost": "{1}"},
+   {"kind": "triggered", "text": "Whenever an opponent casts a noncreature spell, you may draw a card unless that player pays {4}.",
+    "event": {"on": "opponent_casts", "spell": {"non_types": ["creature"]}}, "optional": true,
+    "effects": [{"do": "unless_opponent_pays", "cost": "{4}", "effects": [{"do": "draw", "n": 1}]}]}]},
+
+ {"gef": "0.1", "name": "Mystical Tutor", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for an instant or sorcery card, reveal it, then shuffle and put that card on top.",
+    "effects": [{"do": "tutor", "filter": {"any_of": [{"types": ["instant"]}, {"types": ["sorcery"]}]}, "n": 1, "to": "library_top", "reveal": true}]}]},
+
+ {"gef": "0.1", "name": "Nexus of Fate", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Take an extra turn after this one.", "effects": [{"do": "extra_turn", "n": 1}]},
+   {"kind": "static", "text": "If Nexus of Fate would be put into a graveyard from anywhere, reveal Nexus of Fate and shuffle it into its owner's library instead.",
+    "effect": {"static": "replacement", "text": "If Nexus of Fate would be put into a graveyard from anywhere, reveal Nexus of Fate and shuffle it into its owner's library instead.", "kind": "graveyard"}}]},
+
+ {"gef": "0.1", "name": "Okaun, Eye of Chaos", "source": "llm",
+  "notes": "Doubling power and toughness is a pump of the current power/toughness of itself until end of turn.",
+  "abilities": [
+   {"kind": "keyword", "text": "Partner with Zndrsplt, Eye of Wisdom", "keyword": "partner with", "detail": "Zndrsplt, Eye of Wisdom"},
+   {"kind": "triggered", "text": "At the beginning of combat on your turn, flip a coin until you lose a flip.",
+    "event": {"on": "combat_begin", "whose": "your"},
+    "effects": [{"do": "flip_coins", "until_lose": true}]},
+   {"kind": "triggered", "text": "Whenever a player wins a coin flip, double Okaun's power and toughness until end of turn.",
+    "event": {"on": "coin_flip_won", "who": "each_player"},
+    "effects": [{"do": "pump", "target": {"ref": "self"}, "power": {"count": "power_of_self"}, "toughness": {"count": "toughness_of_self"}, "duration": "end_of_turn"}]}]},
+
+ {"gef": "0.1", "name": "Planar Chaos", "source": "llm",
+  "notes": "Second ability: the flip is made by the casting player (possibly an opponent); flip_coins has no 'who', so it is written as the trigger's flip with the spell countered on a loss.",
+  "abilities": [
+   {"kind": "triggered", "text": "At the beginning of your upkeep, flip a coin. If you lose the flip, sacrifice this enchantment.",
+    "event": {"on": "upkeep", "whose": "your"},
+    "effects": [{"do": "flip_coins", "n": 1, "on_lose": [{"do": "sacrifice", "what": {"ref": "self"}}]}]},
+   {"kind": "triggered", "text": "Whenever a player casts a spell, that player flips a coin. If they lose the flip, counter that spell.",
+    "event": {"on": "cast", "who": "each_player"},
+    "effects": [{"do": "flip_coins", "n": 1, "on_lose": [{"do": "counter_spell"}]}]}]},
+
+ {"gef": "0.1", "name": "Pongify", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Destroy target creature. It can't be regenerated. Its controller creates a 3/3 green Ape creature token.",
+    "effects": [{"do": "remove", "how": "destroy", "target": {"ref": "target", "filter": {"types": ["creature"]}},
+                 "controller_compensation": "It can't be regenerated. Its controller creates a 3/3 green Ape creature token."}]}]},
+
+ {"gef": "0.1", "name": "Prismari, the Inspiration", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "keyword", "text": "Ward—Pay 5 life.", "keyword": "ward", "cost": {"pay_life": 5}},
+   {"kind": "unexpressible", "text": "Instant and sorcery spells you cast have storm.",
+    "reason": "grants storm to spells you cast; no static construct grants keywords to spells", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Reality Shift", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Exile target creature. Its controller manifests the top card of their library.",
+    "effects": [{"do": "remove", "how": "exile", "target": {"ref": "target", "filter": {"types": ["creature"]}}},
+                {"do": "unexpressible", "text": "Its controller manifests the top card of their library.", "reason": "manifest (a face-down 2/2 from the top of a library) has no construct", "scope": "format_gap"}]}]},
+
+ {"gef": "0.1", "name": "Reckless Handling", "source": "llm",
+  "notes": "The conditional damage depends on whether the discarded card was an artifact, for which there is no condition, so it is a format gap.",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for an artifact card, reveal it, put it into your hand, shuffle, then discard a card at random. If an artifact card was discarded this way, Reckless Handling deals 2 damage to each opponent.",
+    "effects": [{"do": "tutor", "filter": {"types": ["artifact"]}, "n": 1, "to": "hand", "reveal": true},
+                {"do": "discard", "n": 1, "who": "you", "random": true},
+                {"do": "unexpressible", "text": "If an artifact card was discarded this way, Reckless Handling deals 2 damage to each opponent.", "reason": "conditional on the type of the randomly discarded card; no condition for it", "scope": "format_gap"}]}]},
+
+ {"gef": "0.1", "name": "Resurrection Orb", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Equipped creature has lifelink.", "effect": {"static": "attached_bonus", "keywords": ["lifelink"]}},
+   {"kind": "unexpressible", "text": "Whenever equipped creature dies, return that card to the battlefield under its owner's control at the beginning of the next end step.",
+    "reason": "delayed return of that specific card from the graveyard; no construct refers to the card that died", "scope": "format_gap"},
+   {"kind": "keyword", "text": "Equip {4}", "keyword": "equip", "cost": "{4}"}]},
+
+ {"gef": "0.1", "name": "Rhystic Study", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "Whenever an opponent casts a spell, you may draw a card unless that player pays {1}.",
+    "event": {"on": "opponent_casts"}, "optional": true,
+    "effects": [{"do": "unless_opponent_pays", "cost": "{1}", "effects": [{"do": "draw", "n": 1}]}]}]},
+
+ {"gef": "0.1", "name": "Sapphire Medallion", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Blue spells you cast cost {1} less to cast.",
+    "effect": {"static": "cost_reduction", "spells": {"colors": ["U"]}, "amount": 1}}]},
+
+ {"gef": "0.1", "name": "Seize the Day", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Untap target creature. After this main phase, there is an additional combat phase followed by an additional main phase.",
+    "effects": [{"do": "untap", "what": {"ref": "target", "filter": {"types": ["creature"]}}},
+                {"do": "extra_combat", "n": 1, "untap": "none", "then_main": true}]},
+   {"kind": "keyword", "text": "Flashback {2}{R}", "keyword": "flashback", "cost": "{2}{R}"}]},
+
+ {"gef": "0.1", "name": "Show and Tell", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Each player may put an artifact, creature, enchantment, or land card from their hand onto the battlefield.",
+    "effects": [{"do": "put_from_hand", "filter": {"types": ["artifact", "creature", "enchantment", "land"]}, "n": 1, "symmetric": true}]}]},
+
+ {"gef": "0.1", "name": "Simian Spirit Guide", "source": "llm",
+  "abilities": [
+   {"kind": "activated", "text": "Exile this card from your hand: Add {R}.", "from_zone": "hand",
+    "cost": {"exile_from_hand": "self"},
+    "effects": [{"do": "mana", "produce": {"units": ["R"]}}]}]},
+
+ {"gef": "0.1", "name": "Spellbook", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "You have no maximum hand size.", "effect": {"static": "no_max_hand_size"}}]},
+
+ {"gef": "0.1", "name": "Squee's Revenge", "source": "llm",
+  "notes": "The number is unbounded ('choose a number') and flipping stops at the first loss with a payoff scaled per flip; choose_number needs a max, so the whole line is a format gap.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Choose a number. Flip a coin that many times or until you lose a flip, whichever comes first. If you win all the flips, draw two cards for each flip.",
+    "reason": "unbounded chosen number, flips stop at first loss, and the draw count depends on the number of flips made", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Stitch in Time", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Flip a coin. If you win the flip, take an extra turn after this one.",
+    "effects": [{"do": "flip_coins", "n": 1, "on_win": [{"do": "extra_turn", "n": 1}]}]}]},
+
+ {"gef": "0.1", "name": "Stock Up", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Look at the top five cards of your library. Put two of them into your hand and the rest on the bottom of your library in any order.",
+    "effects": [{"do": "look", "n": 5, "take": 2, "to": "hand", "rest": "bottom"}]}]}
+]

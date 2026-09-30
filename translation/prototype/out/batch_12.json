@@ -1,0 +1,126 @@
+[
+ {"gef":"0.1","name":"Rakdos Signet","source":"llm","abilities":[
+  {"kind":"mana","text":"{1}, {T}: Add {B}{R}.","cost":{"mana":"{1}","tap":true},"produce":{"units":["B","R"]}}]},
+
+ {"gef":"0.1","name":"Austere Command","source":"llm","abilities":[
+  {"kind":"spell","text":"Choose two —\n• Destroy all artifacts.\n• Destroy all enchantments.\n• Destroy all creatures with mana value 3 or less.\n• Destroy all creatures with mana value 4 or greater.",
+   "effects":[{"do":"choose","n":2,"modes":[
+    [{"do":"wipe","how":"destroy","filter":{"types":["artifact"]}}],
+    [{"do":"wipe","how":"destroy","filter":{"types":["enchantment"]}}],
+    [{"do":"wipe","how":"destroy","filter":{"types":["creature"],"mana_value":{"max":3}}}],
+    [{"do":"wipe","how":"destroy","filter":{"types":["creature"],"mana_value":{"min":4}}}]]}]}]},
+
+ {"gef":"0.1","name":"Izzet Signet","source":"llm","abilities":[
+  {"kind":"mana","text":"{1}, {T}: Add {U}{R}.","cost":{"mana":"{1}","tap":true},"produce":{"units":["U","R"]}}]},
+
+ {"gef":"0.1","name":"Mystic Sanctuary","source":"llm",
+  "notes":"The enters-untapped trigger is written with the intervening condition 'you control three or more other Islands', which is exactly when the land enters untapped.",
+  "abilities":[
+  {"kind":"static","text":"This land enters tapped unless you control three or more other Islands.","effect":{"static":"enters_tapped","unless":{"if":"control","filter":{"subtypes":["Island"],"controller":"you","another":true},"min":3}}},
+  {"kind":"triggered","text":"When this land enters untapped, you may put target instant or sorcery card from your graveyard on top of your library.","event":{"on":"enters","subject":"self"},"if":{"if":"control","filter":{"subtypes":["Island"],"controller":"you","another":true},"min":3},"optional":true,
+   "effects":[{"do":"recur","filter":{"types":["instant","sorcery"]},"n":1,"to":"library_top","from":"your_graveyard"}]}]},
+
+ {"gef":"0.1","name":"Farewell","source":"llm","notes":"'Exile all graveyards' mode is a format gap (wipe filters hold permanents only).",
+  "abilities":[
+  {"kind":"spell","text":"Choose one or more —\n• Exile all artifacts.\n• Exile all creatures.\n• Exile all enchantments.\n• Exile all graveyards.",
+   "effects":[{"do":"choose","n":4,"up_to":true,"modes":[
+    [{"do":"wipe","how":"exile","filter":{"types":["artifact"]}}],
+    [{"do":"wipe","how":"exile","filter":{"types":["creature"]}}],
+    [{"do":"wipe","how":"exile","filter":{"types":["enchantment"]}}],
+    [{"do":"unexpressible","text":"Exile all graveyards.","reason":"exiling every player's graveyard cards has no construct","scope":"format_gap"}]]}]}]},
+
+ {"gef":"0.1","name":"Flawless Maneuver","source":"llm","abilities":[
+  {"kind":"alt_cost","text":"If you control a commander, you may cast this spell without paying its mana cost.","cost":{"mana":"{0}"},"if":{"if":"you_control_commander"}},
+  {"kind":"spell","text":"Creatures you control gain indestructible until end of turn.","effects":[{"do":"pump_team","filter":{"types":["creature"],"controller":"you"},"keywords":["indestructible"],"duration":"end_of_turn"}]}]},
+
+ {"gef":"0.1","name":"Gemstone Caverns","source":"llm","notes":"Opening-hand clause and the luck-counter mana replacement are format gaps.",
+  "abilities":[
+  {"kind":"unexpressible","text":"If this card is in your opening hand and you're not the starting player, you may begin the game with Gemstone Caverns on the battlefield with a luck counter on it. If you do, exile a card from your hand.","reason":"opening-hand start-of-game action","scope":"format_gap"},
+  {"kind":"unexpressible","text":"{T}: Add {C}. If Gemstone Caverns has a luck counter on it, instead add one mana of any color.","reason":"mana ability with a replacement depending on a luck counter","scope":"format_gap"}]},
+
+ {"gef":"0.1","name":"Boros Charm","source":"llm","notes":"4 damage mode targets 'player or planeswalker', which no damage target expresses exactly, so marked format_gap.",
+  "abilities":[
+  {"kind":"spell","text":"Choose one —\n• Boros Charm deals 4 damage to target player or planeswalker.\n• Permanents you control gain indestructible until end of turn.\n• Target creature gains double strike until end of turn.",
+   "effects":[{"do":"choose","n":1,"modes":[
+    [{"do":"unexpressible","text":"Boros Charm deals 4 damage to target player or planeswalker.","reason":"damage target 'player or planeswalker' has no exact construct","scope":"format_gap"}],
+    [{"do":"pump_team","filter":{"types":["permanent"],"controller":"you"},"keywords":["indestructible"],"duration":"end_of_turn"}],
+    [{"do":"pump","target":{"ref":"target","filter":{"types":["creature"]}},"keywords":["double strike"],"duration":"end_of_turn"}]]}]}]},
+
+ {"gef":"0.1","name":"Night's Whisper","source":"llm","abilities":[
+  {"kind":"spell","text":"You draw two cards and lose 2 life.","effects":[{"do":"draw","n":2,"who":"you"},{"do":"lose_life","n":2,"who":"you"}]}]},
+
+ {"gef":"0.1","name":"Command Beacon","source":"llm","abilities":[
+  {"kind":"mana","text":"{T}: Add {C}.","cost":{"tap":true},"produce":{"units":["C"]}},
+  {"kind":"unexpressible","text":"{T}, Sacrifice this land: Put your commander into your hand from the command zone.","reason":"moving the commander from the command zone to hand has no construct","scope":"format_gap"}]},
+
+ {"gef":"0.1","name":"Tireless Provisioner","source":"llm","abilities":[
+  {"kind":"triggered","text":"Landfall — Whenever a land you control enters, create a Food token or a Treasure token.","event":{"on":"enters","subject":{"types":["land"],"controller":"you"}},
+   "effects":[{"do":"choose","n":1,"modes":[[{"do":"token","n":1,"token":{"preset":"food"}}],[{"do":"token","n":1,"token":{"preset":"treasure"}}]]}]}]},
+
+ {"gef":"0.1","name":"Hardened Scales","source":"llm","abilities":[
+  {"kind":"static","text":"If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead.","effect":{"static":"replacement","text":"If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead.","kind":"counters"}}]},
+
+ {"gef":"0.1","name":"Akroma's Will","source":"llm","notes":"'As you cast' condition approximated by you_control_commander at resolution; one mode or (with a commander) one or both.",
+  "abilities":[
+  {"kind":"spell","text":"Choose one. If you control a commander as you cast this spell, you may choose both instead.\n• Creatures you control gain flying, vigilance, and double strike until end of turn.\n• Creatures you control gain lifelink, indestructible, and protection from each color until end of turn.",
+   "effects":[{"do":"if","cond":{"if":"you_control_commander"},
+    "then":[{"do":"choose","n":2,"up_to":true,"modes":[
+      [{"do":"pump_team","filter":{"types":["creature"],"controller":"you"},"keywords":["flying","vigilance","double strike"],"duration":"end_of_turn"}],
+      [{"do":"pump_team","filter":{"types":["creature"],"controller":"you"},"keywords":["lifelink","indestructible","protection from each color"],"duration":"end_of_turn"}]]}],
+    "else":[{"do":"choose","n":1,"modes":[
+      [{"do":"pump_team","filter":{"types":["creature"],"controller":"you"},"keywords":["flying","vigilance","double strike"],"duration":"end_of_turn"}],
+      [{"do":"pump_team","filter":{"types":["creature"],"controller":"you"},"keywords":["lifelink","indestructible","protection from each color"],"duration":"end_of_turn"}]]}]}]}]},
+
+ {"gef":"0.1","name":"Orzhov Signet","source":"llm","abilities":[
+  {"kind":"mana","text":"{1}, {T}: Add {W}{B}.","cost":{"mana":"{1}","tap":true},"produce":{"units":["W","B"]}}]},
+
+ {"gef":"0.1","name":"Doubling Season","source":"llm","abilities":[
+  {"kind":"static","text":"If an effect would create one or more tokens under your control, it creates twice that many of those tokens instead.","effect":{"static":"token_doubler","factor":2}},
+  {"kind":"static","text":"If an effect would put one or more counters on a permanent you control, it puts twice that many of those counters on that permanent instead.","effect":{"static":"counter_doubler","factor":2}}]},
+
+ {"gef":"0.1","name":"Idol of Oblivion","source":"llm","notes":"First line's 'only if you created a token this turn' has no condition construct.",
+  "abilities":[
+  {"kind":"unexpressible","text":"{T}: Draw a card. Activate only if you created a token this turn.","reason":"activation restriction on having created a token this turn has no condition","scope":"format_gap"},
+  {"kind":"activated","text":"{8}, {T}, Sacrifice this artifact: Create a 10/10 colorless Eldrazi creature token.","cost":{"mana":"{8}","tap":true,"sacrifice":"self"},
+   "effects":[{"do":"token","n":1,"token":{"types":["creature"],"subtypes":["Eldrazi"],"power":10,"toughness":10}}]}]},
+
+ {"gef":"0.1","name":"Force of Will","source":"llm","abilities":[
+  {"kind":"alt_cost","text":"You may pay 1 life and exile a blue card from your hand rather than pay this spell's mana cost.","cost":{"pay_life":1,"exile_from_hand":{"n":1,"filter":{"colors":["U"]}}}},
+  {"kind":"spell","text":"Counter target spell.","effects":[{"do":"counter_spell"}]}]},
+
+ {"gef":"0.1","name":"Thran Dynamo","source":"llm","abilities":[
+  {"kind":"mana","text":"{T}: Add {C}{C}{C}.","cost":{"tap":true},"produce":{"units":["C","C","C"]}}]},
+
+ {"gef":"0.1","name":"Cabal Coffers","source":"llm","abilities":[
+  {"kind":"mana","text":"{2}, {T}: Add {B} for each Swamp you control.","cost":{"mana":"{2}","tap":true},"produce":{"units":["B"],"amount":{"count":"permanents_you_control","filter":{"subtypes":["Swamp"]}}}}]},
+
+ {"gef":"0.1","name":"Storm-Kiln Artist","source":"llm","notes":"The +1/+0 per artifact is written as pt_equals (2 plus artifact count / 2) using the printed 2/2 base; magecraft is two triggers (cast, copy) sharing the line.",
+  "abilities":[
+  {"kind":"static","text":"This creature gets +1/+0 for each artifact you control.","effect":{"static":"pt_equals","power":{"count":"permanents_you_control","filter":{"types":["artifact"]},"plus":2},"toughness":2}},
+  {"kind":"triggered","text":"Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token.","event":{"on":"cast","who":"you","spell":{"types":["instant","sorcery"]}},"effects":[{"do":"token","n":1,"token":{"preset":"treasure"}}]},
+  {"kind":"triggered","text":"Magecraft — Whenever you cast or copy an instant or sorcery spell, create a Treasure token.","event":{"on":"spell_copied","who":"you","spell":{"types":["instant","sorcery"]}},"effects":[{"do":"token","n":1,"token":{"preset":"treasure"}}]}]},
+
+ {"gef":"0.1","name":"Fell the Profane // Fell Mire","source":"llm","notes":"Fell Mire's pay-3-life-or-enter-tapped replacement has no construct.",
+  "faces":[
+  {"name":"Fell the Profane","abilities":[
+   {"kind":"spell","text":"Destroy target creature or planeswalker.","effects":[{"do":"remove","how":"destroy","target":{"ref":"target","filter":{"types":["creature","planeswalker"]}}}]}]},
+  {"name":"Fell Mire","abilities":[
+   {"kind":"unexpressible","text":"As this land enters, you may pay 3 life. If you don't, it enters tapped.","reason":"optional life payment on entering, else tapped","scope":"format_gap"},
+   {"kind":"mana","text":"{T}: Add {B}.","cost":{"tap":true},"produce":{"units":["B"]}}]}]},
+
+ {"gef":"0.1","name":"Impact Tremors","source":"llm","abilities":[
+  {"kind":"triggered","text":"Whenever a creature you control enters, this enchantment deals 1 damage to each opponent.","event":{"on":"enters","subject":{"types":["creature"],"controller":"you"}},"effects":[{"do":"damage","n":1,"to":"each_opponent","source":"self"}]}]},
+
+ {"gef":"0.1","name":"Village Rites","source":"llm","abilities":[
+  {"kind":"additional_cost","text":"As an additional cost to cast this spell, sacrifice a creature.","cost":{"sacrifice":{"filter":{"types":["creature"]},"n":1}}},
+  {"kind":"spell","text":"Draw two cards.","effects":[{"do":"draw","n":2}]}]},
+
+ {"gef":"0.1","name":"Patchwork Banner","source":"llm","notes":"Choosing a creature type as it enters has no construct.",
+  "abilities":[
+  {"kind":"unexpressible","text":"As this artifact enters, choose a creature type.","reason":"choosing a creature type as it enters has no construct","scope":"format_gap"},
+  {"kind":"static","text":"Creatures you control of the chosen type get +1/+1.","effect":{"static":"anthem","filter":{"types":["creature"],"controller":"you","chosen_type":true},"power":1,"toughness":1}},
+  {"kind":"mana","text":"{T}: Add one mana of any color.","cost":{"tap":true},"produce":{"units":["any"]}}]},
+
+ {"gef":"0.1","name":"Mox Amber","source":"llm","abilities":[
+  {"kind":"unexpressible","text":"{T}: Add one mana of any color among legendary creatures and planeswalkers you control.","reason":"mana colors depend on the colors among legendary creatures and planeswalkers you control; no construct","scope":"format_gap"}]}
+]

@@ -1,0 +1,155 @@
+[
+ {"gef": "0.1", "name": "Path to Exile", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Exile target creature. Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+    "effects": [{"do": "remove", "how": "exile", "target": {"ref": "target", "filter": {"types": ["creature"]}},
+                 "controller_compensation": "its controller may search their library for a basic land card, put it onto the battlefield tapped, then shuffle"}]}]},
+
+ {"gef": "0.1", "name": "Fellwar Stone", "source": "llm",
+  "notes": "Mana ability depends on what lands opponents could produce; GEF has no such mana source, so it is a format gap.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "{T}: Add one mana of any color that a land an opponent controls could produce.",
+    "reason": "mana color depends on the colors opponents' lands could produce; no construct for it", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Cultivate", "source": "llm",
+  "notes": "Up to two basic lands split between battlefield tapped and hand; tutor has a single destination, so a faithful translation is not possible.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+    "reason": "one search whose two found cards go to different zones; tutor has one destination", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Blasphemous Act", "source": "llm",
+  "notes": "Cost reduction counts creatures on the battlefield (all players), which no count key expresses.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "This spell costs {1} less to cast for each creature on the battlefield.",
+    "reason": "counts creatures controlled by all players; permanents_you_control only counts yours", "scope": "format_gap"},
+   {"kind": "spell", "text": "Blasphemous Act deals 13 damage to each creature.",
+    "effects": [{"do": "damage", "n": 13, "to": "each_creature", "source": "self"}]}]},
+
+ {"gef": "0.1", "name": "Farseek", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for a Plains, Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle.",
+    "effects": [{"do": "tutor", "filter": {"any_of": [{"subtypes": ["Plains"]}, {"subtypes": ["Island"]}, {"subtypes": ["Swamp"]}, {"subtypes": ["Mountain"]}]}, "n": 1, "to": "battlefield_tapped"}]}]},
+
+ {"gef": "0.1", "name": "Bojuka Bog", "source": "llm",
+  "notes": "Graveyard exile has no construct; marked format_gap because the target player could be you.",
+  "abilities": [
+   {"kind": "static", "text": "This land enters tapped.", "effect": {"static": "enters_tapped"}},
+   {"kind": "triggered", "text": "When this land enters, exile target player's graveyard.", "event": {"on": "enters", "subject": "self"},
+    "effects": [{"do": "unexpressible", "text": "exile target player's graveyard", "reason": "no construct for exiling a graveyard", "scope": "format_gap"}]},
+   {"kind": "mana", "text": "{T}: Add {B}.", "cost": {"tap": true}, "produce": {"units": ["B"]}}]},
+
+ {"gef": "0.1", "name": "Beast Within", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Destroy target permanent. Its controller creates a 3/3 green Beast creature token.",
+    "effects": [{"do": "remove", "how": "destroy", "target": {"ref": "target", "filter": {"types": ["permanent"]}},
+                 "controller_compensation": "its controller creates a 3/3 green Beast creature token"}]}]},
+
+ {"gef": "0.1", "name": "Nature's Lore", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for a Forest card, put that card onto the battlefield, then shuffle.",
+    "effects": [{"do": "tutor", "filter": {"subtypes": ["Forest"]}, "n": 1, "to": "battlefield"}]}]},
+
+ {"gef": "0.1", "name": "Heroic Intervention", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Permanents you control gain hexproof and indestructible until end of turn.",
+    "effects": [{"do": "protect", "target": {"ref": "each", "filter": {"types": ["permanent"], "controller": "you"}},
+                 "grant": ["hexproof", "indestructible"], "duration": "end_of_turn"}]}]},
+
+ {"gef": "0.1", "name": "Mind Stone", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "activated", "text": "{1}, {T}, Sacrifice this artifact: Draw a card.", "cost": {"mana": "{1}", "tap": true, "sacrifice": "self"},
+    "effects": [{"do": "draw", "n": 1}]}]},
+
+ {"gef": "0.1", "name": "An Offer You Can't Refuse", "source": "llm",
+  "notes": "The Treasures go to the countered spell's controller (an opponent), marked out_of_scope.",
+  "abilities": [
+   {"kind": "spell", "text": "Counter target noncreature spell. Its controller creates two Treasure tokens.",
+    "effects": [{"do": "counter_spell", "filter": {"non_types": ["creature"]}},
+                {"do": "unexpressible", "text": "Its controller creates two Treasure tokens.", "reason": "the opponent who cast the spell gets the Treasures", "scope": "out_of_scope"}]}]},
+
+ {"gef": "0.1", "name": "Birds of Paradise", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "mana", "text": "{T}: Add one mana of any color.", "cost": {"tap": true}, "produce": {"units": ["any"]}}]},
+
+ {"gef": "0.1", "name": "Kodama's Reach", "source": "llm",
+  "notes": "Up to two basic lands split between battlefield tapped and hand; tutor has a single destination, so a faithful translation is not possible.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+    "reason": "one search whose two found cards go to different zones; tutor has one destination", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Solemn Simulacrum", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+    "event": {"on": "enters", "subject": "self"}, "optional": true,
+    "effects": [{"do": "tutor", "filter": {"types": ["land"], "supertypes": ["basic"]}, "n": 1, "to": "battlefield_tapped"}]},
+   {"kind": "triggered", "text": "When this creature dies, you may draw a card.", "event": {"on": "dies", "subject": "self"}, "optional": true,
+    "effects": [{"do": "draw", "n": 1}]}]},
+
+ {"gef": "0.1", "name": "Skullclamp", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Equipped creature gets +1/-1.", "effect": {"static": "attached_bonus", "power": 1, "toughness": -1}},
+   {"kind": "triggered", "text": "Whenever equipped creature dies, draw two cards.", "event": {"on": "dies", "subject": "equipped"},
+    "effects": [{"do": "draw", "n": 2}]},
+   {"kind": "keyword", "text": "Equip {1}", "keyword": "equip", "cost": "{1}"}]},
+
+ {"gef": "0.1", "name": "Arcane Denial", "source": "llm",
+  "notes": "The opponent's optional draws are out_of_scope; your own upkeep draw is a delayed draw.",
+  "abilities": [
+   {"kind": "spell", "text": "Counter target spell. Its controller may draw up to two cards at the beginning of the next turn's upkeep.",
+    "effects": [{"do": "counter_spell"},
+                {"do": "unexpressible", "text": "Its controller may draw up to two cards at the beginning of the next turn's upkeep.", "reason": "the opponent draws cards", "scope": "out_of_scope"}]},
+   {"kind": "spell", "text": "You draw a card at the beginning of the next turn's upkeep.",
+    "effects": [{"do": "delayed", "when": "next_upkeep", "effects": [{"do": "draw", "n": 1, "who": "you"}]}]}]},
+
+ {"gef": "0.1", "name": "Commander's Sphere", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add one mana of any color in your commander's color identity.", "cost": {"tap": true}, "produce": {"units": ["commander_colors"]}},
+   {"kind": "activated", "text": "Sacrifice this artifact: Draw a card.", "cost": {"sacrifice": "self"}, "effects": [{"do": "draw", "n": 1}]}]},
+
+ {"gef": "0.1", "name": "Reanimate", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Put target creature card from a graveyard onto the battlefield under your control. You lose life equal to that card's mana value.",
+    "effects": [{"do": "recur", "filter": {"types": ["creature"]}, "n": 1, "to": "battlefield", "from": "any_graveyard"},
+                {"do": "lose_life", "n": {"count": "mana_value_of_that"}, "who": "you"}]}]},
+
+ {"gef": "0.1", "name": "Negate", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Counter target noncreature spell.", "effects": [{"do": "counter_spell", "filter": {"non_types": ["creature"]}}]}]},
+
+ {"gef": "0.1", "name": "Generous Gift", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Destroy target permanent. Its controller creates a 3/3 green Elephant creature token.",
+    "effects": [{"do": "remove", "how": "destroy", "target": {"ref": "target", "filter": {"types": ["permanent"]}},
+                 "controller_compensation": "its controller creates a 3/3 green Elephant creature token"}]}]},
+
+ {"gef": "0.1", "name": "Demonic Tutor", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for a card, put that card into your hand, then shuffle.",
+    "effects": [{"do": "tutor", "filter": {"any": true}, "n": 1, "to": "hand"}]}]},
+
+ {"gef": "0.1", "name": "Smothering Tithe", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "Whenever an opponent draws a card, that player may pay {2}. If the player doesn't, you create a Treasure token.",
+    "event": {"on": "opponent_draws"},
+    "effects": [{"do": "unless_opponent_pays", "cost": "{2}", "effects": [{"do": "token", "n": 1, "token": {"preset": "treasure"}}]}]}]},
+
+ {"gef": "0.1", "name": "Toxic Deluge", "source": "llm",
+  "abilities": [
+   {"kind": "additional_cost", "text": "As an additional cost to cast this spell, pay X life.", "cost": {"pay_life": "X"}},
+   {"kind": "spell", "text": "All creatures get -X/-X until end of turn.",
+    "effects": [{"do": "wipe", "how": "minus", "filter": {"types": ["creature"], "controller": "any"}, "amount": "X"}]}]},
+
+ {"gef": "0.1", "name": "Brainstorm", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Draw three cards, then put two cards from your hand on top of your library in any order.",
+    "effects": [{"do": "draw", "n": 3}, {"do": "put_back", "n": 2, "to": "library_top"}]}]},
+
+ {"gef": "0.1", "name": "Deflecting Swat", "source": "llm",
+  "notes": "Redirecting a spell or ability has no construct; could involve your own spells, so format_gap.",
+  "abilities": [
+   {"kind": "alt_cost", "text": "If you control a commander, you may cast this spell without paying its mana cost.", "cost": {"mana": "{0}"}, "if": {"if": "you_control_commander"}},
+   {"kind": "unexpressible", "text": "You may choose new targets for target spell or ability.",
+    "reason": "changing targets of a spell or ability has no construct", "scope": "format_gap"}]}
+]

@@ -1,0 +1,24 @@
+[
+ {"gef": "0.1", "name": "Prairie Stream", "source": "llm",
+  "notes": "The only other line is the reminder text for the land types, so it gets no ability of its own.",
+  "abilities": [
+   {"kind": "static", "text": "This land enters tapped unless you control two or more basic lands.",
+    "effect": {"static": "enters_tapped", "unless": {"if": "control", "filter": {"types": ["land"], "supertypes": ["basic"], "controller": "you"}, "min": 2}}}]},
+
+ {"gef": "0.1", "name": "Requisition Raid", "source": "llm",
+  "notes": "Each spree mode line is unexpressible (format_gap) because GEF cannot attach a per-mode additional cost {1} to an optional mode; the effects are destroy artifact, destroy enchantment, and +1/+1 counter on each creature target player controls.",
+  "abilities": [
+   {"kind": "keyword", "text": "Spree", "keyword": "spree"},
+   {"kind": "unexpressible", "text": "+ {1} — Destroy target artifact.",
+    "reason": "spree mode with its own {1} additional cost, chosen optionally with other modes; GEF has no per-mode cost", "scope": "format_gap"},
+   {"kind": "unexpressible", "text": "+ {1} — Destroy target enchantment.",
+    "reason": "spree mode with its own {1} additional cost, chosen optionally with other modes; GEF has no per-mode cost", "scope": "format_gap"},
+   {"kind": "unexpressible", "text": "+ {1} — Put a +1/+1 counter on each creature target player controls.",
+    "reason": "spree mode with its own {1} additional cost, chosen optionally with other modes; GEF has no per-mode cost", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Sunken Hollow", "source": "llm",
+  "notes": "The only other line is the reminder text for the land types, so it gets no ability of its own.",
+  "abilities": [
+   {"kind": "static", "text": "This land enters tapped unless you control two or more basic lands.",
+    "effect": {"static": "enters_tapped", "unless": {"if": "control", "filter": {"types": ["land"], "supertypes": ["basic"], "controller": "you"}, "min": 2}}}]}
+]

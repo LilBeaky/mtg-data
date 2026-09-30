@@ -1,0 +1,947 @@
+[
+ {
+  "gef": "0.1",
+  "name": "Aetherflux Reservoir",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "Whenever you cast a spell, you gain 1 life for each spell you've cast this turn.",
+    "event": {
+     "on": "cast",
+     "who": "you"
+    },
+    "effects": [
+     {
+      "do": "gain_life",
+      "n": {
+       "count": "spells_cast_this_turn"
+      },
+      "who": "you"
+     }
+    ]
+   },
+   {
+    "kind": "activated",
+    "text": "Pay 50 life: This artifact deals 50 damage to any target.",
+    "cost": {
+     "pay_life": 50
+    },
+    "effects": [
+     {
+      "do": "damage",
+      "n": 50,
+      "to": "any_target",
+      "source": "self"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Ancient Silver Dragon",
+  "source": "llm",
+  "notes": "Die roll drawn as a 20-row table; 'no maximum hand size for the rest of the game' has no effect construct, marked format_gap.",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Flying",
+    "keyword": "flying"
+   },
+   {
+    "kind": "triggered",
+    "text": "Whenever this creature deals combat damage to a player, roll a d20. Draw cards equal to the result. You have no maximum hand size for the rest of the game.",
+    "event": {
+     "on": "combat_damage_to_player",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "roll_die",
+      "sides": 20,
+      "table": [
+       {
+        "min": 1,
+        "max": 1,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 1
+         }
+        ]
+       },
+       {
+        "min": 2,
+        "max": 2,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 2
+         }
+        ]
+       },
+       {
+        "min": 3,
+        "max": 3,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 3
+         }
+        ]
+       },
+       {
+        "min": 4,
+        "max": 4,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 4
+         }
+        ]
+       },
+       {
+        "min": 5,
+        "max": 5,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 5
+         }
+        ]
+       },
+       {
+        "min": 6,
+        "max": 6,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 6
+         }
+        ]
+       },
+       {
+        "min": 7,
+        "max": 7,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 7
+         }
+        ]
+       },
+       {
+        "min": 8,
+        "max": 8,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 8
+         }
+        ]
+       },
+       {
+        "min": 9,
+        "max": 9,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 9
+         }
+        ]
+       },
+       {
+        "min": 10,
+        "max": 10,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 10
+         }
+        ]
+       },
+       {
+        "min": 11,
+        "max": 11,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 11
+         }
+        ]
+       },
+       {
+        "min": 12,
+        "max": 12,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 12
+         }
+        ]
+       },
+       {
+        "min": 13,
+        "max": 13,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 13
+         }
+        ]
+       },
+       {
+        "min": 14,
+        "max": 14,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 14
+         }
+        ]
+       },
+       {
+        "min": 15,
+        "max": 15,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 15
+         }
+        ]
+       },
+       {
+        "min": 16,
+        "max": 16,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 16
+         }
+        ]
+       },
+       {
+        "min": 17,
+        "max": 17,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 17
+         }
+        ]
+       },
+       {
+        "min": 18,
+        "max": 18,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 18
+         }
+        ]
+       },
+       {
+        "min": 19,
+        "max": 19,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 19
+         }
+        ]
+       },
+       {
+        "min": 20,
+        "max": 20,
+        "effects": [
+         {
+          "do": "draw",
+          "n": 20
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "do": "unexpressible",
+      "text": "You have no maximum hand size for the rest of the game.",
+      "reason": "permanent no-max-hand-size granted as an effect has no construct (only a static)",
+      "scope": "format_gap"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Basilisk Collar",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "static",
+    "text": "Equipped creature has deathtouch and lifelink.",
+    "effect": {
+     "static": "attached_bonus",
+     "keywords": [
+      "deathtouch",
+      "lifelink"
+     ]
+    }
+   },
+   {
+    "kind": "keyword",
+    "text": "Equip {2}",
+    "keyword": "equip",
+    "cost": "{2}"
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Chaos Warp",
+  "source": "llm",
+  "notes": "Shuffle into library then reveal top and possibly put onto battlefield has no construct.",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield.",
+    "reason": "shuffle into library followed by a conditional reveal-and-put-onto-battlefield for the owner; no construct",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Commander's Plate",
+  "source": "llm",
+  "notes": "Protection quality and 'equip commander' are carried in detail strings.",
+  "abilities": [
+   {
+    "kind": "static",
+    "text": "Equipped creature gets +3/+3 and has protection from each color that's not in your commander's color identity.",
+    "effect": {
+     "static": "attached_bonus",
+     "power": 3,
+     "toughness": 3,
+     "abilities": [
+      {
+       "kind": "keyword",
+       "text": "protection from each color that's not in your commander's color identity",
+       "keyword": "protection",
+       "detail": "each color that's not in your commander's color identity"
+      }
+     ]
+    }
+   },
+   {
+    "kind": "keyword",
+    "text": "Equip commander {3}",
+    "keyword": "equip",
+    "cost": "{3}",
+    "detail": "commander"
+   },
+   {
+    "kind": "keyword",
+    "text": "Equip {5}",
+    "keyword": "equip",
+    "cost": "{5}"
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Consecrated Sphinx",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Flying",
+    "keyword": "flying"
+   },
+   {
+    "kind": "triggered",
+    "text": "Whenever an opponent draws a card, you may draw two cards.",
+    "event": {
+     "on": "opponent_draws"
+    },
+    "optional": true,
+    "effects": [
+     {
+      "do": "draw",
+      "n": 2
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Counterbalance",
+  "source": "llm",
+  "notes": "Counter if same mana value as the revealed top card cannot be stated.",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "Whenever an opponent casts a spell, you may reveal the top card of your library. If you do, counter that spell if it has the same mana value as the revealed card.",
+    "reason": "counter depends on matching the mana value of a revealed top card; no construct",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Counterspell",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "spell",
+    "text": "Counter target spell.",
+    "effects": [
+     {
+      "do": "counter_spell"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Cyclonic Rift",
+  "source": "llm",
+  "notes": "Overload is a keyword; its each-instead-of-target change is not modeled separately.",
+  "abilities": [
+   {
+    "kind": "spell",
+    "text": "Return target nonland permanent you don't control to its owner's hand.",
+    "effects": [
+     {
+      "do": "remove",
+      "how": "bounce",
+      "target": {
+       "ref": "target",
+       "filter": {
+        "types": [
+         "permanent"
+        ],
+        "non_types": [
+         "land"
+        ],
+        "controller": "opponent"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "kind": "keyword",
+    "text": "Overload {6}{U}",
+    "keyword": "overload",
+    "cost": "{6}{U}"
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Diplomatic Immunity",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Enchant creature",
+    "keyword": "enchant",
+    "detail": "creature"
+   },
+   {
+    "kind": "keyword",
+    "text": "Shroud",
+    "keyword": "shroud"
+   },
+   {
+    "kind": "static",
+    "text": "Enchanted creature has shroud.",
+    "effect": {
+     "static": "attached_bonus",
+     "keywords": [
+      "shroud"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Dream Halls",
+  "source": "llm",
+  "notes": "The discard must share a color with the spell; alt_cost_all cannot hold that.",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "Rather than pay the mana cost for a spell, its controller may discard a card that shares a color with that spell.",
+    "reason": "alternative cost requires discarding a card sharing a color with the spell cast, for any player's spells; no construct",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Edgar, King of Figaro",
+  "source": "llm",
+  "notes": "Two-Headed Coin written as a replacement static of kind other.",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "When Edgar enters, draw a card for each artifact you control.",
+    "event": {
+     "on": "enters",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "draw",
+      "n": {
+       "count": "permanents_you_control",
+       "filter": {
+        "types": [
+         "artifact"
+        ]
+       }
+      }
+     }
+    ]
+   },
+   {
+    "kind": "static",
+    "text": "Two-Headed Coin — The first time you flip one or more coins each turn, those coins come up heads and you win those flips.",
+    "effect": {
+     "static": "replacement",
+     "kind": "other",
+     "text": "The first time you flip one or more coins each turn, those coins come up heads and you win those flips."
+    }
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Enter the Infinite",
+  "source": "llm",
+  "notes": "No max hand size until your next turn is a format gap.",
+  "abilities": [
+   {
+    "kind": "spell",
+    "text": "Draw cards equal to the number of cards in your library, then put a card from your hand on top of your library. You have no maximum hand size until your next turn.",
+    "effects": [
+     {
+      "do": "draw",
+      "n": {
+       "count": "cards_in_library"
+      }
+     },
+     {
+      "do": "put_back",
+      "n": 1,
+      "to": "library_top"
+     },
+     {
+      "do": "unexpressible",
+      "text": "You have no maximum hand size until your next turn.",
+      "reason": "temporary no-max-hand-size effect has no construct",
+      "scope": "format_gap"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Ethereal Usher",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "activated",
+    "text": "{U}, {T}: Target creature can't be blocked this turn.",
+    "cost": {
+     "mana": "{U}",
+     "tap": true
+    },
+    "effects": [
+     {
+      "do": "pump",
+      "target": {
+       "ref": "target",
+       "filter": {
+        "types": [
+         "creature"
+        ]
+       }
+      },
+      "keywords": [
+       "can't be blocked"
+      ],
+      "duration": "end_of_turn"
+     }
+    ]
+   },
+   {
+    "kind": "keyword",
+    "text": "Transmute {1}{U}{U}",
+    "keyword": "transmute",
+    "cost": "{1}{U}{U}"
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Fabricate",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "spell",
+    "text": "Search your library for an artifact card, reveal it, put it into your hand, then shuffle.",
+    "effects": [
+     {
+      "do": "tutor",
+      "filter": {
+       "types": [
+        "artifact"
+       ]
+      },
+      "n": 1,
+      "to": "hand",
+      "reveal": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Frenetic Efreet",
+  "source": "llm",
+  "notes": "Phasing out is a format gap; the sacrifice on a lost flip is expressed.",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Flying",
+    "keyword": "flying"
+   },
+   {
+    "kind": "activated",
+    "text": "{0}: Flip a coin. If you win the flip, this creature phases out. If you lose the flip, sacrifice this creature.",
+    "cost": {
+     "mana": "{0}"
+    },
+    "effects": [
+     {
+      "do": "flip_coins",
+      "n": 1,
+      "on_win": [
+       {
+        "do": "unexpressible",
+        "text": "this creature phases out",
+        "reason": "phasing out has no effect construct",
+        "scope": "format_gap"
+       }
+      ],
+      "on_lose": [
+       {
+        "do": "sacrifice",
+        "what": {
+         "ref": "self"
+        }
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Full Throttle",
+  "source": "llm",
+  "notes": "Second line untaps creatures that attacked this turn (not currently attacking), which no filter can say.",
+  "abilities": [
+   {
+    "kind": "spell",
+    "text": "After this main phase, there are two additional combat phases.",
+    "effects": [
+     {
+      "do": "extra_combat",
+      "n": 2,
+      "untap": "none",
+      "then_main": false
+     }
+    ]
+   },
+   {
+    "kind": "unexpressible",
+    "text": "At the beginning of each combat this turn, untap all creatures that attacked this turn.",
+    "reason": "delayed per-combat untap of creatures that attacked this turn; no filter for 'attacked this turn'",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Fury of the Horde",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "alt_cost",
+    "text": "You may exile two red cards from your hand rather than pay this spell's mana cost.",
+    "cost": {
+     "exile_from_hand": {
+      "n": 2,
+      "filter": {
+       "colors": [
+        "R"
+       ]
+      }
+     }
+    }
+   },
+   {
+    "kind": "spell",
+    "text": "Untap all creatures that attacked this turn. After this main phase, there is an additional combat phase followed by an additional main phase.",
+    "effects": [
+     {
+      "do": "extra_combat",
+      "n": 1,
+      "untap": "attackers",
+      "then_main": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Gamble",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "spell",
+    "text": "Search your library for a card, put that card into your hand, discard a card at random, then shuffle.",
+    "effects": [
+     {
+      "do": "tutor",
+      "filter": {
+       "any": true
+      },
+      "n": 1,
+      "to": "hand"
+     },
+     {
+      "do": "discard",
+      "n": 1,
+      "who": "you",
+      "random": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Loxodon Warhammer",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "static",
+    "text": "Equipped creature gets +3/+0 and has trample and lifelink.",
+    "effect": {
+     "static": "attached_bonus",
+     "power": 3,
+     "toughness": 0,
+     "keywords": [
+      "trample",
+      "lifelink"
+     ]
+    }
+   },
+   {
+    "kind": "keyword",
+    "text": "Equip {3}",
+    "keyword": "equip",
+    "cost": "{3}"
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Gifts Ungiven",
+  "source": "llm",
+  "notes": "Opponent chooses which two cards you keep; format gap.",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "Search your library for up to four cards with different names and reveal them. Target opponent chooses two of those cards. Put the chosen cards into your graveyard and the rest into your hand. Then shuffle.",
+    "reason": "an opponent picks which two of the four you keep; needs an opponent-choice stand-in",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Goblin Engineer",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "When this creature enters, you may search your library for an artifact card, put it into your graveyard, then shuffle.",
+    "event": {
+     "on": "enters",
+     "subject": "self"
+    },
+    "optional": true,
+    "effects": [
+     {
+      "do": "tutor",
+      "filter": {
+       "types": [
+        "artifact"
+       ]
+      },
+      "n": 1,
+      "to": "graveyard"
+     }
+    ]
+   },
+   {
+    "kind": "activated",
+    "text": "{R}, {T}, Sacrifice an artifact: Return target artifact card with mana value 3 or less from your graveyard to the battlefield.",
+    "cost": {
+     "mana": "{R}",
+     "tap": true,
+     "sacrifice": {
+      "filter": {
+       "types": [
+        "artifact"
+       ]
+      },
+      "n": 1
+     }
+    },
+    "effects": [
+     {
+      "do": "recur",
+      "filter": {
+       "types": [
+        "artifact"
+       ],
+       "mana_value": {
+        "max": 3
+       }
+      },
+      "n": 1,
+      "to": "battlefield",
+      "from": "your_graveyard"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Invert Polarity",
+  "source": "llm",
+  "notes": "Gaining control of a spell on a won flip has no construct.",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "Choose target spell, then flip a coin. If you win the flip, gain control of that spell and you may choose new targets for it. If you lose the flip, counter that spell.",
+    "reason": "gaining control of a spell and choosing new targets has no construct",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Jace, Wielder of Mysteries",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "static",
+    "text": "If you would draw a card while your library has no cards in it, you win the game instead.",
+    "effect": {
+     "static": "replacement",
+     "kind": "draw",
+     "text": "If you would draw a card while your library has no cards in it, you win the game instead."
+    }
+   },
+   {
+    "kind": "loyalty",
+    "text": "+1: Target player mills two cards. Draw a card.",
+    "cost": 1,
+    "effects": [
+     {
+      "do": "mill",
+      "n": 2,
+      "who": "target_player"
+     },
+     {
+      "do": "draw",
+      "n": 1,
+      "who": "you"
+     }
+    ]
+   },
+   {
+    "kind": "loyalty",
+    "text": "−8: Draw seven cards. Then if your library has no cards in it, you win the game.",
+    "cost": -8,
+    "effects": [
+     {
+      "do": "draw",
+      "n": 7,
+      "who": "you"
+     },
+     {
+      "do": "if",
+      "cond": {
+       "if": "library_empty"
+      },
+      "then": [
+       {
+        "do": "win_game"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.1",
+  "name": "Jin-Gitaxias, Core Augur",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Flash",
+    "keyword": "flash"
+   },
+   {
+    "kind": "triggered",
+    "text": "At the beginning of your end step, draw seven cards.",
+    "event": {
+     "on": "end_step",
+     "whose": "your"
+    },
+    "effects": [
+     {
+      "do": "draw",
+      "n": 7
+     }
+    ]
+   },
+   {
+    "kind": "unexpressible",
+    "text": "Each opponent's maximum hand size is reduced by seven.",
+    "reason": "only concerns opponents' hand sizes",
+    "scope": "out_of_scope"
+   }
+  ]
+ }
+]

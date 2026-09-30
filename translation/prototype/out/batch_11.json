@@ -1,0 +1,178 @@
+[
+ {"gef": "0.1", "name": "Wayfarer's Bauble", "source": "llm",
+  "abilities": [
+   {"kind": "activated", "text": "{2}, {T}, Sacrifice this artifact: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
+    "cost": {"mana": "{2}", "tap": true, "sacrifice": "self"},
+    "effects": [{"do": "tutor", "filter": {"types": ["land"], "supertypes": ["basic"]}, "n": 1, "to": "battlefield_tapped"}]}]},
+
+ {"gef": "0.1", "name": "Talisman of Creativity", "source": "llm",
+  "notes": "The painful line is an activated ability (mana plus damage) rather than a pure mana ability.",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "activated", "text": "{T}: Add {U} or {R}. This artifact deals 1 damage to you.", "cost": {"tap": true},
+    "effects": [{"do": "mana", "produce": {"units": ["UR"]}}, {"do": "damage", "n": 1, "to": "you", "source": "self"}]}]},
+
+ {"gef": "0.1", "name": "Talisman of Indulgence", "source": "llm",
+  "notes": "The painful line is an activated ability (mana plus damage) rather than a pure mana ability.",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "activated", "text": "{T}: Add {B} or {R}. This artifact deals 1 damage to you.", "cost": {"tap": true},
+    "effects": [{"do": "mana", "produce": {"units": ["BR"]}}, {"do": "damage", "n": 1, "to": "you", "source": "self"}]}]},
+
+ {"gef": "0.1", "name": "Victimize", "source": "llm",
+  "notes": "Unexpressible: two targeted graveyard cards chosen on cast, then a mandatory sacrifice that gates the return; no construct ties the return to the sacrifice having happened.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Choose two target creature cards in your graveyard. Sacrifice a creature. If you do, return the chosen cards to the battlefield tapped.",
+    "reason": "return of two chosen targets is conditional on a mandatory sacrifice being performed", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Black Market Connections", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "At the beginning of your first main phase, choose one or more —\n• Sell Contraband — Create a Treasure token. You lose 1 life.\n• Buy Information — Draw a card. You lose 2 life.\n• Hire a Mercenary — Create a 3/2 colorless Shapeshifter creature token with changeling. You lose 3 life.",
+    "event": {"on": "precombat_main", "whose": "your"},
+    "effects": [{"do": "choose", "n": 3, "up_to": true, "modes": [
+      [{"do": "token", "n": 1, "token": {"preset": "treasure"}}, {"do": "lose_life", "n": 1, "who": "you"}],
+      [{"do": "draw", "n": 1}, {"do": "lose_life", "n": 2, "who": "you"}],
+      [{"do": "token", "n": 1, "token": {"name": "Shapeshifter", "types": ["creature"], "subtypes": ["Shapeshifter"], "colors": [], "power": 3, "toughness": 2, "keywords": ["changeling"]}}, {"do": "lose_life", "n": 3, "who": "you"}]]}]}]},
+
+ {"gef": "0.1", "name": "Deadly Dispute", "source": "llm",
+  "abilities": [
+   {"kind": "additional_cost", "text": "As an additional cost to cast this spell, sacrifice an artifact or creature.",
+    "cost": {"sacrifice": {"filter": {"any_of": [{"types": ["artifact"]}, {"types": ["creature"]}]}, "n": 1}}},
+   {"kind": "spell", "text": "Draw two cards and create a Treasure token.",
+    "effects": [{"do": "draw", "n": 2}, {"do": "token", "n": 1, "token": {"preset": "treasure"}}]}]},
+
+ {"gef": "0.1", "name": "Roaming Throne", "source": "llm",
+  "notes": "Choosing the type and adding it are format gaps; the doubling static assumes the chosen type from the gap lines.",
+  "abilities": [
+   {"kind": "keyword", "text": "Ward {2}", "keyword": "ward", "cost": "{2}"},
+   {"kind": "unexpressible", "text": "As this creature enters, choose a creature type.", "reason": "choosing a creature type as it enters has no construct", "scope": "format_gap"},
+   {"kind": "unexpressible", "text": "This creature is the chosen type in addition to its other types.", "reason": "adds the chosen type to itself; no construct for a chosen-type grant to self", "scope": "format_gap"},
+   {"kind": "static", "text": "If a triggered ability of another creature you control of the chosen type triggers, it triggers an additional time.",
+    "effect": {"static": "trigger_doubler", "cause": "any", "filter": {"types": ["creature"], "controller": "you", "another": true, "chosen_type": true}}}]},
+
+ {"gef": "0.1", "name": "Ashnod's Altar", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "Sacrifice a creature: Add {C}{C}.", "cost": {"sacrifice": {"filter": {"types": ["creature"]}, "n": 1}}, "produce": {"units": ["C", "C"]}}]},
+
+ {"gef": "0.1", "name": "Talisman of Hierarchy", "source": "llm",
+  "notes": "The painful line is an activated ability (mana plus damage) rather than a pure mana ability.",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "activated", "text": "{T}: Add {W} or {B}. This artifact deals 1 damage to you.", "cost": {"tap": true},
+    "effects": [{"do": "mana", "produce": {"units": ["WB"]}}, {"do": "damage", "n": 1, "to": "you", "source": "self"}]}]},
+
+ {"gef": "0.1", "name": "Big Score", "source": "llm",
+  "abilities": [
+   {"kind": "additional_cost", "text": "As an additional cost to cast this spell, discard a card.", "cost": {"discard": {"n": 1}}},
+   {"kind": "spell", "text": "Draw two cards and create two Treasure tokens.",
+    "effects": [{"do": "draw", "n": 2}, {"do": "token", "n": 2, "token": {"preset": "treasure"}}]}]},
+
+ {"gef": "0.1", "name": "War Room", "source": "llm",
+  "notes": "The life payment equals colors in commander identity; no count key for that, so the whole draw ability is unexpressible.",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "unexpressible", "text": "{3}, {T}, Pay life equal to the number of colors in your commanders' color identity: Draw a card.",
+    "reason": "life payment equal to the number of colors in commander color identity has no count key", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Blood Artist", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life.",
+    "event": {"on": "dies", "subject": "self_or_another"},
+    "effects": [{"do": "lose_life", "n": 1, "who": "target_player"}, {"do": "gain_life", "n": 1, "who": "you"}]}]},
+
+ {"gef": "0.1", "name": "Abrade", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Choose one —\n• Abrade deals 3 damage to target creature.\n• Destroy target artifact.",
+    "effects": [{"do": "choose", "n": 1, "modes": [
+      [{"do": "damage", "n": 3, "to": "target_creature", "source": "self"}],
+      [{"do": "remove", "how": "destroy", "target": {"ref": "target", "filter": {"types": ["artifact"]}}}]]}]}]},
+
+ {"gef": "0.1", "name": "Ponder", "source": "llm",
+  "notes": "First line (reorder the top three, optional shuffle) has no construct; the draw is expressed.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Look at the top three cards of your library, then put them back in any order. You may shuffle.",
+    "reason": "reordering the top three cards and optionally shuffling has no construct", "scope": "format_gap"},
+   {"kind": "spell", "text": "Draw a card.", "effects": [{"do": "draw", "n": 1}]}]},
+
+ {"gef": "0.1", "name": "Delighted Halfling", "source": "llm",
+  "notes": "Second mana line marked unexpressible because of the 'can't be countered' rider on top of the legendary-only restriction.",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "unexpressible", "text": "{T}: Add one mana of any color. Spend this mana only to cast a legendary spell, and that spell can't be countered.",
+    "reason": "the spell made with this mana becomes uncounterable; no construct for that rider", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Mana Vault", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "This artifact doesn't untap during your untap step.", "effect": {"static": "doesnt_untap"}},
+   {"kind": "triggered", "text": "At the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.",
+    "event": {"on": "upkeep", "whose": "your"},
+    "effects": [{"do": "may_pay", "cost": {"mana": "{4}"}, "then": [{"do": "untap", "what": {"ref": "self"}}]}]},
+   {"kind": "triggered", "text": "At the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.",
+    "event": {"on": "draw_step", "whose": "your"}, "if": {"if": "self_tapped"},
+    "effects": [{"do": "damage", "n": 1, "to": "you", "source": "self"}]},
+   {"kind": "mana", "text": "{T}: Add {C}{C}{C}.", "cost": {"tap": true}, "produce": {"units": ["C", "C", "C"]}}]},
+
+ {"gef": "0.1", "name": "Talisman of Conviction", "source": "llm",
+  "notes": "The painful line is an activated ability (mana plus damage) rather than a pure mana ability.",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "activated", "text": "{T}: Add {R} or {W}. This artifact deals 1 damage to you.", "cost": {"tap": true},
+    "effects": [{"do": "mana", "produce": {"units": ["RW"]}}, {"do": "damage", "n": 1, "to": "you", "source": "self"}]}]},
+
+ {"gef": "0.1", "name": "Herald's Horn", "source": "llm",
+  "notes": "Choosing the creature type on entering is a format gap; the other lines use chosen_type.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "As this artifact enters, choose a creature type.", "reason": "choosing a creature type as it enters has no construct", "scope": "format_gap"},
+   {"kind": "static", "text": "Creature spells you cast of the chosen type cost {1} less to cast.",
+    "effect": {"static": "cost_reduction", "spells": {"types": ["creature"], "chosen_type": true}, "amount": 1}},
+   {"kind": "triggered", "text": "At the beginning of your upkeep, look at the top card of your library. If it's a creature card of the chosen type, you may reveal it and put it into your hand.",
+    "event": {"on": "upkeep", "whose": "your"}, "optional": true,
+    "effects": [{"do": "look", "n": 1, "take": 1, "filter": {"types": ["creature"], "chosen_type": true}, "to": "hand", "reveal": true, "rest": "top", "from": "library"}]}]},
+
+ {"gef": "0.1", "name": "Chrome Mox", "source": "llm",
+  "notes": "Imprint exile and the colors-of-exiled-card mana both depend on a remembered card that GEF cannot hold.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Imprint — When this artifact enters, you may exile a nonartifact, nonland card from your hand.",
+    "reason": "imprint: exiles a card and remembers it; no construct for remembering the exiled card", "scope": "format_gap"},
+   {"kind": "unexpressible", "text": "{T}: Add one mana of any of the exiled card's colors.",
+    "reason": "mana colors depend on the imprinted card", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Anguished Unmaking", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Exile target nonland permanent. You lose 3 life.",
+    "effects": [{"do": "remove", "how": "exile", "target": {"ref": "target", "filter": {"types": ["permanent"], "non_types": ["land"]}}},
+                {"do": "lose_life", "n": 3, "who": "you"}]}]},
+
+ {"gef": "0.1", "name": "Lightning Bolt", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Lightning Bolt deals 3 damage to any target.",
+    "effects": [{"do": "damage", "n": 3, "to": "any_target", "source": "self"}]}]},
+
+ {"gef": "0.1", "name": "Windfall", "source": "llm",
+  "notes": "The draw count (greatest number discarded by any player) has no count key, so that part is unexpressible.",
+  "abilities": [
+   {"kind": "spell", "text": "Each player discards their hand, then draws cards equal to the greatest number of cards a player discarded this way.",
+    "effects": [{"do": "discard", "n": "hand", "who": "each_player"},
+                {"do": "unexpressible", "text": "then draws cards equal to the greatest number of cards a player discarded this way", "reason": "greatest number of cards any player discarded has no count key", "scope": "format_gap"}]}]},
+
+ {"gef": "0.1", "name": "Dimir Signet", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{1}, {T}: Add {U}{B}.", "cost": {"mana": "{1}", "tap": true}, "produce": {"units": ["U", "B"]}}]},
+
+ {"gef": "0.1", "name": "Ghostly Prison", "source": "llm",
+  "notes": "Only concerns opponents' attacks against you, which never happen in a goldfish.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you.",
+    "reason": "taxes opponents' attacks against you", "scope": "out_of_scope"}]},
+
+ {"gef": "0.1", "name": "Sink into Stupor // Soporific Springs", "source": "llm",
+  "notes": "Sink into Stupor can target a spell or a permanent; GEF targets permanents only, so the line is unexpressible. Soporific Springs' pay-3-life-or-tapped entry is a replacement static.",
+  "faces": [
+   {"name": "Sink into Stupor", "abilities": [
+    {"kind": "unexpressible", "text": "Return target spell or nonland permanent an opponent controls to its owner's hand.",
+     "reason": "a single target that may be a spell or a permanent; remove.bounce targets only permanents", "scope": "format_gap"}]},
+   {"name": "Soporific Springs", "abilities": [
+    {"kind": "static", "text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.",
+     "effect": {"static": "replacement", "text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.", "kind": "other"}},
+    {"kind": "mana", "text": "{T}: Add {U}.", "cost": {"tap": true}, "produce": {"units": ["U"]}}]}]}
+]

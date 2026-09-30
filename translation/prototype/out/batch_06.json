@@ -1,0 +1,194 @@
+[
+ {"gef": "0.1", "name": "Swan Song", "source": "llm",
+  "notes": "The Bird token goes to the countered spell's controller (not you), which GEF's token effect can't address; marked out_of_scope.",
+  "abilities": [
+   {"kind": "spell", "text": "Counter target enchantment, instant, or sorcery spell. Its controller creates a 2/2 blue Bird creature token with flying.",
+    "effects": [
+     {"do": "counter_spell", "filter": {"any_of": [{"types": ["enchantment"]}, {"types": ["instant"]}, {"types": ["sorcery"]}]}},
+     {"do": "unexpressible", "text": "Its controller creates a 2/2 blue Bird creature token with flying.", "reason": "the countered spell's controller (not you) gets the token; token effect has no player field", "scope": "out_of_scope"}]}]},
+
+ {"gef": "0.1", "name": "Sword of War and Peace", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Equipped creature gets +2/+2 and has protection from red and from white.",
+    "effect": {"static": "attached_bonus", "power": 2, "toughness": 2, "keywords": ["protection from red", "protection from white"]}},
+   {"kind": "triggered", "text": "Whenever equipped creature deals combat damage to a player, this Equipment deals damage to that player equal to the number of cards in their hand and you gain 1 life for each card in your hand.",
+    "event": {"on": "combat_damage_to_player", "subject": "equipped"},
+    "effects": [
+     {"do": "damage", "n": {"count": "cards_in_opponent_hand"}, "to": "that_player", "source": "self"},
+     {"do": "gain_life", "n": {"count": "cards_in_hand"}, "who": "you"}]},
+   {"kind": "keyword", "text": "Equip {2}", "keyword": "equip", "cost": "{2}"}]},
+
+ {"gef": "0.1", "name": "Tavern Scoundrel", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "Whenever you win a coin flip, create two Treasure tokens.",
+    "event": {"on": "coin_flip_won", "who": "you"},
+    "effects": [{"do": "token", "n": 2, "token": {"preset": "treasure"}}]},
+   {"kind": "activated", "text": "{1}, {T}, Sacrifice another permanent: Flip a coin.",
+    "cost": {"mana": "{1}", "tap": true, "sacrifice": {"filter": {"another": true}, "n": 1}},
+    "effects": [{"do": "flip_coins", "n": 1}]}]},
+
+ {"gef": "0.1", "name": "Thassa's Oracle", "source": "llm",
+  "notes": "Look part expressed as take 1 to top, rest bottom (random order and 'up to one' not distinguishable); the win condition (X >= library size) has no construct and is marked format_gap.",
+  "abilities": [
+   {"kind": "triggered", "text": "When this creature enters, look at the top X cards of your library, where X is your devotion to blue. Put up to one of them on top of your library and the rest on the bottom of your library in a random order. If X is greater than or equal to the number of cards in your library, you win the game.",
+    "event": {"on": "enters", "subject": "self"},
+    "effects": [
+     {"do": "look", "n": {"count": "devotion", "colors": "U"}, "take": 1, "to": "library_top", "rest": "bottom", "from": "library"},
+     {"do": "unexpressible", "text": "If X is greater than or equal to the number of cards in your library, you win the game.", "reason": "comparing devotion X to library size has no condition construct", "scope": "format_gap"}]}]},
+
+ {"gef": "0.1", "name": "The Endstone", "source": "llm",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Whenever you play a land or cast a spell, draw a card.",
+    "reason": "no event for playing a land, and one trigger covers both land plays and spell casts", "scope": "format_gap"},
+   {"kind": "triggered", "text": "At the beginning of your end step, your life total becomes half your starting life total, rounded up.",
+    "event": {"on": "end_step", "whose": "your"},
+    "effects": [{"do": "set_life", "n": {"count": "starting_life_total", "divide": 2, "round": "up"}, "who": "you"}]}]},
+
+ {"gef": "0.1", "name": "Thought Vessel", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "You have no maximum hand size.", "effect": {"static": "no_max_hand_size"}},
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}}]},
+
+ {"gef": "0.1", "name": "Tribute Mage", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "When this creature enters, you may search your library for an artifact card with mana value 2, reveal that card, put it into your hand, then shuffle.",
+    "event": {"on": "enters", "subject": "self"}, "optional": true,
+    "effects": [{"do": "tutor", "filter": {"types": ["artifact"], "mana_value": {"eq": 2}}, "n": 1, "to": "hand", "reveal": true}]}]},
+
+ {"gef": "0.1", "name": "Twenty-Toed Toad", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Your maximum hand size is twenty.", "effect": {"static": "max_hand_size", "n": 20}},
+   {"kind": "triggered", "text": "Whenever you attack with two or more creatures, put a +1/+1 counter on this creature and draw a card.",
+    "event": {"on": "you_attack", "min_attackers": 2},
+    "effects": [
+     {"do": "counters", "kind": "+1/+1", "n": 1, "on": {"ref": "self"}},
+     {"do": "draw", "n": 1}]},
+   {"kind": "triggered", "text": "Whenever this creature attacks, you win the game if there are twenty or more counters on it or you have twenty or more cards in hand.",
+    "event": {"on": "attacks", "subject": "self"},
+    "effects": [{"do": "if", "cond": {"if": "or", "conds": [
+       {"if": "amount_at_least", "amount": {"count": "counters_on_self"}, "n": 20},
+       {"if": "hand_at_least", "n": 20}]},
+      "then": [{"do": "win_game"}]}]}]},
+
+ {"gef": "0.1", "name": "Vivi Ornitier", "source": "llm",
+  "abilities": [
+   {"kind": "activated", "text": "{0}: Add X mana in any combination of {U} and/or {R}, where X is Vivi Ornitier's power. Activate only during your turn and only once each turn.",
+    "cost": {"mana": "{0}"}, "once_per_turn": true, "if": {"if": "your_turn"},
+    "effects": [{"do": "mana", "produce": {"units": ["UR"], "amount": {"count": "power_of_self"}, "any_combination": true}}]},
+   {"kind": "triggered", "text": "Whenever you cast a noncreature spell, put a +1/+1 counter on Vivi Ornitier and it deals 1 damage to each opponent.",
+    "event": {"on": "cast", "who": "you", "spell": {"non_types": ["creature"]}},
+    "effects": [
+     {"do": "counters", "kind": "+1/+1", "n": 1, "on": {"ref": "self"}},
+     {"do": "damage", "n": 1, "to": "each_opponent", "source": "self"}]}]},
+
+ {"gef": "0.1", "name": "Whir of Invention", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Improvise", "keyword": "improvise"},
+   {"kind": "spell", "text": "Search your library for an artifact card with mana value X or less, put it onto the battlefield, then shuffle.",
+    "effects": [{"do": "tutor", "filter": {"types": ["artifact"], "mana_value": {"max": "X"}}, "n": 1, "to": "battlefield"}]}]},
+
+ {"gef": "0.1", "name": "Witch's Clinic", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "activated", "text": "{2}, {T}: Target commander gains lifelink until end of turn.",
+    "cost": {"mana": "{2}", "tap": true},
+    "effects": [{"do": "pump", "target": {"ref": "target", "filter": {"commander": true}}, "keywords": ["lifelink"], "duration": "end_of_turn"}]}]},
+
+ {"gef": "0.1", "name": "Zndrsplt, Eye of Wisdom", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Partner with Okaun, Eye of Chaos", "keyword": "partner with", "detail": "Okaun, Eye of Chaos"},
+   {"kind": "triggered", "text": "At the beginning of combat on your turn, flip a coin until you lose a flip.",
+    "event": {"on": "combat_begin", "whose": "your"},
+    "effects": [{"do": "flip_coins", "until_lose": true}]},
+   {"kind": "triggered", "text": "Whenever a player wins a coin flip, draw a card.",
+    "event": {"on": "coin_flip_won", "who": "each_player"},
+    "effects": [{"do": "draw", "n": 1}]}]},
+
+ {"gef": "0.1", "name": "Zur the Enchanter", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "triggered", "text": "Whenever Zur attacks, you may search your library for an enchantment card with mana value 3 or less, put it onto the battlefield, then shuffle.",
+    "event": {"on": "attacks", "subject": "self"}, "optional": true,
+    "effects": [{"do": "tutor", "filter": {"types": ["enchantment"], "mana_value": {"max": 3}}, "n": 1, "to": "battlefield"}]}]},
+
+ {"gef": "0.1", "name": "Aether Channeler", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "When this creature enters, choose one —\n• Create a 1/1 white Bird creature token with flying.\n• Return another target nonland permanent to its owner's hand.\n• Draw a card.",
+    "event": {"on": "enters", "subject": "self"},
+    "effects": [{"do": "choose", "n": 1, "modes": [
+      [{"do": "token", "n": 1, "token": {"name": "Bird", "types": ["creature"], "subtypes": ["Bird"], "colors": ["W"], "power": 1, "toughness": 1, "keywords": ["flying"]}}],
+      [{"do": "remove", "how": "bounce", "target": {"ref": "target", "filter": {"types": ["permanent"], "non_types": ["land"], "another": true}}}],
+      [{"do": "draw", "n": 1}]]}]}]},
+
+ {"gef": "0.1", "name": "Approach of the Second Sun", "source": "llm",
+  "notes": "Needs game history (another spell with this name cast) and putting itself seventh from the top; neither has a construct.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "If this spell was cast from your hand and you've cast another spell named Approach of the Second Sun this game, you win the game. Otherwise, put Approach of the Second Sun into its owner's library seventh from the top and you gain 7 life.",
+    "reason": "no condition for having cast another spell with the same name this game, and self_to_library cannot place seventh from the top", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Arcane Signet", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add one mana of any color in your commander's color identity.", "cost": {"tap": true}, "produce": {"units": ["commander_colors"]}}]},
+
+ {"gef": "0.1", "name": "Archaeomancer", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "When this creature enters, return target instant or sorcery card from your graveyard to your hand.",
+    "event": {"on": "enters", "subject": "self"},
+    "effects": [{"do": "recur", "filter": {"types": ["instant", "sorcery"]}, "n": 1, "to": "hand", "from": "your_graveyard"}]}]},
+
+ {"gef": "0.1", "name": "Archfiend of Ifnir", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "unexpressible", "text": "Whenever you cycle or discard another card, put a -1/-1 counter on each creature your opponents control.",
+    "reason": "one trigger for two events (cycle or discard another card) cannot be stated as a single event", "scope": "format_gap"},
+   {"kind": "keyword", "text": "Cycling {2}", "keyword": "cycling", "cost": "{2}"}]},
+
+ {"gef": "0.1", "name": "Astral Drift", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "Whenever you cycle this card or cycle another card while this enchantment is on the battlefield, you may exile target creature. If you do, return that card to the battlefield under its owner's control at the beginning of the next end step.",
+    "event": {"on": "cycle", "who": "you"}, "optional": true,
+    "effects": [{"do": "flicker", "what": {"ref": "target", "filter": {"types": ["creature"]}}, "returns": "next_end_step"}]},
+   {"kind": "keyword", "text": "Cycling {2}{W}", "keyword": "cycling", "cost": "{2}{W}"}]},
+
+ {"gef": "0.1", "name": "Astral Slide", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "Whenever a player cycles a card, you may exile target creature. If you do, return that card to the battlefield under its owner's control at the beginning of the next end step.",
+    "event": {"on": "cycle", "who": "each_player"}, "optional": true,
+    "effects": [{"do": "flicker", "what": {"ref": "target", "filter": {"types": ["creature"]}}, "returns": "next_end_step"}]}]},
+
+ {"gef": "0.1", "name": "Auramancer", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "When this creature enters, you may return target enchantment card from your graveyard to your hand.",
+    "event": {"on": "enters", "subject": "self"}, "optional": true,
+    "effects": [{"do": "recur", "filter": {"types": ["enchantment"]}, "n": 1, "to": "hand", "from": "your_graveyard"}]}]},
+
+ {"gef": "0.1", "name": "Azami, Lady of Scrolls", "source": "llm",
+  "abilities": [
+   {"kind": "activated", "text": "Tap an untapped Wizard you control: Draw a card.",
+    "cost": {"tap_untapped": {"n": 1, "filter": {"subtypes": ["Wizard"], "controller": "you"}}},
+    "effects": [{"do": "draw", "n": 1}]}]},
+
+ {"gef": "0.1", "name": "Bloodline Necromancer", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Lifelink", "keyword": "lifelink"},
+   {"kind": "triggered", "text": "When this creature enters, you may return target Vampire or Wizard creature card from your graveyard to the battlefield.",
+    "event": {"on": "enters", "subject": "self"}, "optional": true,
+    "effects": [{"do": "recur", "filter": {"types": ["creature"], "any_of": [{"subtypes": ["Vampire"]}, {"subtypes": ["Wizard"]}]}, "n": 1, "to": "battlefield", "from": "your_graveyard"}]}]},
+
+ {"gef": "0.1", "name": "Brainspoil", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Destroy target creature that isn't enchanted. It can't be regenerated.",
+    "effects": [
+     {"do": "remove", "how": "destroy", "target": {"ref": "target", "filter": {"types": ["creature"], "enchanted": false}}},
+     {"do": "unexpressible", "text": "It can't be regenerated.", "reason": "regeneration restriction on the target; only matters for opposing permanents", "scope": "out_of_scope"}]},
+   {"kind": "keyword", "text": "Transmute {1}{B}{B}", "keyword": "transmute", "cost": "{1}{B}{B}"}]},
+
+ {"gef": "0.1", "name": "Complicate", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Counter target spell unless its controller pays {3}.",
+    "effects": [{"do": "counter_spell", "unless_pays": "{3}"}]},
+   {"kind": "keyword", "text": "Cycling {2}{U}", "keyword": "cycling", "cost": "{2}{U}"},
+   {"kind": "triggered", "text": "When you cycle this card, you may counter target spell unless its controller pays {1}.",
+    "event": {"on": "cycle_self"}, "optional": true,
+    "effects": [{"do": "counter_spell", "unless_pays": "{1}"}]}]}
+]

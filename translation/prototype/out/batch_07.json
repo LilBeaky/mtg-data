@@ -1,0 +1,186 @@
+[
+ {"gef": "0.1", "name": "Dark Ritual", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Add {B}{B}{B}.", "effects": [{"do": "mana", "produce": {"units": ["B", "B", "B"]}}]}]},
+
+ {"gef": "0.1", "name": "Deafening Silence", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Each player can't cast more than one noncreature spell each turn.",
+    "effect": {"static": "restriction", "who": "each_player", "text": "Each player can't cast more than one noncreature spell each turn."}}]},
+
+ {"gef": "0.1", "name": "Disciple of Caelus Nin", "source": "llm",
+  "notes": "Both lines involve phasing and each player choosing permanents, which GEF has no construct for; they affect your own permanents so they are format gaps.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "When this creature enters, starting with you, each player chooses up to five permanents they control. All permanents other than this creature that weren't chosen this way phase out.",
+    "reason": "phasing out all unchosen permanents after each player chooses up to five; no phasing or choose-permanents construct", "scope": "format_gap"},
+   {"kind": "unexpressible", "text": "Permanents can't phase in.",
+    "reason": "static phasing restriction with no construct", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Dour Port-Mage", "source": "llm",
+  "notes": "The first line needs 'leave the battlefield without dying', which the leaves event can't exclude dying from, so it is a format gap.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Whenever one or more other creatures you control leave the battlefield without dying, draw a card.",
+    "reason": "leaves event cannot express 'without dying' (excluding death)", "scope": "format_gap"},
+   {"kind": "activated", "text": "{1}{U}, {T}: Return another target creature you control to its owner's hand.",
+    "cost": {"mana": "{1}{U}", "tap": true},
+    "effects": [{"do": "bounce_own", "what": {"ref": "target", "filter": {"types": ["creature"], "controller": "you", "another": true}}}]}]},
+
+ {"gef": "0.1", "name": "Drannith Magistrate", "source": "llm",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Your opponents can't cast spells from anywhere other than their hands.",
+    "reason": "only restricts what opponents cast", "scope": "out_of_scope"}]},
+
+ {"gef": "0.1", "name": "Emeritus of Ideation // Ancestral Recall", "source": "llm",
+  "notes": "Prepared is a new mechanic with no construct; marked format_gap in the enters line and in the becomes-prepared part of the attack trigger.",
+  "faces": [
+   {"name": "Emeritus of Ideation",
+    "abilities": [
+     {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+     {"kind": "keyword", "text": "ward {2}", "keyword": "ward", "cost": "{2}"},
+     {"kind": "unexpressible", "text": "This creature enters prepared.",
+      "reason": "the prepared mechanic has no GEF construct", "scope": "format_gap"},
+     {"kind": "triggered", "text": "Whenever this creature attacks, you may exile eight cards from your graveyard. If you do, this creature becomes prepared.",
+      "event": {"on": "attacks", "subject": "self"},
+      "effects": [{"do": "may_pay", "cost": {"exile_from_graveyard": {"n": 8}},
+                   "then": [{"do": "unexpressible", "text": "this creature becomes prepared", "reason": "the prepared mechanic has no GEF construct", "scope": "format_gap"}]}]}]},
+   {"name": "Ancestral Recall",
+    "abilities": [
+     {"kind": "spell", "text": "Target player draws three cards.", "effects": [{"do": "draw", "n": 3, "who": "target_player"}]}]}]},
+
+ {"gef": "0.1", "name": "Ephemerate", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Exile target creature you control, then return it to the battlefield under its owner's control.",
+    "effects": [{"do": "flicker", "what": {"ref": "target", "filter": {"types": ["creature"], "controller": "you"}}, "returns": "immediately"}]},
+   {"kind": "keyword", "text": "Rebound", "keyword": "rebound"}]},
+
+ {"gef": "0.1", "name": "Ertai Resurrected", "source": "llm",
+  "notes": "Counter mode uses counter_spell with abilities true to cover spells and abilities.",
+  "abilities": [
+   {"kind": "keyword", "text": "Flash", "keyword": "flash"},
+   {"kind": "triggered", "text": "When Ertai Resurrected enters, choose up to one —\n• Counter target spell, activated ability, or triggered ability. Its controller draws a card.\n• Destroy another target creature or planeswalker. Its controller draws a card.",
+    "event": {"on": "enters", "subject": "self"},
+    "effects": [{"do": "choose", "n": 1, "up_to": true, "modes": [
+      [{"do": "counter_spell", "abilities": true}, {"do": "draw", "n": 1, "who": "its_controller"}],
+      [{"do": "remove", "how": "destroy", "target": {"ref": "target", "filter": {"types": ["creature", "planeswalker"], "another": true}}},
+       {"do": "draw", "n": 1, "who": "its_controller"}]]}]}]},
+
+ {"gef": "0.1", "name": "Escape Protocol", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "Whenever you cycle a card, you may pay {1}. When you do, exile target artifact or creature you control, then return it to the battlefield under its owner's control.",
+    "event": {"on": "cycle", "who": "you"}, "optional": true,
+    "effects": [{"do": "may_pay", "cost": {"mana": "{1}"},
+                 "then": [{"do": "flicker", "what": {"ref": "target", "filter": {"types": ["artifact", "creature"], "controller": "you"}}, "returns": "immediately"}]}]}]},
+
+ {"gef": "0.1", "name": "Feed the Swarm", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Destroy target creature or enchantment an opponent controls. You lose life equal to that permanent's mana value.",
+    "effects": [{"do": "remove", "how": "destroy", "target": {"ref": "target", "filter": {"types": ["creature", "enchantment"], "controller": "opponent"}}},
+                {"do": "lose_life", "n": {"count": "mana_value_of_that"}, "who": "you"}]}]},
+
+ {"gef": "0.1", "name": "Fluctuator", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Cycling abilities you activate cost {2} less to activate.",
+    "effect": {"static": "cost_reduction", "amount": 2, "applies_to": "cycling"}}]},
+
+ {"gef": "0.1", "name": "Forsake the Worldly", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Exile target artifact or enchantment.",
+    "effects": [{"do": "remove", "how": "exile", "target": {"ref": "target", "filter": {"types": ["artifact", "enchantment"]}}}]},
+   {"kind": "keyword", "text": "Cycling {2}", "keyword": "cycling", "cost": "{2}"}]},
+
+ {"gef": "0.1", "name": "Ghostway", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Exile each creature you control. Return those cards to the battlefield under their owner's control at the beginning of the next end step.",
+    "effects": [{"do": "flicker", "what": {"ref": "each", "filter": {"types": ["creature"], "controller": "you"}}, "returns": "next_end_step"}]}]},
+
+ {"gef": "0.1", "name": "Glen Elendra Archmage", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "activated", "text": "{U}, Sacrifice this creature: Counter target noncreature spell.",
+    "cost": {"mana": "{U}", "sacrifice": "self"},
+    "effects": [{"do": "counter_spell", "filter": {"non_types": ["creature"]}}]},
+   {"kind": "keyword", "text": "Persist", "keyword": "persist"}]},
+
+ {"gef": "0.1", "name": "Grasp of Fate", "source": "llm",
+  "notes": "'For each opponent, up to one target' is written as up to any number of targets, which loses the one-per-opponent limit.",
+  "abilities": [
+   {"kind": "triggered", "text": "When this enchantment enters, for each opponent, exile up to one target nonland permanent that player controls until this enchantment leaves the battlefield.",
+    "event": {"on": "enters", "subject": "self"},
+    "effects": [{"do": "remove", "how": "exile",
+                 "target": {"ref": "target", "n": "any", "up_to": true, "filter": {"non_types": ["land"], "controller": "opponent"}},
+                 "duration": "as_long_as_source"}]}]},
+
+ {"gef": "0.1", "name": "Greater Auramancy", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Other enchantments you control have shroud.",
+    "effect": {"static": "grant_abilities", "filter": {"types": ["enchantment"], "controller": "you", "another": true},
+               "abilities": [{"kind": "keyword", "text": "shroud", "keyword": "shroud"}]}},
+   {"kind": "static", "text": "Enchanted creatures you control have shroud.",
+    "effect": {"static": "grant_abilities", "filter": {"types": ["creature"], "controller": "you", "enchanted": true},
+               "abilities": [{"kind": "keyword", "text": "shroud", "keyword": "shroud"}]}}]},
+
+ {"gef": "0.1", "name": "Hall of Heliod's Generosity", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "activated", "text": "{1}{W}, {T}: Put target enchantment card from your graveyard on top of your library.",
+    "cost": {"mana": "{1}{W}", "tap": true},
+    "effects": [{"do": "recur", "filter": {"types": ["enchantment"]}, "n": 1, "to": "library_top", "from": "your_graveyard"}]}]},
+
+ {"gef": "0.1", "name": "Land Tax", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "At the beginning of your upkeep, if an opponent controls more lands than you, you may search your library for up to three basic land cards, reveal them, put them into your hand, then shuffle.",
+    "event": {"on": "upkeep", "whose": "your"}, "if": {"if": "opponent_more_lands"}, "optional": true,
+    "effects": [{"do": "tutor", "filter": {"types": ["land"], "supertypes": ["basic"]}, "n": 3, "to": "hand", "reveal": true}]}]},
+
+ {"gef": "0.1", "name": "Locust Spray", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Target creature gets -1/-1 until end of turn.",
+    "effects": [{"do": "pump", "target": {"ref": "target", "filter": {"types": ["creature"]}}, "power": -1, "toughness": -1, "duration": "end_of_turn"}]},
+   {"kind": "keyword", "text": "Cycling {B}", "keyword": "cycling", "cost": "{B}"}]},
+
+ {"gef": "0.1", "name": "Mage's Attendant", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "When this creature enters, create a 1/1 blue Wizard creature token with \"{1}, Sacrifice this token: Counter target noncreature spell unless its controller pays {1}.\"",
+    "event": {"on": "enters", "subject": "self"},
+    "effects": [{"do": "token", "n": 1,
+                 "token": {"types": ["creature"], "subtypes": ["Wizard"], "colors": ["U"], "power": 1, "toughness": 1,
+                           "abilities": [{"kind": "activated", "text": "{1}, Sacrifice this token: Counter target noncreature spell unless its controller pays {1}.",
+                                          "cost": {"mana": "{1}", "sacrifice": "self"},
+                                          "effects": [{"do": "counter_spell", "filter": {"non_types": ["creature"]}, "unless_pays": "{1}"}]}]}}]}]},
+
+ {"gef": "0.1", "name": "Miscalculation", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Counter target spell unless its controller pays {2}.",
+    "effects": [{"do": "counter_spell", "unless_pays": "{2}"}]},
+   {"kind": "keyword", "text": "Cycling {2}", "keyword": "cycling", "cost": "{2}"}]},
+
+ {"gef": "0.1", "name": "Mistveil Plains", "source": "llm",
+  "notes": "The first line is only reminder text for the Plains type, so it is left out.",
+  "abilities": [
+   {"kind": "static", "text": "This land enters tapped.", "effect": {"static": "enters_tapped"}},
+   {"kind": "activated", "text": "{W}, {T}: Put target card from your graveyard on the bottom of your library. Activate only if you control two or more white permanents.",
+    "cost": {"mana": "{W}", "tap": true},
+    "if": {"if": "control", "filter": {"colors": ["W"]}, "min": 2},
+    "effects": [{"do": "recur", "filter": {"any": true}, "n": 1, "to": "library_bottom", "from": "your_graveyard"}]}]},
+
+ {"gef": "0.1", "name": "Naban, Dean of Iteration", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "If a Wizard you control entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+    "effect": {"static": "trigger_doubler", "cause": "enters", "filter": {"subtypes": ["Wizard"], "controller": "you"}}}]},
+
+ {"gef": "0.1", "name": "Necrodominance", "source": "llm",
+  "notes": "Skip-draw-step is a restriction static (no static skip construct); the pay-any-amount-of-life line is a format gap because the amount is not a spell's X.",
+  "abilities": [
+   {"kind": "static", "text": "Skip your draw step.",
+    "effect": {"static": "restriction", "who": "you", "text": "Skip your draw step."}},
+   {"kind": "unexpressible", "text": "At the beginning of your end step, you may pay any amount of life. If you do, draw that many cards.",
+    "reason": "pay any amount of life, then draw that many; the variable payment is not an X cost", "scope": "format_gap"},
+   {"kind": "static", "text": "Your maximum hand size is five.", "effect": {"static": "max_hand_size", "n": 5}},
+   {"kind": "static", "text": "If a card or token would be put into your graveyard from anywhere, exile it instead.",
+    "effect": {"static": "replacement", "text": "If a card or token would be put into your graveyard from anywhere, exile it instead.", "kind": "graveyard"}}]},
+
+ {"gef": "0.1", "name": "Neutralize", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Counter target spell.", "effects": [{"do": "counter_spell"}]},
+   {"kind": "keyword", "text": "Cycling {2}", "keyword": "cycling", "cost": "{2}"}]}
+]
