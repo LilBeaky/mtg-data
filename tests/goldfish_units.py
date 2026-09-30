@@ -1316,6 +1316,13 @@ def _():
     tre = any(e[0] == "treasure" for t in AK["Descent into Avernus"].trig for e in t[2])
     return geier and tre and not any(x[0] == "reduce" for x in AK["Cloud Key"].statics) and not any("unread part" in n for n in AK["Dusk Mangler"].notes)
 
+@check("Trigger text keeps its case for tutors.py: Heliod's Pilgrim's ETB fetches an Aura, not any card")
+def _():
+    raw = next(c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] == "Heliod's Pilgrim")
+    k = g.compile_card(raw, frozenset("GW"))
+    tg = next(e[1] for e in k.etb if e[0] == "tutor")
+    return tg.describe() == "Aura" and not g.tutor_unread(tg)
+
 def main():
     fails = 0
     for name, fn in CHECKS:

@@ -1008,9 +1008,20 @@ def _ifdo_cost(cost):
     if free: return "free"                                                # mana payments: the 'paid' reader, Well of Lost Dreams
     return None
 
+def _restore_case(s):
+    """Trigger parsing lowercases its text; tutors.py reads subtypes ('an Aura card') by capital letter.
+    Give a lowercase fragment back its original case when it appears exactly once in the card's text."""
+    full = _CTX.get("text") or ""
+    if not s or s != s.lower() or len(s.strip()) < 8: return s
+    lo, st = full.lower(), s.strip()
+    i = lo.find(st)
+    if i < 0 or lo.find(st, i + 1) >= 0: return s
+    return s.replace(st, full[i:i + len(st)])
+
 def parse_fx(s):
     """Effect text -> ([effect tuples in text order], tax). tax = a Rhystic-style
     'unless that player pays' clause (resolved per trigger with --opp-pay)."""
+    s = _restore_case(s)
     quotes = re.findall(r'"([^"]*)"', s)
     if quotes or not re.search(r"@q\d+@", s): _CTX["quotes"] = quotes     # a fragment of an outer call keeps its quotes
     qi = iter(range(len(quotes)))
