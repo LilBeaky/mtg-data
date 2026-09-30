@@ -1,0 +1,169 @@
+[
+ {"gef": "0.1", "name": "Klauth, Unrivaled Ancient", "source": "llm",
+  "notes": "Trigger marked format_gap: X is the total power of attacking creatures (no count key) and the mana persists through steps.",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying, haste", "keyword": "flying"},
+   {"kind": "keyword", "text": "Flying, haste", "keyword": "haste"},
+   {"kind": "unexpressible", "text": "Whenever Klauth attacks, add X mana in any combination of colors, where X is the total power of attacking creatures. Spend this mana only to cast spells. Until end of turn, you don't lose this mana as steps and phases end.", "reason": "X is total power of attacking creatures (no count key); mana also persists through steps and phases", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Ancient Bronze Dragon", "source": "llm",
+  "notes": "Trigger marked format_gap: the counters equal a d20 result in a reflexive trigger, and no amount refers to a die result.",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "unexpressible", "text": "Whenever this creature deals combat damage to a player, roll a d20. When you do, put X +1/+1 counters on each of up to two target creatures, where X is the result.", "reason": "reflexive trigger with counters equal to the d20 result; no amount for a die result", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Animist's Awakening", "source": "llm",
+  "notes": "Bottom 'in a random order' is expressed only as rest: bottom. 'Those lands' for the spell mastery untap is written as ref 'that' (the lands put onto the battlefield).",
+  "abilities": [
+   {"kind": "spell", "text": "Reveal the top X cards of your library. Put all land cards from among them onto the battlefield tapped and the rest on the bottom of your library in a random order.",
+    "effects": [{"do": "look", "n": "X", "take": "all", "filter": {"types": ["land"]}, "to": "battlefield_tapped", "rest": "bottom", "reveal": true, "from": "library"}]},
+   {"kind": "spell", "text": "Spell mastery — If there are two or more instant and/or sorcery cards in your graveyard, untap those lands.",
+    "effects": [{"do": "if", "cond": {"if": "graveyard_at_least", "n": 2, "filter": {"types": ["instant", "sorcery"]}},
+                 "then": [{"do": "untap", "what": {"ref": "that", "filter": {"types": ["land"]}}}]}]}]},
+
+ {"gef": "0.1", "name": "Arena of Glory", "source": "llm",
+  "notes": "Exert mana line marked format_gap: the haste-on-spending rider cannot be said.",
+  "abilities": [
+   {"kind": "static", "text": "This land enters tapped unless you control a Mountain.",
+    "effect": {"static": "enters_tapped", "unless": {"if": "control", "filter": {"subtypes": ["Mountain"], "controller": "you"}}}},
+   {"kind": "mana", "text": "{T}: Add {R}.", "cost": {"tap": true}, "produce": {"units": ["R"]}},
+   {"kind": "unexpressible", "text": "{R}, {T}, Exert this land: Add {R}{R}. If any of that mana is spent on a creature spell, it gains haste until end of turn.", "reason": "mana that grants haste to a creature spell it is spent on", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Atarka, World Render", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying, trample", "keyword": "flying"},
+   {"kind": "keyword", "text": "Flying, trample", "keyword": "trample"},
+   {"kind": "triggered", "text": "Whenever a Dragon you control attacks, it gains double strike until end of turn.",
+    "event": {"on": "attacks", "subject": {"subtypes": ["Dragon"], "controller": "you"}},
+    "effects": [{"do": "pump", "target": {"ref": "it"}, "keywords": ["double strike"], "duration": "end_of_turn"}]}]},
+
+ {"gef": "0.1", "name": "Balefire Dragon", "source": "llm",
+  "notes": "Trigger marked format_gap: damage goes only to creatures controlled by the damaged player; each_opposing_creature would widen it to all opponents.",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "unexpressible", "text": "Whenever this creature deals combat damage to a player, it deals that much damage to each creature that player controls.", "reason": "damage to only the creatures of the damaged player; no matching target", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Become the Avalanche", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Draw a card for each creature you control with power 4 or greater. Then creatures you control get +X/+X until end of turn, where X is the number of cards in your hand.",
+    "effects": [
+     {"do": "draw", "n": {"count": "permanents_you_control", "filter": {"types": ["creature"], "controller": "you", "power": {"min": 4}}}},
+     {"do": "pump_team", "filter": {"types": ["creature"], "controller": "you"}, "power": {"count": "cards_in_hand"}, "toughness": {"count": "cards_in_hand"}, "duration": "end_of_turn"}]}]},
+
+ {"gef": "0.1", "name": "Biorhythm", "source": "llm",
+  "notes": "Format_gap: each player's life becomes that player's own creature count; count keys only count your permanents.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Each player's life total becomes the number of creatures they control.", "reason": "each player's life set to their own creature count; counts only cover your permanents", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Blast-Furnace Hellkite", "source": "llm",
+  "notes": "Static line marked format_gap: 'attacking your opponents' cannot be filtered exactly (attacking true would include attacks on planeswalkers or you).",
+  "abilities": [
+   {"kind": "keyword", "text": "Artifact offering", "keyword": "offering", "detail": "Artifact"},
+   {"kind": "keyword", "text": "Flying, double strike", "keyword": "flying"},
+   {"kind": "keyword", "text": "Flying, double strike", "keyword": "double strike"},
+   {"kind": "unexpressible", "text": "Creatures attacking your opponents have double strike.", "reason": "filter for creatures attacking your opponents (any controller) is not expressible", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Bower Passage", "source": "llm",
+  "notes": "Only restricts opposing flying blockers.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Creatures with flying can't block creatures you control.", "reason": "restricts what opposing creatures can block", "scope": "out_of_scope"}]},
+
+ {"gef": "0.1", "name": "Breaching Dragonstorm", "source": "llm",
+  "notes": "First trigger marked format_gap: cast free only if mana value is 8 or less, otherwise (or if not cast) to hand, which no construct says.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "When this enchantment enters, exile cards from the top of your library until you exile a nonland card. You may cast it without paying its mana cost if that spell's mana value is 8 or less. If you don't, put that card into your hand.", "reason": "conditional free cast (mana value 8 or less) with hand fallback on the exiled card", "scope": "format_gap"},
+   {"kind": "triggered", "text": "When a Dragon you control enters, return this enchantment to its owner's hand.",
+    "event": {"on": "enters", "subject": {"subtypes": ["Dragon"], "controller": "you"}},
+    "effects": [{"do": "bounce_self"}]}]},
+
+ {"gef": "0.1", "name": "Broodcaller Scourge", "source": "llm",
+  "notes": "Trigger marked format_gap: mana value limit equals the damage dealt, which a filter cannot hold.",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "unexpressible", "text": "Whenever one or more Dragons you control deal combat damage to a player, you may put a permanent card with mana value less than or equal to that damage from your hand onto the battlefield.", "reason": "mana value cap equals the damage dealt; filters only take fixed numbers", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Chord of Calling", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Convoke", "keyword": "convoke"},
+   {"kind": "spell", "text": "Search your library for a creature card with mana value X or less, put it onto the battlefield, then shuffle.",
+    "effects": [{"do": "tutor", "filter": {"types": ["creature"], "mana_value": {"max": "X"}}, "n": 1, "to": "battlefield"}]}]},
+
+ {"gef": "0.1", "name": "Cinder Glade", "source": "llm",
+  "notes": "The first line is only reminder text for the basic land types, so it has no ability.",
+  "abilities": [
+   {"kind": "static", "text": "This land enters tapped unless you control two or more basic lands.",
+    "effect": {"static": "enters_tapped", "unless": {"if": "control", "filter": {"types": ["land"], "supertypes": ["basic"], "controller": "you"}, "min": 2}}}]},
+
+ {"gef": "0.1", "name": "Dracogenesis", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "You may cast Dragon spells without paying their mana costs.",
+    "effect": {"static": "free_cast", "spells": {"subtypes": ["Dragon"]}}}]},
+
+ {"gef": "0.1", "name": "Dragon Tempest", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "Whenever a creature you control with flying enters, it gains haste until end of turn.",
+    "event": {"on": "enters", "subject": {"types": ["creature"], "keywords": ["flying"], "controller": "you"}},
+    "effects": [{"do": "pump", "target": {"ref": "it"}, "keywords": ["haste"], "duration": "end_of_turn"}]},
+   {"kind": "triggered", "text": "Whenever a Dragon you control enters, it deals X damage to any target, where X is the number of Dragons you control.",
+    "event": {"on": "enters", "subject": {"subtypes": ["Dragon"], "controller": "you"}},
+    "effects": [{"do": "damage", "n": {"count": "permanents_you_control", "filter": {"subtypes": ["Dragon"]}}, "to": "any_target", "source": "that_creature"}]}]},
+
+ {"gef": "0.1", "name": "Dragonborn Champion", "source": "llm",
+  "notes": "Trigger marked format_gap: any source you control dealing 5+ damage to a player (not only combat, not only creatures) has no matching event.",
+  "abilities": [
+   {"kind": "keyword", "text": "Trample", "keyword": "trample"},
+   {"kind": "unexpressible", "text": "Whenever a source you control deals 5 or more damage to a player, draw a card.", "reason": "event for any source you control dealing 5 or more damage to a player is not available", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Dragonhawk, Fate's Tempest", "source": "llm",
+  "notes": "Trigger marked format_gap: enters-or-attacks in one event, plus delayed damage counted by cards still exiled.",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "unexpressible", "text": "Whenever Dragonhawk enters or attacks, exile the top X cards of your library, where X is the number of creatures you control with power 4 or greater. You may play those cards until your next end step. At the beginning of your next end step, Dragonhawk deals 2 damage to each opponent for each of those cards that are still exiled.", "reason": "play-until-next-end-step window and damage per card still exiled cannot be counted", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Dragonspeaker Shaman", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Dragon spells you cast cost {2} less to cast.",
+    "effect": {"static": "cost_reduction", "spells": {"subtypes": ["Dragon"]}, "amount": 2}}]},
+
+ {"gef": "0.1", "name": "Dragonstorm", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for a Dragon permanent card, put it onto the battlefield, then shuffle.",
+    "effects": [{"do": "tutor", "filter": {"types": ["permanent"], "subtypes": ["Dragon"]}, "n": 1, "to": "battlefield"}]},
+   {"kind": "keyword", "text": "Storm", "keyword": "storm"}]},
+
+ {"gef": "0.1", "name": "Emerald Medallion", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Green spells you cast cost {1} less to cast.",
+    "effect": {"static": "cost_reduction", "spells": {"colors": ["G"]}, "amount": 1}}]},
+
+ {"gef": "0.1", "name": "Encroaching Dragonstorm", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "When this enchantment enters, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+    "event": {"on": "enters", "subject": "self"},
+    "effects": [{"do": "tutor", "filter": {"types": ["land"], "supertypes": ["basic"]}, "n": 2, "to": "battlefield_tapped"}]},
+   {"kind": "triggered", "text": "When a Dragon you control enters, return this enchantment to its owner's hand.",
+    "event": {"on": "enters", "subject": {"subtypes": ["Dragon"], "controller": "you"}},
+    "effects": [{"do": "bounce_self"}]}]},
+
+ {"gef": "0.1", "name": "Evendo, Waking Haven", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "This land enters tapped.", "effect": {"static": "enters_tapped"}},
+   {"kind": "mana", "text": "{T}: Add {G}.", "cost": {"tap": true}, "produce": {"units": ["G"]}},
+   {"kind": "keyword", "text": "Station", "keyword": "station"},
+   {"kind": "mana", "text": "12+ | {G}, {T}: Add {G} for each creature you control.", "cost": {"mana": "{G}", "tap": true},
+    "produce": {"units": ["G"], "amount": {"count": "permanents_you_control", "filter": {"types": ["creature"], "controller": "you"}}},
+    "if": {"if": "self_has_counters", "kind": "charge", "min": 12}}]},
+
+ {"gef": "0.1", "name": "Exotic Orchard", "source": "llm",
+  "notes": "Format_gap: colors limited to what opponents' lands could produce; 'any' would loosen it.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "{T}: Add one mana of any color that a land an opponent controls could produce.", "reason": "mana colors depend on what opponents' lands could produce", "scope": "format_gap"}]},
+
+ {"gef": "0.1", "name": "Fanatic of Rhonas", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {G}.", "cost": {"tap": true}, "produce": {"units": ["G"]}},
+   {"kind": "mana", "text": "Ferocious — {T}: Add {G}{G}{G}{G}. Activate only if you control a creature with power 4 or greater.", "cost": {"tap": true},
+    "produce": {"units": ["G", "G", "G", "G"]},
+    "if": {"if": "control", "filter": {"types": ["creature"], "controller": "you", "power": {"min": 4}}}},
+   {"kind": "keyword", "text": "Eternalize {2}{G}{G}", "keyword": "eternalize", "cost": "{2}{G}{G}"}]}
+]
