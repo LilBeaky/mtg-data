@@ -942,6 +942,117 @@ def _():
     H = lgame(hand=["Thassa's Oracle"], lands=["Island"] * 2, lib=("Wastes",) * 2); H.build_pool(); ok = H.try_cast(k, "hand")
     return k.status == "modeled" and k.requires == "oracle" and held and ok and H.won == 3
 
+# ---- correctness pass (2026-09-30, session 2): costs before 'If you do', pod searches, converge, keywords, leftovers
+XNAMES = ["Formidable Speaker", "Birthing Pod", "Eldritch Evolution", "Grizzly Bears", "Centaur Courser", "Craw Wurm", "Hill Giant",
+          "Suntouched Myr", "Painful Truths", "Bloodbraid Elf", "Forest", "Mountain", "Plains", "Wastes", "Island", "Swamp",
+          "Kenrith's Transformation", "Tear Asunder", "Aegis Sculptor", "Frantic Search", "Swords to Plowshares",
+          "Gray Merchant of Asphodel", "Mox Opal", "Sol Ring", "Soulstinger", "Etched Oracle", "Glen Elendra Guardian",
+          "Thought Scour", "Riveteers Overlook", "Mask of Memory", "Sign in Blood", "Pippin's Bravery", "Stargaze",
+          "Culling Ritual", "Everflowing Chalice", "Tezzeret, Master of the Bridge", "Exotic Disease", "Storm the Citadel",
+          "Casting of Bones", "Liliana's Specter", "Cabal Coffers", "Elvish Archdruid", "Llanowar Elves", "Enigmatic Incarnation"]
+XRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(XNAMES)}
+XK = {n: g.compile_card(XRAW[n], g.ALL5) for n in XNAMES}
+
+def xgame(lands=(), perms=(), hand=(), lib=(), life=40):
+    args = argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False)
+    sim = g.Sim([n for n in XNAMES if n != "Grizzly Bears"], ["Grizzly Bears"], args, [], XK, g.ALL5)
+    G = g.Game(sim, [XK[n] for n in hand], [XK[n] for n in lib], random.Random(1))
+    G.turn = 3; G.phase = 3; G.turns_left = g.OPP_N; G.life = life; G.cmd = []
+    G.lands = [g.Perm(XK[n]) for n in lands]; G.perms = [g.Perm(XK[n]) for n in perms]; G._st = None
+    return G
+
+@check("'You may discard a card. If you do, search': no card in hand, no tutor; with one, the worst card goes (Formidable Speaker)")
+def _():
+    e = XK["Formidable Speaker"].etb
+    G = xgame(lib=["Craw Wurm", "Hill Giant"]); G.do(e, XK["Formidable Speaker"])
+    H = xgame(hand=["Wastes"], lib=["Craw Wurm", "Hill Giant"]); H.do(e, XK["Formidable Speaker"])
+    return e[0][0] == "ifdo" and e[0][1][0] == "discard" and G.hand == [] and len(G.lib) == 2 \
+        and len(H.hand) == 1 and H.hand[0].name in ("Craw Wurm", "Hill Giant") and [c.name for c in H.gy] == ["Wastes"]
+@check("An unread cost before 'If you do' drops the effect instead of making it free (Aegis Sculptor's upkeep counter)")
+def _(): return not XK["Aegis Sculptor"].trig and XK["Aegis Sculptor"].status == "partial"
+@check("'If you do ... Otherwise': the unpaid branch only when the cost isn't paid (Pippin's Bravery)")
+def _():
+    e = XK["Pippin's Bravery"].spell[0]
+    return e[0] == "ifdo" and e[2][0][:4] == ("pump", "target", 4, 4) and e[3][0][2:4] == (2, 2)
+@check("Birthing Pod: a 2-drop finds only a 3-drop (never the 4- or 6-drop), onto the battlefield")
+def _():
+    G = xgame(perms=["Birthing Pod", "Grizzly Bears"], lands=["Forest"] * 3, lib=["Craw Wurm", "Centaur Courser", "Hill Giant"])
+    G.sim.commanders = []; G.build_pool(); ok = G.try_act(G.perms[0], XK["Birthing Pod"].acts[0], False, 0, False)
+    return ok and sorted(p.k.name for p in G.perms) == ["Birthing Pod", "Centaur Courser"] and len(G.lib) == 2
+@check("Pod fodder needs a target one MV up: Centaur Courser (3) is podded into nothing when the library has no 4")
+def _():
+    G = xgame(perms=["Birthing Pod", "Centaur Courser"], lands=["Forest"] * 3, lib=["Craw Wurm", "Grizzly Bears"]); G.sim.commanders = []
+    return G.pick_fodder(XK["Birthing Pod"].acts[0]["fodder"], G.perms[0], XK["Birthing Pod"].acts[0]["fx"]) is None
+@check("Eldritch Evolution: sacrifice a 2-drop, the creature (MV <= 4) enters the battlefield, the 6-drop stays")
+def _():
+    k = XK["Eldritch Evolution"]; t = k.spell[0]
+    G = xgame(perms=["Centaur Courser"], lib=["Craw Wurm", "Hill Giant"]); G.sim.commanders = []
+    G.ctx_obj = G.perms[0]; G.do(k.spell, k)
+    return t[2] == "bf" and g.rel_mv(t[1]) == ("<=", 2) and any(p.k.name == "Hill Giant" for p in G.perms) and len(G.lib) == 1
+@check("Sunburst: three colors -> a 3/3 Suntouched Myr; colorless only -> 0 counters, it dies (CR 704.5f)")
+def _():
+    k = XK["Suntouched Myr"]
+    G = xgame(hand=["Suntouched Myr"], lands=["Forest", "Mountain", "Plains"]); G.build_pool(); G.try_cast(k, "hand")
+    H = xgame(hand=["Suntouched Myr"], lands=["Wastes"] * 3); H.build_pool(); H.try_cast(k, "hand")
+    m = [p for p in G.perms if p.k is k]
+    return len(m) == 1 and G.stats(m[0])[:2] == (3, 3) and not any(p.k is k for p in H.perms) and k in H.gy
+@check("Converge counts colors spent: Painful Truths paid B+G+R draws 3 and loses 3; B+C+C draws 1")
+def _():
+    k = XK["Painful Truths"]
+    G = xgame(hand=["Painful Truths"], lands=["Swamp", "Forest", "Mountain"], lib=["Wastes"] * 5); G.build_pool(); G.try_cast(k, "hand")
+    H = xgame(hand=["Painful Truths"], lands=["Swamp", "Wastes", "Wastes"], lib=["Wastes"] * 5); H.build_pool(); H.try_cast(k, "hand")
+    return len(G.hand) == 3 and G.life == 37 and len(H.hand) == 1 and H.life == 39
+@check("Cascade: Bloodbraid Elf skips lands and the 6-drop, casts the first nonland card with MV < 4 free")
+def _():
+    k = XK["Bloodbraid Elf"]
+    G = xgame(hand=["Bloodbraid Elf"], lands=["Forest", "Mountain", "Forest", "Mountain"], lib=["Hill Giant", "Centaur Courser", "Forest", "Craw Wurm"])
+    G.build_pool(); G.try_cast(k, "hand")
+    return sorted(p.k.name for p in G.perms) == ["Bloodbraid Elf", "Centaur Courser"] and len(G.lib) == 3
+@check("Keywords aren't silently read: Tear Asunder notes kicker; Kenrith's Transformation's 'Enchanted creature' line is unmodeled")
+def _():
+    return any("kicker" in n for n in XK["Tear Asunder"].notes) and XK["Kenrith's Transformation"].status == "partial"
+@check("Leftover detector: Frantic Search's untap and Stargaze's dig are unread parts; Swords' 'its controller gains' isn't")
+def _():
+    return XK["Frantic Search"].status == "partial" and XK["Stargaze"].status == "partial" and XK["Swords to Plowshares"].status == "held" \
+        and not any(n.startswith("unread part") for n in XK["Swords to Plowshares"].notes)
+@check("Gray Merchant: devotion to black counts its own pips and Liliana's Specter's (4); you gain the 12 life lost")
+def _():
+    G = xgame(perms=["Liliana's Specter"]); G.enter(XK["Gray Merchant of Asphodel"])
+    return lives(G) == [36] * 3 and G.life == 52
+@check("Mox Opal: no mana with two artifacts, one with three")
+def _():
+    G = xgame(perms=["Mox Opal", "Sol Ring"]); G.build_pool(); a = free_units(G)
+    H = xgame(perms=["Mox Opal", "Sol Ring", "Everflowing Chalice"]); H.build_pool(); b = free_units(H)
+    return a == 2 and b == 3
+@check("Soulstinger's -1/-1 counters on your own creature go where they hurt least (Soulstinger itself over a 2/2)")
+def _():
+    G = xgame(perms=["Grizzly Bears"]); G.sim.commanders = []; p = G.enter(XK["Soulstinger"])
+    return G.stats(p)[:2] == (2, 3) and G.stats(G.perms[0])[:2] == (2, 2)
+@check("Counter costs read past 'three': Etched Oracle removes four +1/+1 counters; 'Its controller draws' isn't yours (Glen Elendra)")
+def _():
+    a = XK["Etched Oracle"].acts[0]
+    return a["rm"] == ("+1/+1", 4) and not any(e[0] == "draw" for e in g.all_fx(XK["Glen Elendra Guardian"]))
+@check("'Target player mills': yourself only with a graveyard payoff (none here: Thought Scour mills nobody)")
+def _():
+    G = xgame(lib=["Wastes"] * 20); G.do(XK["Thought Scour"].spell, XK["Thought Scour"])
+    return len(G.gy) == 0 and len(G.hand) == 1
+@check("Riveteers Overlook fetches a basic of its types, tapped, and leaves")
+def _():
+    G = xgame(lib=["Swamp", "Island"]); G.land_enters(XK["Riveteers Overlook"])
+    return [p.k.name for p in G.lands] == ["Swamp"] and G.lands[0].tapped and XK["Riveteers Overlook"] in G.gy
+@check("Reads fixed: Sign in Blood loses 2; Tezzeret's +2 gains X = artifacts; Exotic Disease gains domain; Casting of Bones discards")
+def _():
+    return ("life", -2) in XK["Sign in Blood"].spell and any(e == ("life", ("artifacts",)) for _, fx in XK["Tezzeret, Master of the Bridge"].pw for e in fx) \
+        and ("life", ("domain",)) in XK["Exotic Disease"].spell and ("discard", 1) in XK["Casting of Bones"].trig[0][2]
+@check("Quoted granted text isn't the card's interaction: Storm the Citadel is a pump, not held removal")
+def _(): return not XK["Storm the Citadel"].hold and XK["Storm the Citadel"].alpha
+@check("'For each Swamp / Elf you control' counts lands and creatures of the subtype (Cabal Coffers, Elvish Archdruid)")
+def _():
+    G = xgame(lands=["Cabal Coffers", "Swamp", "Swamp"], perms=["Elvish Archdruid", "Llanowar Elves"])
+    return G.val(XK["Cabal Coffers"].dyn_mana, G.lands[0], 0) == 2 and G.val(XK["Elvish Archdruid"].dyn_mana, G.perms[0], 0) == 2
+@check("Culling Ritual's mana 'for each permanent destroyed' is never read as one {B}")
+def _(): return not any(e[0] == "mana" for e in XK["Culling Ritual"].spell)
+
 def main():
     fails = 0
     for name, fn in CHECKS:

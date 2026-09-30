@@ -81,8 +81,10 @@ def report(top):
     for n, e in errs: print(f"  ! {n}: {e}")
     cc, cw, ex = Counter(), Counter(), {}
     for n, (s, r, rd) in nonland.items():
-        for note in re.findall(r"unmodeled: ([^\]]+?)(?=; unmodeled:|\]|$)", rd):
-            k = cluster_key(note); cc[k] += 1; cw[k] += weight(r)
+        notes = re.findall(r"(?:unmodeled|unread part): ([^\]]+?)(?=; |\]|$)", rd)
+        notes += ["kw " + w for kn in re.findall(r"keyword not modeled: ([^;\]]+)", rd) for w in kn.split(", ")]
+        for note in notes:
+            k = note if note.startswith("kw ") else cluster_key(note); cc[k] += 1; cw[k] += weight(r)
             if k not in ex or (r or 1e9) < (nonland[ex[k]][1] or 1e9): ex[k] = n
     cwt = sum(cw.values()) or 1
     print(f"\nbiggest miss clusters (by effect; share of weighted unmodeled lines):")
