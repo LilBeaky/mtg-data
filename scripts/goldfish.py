@@ -2501,7 +2501,32 @@ def compile_card(c, anyc):
     k.status = "blank" if missed and not done and not k.units else "partial" if missed > vac else "modeled"   # opponent-only lines can't matter here
     if k.status == "blank" and vac == missed: k.status = "vacuum"
     if k.hold: k.status = "held"
+    t2_misreads(k, (c.get("oracle_text") or "").lower())
     return k
+
+# Families the T2 audit (docs/TRANSLATION_T2.md) found read wrong while the card claimed to be fully read. Each one
+# either drops the wrong effect or corrects it, and the card says partial with the unread sentence.
+T2_UNREAD = [
+    (re.compile(r"roll a d20\. draw cards equal to the result"), "roll a d20. Draw cards equal to the result."),
+    (re.compile(r"draw cards equal to the number of cards in your library, then put a card from your hand on top"), "draw your library, put one back"),
+    (re.compile(r"if an artifact card was discarded this way, [^.]*deals 2 damage to each opponent"), "if an artifact was discarded, 2 damage to each opponent"),
+    (re.compile(r"^each player can't cast more than one (?:noncreature )?spell each turn"), "each player (you too) can't cast more than one spell a turn"),
+]
+def t2_misreads(k, lo):
+    lo = lo.replace("this creature", "~").replace("this artifact", "~")
+    hit = [msg for rx, msg in T2_UNREAD if rx.search(lo)]
+    if "then shuffle and put that card third from the top" in lo:
+        k.spell = [e for e in k.spell if e[0] != "tutor"]; hit.append("puts the card third from the top")
+    if "an opponent gains control of ~" in lo and k.ctr_enter and k.ctr_enter[0] == "wish":
+        k.ctr_enter = ("wish", 1, k.ctr_enter[2]); hit.append("an opponent gains control of it (one use)")
+    if "activate only if you created a token this turn" in lo:
+        k.acts = [a for a in k.acts if a["fx"] != [("draw", 1)]]; hit.append("draw only if you created a token this turn")
+    if re.search(r"exile target (?:artifact or )?creature you control, then return it to the battlefield", lo):
+        k.trig = [t for t in k.trig if not any(e[0] == "kill_perm" for e in t[2])]
+        k.hold = False; hit.append("blink your own creature")
+    if hit:
+        k.status = "blank" if not (k.spell or k.acts or k.trig or k.etb or k.statics) else "partial"
+        k.notes = list(k.notes or []) + ["unread (T2 audit): " + m for m in hit]
 
 # Scryfall keywords whose line has no goldfish effect, or is read elsewhere from the keyword list (haste, rebound,
 # cumulative upkeep, flash); and ones compile_card models from the list (sunburst, cascade)

@@ -123,7 +123,7 @@ These readings are wrong or approximate, and the parser knows it only where the 
 - **"for each X on the battlefield"** (Shepherd of Rot, Timberwatch Elf, Fruition) counts only your own permanents. Opponents' boards are unknown, so it undercounts.
 - **Copies with "except it has flying"** don't add the keyword. That's an undercount.
 - **Polymorph, Blessed Reincarnation:** "The player puts that card onto the battlefield" is flagged unread although it's the opponent's. The card is wrongly partial, which is harmless.
-- **Found by the T2 audit (fourth session), not yet fixed** (details in `docs/TRANSLATION_T2.md`):
+- **Found by the T2 audit (fourth session), fixed honestly** by `t2_misreads` in goldfish.py (the wrong effect is dropped or corrected and the card says partial/blank with an `unread (T2 audit)` note; 20 cards pool-wide incl. Eidolon of Rhetoric, Arcane Laboratory, Momentary Blink; headline 44.5% → 44.4%):
   - A final sentence dropped while the card says `modeled`: Ancient Silver Dragon (the d20 draw), Enter the Infinite (the draw), Reckless Handling (conditional damage), Wishclaw Talisman (the opponent gains control, so it tutors three times instead of once), Idol of Oblivion (the draw's token condition, so it draws every turn). The leftover detector misses these.
   - Long-Term Plans puts the card on top instead of third from the top.
   - Deafening Silence and Rule of Law are `vacuum`, but "each player can't" limits you too. Same family as Maralen above.
