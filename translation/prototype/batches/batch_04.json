@@ -1,0 +1,167 @@
+[
+ {
+  "name": "Aetherflux Reservoir",
+  "mana_cost": "{4}",
+  "type_line": "Artifact",
+  "oracle_text": "Whenever you cast a spell, you gain 1 life for each spell you've cast this turn.\nPay 50 life: This artifact deals 50 damage to any target."
+ },
+ {
+  "name": "Ancient Silver Dragon",
+  "mana_cost": "{6}{U}{U}",
+  "type_line": "Creature — Elder Dragon",
+  "oracle_text": "Flying\nWhenever this creature deals combat damage to a player, roll a d20. Draw cards equal to the result. You have no maximum hand size for the rest of the game.",
+  "power": "8",
+  "toughness": "8"
+ },
+ {
+  "name": "Basilisk Collar",
+  "mana_cost": "{1}",
+  "type_line": "Artifact — Equipment",
+  "oracle_text": "Equipped creature has deathtouch and lifelink. (Any amount of damage it deals to a creature is enough to destroy it. Damage dealt by this creature also causes you to gain that much life.)\nEquip {2} ({2}: Attach to target creature you control. Equip only as a sorcery.)"
+ },
+ {
+  "name": "Chaos Warp",
+  "mana_cost": "{2}{R}",
+  "type_line": "Instant",
+  "oracle_text": "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield."
+ },
+ {
+  "name": "Commander's Plate",
+  "mana_cost": "{1}",
+  "type_line": "Artifact — Equipment",
+  "oracle_text": "Equipped creature gets +3/+3 and has protection from each color that's not in your commander's color identity.\nEquip commander {3}\nEquip {5}"
+ },
+ {
+  "name": "Consecrated Sphinx",
+  "mana_cost": "{4}{U}{U}",
+  "type_line": "Creature — Sphinx",
+  "oracle_text": "Flying\nWhenever an opponent draws a card, you may draw two cards.",
+  "power": "4",
+  "toughness": "6"
+ },
+ {
+  "name": "Counterbalance",
+  "mana_cost": "{U}{U}",
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever an opponent casts a spell, you may reveal the top card of your library. If you do, counter that spell if it has the same mana value as the revealed card."
+ },
+ {
+  "name": "Counterspell",
+  "mana_cost": "{U}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Counter target spell."
+ },
+ {
+  "name": "Cyclonic Rift",
+  "mana_cost": "{1}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Return target nonland permanent you don't control to its owner's hand.\nOverload {6}{U} (You may cast this spell for its overload cost. If you do, change \"target\" in its text to \"each.\")"
+ },
+ {
+  "name": "Diplomatic Immunity",
+  "mana_cost": "{1}{U}",
+  "type_line": "Enchantment — Aura",
+  "oracle_text": "Enchant creature\nShroud (A permanent with shroud can't be the target of spells or abilities.)\nEnchanted creature has shroud."
+ },
+ {
+  "name": "Dream Halls",
+  "mana_cost": "{3}{U}{U}",
+  "type_line": "Enchantment",
+  "oracle_text": "Rather than pay the mana cost for a spell, its controller may discard a card that shares a color with that spell."
+ },
+ {
+  "name": "Edgar, King of Figaro",
+  "mana_cost": "{4}{U}{U}",
+  "type_line": "Legendary Creature — Human Artificer Noble",
+  "oracle_text": "When Edgar enters, draw a card for each artifact you control.\nTwo-Headed Coin — The first time you flip one or more coins each turn, those coins come up heads and you win those flips.",
+  "power": "4",
+  "toughness": "5"
+ },
+ {
+  "name": "Enter the Infinite",
+  "mana_cost": "{8}{U}{U}{U}{U}",
+  "type_line": "Sorcery",
+  "oracle_text": "Draw cards equal to the number of cards in your library, then put a card from your hand on top of your library. You have no maximum hand size until your next turn."
+ },
+ {
+  "name": "Ethereal Usher",
+  "mana_cost": "{5}{U}",
+  "type_line": "Creature — Spirit",
+  "oracle_text": "{U}, {T}: Target creature can't be blocked this turn.\nTransmute {1}{U}{U} ({1}{U}{U}, Discard this card: Search your library for a card with the same mana value as this card, reveal it, put it into your hand, then shuffle. Transmute only as a sorcery.)",
+  "power": "2",
+  "toughness": "3"
+ },
+ {
+  "name": "Fabricate",
+  "mana_cost": "{2}{U}",
+  "type_line": "Sorcery",
+  "oracle_text": "Search your library for an artifact card, reveal it, put it into your hand, then shuffle."
+ },
+ {
+  "name": "Frenetic Efreet",
+  "mana_cost": "{1}{U}{R}",
+  "type_line": "Creature — Efreet",
+  "oracle_text": "Flying\n{0}: Flip a coin. If you win the flip, this creature phases out. If you lose the flip, sacrifice this creature. (While it's phased out, it's treated as though it doesn't exist. It phases in before you untap during your next untap step.)",
+  "power": "2",
+  "toughness": "1"
+ },
+ {
+  "name": "Full Throttle",
+  "mana_cost": "{4}{R}{R}",
+  "type_line": "Sorcery",
+  "oracle_text": "After this main phase, there are two additional combat phases.\nAt the beginning of each combat this turn, untap all creatures that attacked this turn."
+ },
+ {
+  "name": "Fury of the Horde",
+  "mana_cost": "{5}{R}{R}",
+  "type_line": "Sorcery",
+  "oracle_text": "You may exile two red cards from your hand rather than pay this spell's mana cost.\nUntap all creatures that attacked this turn. After this main phase, there is an additional combat phase followed by an additional main phase."
+ },
+ {
+  "name": "Gamble",
+  "mana_cost": "{R}",
+  "type_line": "Sorcery",
+  "oracle_text": "Search your library for a card, put that card into your hand, discard a card at random, then shuffle."
+ },
+ {
+  "name": "Loxodon Warhammer",
+  "mana_cost": "{3}",
+  "type_line": "Artifact — Equipment",
+  "oracle_text": "Equipped creature gets +3/+0 and has trample and lifelink.\nEquip {3}"
+ },
+ {
+  "name": "Gifts Ungiven",
+  "mana_cost": "{3}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Search your library for up to four cards with different names and reveal them. Target opponent chooses two of those cards. Put the chosen cards into your graveyard and the rest into your hand. Then shuffle."
+ },
+ {
+  "name": "Goblin Engineer",
+  "mana_cost": "{1}{R}",
+  "type_line": "Creature — Goblin Artificer",
+  "oracle_text": "When this creature enters, you may search your library for an artifact card, put it into your graveyard, then shuffle.\n{R}, {T}, Sacrifice an artifact: Return target artifact card with mana value 3 or less from your graveyard to the battlefield.",
+  "power": "1",
+  "toughness": "2"
+ },
+ {
+  "name": "Invert Polarity",
+  "mana_cost": "{U}{U}{R}",
+  "type_line": "Instant",
+  "oracle_text": "Choose target spell, then flip a coin. If you win the flip, gain control of that spell and you may choose new targets for it. If you lose the flip, counter that spell."
+ },
+ {
+  "name": "Jace, Wielder of Mysteries",
+  "mana_cost": "{1}{U}{U}{U}",
+  "type_line": "Legendary Planeswalker — Jace",
+  "oracle_text": "If you would draw a card while your library has no cards in it, you win the game instead.\n+1: Target player mills two cards. Draw a card.\n−8: Draw seven cards. Then if your library has no cards in it, you win the game.",
+  "loyalty": "4"
+ },
+ {
+  "name": "Jin-Gitaxias, Core Augur",
+  "mana_cost": "{8}{U}{U}",
+  "type_line": "Legendary Creature — Phyrexian Praetor",
+  "oracle_text": "Flash\nAt the beginning of your end step, draw seven cards.\nEach opponent's maximum hand size is reduced by seven.",
+  "power": "5",
+  "toughness": "4"
+ }
+]

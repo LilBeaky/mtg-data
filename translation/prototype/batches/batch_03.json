@@ -1,0 +1,187 @@
+[
+ {
+  "name": "Savage Ventmaw",
+  "mana_cost": "{4}{R}{G}",
+  "type_line": "Creature — Dragon",
+  "oracle_text": "Flying\nWhenever this creature attacks, add {R}{R}{R}{G}{G}{G}. Until end of turn, you don't lose this mana as steps and phases end.",
+  "power": "4",
+  "toughness": "4"
+ },
+ {
+  "name": "Scourge of the Throne",
+  "mana_cost": "{4}{R}{R}",
+  "type_line": "Creature — Dragon",
+  "oracle_text": "Flying\nDethrone (Whenever this creature attacks the player with the most life or tied for most life, put a +1/+1 counter on it.)\nWhenever this creature attacks for the first time each turn, if it's attacking the player with the most life or tied for most life, untap all attacking creatures. After this phase, there is an additional combat phase.",
+  "power": "5",
+  "toughness": "5"
+ },
+ {
+  "name": "Selvala, Heart of the Wilds",
+  "mana_cost": "{1}{G}{G}",
+  "type_line": "Legendary Creature — Elf Scout",
+  "oracle_text": "Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power.\n{G}, {T}: Add X mana in any combination of colors, where X is the greatest power among creatures you control.",
+  "power": "2",
+  "toughness": "3"
+ },
+ {
+  "name": "Shadow in the Warp",
+  "mana_cost": "{1}{R}{G}",
+  "type_line": "Enchantment",
+  "oracle_text": "The first creature spell you cast each turn costs {2} less to cast.\nWhenever an opponent casts their first noncreature spell each turn, this enchantment deals 2 damage to that player."
+ },
+ {
+  "name": "Shamanic Revelation",
+  "mana_cost": "{3}{G}{G}",
+  "type_line": "Sorcery",
+  "oracle_text": "Draw a card for each creature you control.\nFerocious — You gain 4 life for each creature you control with power 4 or greater."
+ },
+ {
+  "name": "Shared Animosity",
+  "mana_cost": "{2}{R}",
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever a creature you control attacks, it gets +1/+0 until end of turn for each other attacking creature that shares a creature type with it."
+ },
+ {
+  "name": "Signal the Clans",
+  "mana_cost": "{R}{G}",
+  "type_line": "Instant",
+  "oracle_text": "Search your library for three creature cards and reveal them. If you reveal three cards with different names, choose one of them at random and put that card into your hand. Shuffle the rest into your library."
+ },
+ {
+  "name": "Sol Ring",
+  "mana_cost": "{1}",
+  "type_line": "Artifact",
+  "oracle_text": "{T}: Add {C}{C}."
+ },
+ {
+  "name": "Somberwald Sage",
+  "mana_cost": "{2}{G}",
+  "type_line": "Creature — Human Druid",
+  "oracle_text": "{T}: Add three mana of any one color. Spend this mana only to cast creature spells.",
+  "power": "0",
+  "toughness": "1"
+ },
+ {
+  "name": "Spinerock Knoll",
+  "type_line": "Land",
+  "oracle_text": "Hideaway 4 (When this land enters, look at the top four cards of your library, exile one face down, then put the rest on the bottom in a random order.)\nThis land enters tapped.\n{T}: Add {R}.\n{R}, {T}: You may play the exiled card without paying its mana cost if an opponent was dealt 7 or more damage this turn."
+ },
+ {
+  "name": "Stormscale Scion",
+  "mana_cost": "{4}{R}{R}",
+  "type_line": "Creature — Dragon",
+  "oracle_text": "Flying\nOther Dragons you control get +1/+1.\nStorm (When you cast this spell, copy it for each spell cast before it this turn. Copies become tokens.)",
+  "power": "4",
+  "toughness": "4"
+ },
+ {
+  "name": "Strength of the Tajuru",
+  "mana_cost": "{X}{G}{G}",
+  "type_line": "Instant",
+  "oracle_text": "Multikicker {1} (You may pay an additional {1} any number of times as you cast this spell.)\nChoose target creature, then choose another target creature for each time this spell was kicked. Put X +1/+1 counters on each of them."
+ },
+ {
+  "name": "Terror of the Peaks",
+  "mana_cost": "{3}{R}{R}",
+  "type_line": "Creature — Dragon",
+  "oracle_text": "Flying\nSpells your opponents cast that target this creature cost an additional 3 life to cast.\nWhenever another creature you control enters, this creature deals damage equal to that creature's power to any target.",
+  "power": "5",
+  "toughness": "4"
+ },
+ {
+  "name": "Nyxbloom Ancient",
+  "mana_cost": "{4}{G}{G}{G}",
+  "type_line": "Enchantment Creature — Elemental",
+  "oracle_text": "Trample\nIf you tap a permanent for mana, it produces three times as much of that mana instead.",
+  "power": "5",
+  "toughness": "5"
+ },
+ {
+  "name": "Thrakkus the Butcher",
+  "mana_cost": "{3}{R}{G}",
+  "type_line": "Legendary Creature — Dragon Peasant",
+  "oracle_text": "Trample\nWhenever Thrakkus attacks, double the power of each Dragon you control until end of turn.",
+  "power": "3",
+  "toughness": "4"
+ },
+ {
+  "name": "Three Visits",
+  "mana_cost": "{1}{G}",
+  "type_line": "Sorcery",
+  "oracle_text": "Search your library for a Forest card, put it onto the battlefield, then shuffle."
+ },
+ {
+  "name": "Unnatural Growth",
+  "mana_cost": "{1}{G}{G}{G}{G}",
+  "type_line": "Enchantment",
+  "oracle_text": "At the beginning of each combat, double the power and toughness of each creature you control until end of turn."
+ },
+ {
+  "name": "Utvara Hellkite",
+  "mana_cost": "{6}{R}{R}",
+  "type_line": "Creature — Dragon",
+  "oracle_text": "Flying\nWhenever a Dragon you control attacks, create a 6/6 red Dragon creature token with flying.",
+  "power": "6",
+  "toughness": "6"
+ },
+ {
+  "name": "Valakut Awakening // Valakut Stoneforge",
+  "type_line": "Instant // Land",
+  "faces": [
+   {
+    "name": "Valakut Awakening",
+    "mana_cost": "{2}{R}",
+    "type_line": "Instant",
+    "oracle_text": "Put any number of cards from your hand on the bottom of your library, then draw that many cards plus one."
+   },
+   {
+    "name": "Valakut Stoneforge",
+    "type_line": "Land",
+    "oracle_text": "This land enters tapped.\n{T}: Add {R}."
+   }
+  ]
+ },
+ {
+  "name": "Vorinclex, Voice of Hunger",
+  "mana_cost": "{6}{G}{G}",
+  "type_line": "Legendary Creature — Phyrexian Praetor",
+  "oracle_text": "Trample\nWhenever you tap a land for mana, add one mana of any type that land produced.\nWhenever an opponent taps a land for mana, that land doesn't untap during its controller's next untap step.",
+  "power": "7",
+  "toughness": "6"
+ },
+ {
+  "name": "Worldly Tutor",
+  "mana_cost": "{G}",
+  "type_line": "Instant",
+  "oracle_text": "Search your library for a creature card, reveal it, then shuffle and put the card on top."
+ },
+ {
+  "name": "Wrathful Red Dragon",
+  "mana_cost": "{3}{R}{R}",
+  "type_line": "Creature — Dragon",
+  "oracle_text": "Flying\nWhenever a Dragon you control is dealt damage, it deals that much damage to any target that isn't a Dragon.",
+  "power": "5",
+  "toughness": "5"
+ },
+ {
+  "name": "Wulfgar of Icewind Dale",
+  "mana_cost": "{3}{R}{G}",
+  "type_line": "Legendary Creature — Human Barbarian",
+  "oracle_text": "Melee (Whenever this creature attacks, it gets +1/+1 until end of turn for each opponent you attacked this combat.)\nIf a creature you control attacking causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+  "power": "4",
+  "toughness": "4"
+ },
+ {
+  "name": "Yusri, Fortune's Flame",
+  "mana_cost": "{1}{U}{R}",
+  "type_line": "Legendary Creature — Efreet",
+  "oracle_text": "Flying\nWhenever Yusri attacks, choose a number between 1 and 5. Flip that many coins. For each flip you win, draw a card. For each flip you lose, Yusri deals 2 damage to you. If you won five flips this way, you may cast spells from your hand this turn without paying their mana costs.",
+  "power": "2",
+  "toughness": "3"
+ },
+ {
+  "name": "Academy Ruins",
+  "type_line": "Legendary Land",
+  "oracle_text": "{T}: Add {C}.\n{1}{U}, {T}: Put target artifact card from your graveyard on top of your library."
+ }
+]

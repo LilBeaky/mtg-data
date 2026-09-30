@@ -1,0 +1,168 @@
+[
+ {
+  "name": "Klauth, Unrivaled Ancient",
+  "mana_cost": "{5}{R}{G}",
+  "type_line": "Legendary Creature — Dragon",
+  "oracle_text": "Flying, haste\nWhenever Klauth attacks, add X mana in any combination of colors, where X is the total power of attacking creatures. Spend this mana only to cast spells. Until end of turn, you don't lose this mana as steps and phases end.",
+  "power": "4",
+  "toughness": "4"
+ },
+ {
+  "name": "Ancient Bronze Dragon",
+  "mana_cost": "{5}{G}{G}",
+  "type_line": "Creature — Elder Dragon",
+  "oracle_text": "Flying\nWhenever this creature deals combat damage to a player, roll a d20. When you do, put X +1/+1 counters on each of up to two target creatures, where X is the result.",
+  "power": "7",
+  "toughness": "7"
+ },
+ {
+  "name": "Animist's Awakening",
+  "mana_cost": "{X}{G}",
+  "type_line": "Sorcery",
+  "oracle_text": "Reveal the top X cards of your library. Put all land cards from among them onto the battlefield tapped and the rest on the bottom of your library in a random order.\nSpell mastery — If there are two or more instant and/or sorcery cards in your graveyard, untap those lands."
+ },
+ {
+  "name": "Arena of Glory",
+  "type_line": "Land",
+  "oracle_text": "This land enters tapped unless you control a Mountain.\n{T}: Add {R}.\n{R}, {T}, Exert this land: Add {R}{R}. If any of that mana is spent on a creature spell, it gains haste until end of turn. (An exerted permanent won't untap during your next untap step.)"
+ },
+ {
+  "name": "Atarka, World Render",
+  "mana_cost": "{5}{R}{G}",
+  "type_line": "Legendary Creature — Dragon",
+  "oracle_text": "Flying, trample\nWhenever a Dragon you control attacks, it gains double strike until end of turn.",
+  "power": "6",
+  "toughness": "4"
+ },
+ {
+  "name": "Balefire Dragon",
+  "mana_cost": "{5}{R}{R}",
+  "type_line": "Creature — Dragon",
+  "oracle_text": "Flying\nWhenever this creature deals combat damage to a player, it deals that much damage to each creature that player controls.",
+  "power": "6",
+  "toughness": "6"
+ },
+ {
+  "name": "Become the Avalanche",
+  "mana_cost": "{4}{G}{G}",
+  "type_line": "Sorcery",
+  "oracle_text": "Draw a card for each creature you control with power 4 or greater. Then creatures you control get +X/+X until end of turn, where X is the number of cards in your hand."
+ },
+ {
+  "name": "Biorhythm",
+  "mana_cost": "{6}{G}{G}",
+  "type_line": "Sorcery",
+  "oracle_text": "Each player's life total becomes the number of creatures they control."
+ },
+ {
+  "name": "Blast-Furnace Hellkite",
+  "mana_cost": "{7}{R}{R}",
+  "type_line": "Creature — Dragon",
+  "oracle_text": "Artifact offering (You may cast this spell as though it had flash by sacrificing an artifact and paying the difference in mana costs between this and the sacrificed artifact. Mana cost includes color.)\nFlying, double strike\nCreatures attacking your opponents have double strike.",
+  "power": "5",
+  "toughness": "5"
+ },
+ {
+  "name": "Bower Passage",
+  "mana_cost": "{1}{G}",
+  "type_line": "Enchantment",
+  "oracle_text": "Creatures with flying can't block creatures you control."
+ },
+ {
+  "name": "Breaching Dragonstorm",
+  "mana_cost": "{4}{R}",
+  "type_line": "Enchantment",
+  "oracle_text": "When this enchantment enters, exile cards from the top of your library until you exile a nonland card. You may cast it without paying its mana cost if that spell's mana value is 8 or less. If you don't, put that card into your hand.\nWhen a Dragon you control enters, return this enchantment to its owner's hand."
+ },
+ {
+  "name": "Broodcaller Scourge",
+  "mana_cost": "{5}{G}{G}",
+  "type_line": "Creature — Dragon",
+  "oracle_text": "Flying\nWhenever one or more Dragons you control deal combat damage to a player, you may put a permanent card with mana value less than or equal to that damage from your hand onto the battlefield.",
+  "power": "5",
+  "toughness": "7"
+ },
+ {
+  "name": "Chord of Calling",
+  "mana_cost": "{X}{G}{G}{G}",
+  "type_line": "Instant",
+  "oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nSearch your library for a creature card with mana value X or less, put it onto the battlefield, then shuffle."
+ },
+ {
+  "name": "Cinder Glade",
+  "type_line": "Land — Mountain Forest",
+  "oracle_text": "({T}: Add {R} or {G}.)\nThis land enters tapped unless you control two or more basic lands."
+ },
+ {
+  "name": "Dracogenesis",
+  "mana_cost": "{6}{R}{R}",
+  "type_line": "Enchantment",
+  "oracle_text": "You may cast Dragon spells without paying their mana costs."
+ },
+ {
+  "name": "Dragon Tempest",
+  "mana_cost": "{1}{R}",
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever a creature you control with flying enters, it gains haste until end of turn.\nWhenever a Dragon you control enters, it deals X damage to any target, where X is the number of Dragons you control."
+ },
+ {
+  "name": "Dragonborn Champion",
+  "mana_cost": "{2}{R}{G}",
+  "type_line": "Creature — Dragon Warrior",
+  "oracle_text": "Trample\nWhenever a source you control deals 5 or more damage to a player, draw a card.",
+  "power": "5",
+  "toughness": "3"
+ },
+ {
+  "name": "Dragonhawk, Fate's Tempest",
+  "mana_cost": "{3}{R}{R}",
+  "type_line": "Legendary Creature — Bird Dragon",
+  "oracle_text": "Flying\nWhenever Dragonhawk enters or attacks, exile the top X cards of your library, where X is the number of creatures you control with power 4 or greater. You may play those cards until your next end step. At the beginning of your next end step, Dragonhawk deals 2 damage to each opponent for each of those cards that are still exiled.",
+  "power": "5",
+  "toughness": "5"
+ },
+ {
+  "name": "Dragonspeaker Shaman",
+  "mana_cost": "{1}{R}{R}",
+  "type_line": "Creature — Human Barbarian Shaman",
+  "oracle_text": "Dragon spells you cast cost {2} less to cast.",
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Dragonstorm",
+  "mana_cost": "{8}{R}",
+  "type_line": "Sorcery",
+  "oracle_text": "Search your library for a Dragon permanent card, put it onto the battlefield, then shuffle.\nStorm (When you cast this spell, copy it for each spell cast before it this turn.)"
+ },
+ {
+  "name": "Emerald Medallion",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "Green spells you cast cost {1} less to cast."
+ },
+ {
+  "name": "Encroaching Dragonstorm",
+  "mana_cost": "{3}{G}",
+  "type_line": "Enchantment",
+  "oracle_text": "When this enchantment enters, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.\nWhen a Dragon you control enters, return this enchantment to its owner's hand."
+ },
+ {
+  "name": "Evendo, Waking Haven",
+  "type_line": "Land — Planet",
+  "oracle_text": "This land enters tapped.\n{T}: Add {G}.\nStation (Tap another creature you control: Put charge counters equal to its power on this Planet. Station only as a sorcery.)\n12+ | {G}, {T}: Add {G} for each creature you control."
+ },
+ {
+  "name": "Exotic Orchard",
+  "type_line": "Land",
+  "oracle_text": "{T}: Add one mana of any color that a land an opponent controls could produce."
+ },
+ {
+  "name": "Fanatic of Rhonas",
+  "mana_cost": "{1}{G}",
+  "type_line": "Creature — Snake Druid",
+  "oracle_text": "{T}: Add {G}.\nFerocious — {T}: Add {G}{G}{G}{G}. Activate only if you control a creature with power 4 or greater.\nEternalize {2}{G}{G} ({2}{G}{G}, Exile this card from your graveyard: Create a token that's a copy of it, except it's a 4/4 black Zombie Snake Druid with no mana cost. Eternalize only as a sorcery.)",
+  "power": "1",
+  "toughness": "4"
+ }
+]

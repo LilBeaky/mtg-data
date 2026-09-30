@@ -1,0 +1,155 @@
+[
+ {
+  "name": "Path to Exile",
+  "mana_cost": "{W}",
+  "type_line": "Instant",
+  "oracle_text": "Exile target creature. Its controller may search their library for a basic land card, put that card onto the battlefield tapped, then shuffle."
+ },
+ {
+  "name": "Fellwar Stone",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "{T}: Add one mana of any color that a land an opponent controls could produce."
+ },
+ {
+  "name": "Cultivate",
+  "mana_cost": "{2}{G}",
+  "type_line": "Sorcery",
+  "oracle_text": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle."
+ },
+ {
+  "name": "Blasphemous Act",
+  "mana_cost": "{8}{R}",
+  "type_line": "Sorcery",
+  "oracle_text": "This spell costs {1} less to cast for each creature on the battlefield.\nBlasphemous Act deals 13 damage to each creature."
+ },
+ {
+  "name": "Farseek",
+  "mana_cost": "{1}{G}",
+  "type_line": "Sorcery",
+  "oracle_text": "Search your library for a Plains, Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle."
+ },
+ {
+  "name": "Bojuka Bog",
+  "type_line": "Land",
+  "oracle_text": "This land enters tapped.\nWhen this land enters, exile target player's graveyard.\n{T}: Add {B}."
+ },
+ {
+  "name": "Beast Within",
+  "mana_cost": "{2}{G}",
+  "type_line": "Instant",
+  "oracle_text": "Destroy target permanent. Its controller creates a 3/3 green Beast creature token."
+ },
+ {
+  "name": "Nature's Lore",
+  "mana_cost": "{1}{G}",
+  "type_line": "Sorcery",
+  "oracle_text": "Search your library for a Forest card, put that card onto the battlefield, then shuffle."
+ },
+ {
+  "name": "Heroic Intervention",
+  "mana_cost": "{1}{G}",
+  "type_line": "Instant",
+  "oracle_text": "Permanents you control gain hexproof and indestructible until end of turn."
+ },
+ {
+  "name": "Mind Stone",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "{T}: Add {C}.\n{1}, {T}, Sacrifice this artifact: Draw a card."
+ },
+ {
+  "name": "An Offer You Can't Refuse",
+  "mana_cost": "{U}",
+  "type_line": "Instant",
+  "oracle_text": "Counter target noncreature spell. Its controller creates two Treasure tokens. (They're artifacts with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+ },
+ {
+  "name": "Birds of Paradise",
+  "mana_cost": "{G}",
+  "type_line": "Creature — Bird",
+  "oracle_text": "Flying\n{T}: Add one mana of any color.",
+  "power": "0",
+  "toughness": "1"
+ },
+ {
+  "name": "Kodama's Reach",
+  "mana_cost": "{2}{G}",
+  "type_line": "Sorcery — Arcane",
+  "oracle_text": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle."
+ },
+ {
+  "name": "Solemn Simulacrum",
+  "mana_cost": "{4}",
+  "type_line": "Artifact Creature — Golem",
+  "oracle_text": "When this creature enters, you may search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.\nWhen this creature dies, you may draw a card.",
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Skullclamp",
+  "mana_cost": "{1}",
+  "type_line": "Artifact — Equipment",
+  "oracle_text": "Equipped creature gets +1/-1.\nWhenever equipped creature dies, draw two cards.\nEquip {1}"
+ },
+ {
+  "name": "Arcane Denial",
+  "mana_cost": "{1}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Counter target spell. Its controller may draw up to two cards at the beginning of the next turn's upkeep.\nYou draw a card at the beginning of the next turn's upkeep."
+ },
+ {
+  "name": "Commander's Sphere",
+  "mana_cost": "{3}",
+  "type_line": "Artifact",
+  "oracle_text": "{T}: Add one mana of any color in your commander's color identity.\nSacrifice this artifact: Draw a card."
+ },
+ {
+  "name": "Reanimate",
+  "mana_cost": "{B}",
+  "type_line": "Sorcery",
+  "oracle_text": "Put target creature card from a graveyard onto the battlefield under your control. You lose life equal to that card's mana value."
+ },
+ {
+  "name": "Negate",
+  "mana_cost": "{1}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Counter target noncreature spell."
+ },
+ {
+  "name": "Generous Gift",
+  "mana_cost": "{2}{W}",
+  "type_line": "Instant",
+  "oracle_text": "Destroy target permanent. Its controller creates a 3/3 green Elephant creature token."
+ },
+ {
+  "name": "Demonic Tutor",
+  "mana_cost": "{1}{B}",
+  "type_line": "Sorcery",
+  "oracle_text": "Search your library for a card, put that card into your hand, then shuffle."
+ },
+ {
+  "name": "Smothering Tithe",
+  "mana_cost": "{3}{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever an opponent draws a card, that player may pay {2}. If the player doesn't, you create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+ },
+ {
+  "name": "Toxic Deluge",
+  "mana_cost": "{2}{B}",
+  "type_line": "Sorcery",
+  "oracle_text": "As an additional cost to cast this spell, pay X life.\nAll creatures get -X/-X until end of turn."
+ },
+ {
+  "name": "Brainstorm",
+  "mana_cost": "{U}",
+  "type_line": "Instant",
+  "oracle_text": "Draw three cards, then put two cards from your hand on top of your library in any order."
+ },
+ {
+  "name": "Deflecting Swat",
+  "mana_cost": "{2}{R}",
+  "type_line": "Instant",
+  "oracle_text": "If you control a commander, you may cast this spell without paying its mana cost.\nYou may choose new targets for target spell or ability."
+ }
+]

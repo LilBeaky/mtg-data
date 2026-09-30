@@ -1,0 +1,1502 @@
+[
+ {
+  "name": "Klauth, Unrivaled Ancient",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Ancient Bronze Dragon",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Animist's Awakening",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Arena of Glory",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Atarka, World Render",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Balefire Dragon",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Become the Avalanche",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Biorhythm",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Blast-Furnace Hellkite",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Bower Passage",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Breaching Dragonstorm",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Broodcaller Scourge",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Chord of Calling",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Cinder Glade",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Dracogenesis",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Dragon Tempest",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Dragonborn Champion",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Dragonhawk, Fate's Tempest",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Dragonspeaker Shaman",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Dragonstorm",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Emerald Medallion",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Encroaching Dragonstorm",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Evendo, Waking Haven",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Exotic Orchard",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Fanatic of Rhonas",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Finale of Devastation",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Garruk's Uprising",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Goreclaw, Terror of Qal Sisma",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Green Sun's Zenith",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Gwenna, Eyes of Gaea",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Hunter's Insight",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Invasion of Ikoria // Zilortha, Apex of Ikoria",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Jeska's Will",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Kessig Wolf Run",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Klauth's Will",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Knollspine Dragon",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Last March of the Ents",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Lathliss, Dragon Queen",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Llanowar Elves",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Maelstrom of the Spirit Dragon",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Mossfire Valley",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Mosswort Bridge",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Nature's Rhythm",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Ohran Frostfang",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Overwhelming Stampede",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Rampant Growth",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Return of the Wildspeaker",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Rhythm of the Wild",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Rishkar's Expertise",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Ruby Medallion",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Savage Ventmaw",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Scourge of the Throne",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Selvala, Heart of the Wilds",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Shadow in the Warp",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Shamanic Revelation",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Shared Animosity",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Signal the Clans",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Sol Ring",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Somberwald Sage",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Spinerock Knoll",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Stormscale Scion",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Strength of the Tajuru",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Terror of the Peaks",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Nyxbloom Ancient",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Thrakkus the Butcher",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Three Visits",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Unnatural Growth",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Utvara Hellkite",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Valakut Awakening // Valakut Stoneforge",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Vorinclex, Voice of Hunger",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Worldly Tutor",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Wrathful Red Dragon",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Wulfgar of Icewind Dale",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Yusri, Fortune's Flame",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Academy Ruins",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Aetherflux Reservoir",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Ancient Silver Dragon",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Basilisk Collar",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Chaos Warp",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Commander's Plate",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Consecrated Sphinx",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Counterbalance",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Counterspell",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Cyclonic Rift",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Diplomatic Immunity",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Dream Halls",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Edgar, King of Figaro",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Enter the Infinite",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Ethereal Usher",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Fabricate",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Frenetic Efreet",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Full Throttle",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Fury of the Horde",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Gamble",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Loxodon Warhammer",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Gifts Ungiven",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Goblin Engineer",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Invert Polarity",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Jace, Wielder of Mysteries",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Jin-Gitaxias, Core Augur",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Krark's Thumb",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Laboratory Maniac",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Library of Leng",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Lightning Greaves",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Long-Term Plans",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Muddle the Mixture",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Mystic Remora",
+  "from": "deck",
+  "parser_status": "override"
+ },
+ {
+  "name": "Mystical Tutor",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Nexus of Fate",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Okaun, Eye of Chaos",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Planar Chaos",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Pongify",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Prismari, the Inspiration",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Reality Shift",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Reckless Handling",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Resurrection Orb",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Rhystic Study",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Sapphire Medallion",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Seize the Day",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Show and Tell",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Simian Spirit Guide",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Spellbook",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Squee's Revenge",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Stitch in Time",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Stock Up",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Swan Song",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Sword of War and Peace",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Tavern Scoundrel",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Thassa's Oracle",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "The Endstone",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Thought Vessel",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Tribute Mage",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Twenty-Toed Toad",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Vivi Ornitier",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Whir of Invention",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Witch's Clinic",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Zndrsplt, Eye of Wisdom",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Zur the Enchanter",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Aether Channeler",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Approach of the Second Sun",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Arcane Signet",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Archaeomancer",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Archfiend of Ifnir",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Astral Drift",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Astral Slide",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Auramancer",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Azami, Lady of Scrolls",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Bloodline Necromancer",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Brainspoil",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Complicate",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Dark Ritual",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Deafening Silence",
+  "from": "deck",
+  "parser_status": "vacuum"
+ },
+ {
+  "name": "Disciple of Caelus Nin",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Dour Port-Mage",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Drannith Magistrate",
+  "from": "deck",
+  "parser_status": "vacuum"
+ },
+ {
+  "name": "Emeritus of Ideation // Ancestral Recall",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Ephemerate",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Ertai Resurrected",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Escape Protocol",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Feed the Swarm",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Fluctuator",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Forsake the Worldly",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Ghostway",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Glen Elendra Archmage",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Grasp of Fate",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Greater Auramancy",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Hall of Heliod's Generosity",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Land Tax",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Locust Spray",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Mage's Attendant",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Miscalculation",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Mistveil Plains",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Naban, Dean of Iteration",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Necrodominance",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Neutralize",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "New Perspectives",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Patron Wizard",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Personal Tutor",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Pest Control",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Prairie Stream",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Requisition Raid",
+  "from": "deck",
+  "parser_status": "held"
+ },
+ {
+  "name": "Rule of Law",
+  "from": "deck",
+  "parser_status": "vacuum"
+ },
+ {
+  "name": "Scheming Symmetry",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Skycloud Expanse",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Solitary Confinement",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Solve the Equation",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Spellseeker",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Step Through",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Sunken Hollow",
+  "from": "deck",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Talisman of Dominance",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Talisman of Progress",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Triskaidekaphile",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Unearth",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Unquestioned Authority",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Vedalken Aethermage",
+  "from": "deck",
+  "parser_status": "partial"
+ },
+ {
+  "name": "Wander in Death",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Wishclaw Talisman",
+  "from": "deck",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Words of Worship",
+  "from": "deck",
+  "parser_status": "blank"
+ },
+ {
+  "name": "Swords to Plowshares",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Swiftfoot Boots",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Path to Exile",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Fellwar Stone",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Cultivate",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Blasphemous Act",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Farseek",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Bojuka Bog",
+  "from": "pool",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Beast Within",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Nature's Lore",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Heroic Intervention",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Mind Stone",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "An Offer You Can't Refuse",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Birds of Paradise",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Kodama's Reach",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Solemn Simulacrum",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Skullclamp",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Arcane Denial",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Commander's Sphere",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Reanimate",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Negate",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Generous Gift",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Demonic Tutor",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Smothering Tithe",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Toxic Deluge",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Brainstorm",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Deflecting Swat",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Urborg, Tomb of Yawgmoth",
+  "from": "pool",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Boseiju, Who Endures",
+  "from": "pool",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Yavimaya, Cradle of Growth",
+  "from": "pool",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Esper Sentinel",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Fierce Guardianship",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Chromatic Lantern",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Otawara, Soaring City",
+  "from": "pool",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Smoldering Marsh",
+  "from": "pool",
+  "parser_status": "land*"
+ },
+ {
+  "name": "The One Ring",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Faithless Looting",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Frantic Search",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Vandalblast",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Elvish Mystic",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Phyrexian Arena",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Canopy Vista",
+  "from": "pool",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Deadly Rollick",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Teferi's Protection",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Propaganda",
+  "from": "pool",
+  "parser_status": "vacuum"
+ },
+ {
+  "name": "Sakura-Tribe Elder",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Vampiric Tutor",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Mana Drain",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Eternal Witness",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Lotus Petal",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Assassin's Trophy",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Enlightened Tutor",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Wayfarer's Bauble",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Talisman of Creativity",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Talisman of Indulgence",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Victimize",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Black Market Connections",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Deadly Dispute",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Roaming Throne",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Ashnod's Altar",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Talisman of Hierarchy",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Big Score",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "War Room",
+  "from": "pool",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Blood Artist",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Abrade",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Ponder",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Delighted Halfling",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Mana Vault",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Talisman of Conviction",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Herald's Horn",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Chrome Mox",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Anguished Unmaking",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Lightning Bolt",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Windfall",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Dimir Signet",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Ghostly Prison",
+  "from": "pool",
+  "parser_status": "vacuum"
+ },
+ {
+  "name": "Sink into Stupor // Soporific Springs",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Rakdos Signet",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Austere Command",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Izzet Signet",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Mystic Sanctuary",
+  "from": "pool",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Farewell",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Flawless Maneuver",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Gemstone Caverns",
+  "from": "pool",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Boros Charm",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Night's Whisper",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Command Beacon",
+  "from": "pool",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Tireless Provisioner",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Hardened Scales",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Akroma's Will",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Orzhov Signet",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Doubling Season",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Idol of Oblivion",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Force of Will",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Thran Dynamo",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Cabal Coffers",
+  "from": "pool",
+  "parser_status": "land*"
+ },
+ {
+  "name": "Storm-Kiln Artist",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Fell the Profane // Fell Mire",
+  "from": "pool",
+  "parser_status": "held"
+ },
+ {
+  "name": "Impact Tremors",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Village Rites",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Patchwork Banner",
+  "from": "pool",
+  "parser_status": "modeled"
+ },
+ {
+  "name": "Mox Amber",
+  "from": "pool",
+  "parser_status": "modeled"
+ }
+]

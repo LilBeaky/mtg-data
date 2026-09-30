@@ -1,0 +1,160 @@
+[
+ {
+  "name": "Krark's Thumb",
+  "mana_cost": "{2}",
+  "type_line": "Legendary Artifact",
+  "oracle_text": "If you would flip a coin, instead flip two coins and ignore one."
+ },
+ {
+  "name": "Laboratory Maniac",
+  "mana_cost": "{2}{U}",
+  "type_line": "Creature — Human Wizard",
+  "oracle_text": "If you would draw a card while your library has no cards in it, you win the game instead.",
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Library of Leng",
+  "mana_cost": "{1}",
+  "type_line": "Artifact",
+  "oracle_text": "You have no maximum hand size.\nIf an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard."
+ },
+ {
+  "name": "Lightning Greaves",
+  "mana_cost": "{2}",
+  "type_line": "Artifact — Equipment",
+  "oracle_text": "Equipped creature has haste and shroud. (It can't be the target of spells or abilities.)\nEquip {0}"
+ },
+ {
+  "name": "Long-Term Plans",
+  "mana_cost": "{2}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Search your library for a card, then shuffle and put that card third from the top."
+ },
+ {
+  "name": "Muddle the Mixture",
+  "mana_cost": "{U}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Counter target instant or sorcery spell.\nTransmute {1}{U}{U} ({1}{U}{U}, Discard this card: Search your library for a card with the same mana value as this card, reveal it, put it into your hand, then shuffle. Transmute only as a sorcery.)"
+ },
+ {
+  "name": "Mystic Remora",
+  "mana_cost": "{U}",
+  "type_line": "Enchantment",
+  "oracle_text": "Cumulative upkeep {1} (At the beginning of your upkeep, put an age counter on this permanent, then sacrifice it unless you pay its upkeep cost for each age counter on it.)\nWhenever an opponent casts a noncreature spell, you may draw a card unless that player pays {4}."
+ },
+ {
+  "name": "Mystical Tutor",
+  "mana_cost": "{U}",
+  "type_line": "Instant",
+  "oracle_text": "Search your library for an instant or sorcery card, reveal it, then shuffle and put that card on top."
+ },
+ {
+  "name": "Nexus of Fate",
+  "mana_cost": "{5}{U}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Take an extra turn after this one.\nIf Nexus of Fate would be put into a graveyard from anywhere, reveal Nexus of Fate and shuffle it into its owner's library instead."
+ },
+ {
+  "name": "Okaun, Eye of Chaos",
+  "mana_cost": "{4}{R}",
+  "type_line": "Legendary Creature — Cyclops Berserker",
+  "oracle_text": "Partner with Zndrsplt, Eye of Wisdom (When this creature enters, target player may put Zndrsplt into their hand from their library, then shuffle.)\nAt the beginning of combat on your turn, flip a coin until you lose a flip.\nWhenever a player wins a coin flip, double Okaun's power and toughness until end of turn.",
+  "power": "3",
+  "toughness": "3"
+ },
+ {
+  "name": "Planar Chaos",
+  "mana_cost": "{2}{R}",
+  "type_line": "Enchantment",
+  "oracle_text": "At the beginning of your upkeep, flip a coin. If you lose the flip, sacrifice this enchantment.\nWhenever a player casts a spell, that player flips a coin. If they lose the flip, counter that spell."
+ },
+ {
+  "name": "Pongify",
+  "mana_cost": "{U}",
+  "type_line": "Instant",
+  "oracle_text": "Destroy target creature. It can't be regenerated. Its controller creates a 3/3 green Ape creature token."
+ },
+ {
+  "name": "Prismari, the Inspiration",
+  "mana_cost": "{5}{U}{R}",
+  "type_line": "Legendary Creature — Elder Dragon",
+  "oracle_text": "Flying\nWard—Pay 5 life.\nInstant and sorcery spells you cast have storm. (Whenever you cast an instant or sorcery spell, copy it for each spell cast before it this turn. You may choose new targets for the copies.)",
+  "power": "7",
+  "toughness": "7"
+ },
+ {
+  "name": "Reality Shift",
+  "mana_cost": "{1}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Exile target creature. Its controller manifests the top card of their library. (That player puts the top card of their library onto the battlefield face down as a 2/2 creature. If it's a creature card, it can be turned face up any time for its mana cost.)"
+ },
+ {
+  "name": "Reckless Handling",
+  "mana_cost": "{1}{R}",
+  "type_line": "Sorcery",
+  "oracle_text": "Search your library for an artifact card, reveal it, put it into your hand, shuffle, then discard a card at random. If an artifact card was discarded this way, Reckless Handling deals 2 damage to each opponent."
+ },
+ {
+  "name": "Resurrection Orb",
+  "mana_cost": "{2}",
+  "type_line": "Artifact — Equipment",
+  "oracle_text": "Equipped creature has lifelink.\nWhenever equipped creature dies, return that card to the battlefield under its owner's control at the beginning of the next end step.\nEquip {4} ({4}: Attach to target creature you control. Equip only as a sorcery.)"
+ },
+ {
+  "name": "Rhystic Study",
+  "mana_cost": "{2}{U}",
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever an opponent casts a spell, you may draw a card unless that player pays {1}."
+ },
+ {
+  "name": "Sapphire Medallion",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "Blue spells you cast cost {1} less to cast."
+ },
+ {
+  "name": "Seize the Day",
+  "mana_cost": "{3}{R}",
+  "type_line": "Sorcery",
+  "oracle_text": "Untap target creature. After this main phase, there is an additional combat phase followed by an additional main phase.\nFlashback {2}{R} (You may cast this card from your graveyard for its flashback cost. Then exile it.)"
+ },
+ {
+  "name": "Show and Tell",
+  "mana_cost": "{2}{U}",
+  "type_line": "Sorcery",
+  "oracle_text": "Each player may put an artifact, creature, enchantment, or land card from their hand onto the battlefield."
+ },
+ {
+  "name": "Simian Spirit Guide",
+  "mana_cost": "{2}{R}",
+  "type_line": "Creature — Ape Spirit",
+  "oracle_text": "Exile this card from your hand: Add {R}.",
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Spellbook",
+  "mana_cost": "{0}",
+  "type_line": "Artifact — Book",
+  "oracle_text": "You have no maximum hand size."
+ },
+ {
+  "name": "Squee's Revenge",
+  "mana_cost": "{1}{U}{R}",
+  "type_line": "Sorcery",
+  "oracle_text": "Choose a number. Flip a coin that many times or until you lose a flip, whichever comes first. If you win all the flips, draw two cards for each flip."
+ },
+ {
+  "name": "Stitch in Time",
+  "mana_cost": "{1}{U}{R}",
+  "type_line": "Sorcery",
+  "oracle_text": "Flip a coin. If you win the flip, take an extra turn after this one."
+ },
+ {
+  "name": "Stock Up",
+  "mana_cost": "{2}{U}",
+  "type_line": "Sorcery",
+  "oracle_text": "Look at the top five cards of your library. Put two of them into your hand and the rest on the bottom of your library in any order."
+ }
+]

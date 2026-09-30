@@ -1,0 +1,168 @@
+[
+ {
+  "name": "Wayfarer's Bauble",
+  "mana_cost": "{1}",
+  "type_line": "Artifact",
+  "oracle_text": "{2}, {T}, Sacrifice this artifact: Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle."
+ },
+ {
+  "name": "Talisman of Creativity",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "{T}: Add {C}.\n{T}: Add {U} or {R}. This artifact deals 1 damage to you."
+ },
+ {
+  "name": "Talisman of Indulgence",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "{T}: Add {C}.\n{T}: Add {B} or {R}. This artifact deals 1 damage to you."
+ },
+ {
+  "name": "Victimize",
+  "mana_cost": "{2}{B}",
+  "type_line": "Sorcery",
+  "oracle_text": "Choose two target creature cards in your graveyard. Sacrifice a creature. If you do, return the chosen cards to the battlefield tapped."
+ },
+ {
+  "name": "Black Market Connections",
+  "mana_cost": "{2}{B}",
+  "type_line": "Enchantment",
+  "oracle_text": "At the beginning of your first main phase, choose one or more —\n• Sell Contraband — Create a Treasure token. You lose 1 life.\n• Buy Information — Draw a card. You lose 2 life.\n• Hire a Mercenary — Create a 3/2 colorless Shapeshifter creature token with changeling. You lose 3 life. (It is every creature type.)"
+ },
+ {
+  "name": "Deadly Dispute",
+  "mana_cost": "{1}{B}",
+  "type_line": "Instant",
+  "oracle_text": "As an additional cost to cast this spell, sacrifice an artifact or creature.\nDraw two cards and create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+ },
+ {
+  "name": "Roaming Throne",
+  "mana_cost": "{4}",
+  "type_line": "Artifact Creature — Golem",
+  "oracle_text": "Ward {2}\nAs this creature enters, choose a creature type.\nThis creature is the chosen type in addition to its other types.\nIf a triggered ability of another creature you control of the chosen type triggers, it triggers an additional time.",
+  "power": "4",
+  "toughness": "4"
+ },
+ {
+  "name": "Ashnod's Altar",
+  "mana_cost": "{3}",
+  "type_line": "Artifact",
+  "oracle_text": "Sacrifice a creature: Add {C}{C}."
+ },
+ {
+  "name": "Talisman of Hierarchy",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "{T}: Add {C}.\n{T}: Add {W} or {B}. This artifact deals 1 damage to you."
+ },
+ {
+  "name": "Big Score",
+  "mana_cost": "{3}{R}",
+  "type_line": "Instant",
+  "oracle_text": "As an additional cost to cast this spell, discard a card.\nDraw two cards and create two Treasure tokens. (They're artifacts with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+ },
+ {
+  "name": "War Room",
+  "type_line": "Land",
+  "oracle_text": "{T}: Add {C}.\n{3}, {T}, Pay life equal to the number of colors in your commanders' color identity: Draw a card."
+ },
+ {
+  "name": "Blood Artist",
+  "mana_cost": "{1}{B}",
+  "type_line": "Creature — Vampire",
+  "oracle_text": "Whenever this creature or another creature dies, target player loses 1 life and you gain 1 life.",
+  "power": "0",
+  "toughness": "1"
+ },
+ {
+  "name": "Abrade",
+  "mana_cost": "{1}{R}",
+  "type_line": "Instant",
+  "oracle_text": "Choose one —\n• Abrade deals 3 damage to target creature.\n• Destroy target artifact."
+ },
+ {
+  "name": "Ponder",
+  "mana_cost": "{U}",
+  "type_line": "Sorcery",
+  "oracle_text": "Look at the top three cards of your library, then put them back in any order. You may shuffle.\nDraw a card."
+ },
+ {
+  "name": "Delighted Halfling",
+  "mana_cost": "{G}",
+  "type_line": "Creature — Halfling Citizen",
+  "oracle_text": "{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast a legendary spell, and that spell can't be countered.",
+  "power": "1",
+  "toughness": "2"
+ },
+ {
+  "name": "Mana Vault",
+  "mana_cost": "{1}",
+  "type_line": "Artifact",
+  "oracle_text": "This artifact doesn't untap during your untap step.\nAt the beginning of your upkeep, you may pay {4}. If you do, untap this artifact.\nAt the beginning of your draw step, if this artifact is tapped, it deals 1 damage to you.\n{T}: Add {C}{C}{C}."
+ },
+ {
+  "name": "Talisman of Conviction",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "{T}: Add {C}.\n{T}: Add {R} or {W}. This artifact deals 1 damage to you."
+ },
+ {
+  "name": "Herald's Horn",
+  "mana_cost": "{3}",
+  "type_line": "Artifact",
+  "oracle_text": "As this artifact enters, choose a creature type.\nCreature spells you cast of the chosen type cost {1} less to cast.\nAt the beginning of your upkeep, look at the top card of your library. If it's a creature card of the chosen type, you may reveal it and put it into your hand."
+ },
+ {
+  "name": "Chrome Mox",
+  "mana_cost": "{0}",
+  "type_line": "Artifact",
+  "oracle_text": "Imprint — When this artifact enters, you may exile a nonartifact, nonland card from your hand.\n{T}: Add one mana of any of the exiled card's colors."
+ },
+ {
+  "name": "Anguished Unmaking",
+  "mana_cost": "{1}{W}{B}",
+  "type_line": "Instant",
+  "oracle_text": "Exile target nonland permanent. You lose 3 life."
+ },
+ {
+  "name": "Lightning Bolt",
+  "mana_cost": "{R}",
+  "type_line": "Instant",
+  "oracle_text": "Lightning Bolt deals 3 damage to any target."
+ },
+ {
+  "name": "Windfall",
+  "mana_cost": "{2}{U}",
+  "type_line": "Sorcery",
+  "oracle_text": "Each player discards their hand, then draws cards equal to the greatest number of cards a player discarded this way."
+ },
+ {
+  "name": "Dimir Signet",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "{1}, {T}: Add {U}{B}."
+ },
+ {
+  "name": "Ghostly Prison",
+  "mana_cost": "{2}{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "Creatures can't attack you unless their controller pays {2} for each creature they control that's attacking you."
+ },
+ {
+  "name": "Sink into Stupor // Soporific Springs",
+  "type_line": "Instant // Land",
+  "faces": [
+   {
+    "name": "Sink into Stupor",
+    "mana_cost": "{1}{U}{U}",
+    "type_line": "Instant",
+    "oracle_text": "Return target spell or nonland permanent an opponent controls to its owner's hand."
+   },
+   {
+    "name": "Soporific Springs",
+    "type_line": "Land",
+    "oracle_text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {U}."
+   }
+  ]
+ }
+]

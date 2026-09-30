@@ -1,0 +1,177 @@
+[
+ {
+  "name": "Swan Song",
+  "mana_cost": "{U}",
+  "type_line": "Instant",
+  "oracle_text": "Counter target enchantment, instant, or sorcery spell. Its controller creates a 2/2 blue Bird creature token with flying."
+ },
+ {
+  "name": "Sword of War and Peace",
+  "mana_cost": "{3}",
+  "type_line": "Artifact — Equipment",
+  "oracle_text": "Equipped creature gets +2/+2 and has protection from red and from white.\nWhenever equipped creature deals combat damage to a player, this Equipment deals damage to that player equal to the number of cards in their hand and you gain 1 life for each card in your hand.\nEquip {2}"
+ },
+ {
+  "name": "Tavern Scoundrel",
+  "mana_cost": "{1}{R}",
+  "type_line": "Creature — Human Rogue",
+  "oracle_text": "Whenever you win a coin flip, create two Treasure tokens. (They're artifacts with \"{T}, Sacrifice this token: Add one mana of any color.\")\n{1}, {T}, Sacrifice another permanent: Flip a coin.",
+  "power": "1",
+  "toughness": "3"
+ },
+ {
+  "name": "Thassa's Oracle",
+  "mana_cost": "{U}{U}",
+  "type_line": "Creature — Merfolk Wizard",
+  "oracle_text": "When this creature enters, look at the top X cards of your library, where X is your devotion to blue. Put up to one of them on top of your library and the rest on the bottom of your library in a random order. If X is greater than or equal to the number of cards in your library, you win the game. (Each {U} in the mana costs of permanents you control counts toward your devotion to blue.)",
+  "power": "1",
+  "toughness": "3"
+ },
+ {
+  "name": "The Endstone",
+  "mana_cost": "{7}",
+  "type_line": "Legendary Artifact",
+  "oracle_text": "Whenever you play a land or cast a spell, draw a card.\nAt the beginning of your end step, your life total becomes half your starting life total, rounded up."
+ },
+ {
+  "name": "Thought Vessel",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "You have no maximum hand size.\n{T}: Add {C}."
+ },
+ {
+  "name": "Tribute Mage",
+  "mana_cost": "{2}{U}",
+  "type_line": "Creature — Human Wizard",
+  "oracle_text": "When this creature enters, you may search your library for an artifact card with mana value 2, reveal that card, put it into your hand, then shuffle.",
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Twenty-Toed Toad",
+  "mana_cost": "{3}{U}",
+  "type_line": "Creature — Frog Wizard",
+  "oracle_text": "Your maximum hand size is twenty.\nWhenever you attack with two or more creatures, put a +1/+1 counter on this creature and draw a card.\nWhenever this creature attacks, you win the game if there are twenty or more counters on it or you have twenty or more cards in hand.",
+  "power": "3",
+  "toughness": "3"
+ },
+ {
+  "name": "Vivi Ornitier",
+  "mana_cost": "{1}{U}{R}",
+  "type_line": "Legendary Creature — Wizard",
+  "oracle_text": "{0}: Add X mana in any combination of {U} and/or {R}, where X is Vivi Ornitier's power. Activate only during your turn and only once each turn.\nWhenever you cast a noncreature spell, put a +1/+1 counter on Vivi Ornitier and it deals 1 damage to each opponent.",
+  "power": "0",
+  "toughness": "3"
+ },
+ {
+  "name": "Whir of Invention",
+  "mana_cost": "{X}{U}{U}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Improvise (Your artifacts can help cast this spell. Each artifact you tap after you're done activating mana abilities pays for {1}.)\nSearch your library for an artifact card with mana value X or less, put it onto the battlefield, then shuffle."
+ },
+ {
+  "name": "Witch's Clinic",
+  "type_line": "Land",
+  "oracle_text": "{T}: Add {C}.\n{2}, {T}: Target commander gains lifelink until end of turn."
+ },
+ {
+  "name": "Zndrsplt, Eye of Wisdom",
+  "mana_cost": "{4}{U}",
+  "type_line": "Legendary Creature — Homunculus",
+  "oracle_text": "Partner with Okaun, Eye of Chaos (When this creature enters, target player may put Okaun into their hand from their library, then shuffle.)\nAt the beginning of combat on your turn, flip a coin until you lose a flip.\nWhenever a player wins a coin flip, draw a card.",
+  "power": "1",
+  "toughness": "4"
+ },
+ {
+  "name": "Zur the Enchanter",
+  "mana_cost": "{1}{W}{U}{B}",
+  "type_line": "Legendary Creature — Human Wizard",
+  "oracle_text": "Flying\nWhenever Zur attacks, you may search your library for an enchantment card with mana value 3 or less, put it onto the battlefield, then shuffle.",
+  "power": "1",
+  "toughness": "4"
+ },
+ {
+  "name": "Aether Channeler",
+  "mana_cost": "{2}{U}",
+  "type_line": "Creature — Human Wizard",
+  "oracle_text": "When this creature enters, choose one —\n• Create a 1/1 white Bird creature token with flying.\n• Return another target nonland permanent to its owner's hand.\n• Draw a card.",
+  "power": "2",
+  "toughness": "1"
+ },
+ {
+  "name": "Approach of the Second Sun",
+  "mana_cost": "{6}{W}",
+  "type_line": "Sorcery",
+  "oracle_text": "If this spell was cast from your hand and you've cast another spell named Approach of the Second Sun this game, you win the game. Otherwise, put Approach of the Second Sun into its owner's library seventh from the top and you gain 7 life."
+ },
+ {
+  "name": "Arcane Signet",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "{T}: Add one mana of any color in your commander's color identity."
+ },
+ {
+  "name": "Archaeomancer",
+  "mana_cost": "{2}{U}{U}",
+  "type_line": "Creature — Human Wizard",
+  "oracle_text": "When this creature enters, return target instant or sorcery card from your graveyard to your hand.",
+  "power": "1",
+  "toughness": "2"
+ },
+ {
+  "name": "Archfiend of Ifnir",
+  "mana_cost": "{3}{B}{B}",
+  "type_line": "Creature — Demon",
+  "oracle_text": "Flying\nWhenever you cycle or discard another card, put a -1/-1 counter on each creature your opponents control.\nCycling {2} ({2}, Discard this card: Draw a card.)",
+  "power": "5",
+  "toughness": "4"
+ },
+ {
+  "name": "Astral Drift",
+  "mana_cost": "{2}{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever you cycle this card or cycle another card while this enchantment is on the battlefield, you may exile target creature. If you do, return that card to the battlefield under its owner's control at the beginning of the next end step.\nCycling {2}{W} ({2}{W}, Discard this card: Draw a card.)"
+ },
+ {
+  "name": "Astral Slide",
+  "mana_cost": "{2}{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever a player cycles a card, you may exile target creature. If you do, return that card to the battlefield under its owner's control at the beginning of the next end step."
+ },
+ {
+  "name": "Auramancer",
+  "mana_cost": "{2}{W}",
+  "type_line": "Creature — Human Wizard",
+  "oracle_text": "When this creature enters, you may return target enchantment card from your graveyard to your hand.",
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Azami, Lady of Scrolls",
+  "mana_cost": "{2}{U}{U}{U}",
+  "type_line": "Legendary Creature — Human Wizard",
+  "oracle_text": "Tap an untapped Wizard you control: Draw a card.",
+  "power": "0",
+  "toughness": "2"
+ },
+ {
+  "name": "Bloodline Necromancer",
+  "mana_cost": "{4}{B}",
+  "type_line": "Creature — Vampire Wizard",
+  "oracle_text": "Lifelink\nWhen this creature enters, you may return target Vampire or Wizard creature card from your graveyard to the battlefield.",
+  "power": "3",
+  "toughness": "2"
+ },
+ {
+  "name": "Brainspoil",
+  "mana_cost": "{3}{B}{B}",
+  "type_line": "Sorcery",
+  "oracle_text": "Destroy target creature that isn't enchanted. It can't be regenerated.\nTransmute {1}{B}{B} ({1}{B}{B}, Discard this card: Search your library for a card with the same mana value as this card, reveal it, put it into your hand, then shuffle. Transmute only as a sorcery.)"
+ },
+ {
+  "name": "Complicate",
+  "mana_cost": "{2}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Counter target spell unless its controller pays {3}.\nCycling {2}{U} ({2}{U}, Discard this card: Draw a card.)\nWhen you cycle this card, you may counter target spell unless its controller pays {1}."
+ }
+]

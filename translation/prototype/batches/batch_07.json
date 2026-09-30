@@ -1,0 +1,181 @@
+[
+ {
+  "name": "Dark Ritual",
+  "mana_cost": "{B}",
+  "type_line": "Instant",
+  "oracle_text": "Add {B}{B}{B}."
+ },
+ {
+  "name": "Deafening Silence",
+  "mana_cost": "{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "Each player can't cast more than one noncreature spell each turn."
+ },
+ {
+  "name": "Disciple of Caelus Nin",
+  "mana_cost": "{4}{W}",
+  "type_line": "Creature — Human Wizard",
+  "oracle_text": "When this creature enters, starting with you, each player chooses up to five permanents they control. All permanents other than this creature that weren't chosen this way phase out.\nPermanents can't phase in.",
+  "power": "3",
+  "toughness": "4"
+ },
+ {
+  "name": "Dour Port-Mage",
+  "mana_cost": "{1}{U}",
+  "type_line": "Creature — Frog Wizard",
+  "oracle_text": "Whenever one or more other creatures you control leave the battlefield without dying, draw a card.\n{1}{U}, {T}: Return another target creature you control to its owner's hand.",
+  "power": "1",
+  "toughness": "3"
+ },
+ {
+  "name": "Drannith Magistrate",
+  "mana_cost": "{1}{W}",
+  "type_line": "Creature — Human Wizard",
+  "oracle_text": "Your opponents can't cast spells from anywhere other than their hands.",
+  "power": "1",
+  "toughness": "3"
+ },
+ {
+  "name": "Emeritus of Ideation // Ancestral Recall",
+  "mana_cost": "{3}{U}{U} // {U}",
+  "type_line": "Creature — Human Wizard // Instant",
+  "power": "5",
+  "toughness": "5",
+  "faces": [
+   {
+    "name": "Emeritus of Ideation",
+    "mana_cost": "{3}{U}{U}",
+    "type_line": "Creature — Human Wizard",
+    "oracle_text": "Flying, ward {2}\nThis creature enters prepared.\nWhenever this creature attacks, you may exile eight cards from your graveyard. If you do, this creature becomes prepared.",
+    "power": "5",
+    "toughness": "5"
+   },
+   {
+    "name": "Ancestral Recall",
+    "mana_cost": "{U}",
+    "type_line": "Instant",
+    "oracle_text": "Target player draws three cards."
+   }
+  ]
+ },
+ {
+  "name": "Ephemerate",
+  "mana_cost": "{W}",
+  "type_line": "Instant",
+  "oracle_text": "Exile target creature you control, then return it to the battlefield under its owner's control.\nRebound (If you cast this spell from your hand, exile it as it resolves. At the beginning of your next upkeep, you may cast this card from exile without paying its mana cost.)"
+ },
+ {
+  "name": "Ertai Resurrected",
+  "mana_cost": "{2}{U}{B}",
+  "type_line": "Legendary Creature — Phyrexian Human Wizard",
+  "oracle_text": "Flash\nWhen Ertai Resurrected enters, choose up to one —\n• Counter target spell, activated ability, or triggered ability. Its controller draws a card.\n• Destroy another target creature or planeswalker. Its controller draws a card.",
+  "power": "3",
+  "toughness": "2"
+ },
+ {
+  "name": "Escape Protocol",
+  "mana_cost": "{1}{U}",
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever you cycle a card, you may pay {1}. When you do, exile target artifact or creature you control, then return it to the battlefield under its owner's control."
+ },
+ {
+  "name": "Feed the Swarm",
+  "mana_cost": "{1}{B}",
+  "type_line": "Sorcery",
+  "oracle_text": "Destroy target creature or enchantment an opponent controls. You lose life equal to that permanent's mana value."
+ },
+ {
+  "name": "Fluctuator",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "Cycling abilities you activate cost {2} less to activate."
+ },
+ {
+  "name": "Forsake the Worldly",
+  "mana_cost": "{2}{W}",
+  "type_line": "Instant",
+  "oracle_text": "Exile target artifact or enchantment.\nCycling {2} ({2}, Discard this card: Draw a card.)"
+ },
+ {
+  "name": "Ghostway",
+  "mana_cost": "{2}{W}",
+  "type_line": "Instant",
+  "oracle_text": "Exile each creature you control. Return those cards to the battlefield under their owner's control at the beginning of the next end step."
+ },
+ {
+  "name": "Glen Elendra Archmage",
+  "mana_cost": "{3}{U}",
+  "type_line": "Creature — Faerie Wizard",
+  "oracle_text": "Flying\n{U}, Sacrifice this creature: Counter target noncreature spell.\nPersist (When this creature dies, if it had no -1/-1 counters on it, return it to the battlefield under its owner's control with a -1/-1 counter on it.)",
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Grasp of Fate",
+  "mana_cost": "{1}{W}{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "When this enchantment enters, for each opponent, exile up to one target nonland permanent that player controls until this enchantment leaves the battlefield. (Those permanents return under their owners' control.)"
+ },
+ {
+  "name": "Greater Auramancy",
+  "mana_cost": "{1}{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "Other enchantments you control have shroud. (A permanent with shroud can't be the target of spells or abilities.)\nEnchanted creatures you control have shroud."
+ },
+ {
+  "name": "Hall of Heliod's Generosity",
+  "type_line": "Legendary Land",
+  "oracle_text": "{T}: Add {C}.\n{1}{W}, {T}: Put target enchantment card from your graveyard on top of your library."
+ },
+ {
+  "name": "Land Tax",
+  "mana_cost": "{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "At the beginning of your upkeep, if an opponent controls more lands than you, you may search your library for up to three basic land cards, reveal them, put them into your hand, then shuffle."
+ },
+ {
+  "name": "Locust Spray",
+  "mana_cost": "{B}",
+  "type_line": "Instant",
+  "oracle_text": "Target creature gets -1/-1 until end of turn.\nCycling {B} ({B}, Discard this card: Draw a card.)"
+ },
+ {
+  "name": "Mage's Attendant",
+  "mana_cost": "{2}{W}",
+  "type_line": "Creature — Cat Rogue",
+  "oracle_text": "When this creature enters, create a 1/1 blue Wizard creature token with \"{1}, Sacrifice this token: Counter target noncreature spell unless its controller pays {1}.\"",
+  "power": "3",
+  "toughness": "2"
+ },
+ {
+  "name": "Miscalculation",
+  "mana_cost": "{1}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Counter target spell unless its controller pays {2}.\nCycling {2} ({2}, Discard this card: Draw a card.)"
+ },
+ {
+  "name": "Mistveil Plains",
+  "type_line": "Land — Plains",
+  "oracle_text": "({T}: Add {W}.)\nThis land enters tapped.\n{W}, {T}: Put target card from your graveyard on the bottom of your library. Activate only if you control two or more white permanents."
+ },
+ {
+  "name": "Naban, Dean of Iteration",
+  "mana_cost": "{1}{U}",
+  "type_line": "Legendary Creature — Human Wizard",
+  "oracle_text": "If a Wizard you control entering causes a triggered ability of a permanent you control to trigger, that ability triggers an additional time.",
+  "power": "2",
+  "toughness": "1"
+ },
+ {
+  "name": "Necrodominance",
+  "mana_cost": "{B}{B}{B}",
+  "type_line": "Legendary Enchantment",
+  "oracle_text": "Skip your draw step.\nAt the beginning of your end step, you may pay any amount of life. If you do, draw that many cards.\nYour maximum hand size is five.\nIf a card or token would be put into your graveyard from anywhere, exile it instead."
+ },
+ {
+  "name": "Neutralize",
+  "mana_cost": "{1}{U}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Counter target spell.\nCycling {2} ({2}, Discard this card: Draw a card.)"
+ }
+]
