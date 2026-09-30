@@ -6,7 +6,7 @@ For the assistant. Goal: goldfish.py reads as much of the Commander card pool as
 
 **Coverage is worthless if the read is wrong.** "modeled" only means every line matched something. A regex that matches and produces the wrong effect is worse than an honest "unmodeled", because it silently corrupts the numbers. Every parser change: `goldfish_coverage.py diff HEAD`, read every changed reading against Oracle text, fix misreads first, then `tests/goldfish_units.py` + `tests/smoke.py`, then push.
 
-## Baseline (2026-09-30, after Phase 0)
+## Baseline (2026-09-30, after Phase 0; see the Phase 1 line below for the current figure)
 
 32,116 Commander-legal cards (667 lands). Weight = 1/sqrt(edhrec_rank).
 
@@ -35,10 +35,16 @@ For the assistant. Goal: goldfish.py reads as much of the Commander card pool as
 - Team pumps now read "for each X" (was dropped: every scaling team pump read flat). Unreadable counts stay unread. Added a `domain` count key.
 - `goldfish_coverage.py` (`report`, `diff REF`, `card NAME`), 3 unit checks, 2 smoke checks (every legal card compiles).
 
-## Phase 1: removal vs blockers, opponent-only lines
+## Phase 1: removal vs blockers, opponent-only lines ✅ (2026-09-30)
 
-1. Removal (destroy/exile/bounce/damage/-X/-X on target creature an opponent controls, ETB or spell) kills the best `--blockers` blocker it can legally hit. The pilot casts it precombat when it opens a lethal or meaningfully better attack; otherwise it stays held for disruption as now. Wipes: `--blockers` creatures die too (own board as well, so still held unless it wins).
-2. Lines that only touch opponents and can't matter here (their hand, their library, taxes on their attacks) become vacuum lines, so status reflects what the simulation can use.
+Decision rule from the user for every pilot choice from here on: **model the decision a player is most likely to make, without over-complexifying.**
+
+- Held removal already fired at the one blocker between you and a kill (`clear_path`). Now it only uses a spell that can actually kill that blocker (filters, damage vs toughness, indestructible, edicts take the weakest, Swords' life gain counted), one-sided wipes go when clearing boards is lethal, and held any-target burn can kill a blocker.
+- Removal on permanents (ETB, triggers, activated, planeswalker abilities) is read as `kill_blk` and aimed at blockers. **Fixed a real bug:** -1/-1 counters and -N/-N on "target creature" (~118 cards incl. Skinrender) used to land on your own best creature; -X/-0 debuffs used to shrink your own attacker.
+- Opponent-only lines are vacuum, but only if they touch nothing the sim tracks (you, their life, their creatures).
+- Reviewed by category and by a random sample of 40 new removal readings (2 misreads found and fixed via an allowlist after the target noun).
+- **Fully read, weighted: 49.9%** (was 50.5%). Removal gains were offset by ~780 cards moving vacuum → blank/partial: the old vacuum rule was hiding real payoffs (drains, extra turns, recursion, "you draw" riders). The old figure was inflated; this one is honest.
+- Next cheap win: counterspells/protection are modeled as held answers, yet their text still shows as "unmodeled" and pads the "counter target" cluster.
 
 ## Phase 2: cluster passes (repeat)
 
@@ -53,6 +59,9 @@ Sample ~40 "modeled" cards stratified by popularity; compare `card` readings to 
 Idea to build here: a **leftover detector**. `parse_fx` masks what it matched; if a line still has substantive words unmasked (e.g. "you gain X life" after the drain half matched), mark the card partial instead of modeled. This would catch silent clause drops automatically.
 
 ## Known misreads (found, not yet fixed)
+- Soulstinger-style "-1/-1 counters on target creature you control" go on your best attacker; a player picks the weakest (usually the card itself).
+- "target player mills/draws" reads as you; a player picks per deck (Necron Deathmark).
+- Cast-only-during-an-opponent's-turn / only-if-fewer-creatures cards are vacuum but still take a slot; fine, but worth knowing.
 
 - Storm the Citadel is `held`: hold detection reads the quoted granted ability's "destroy target". Hold detection should ignore quoted text.
 - Exotic Disease reads "an opponent loses per domain" as modeled but drops "you gain X life" (X-valued life gain isn't read). Leftover detector would catch this class.

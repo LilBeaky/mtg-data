@@ -199,7 +199,8 @@ CNAMES = ["Najeela, the Blade-Blossom", "Forest", "Mountain", "Grizzly Bears", "
           "Aurelia, the Warleader", "Karlach, Fury of Avernus", "Moraug, Fury of Akoum", "Hellrider", "Plains", "Island", "Swamp",
           "Castle Garenbrig", "Encroaching Dragonstorm", "Lathliss, Dragon Queen", "Biorhythm", "Jeska's Will", "Animist's Awakening",
           "Questing Beast", "Ichorclaw Myr", "Samurai of the Pale Curtain", "Neheb, the Eternal", "Wolverine Pack", "Artful Dodge",
-          "Falter", "Suq'Ata Lancer", "Swords to Plowshares", "Frenzied Goblin"]
+          "Falter", "Suq'Ata Lancer", "Swords to Plowshares", "Frenzied Goblin",
+          "Ravenous Chupacabra", "Shock", "Doom Blade", "Plague Wind", "Skinrender", "Swamp"]
 CRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(CNAMES)}
 CK = {n: g.compile_card(CRAW[n], g.ALL5) for n in CNAMES}
 
@@ -447,9 +448,52 @@ def _():
 @check("clear path: Swords on the only blocker between Serra and a kill")
 def _():
     G = cgame(perms=["Serra Angel"], lands=["Plains"], hand=["Swords to Plowshares"])
-    G.opps[0]["life"] = 4; G.opps[0]["board"] = [blocker(2, 2, "flying")]
+    G.opps[0]["life"] = 4; G.opps[0]["board"] = [blocker(0, 2, "flying")]      # 0 power: Swords gives them no life
     G.build_pool(); G.clear_path(); G.combat()
     return G.opps[0]["dead"] and G.bstat["removed_blk"] == 1 and CK["Swords to Plowshares"] in G.gy
+@check("clear path holds Swords when its life gain means no kill (4 life, 2/2 blocker: they'd go to 6)")
+def _():
+    G = cgame(perms=["Serra Angel"], lands=["Plains"], hand=["Swords to Plowshares"])
+    G.opps[0]["life"] = 4; G.opps[0]["board"] = [blocker(2, 2, "flying")]
+    G.build_pool(); G.clear_path()
+    return CK["Swords to Plowshares"] in G.hand and G.bstat["removed_blk"] == 0
+@check("held removal isn't fired when no kill follows (Doom Blade stays in hand at 20 life)")
+def _():
+    G = cgame(perms=["Serra Angel"], lands=["Swamp", "Swamp"], hand=["Doom Blade"])
+    G.opps[0]["life"] = 20; G.opps[0]["board"] = [blocker(2, 2, "flying")]
+    G.build_pool(); G.clear_path()
+    return CK["Doom Blade"] in G.hand
+@check("Doom Blade can't target a black blocker; Shock can't kill a 3-toughness one")
+def _():
+    db = CK["Doom Blade"].spell[0]; sh = CK["Shock"].burn_blk
+    return not g.can_kill(db, blocker(2, 2, "black")) and g.can_kill(db, blocker(2, 2)) \
+        and not g.can_kill(sh, blocker(1, 3)) and g.can_kill(sh, blocker(5, 2))
+@check("Shock clears a 2-toughness blocker for lethal (held any-target burn)")
+def _():
+    G = cgame(perms=["Serra Angel"], lands=["Mountain"], hand=["Shock"])
+    G.opps[0]["life"] = 4; G.opps[0]["board"] = [blocker(1, 2, "flying")]
+    G.build_pool(); G.clear_path(); G.combat()
+    return G.opps[0]["dead"] and CK["Shock"] in G.gy
+@check("Plague Wind clears two blockers when that's lethal; one-sided, so your Serra survives")
+def _():
+    G = cgame(perms=["Serra Angel"], lands=["Swamp"] * 9, hand=["Plague Wind"])
+    G.opps[0]["life"] = 4; G.opps[0]["board"] = [blocker(2, 2, "flying"), blocker(1, 4, "reach")]
+    G.build_pool(); G.clear_path(); G.combat()
+    return G.opps[0]["dead"] and CK["Plague Wind"] in G.gy and any(p.k.name == "Serra Angel" for p in G.perms)
+@check("Chupacabra ETB kills the blocker in the way; Skinrender's -1/-1 counters go on their creature, not yours")
+def _():
+    G = cgame(perms=["Serra Angel"]); G.opps[0]["life"] = 4
+    G.opps[0]["board"] = [blocker(2, 2, "flying"), blocker(3, 3)]
+    G.do(CK["Ravenous Chupacabra"].etb, CK["Ravenous Chupacabra"])
+    first = [b["name"] for b in G.opps[0]["board"]] == ["3/3"]       # the flier was the one stopping Serra
+    H = cgame(perms=["Serra Angel"]); H.opps[0]["board"] = [blocker(3, 3)]
+    H.do(CK["Skinrender"].etb, CK["Skinrender"])
+    serra = next(p for p in H.perms if p.k.name == "Serra Angel")
+    return first and not H.opps[0]["board"] and not (serra.ctr or {}).get("-1/-1")
+@check("ETB removal with no --blockers does nothing and costs nothing")
+def _():
+    G = cgame(perms=["Serra Angel"]); G.do(CK["Ravenous Chupacabra"].etb, CK["Ravenous Chupacabra"])
+    return G.bstat["removed_blk"] == 0 and len(G.perms) == 1
 
 # ---- additional combat phases
 def turn_combat(G):

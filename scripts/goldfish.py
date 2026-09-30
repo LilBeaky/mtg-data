@@ -74,7 +74,17 @@ _EXPLAIN_DECK = []                              # raw cards of the list, so --ex
 # taxes (Rhystic, Tithe) are paid 75% of the time, so each lands about once a round; an opponent
 # holds 4 cards; an opponent's land count is their turn count.
 OPP_CREATURE_SHARE, OPP_SECOND, TAX_PAID, OPP_HAND = 0.4, 0.3, 0.75, 4
-OPP_LINE = re.compile(r"\bopponents?\b|attacks you\b|\bother players?\b|each player(?! may)")
+OPP_LINE = re.compile(r"\bopponents?\b|attacks? you\b|\bother players?\b|each player(?! may)|\btarget player\b")
+# ...but a line that touches anything the sim tracks is a real miss, not vacuum: you (a clause led by "you", counters and
+# pumps on your things, keyword grants), opponents' life totals (damage, drain, life gain), or their creatures (the
+# --blockers boards: removal, edicts, taps, -X/-X). Only lines touching none of those are opponent-only.
+SELF_GAIN = re.compile(r"(?:^|[,.;:]\s*|\b(?:then|and|if you do,?)\s+)you (?:may )?(?!can't|don't|control)[a-z]+"
+                       r"|\b(?:create|investigate|proliferate|scry|surveil|manifest|amass|explore|connive)\b|\bdraw (?:a|\w+) cards?|\badd \{"
+                       r"|under your control|\bgets? \+|\bcounters? on ~|\b(?:has|have|gains?) (?:trample|flying|haste|menace|lifelink|"
+                       r"deathtouch|double strike|first strike|vigilance|indestructible)"
+                       r"|\bdeals? [^.]{0,25}damage|\blose[s]? [^.]{0,25}\blife|\bgains? (?:\d+|x|that much) life|\bpoison|\bmills?\b"
+                       r"|\bsacrifices?\b|\btap (?:up to \w+ )?target|\bcreatures? (?:an opponent|your opponents|target opponent|that player|each opponent) controls?"
+                       r"|\bgets? -|\bextra turn|\bsearch(?:es)? (?:your|their) library|\breturn ~|from your graveyard|\bdetain")
 START_LIFE, LIFE_FLOOR = 40, 20
 FLOOR_BY_BRACKET = {4: 10}   # optional life payments stop here; set from the deck's bracket at run time (default 20)
 # Combat (docs/GOLDFISH.md "Combat"). Three opponents at START_LIFE. An opponent dies at 0 life, POISON_KILL
@@ -527,7 +537,67 @@ def _fx_mana(m):
         units = units * OPP_HAND                          # ~opp: an opponent holds OPP_HAND cards
     return ("mana", units) if units else None
 
+# ---- creature removal: read as removal of opponents' creatures (--blockers boards), never aimed at your own
+RM_TYPES = (r"creatures?|nonland permanents?|permanents?|artifact or creature|creature or planeswalker|planeswalker or creature"
+            r"|creature or enchantment|artifact, creature, or enchantment|creature or vehicle")
+RM_CTRL = r"(?: (?:an opponent controls|you don't control|your opponents control|defending player controls|that player controls))?"
+RM_WHAT = (r"(?P<what>(?:non[a-z]+,? )*(?:" + RM_TYPES + r")" + RM_CTRL
+           + r"(?: with (?:flying|(?:power|toughness|mana value) \d+ or (?:less|greater)))?" + RM_CTRL + r")(?![a-z])"
+           # allowlist: only a clause end or a safe word may follow the noun. Anything else ('card from a graveyard',
+           # 'that's attacking you', 'it's blocking', 'you control', 'with a counter') leaves the line unread.
+           r"(?=$|[.,;:\"@)]| (?:and|until|if|then|unless|instead|to|gets?)\b)")
+RM_Q = r"(?:up to (?P<n>one|two|three) )?(?:another )?(?:other )?target "
+RM_KW = {"white", "blue", "black", "red", "green", "artifact"}
+
+def _rm_filter(what):
+    """'nonartifact, nonblack creature' / 'creature with power 3 or less' -> filter dict for can_kill; None if unread."""
+    w = re.sub(r"(?: (?:an opponent controls|you don't control|your opponents control|defending player controls|that player controls))",
+               "", what.strip().lower())
+    m = re.fullmatch(r"(?P<pre>(?:non[a-z]+,? )*)(?:" + RM_TYPES + r")(?: with (?P<with>.+))?", w)
+    if not m: return None
+    non = set(re.findall(r"non([a-z]+)", m.group("pre")))
+    if non - RM_KW - {"legendary", "token", "land"}: return None       # 'nonhuman', 'nonzombie': subtypes aren't on blockers
+    f = {"non": frozenset(non & RM_KW), "need": frozenset(), "cmp": ()}
+    wt = m.group("with")
+    if wt == "flying": f["need"] = frozenset({"flying"})
+    elif wt:
+        cm = re.fullmatch(r"(power|toughness|mana value) (\d+) or (less|greater)", wt)
+        if not cm: return None
+        f["cmp"] = ((cm.group(1), cm.group(3), int(cm.group(2))),)
+    return f
+
+def _fx_kill(how):
+    """-> ('kill_blk', how, targets, toughness limit, filter, controller gains life = power, each/all)."""
+    def fn(m):
+        after = m.string[m.end():m.end() + 90]
+        if re.match(r"[^.]*?\.? ?(?:its|that creature's|that permanent's) controller (?:creates|manifests)", after): return None   # Beast Within: they get a body back
+        if re.match(r"\s*(?:for each|where x)", after): return None        # a count on the removal (Soulstinger): not read flat
+        if how in ("exile", "all_exile") and re.search(r"return (?:it|that card|them|those cards|the exiled cards?|that creature|each card exiled this way)"
+                                                       r" to the battlefield", after): return None   # flicker, not removal
+        gd = m.groupdict()
+        flt = _rm_filter(gd.get("what") or "creature")
+        if flt is None: return None
+        lim = gd.get("lim")
+        lim = (int(lim) if lim.isdigit() else num(lim)) if lim else None
+        if lim is not None and lim <= 0: return None
+        each = how.startswith("all_") or (how == "edict" and gd.get("who") == "each opponent")
+        gain = bool(re.match(r"[^.]*?\.? ?its controller gains life equal to its power", after))
+        return ("kill_blk", how.replace("all_", ""), num(gd.get("n")) if gd.get("n") else 1, lim, flt, gain, each)
+    return fn
+
 FX = [
+    (re.compile(r"\b(?:destroy|exile) (?:all|each) (?:other )?(?P<what>creatures?|nonland permanents?) (?:you don't control|your opponents control|target (?:player|opponent) controls)"),
+     lambda m: _fx_kill("all_" + ("exile" if m.group(0).startswith("exile") else "destroy"))(m)),
+    (re.compile(r"\breturn (?:all|each) (?P<what>creatures?|nonland permanents?) (?:you don't control|your opponents control) to (?:their|its) owners?'?s? hands?"),
+     lambda m: _fx_kill("all_bounce")(m)),
+    (re.compile(r"\bdestroy " + RM_Q + RM_WHAT), _fx_kill("destroy")),
+    (re.compile(r"\bexile " + RM_Q + RM_WHAT), _fx_kill("exile")),
+    (re.compile(r"\breturn " + RM_Q + RM_WHAT + r" to (?:its|their) owners?'?s? hands?"), _fx_kill("bounce")),
+    (re.compile(r"\bdeals? (?P<lim>\d+) damage to " + RM_Q + RM_WHAT), _fx_kill("dmg")),
+    (re.compile(r"(?<!each )\b" + RM_Q + RM_WHAT + r" gets? -\d+/-(?P<lim>\d+) until end of turn"), _fx_kill("minus")),
+    (re.compile(r"\bput (?P<lim>a|an|one|two|three|four|five|\d+) -1/-1 counters? on " + RM_Q + RM_WHAT), _fx_kill("minus")),
+    (re.compile(r"(?P<who>each opponent|target opponent|target player) sacrifices (?:a|an|one) (?P<what>creature|nonland permanent|creature or planeswalker|artifact or creature)(?: of their choice)?(?![a-z])"),
+     _fx_kill("edict")),
     (re.compile(r"look at the top x cards of your library, where x is your devotion to (white|blue|black|red|green)\..*?if x is greater than or equal to the number of cards in your library, you win the game"),
      lambda m: ("oracle", COLOR_WORDS[m.group(1)])),                                 # Thassa's Oracle
     (re.compile(r"reveal the top card of your library and put that card into your hand\. you lose life equal to its mana value"),
@@ -652,6 +722,30 @@ def parse_fx(s):
     out.sort(key=lambda t: t[0])
     return [e for _, e in out], tax
 
+def can_kill(e, b, board=None):
+    """Can kill_blk effect e remove blocker b (an opponent's --blockers creature)? An edict takes their weakest instead."""
+    _, how, _, lim, flt, _, _ = e
+    if b.get("dead"): return False
+    if "indestructible" in b["kw"] and how in ("destroy", "dmg"): return False
+    if lim is not None and b["t"] > lim: return False
+    if flt["non"] & b["kw"] or flt["need"] - b["kw"]: return False
+    for field, op, v in flt["cmp"]:
+        got = b[{"power": "p", "toughness": "t", "mana value": "mv"}[field]]
+        if (op == "less" and got > v) or (op == "greater" and got < v): return False
+    if how == "edict" and board is not None:        # the opponent sacrifices their least valuable creature
+        live = [x for x in board if not x.get("dead")]
+        return bool(live) and b is min(live, key=lambda x: (x["p"] + x["t"], x["name"]))
+    return True
+
+def kill_str(e):
+    _, how, n, lim, flt, gain, each = e
+    q = ",".join(sorted(["non" + x for x in flt["non"]] + list(flt["need"])) + [f"{f} {'<=' if o == 'less' else '>='} {v}" for f, o, v in flt["cmp"]])
+    q = f" ({q})" if q else ""
+    if how == "edict": return ("each opponent" if each else "an opponent") + " sacrifices a creature (their weakest)"
+    verb = {"destroy": "destroy", "exile": "exile", "bounce": "bounce", "dmg": f"{lim} damage to", "minus": f"-{lim}/-{lim} on"}[how]
+    tgt = "every opposing creature" if each else ("an opposing creature" if n == 1 else f"{n} opposing creatures")
+    return f"removal: {verb} {tgt}{q}" + ("; its controller gains life = its power" if gain else "")
+
 def pv(v, sign=False):
     """A readable amount: 3 / +3 / X / per creatures / power."""
     if isinstance(v, int): return f"{v:+d}" if sign else str(v)
@@ -726,6 +820,7 @@ def fx_str(e):
     if t == "ctr": return f"+{e[2]} {e[1]} ctr"
     if t == "paid": return f"pay {e[1] + len(e[2])}: " + ", ".join(fx_str(x) for x in e[3])
     if t == "untap_self": return "untap ~"
+    if t == "kill_blk": return kill_str(e)
     if t == "win": return "you win the game"
     if t == "pay_x_draw": return "pay X (up to the life gained): draw X"
     if t == "life_dmg": return "you gain life equal to the damage"
@@ -782,6 +877,7 @@ class Card:
         self.self_red = None     # (n, dyn key): "~ costs {1} less to cast for each ..."
         self.free_cmdr = False   # free while you control a commander (Fierce Guardianship)
         self.kill = frozenset()  # held removal: permanent types it can remove (clears tax/lock pieces)
+        self.burn_blk = None     # held 'N damage to any target': also a kill_blk option on a blocker (Shock, Lightning Bolt)
         self.tough = 0           # printed toughness (0 for * or none)
         self.kw = set()          # combat keywords it has (flying, trample, double strike...; 'unblockable')
         self.kwn = {}            # numbered keywords: toxic 2, annihilator 2, exalted (instances)...
@@ -1564,7 +1660,7 @@ def compile_card(c, anyc):
             if all(any(part.strip().startswith(w) for w in kws) for part in re.split(r"[,;]", L.lower()) if part.strip()):
                 continue                                   # keyword line (Flying, Ward {2}, Equip {1}...)
             missed += 1
-            if OPP_LINE.search(L.lower()): vac += 1; k.notes.append("needs opponents: " + L[:72])
+            if OPP_LINE.search(L.lower()) and not SELF_GAIN.search(L.lower()): vac += 1; k.notes.append("needs opponents: " + L[:72])
             else: k.notes.append("unmodeled: " + L[:72])
     if k.is_land and k.land_types:
         abil.append(([frozenset(BASIC[t] for t in k.land_types)], None, False, 0))
@@ -1617,6 +1713,10 @@ def compile_card(c, anyc):
         elif "choose new targets for target spell" in lt: k.answer = "redirect"
         if k.answer and "Creature" not in k.types: k.hold = True
     if k.hold and not k.answer: k.kill = kill_types(lt)
+    if any(e[0] == "kill_blk" for e in k.spell): k.kill = k.kill | {"creature"}      # incl. one-sided wipes (Plague Wind)
+    bm = re.search(r"deals (\d+) damage to any (?:other )?target", lt)
+    if k.hold and bm and int(bm.group(1)) > 0 and not any(e[0] == "kill_blk" for e in k.spell):
+        k.burn_blk = ("kill_blk", "dmg", 1, int(bm.group(1)), {"non": frozenset(), "need": frozenset(), "cmp": ()}, False, False)
     if "Aura" in k.subtypes and re.search(r"enchanted creature (?:can't attack|can't block|loses all|doesn't untap|has base power|gets -\d)"
                                          r"|enchanted creature is an? [^.]*?with base power", lt):
         k.debuff = True                                   # removal Aura: cast on an opponent's creature, never on yours
@@ -1635,7 +1735,7 @@ def compile_card(c, anyc):
         if all(e[0] == "tutor" and e[2] == "graveyard" for e in k.spell): k.requires = "gy_payoff"
     categorize(k)
     if any(e[0] == "oracle" for e in k.etb): k.requires = "oracle"
-    k.status = "blank" if missed and not done and not k.units else "partial" if missed else "modeled"
+    k.status = "blank" if missed and not done and not k.units else "partial" if missed > vac else "modeled"   # opponent-only lines can't matter here
     if k.status == "blank" and vac == missed: k.status = "vacuum"
     if k.hold: k.status = "held"
     return k
@@ -2374,7 +2474,7 @@ class Game:
         old = bool(kinds & self.CARD_FLOW) or ("ctr" in kinds and "draw" in kinds) or ("prolif" in kinds and prolif_useful) \
             or any(e[0] == "recur" and any(self.sim.tmatch(e[1], c) for c in self.gy) for e in fx)
         if instant: ok = face or life
-        else: ok = old or face or life or "token" in kinds
+        else: ok = old or face or life or "token" in kinds or ("kill_blk" in kinds and not ab["sac"] and self.blk_target_exists(fx))
         if not ok: return False
         if ab["tap"] and (p.tapped or not self.usable(p) and not k.is_land): return False
         if ab["sac"] and "draw" in kinds and not (len(self.hand) <= 1 and self.turn >= 5): return False
@@ -2949,6 +3049,8 @@ class Game:
                     if isinstance(q, Perm) and q in self.perms and self.is_creature(q):
                         q.pp += self.amt(e[2], p); q.pt += self.amt(e[3], p)
                         if e[4]: q.tkw = (q.tkw or set()) | set(e[4])
+            elif t == "kill_blk":
+                if not self.dry: self.kill_blockers(e, name)
             elif t == "noblock":
                 if self.dry: continue
                 if e[1] in ("all", "ground"): self.noblock = e[1]; self.note(f"    {'opponents' if e[1] == 'all' else 'non-flying'} creatures can't block this turn")
@@ -3294,6 +3396,31 @@ class Game:
             d = 1 if "deathtouch" in kws else b["t"]
             if "indestructible" not in b["kw"] and 0 < d <= rem: return False     # it takes one with it: a trade
         return True
+
+    def clear_blockers(self, ready):
+        """Held removal on the one blocker between your attack and killing an opponent (a single-target spell that can
+        kill it), else a one-sided wipe when clearing the board gets there. Swords-style life gain counts against it.
+        Never cast just to trade: removal stays held for disruption otherwise. True if something was cast."""
+        rmfx = lambda c: next((e for e in c.spell if e[0] == "kill_blk"), None) or c.burn_blk
+        held = sorted((c for c in dict.fromkeys(self.hand) if c.hold and rmfx(c)), key=lambda c: (c.mv, c.name))
+        if not held: return False
+        for i in self.alive():
+            o = self.opps[i]
+            if not o["board"] or self.through(i, ready, o["board"]) >= o["life"]: continue
+            for b in sorted(o["board"], key=lambda b: (-(b["p"] + b["t"]), b["name"])):
+                for c in held:
+                    e = rmfx(c)
+                    if e[6] or not can_kill(e, b, o["board"]): continue
+                    if self.through(i, ready, o["board"], drop=b) < o["life"] + (max(0, b["p"]) if e[5] else 0): continue
+                    if self.cast_held(c, f"opponent {i + 1}'s {b['name']}"):
+                        self.remove_blocker(i, b, e, c.name); return True
+            for c in held:
+                e = rmfx(c)
+                if not e[6]: continue
+                left = [b for b in o["board"] if not can_kill(e, b, o["board"])]
+                if self.through(i, ready, left) >= o["life"] and self.cast_held(c, "every opposing creature it can"):
+                    self.kill_blockers(e, c.name); return True
+        return False
 
     def through(self, i, ready, board, drop=None, unblock=None):
         """Damage `ready` attackers ((perm, power, toughness, keywords)) get through if all of them go at opponent i and it
@@ -3718,6 +3845,8 @@ class Game:
             if self.rng.random() < OPP_SECOND:
                 self.fire("opp_cast", OPP_CREATURE if self.rng.random() < OPP_CREATURE_SHARE else OPP_SPELL)
                 self.fire("opp_second")
+            if self.opps[i].get("bounced"):                       # bounced blockers are recast on their turn
+                self.opps[i]["board"] += self.opps[i]["bounced"]; self.opps[i]["bounced"] = []
             if self.bspec: self.arrive(self.turn + 1, i)       # their creatures and denial for your next combat
             if self.has_engine() and self.alive():
                 self.note(f"  opponent {i + 1}'s turn ({sum(1 for u in self.pool if not u[5])} mana open)")
@@ -3761,16 +3890,63 @@ class Game:
             if self.wants_attack(p, pw, kws): out.append((p, pw, tg, kws))
         return out
 
+    def cast_held(self, c, what):
+        """Pay for and cast held removal c (its effect is applied by the caller). True if cast."""
+        opts = self.options(c, "hand")
+        if not opts or not self.pay(c, *opts[0]): return False
+        g_, p_ = opts[0]
+        self.hand.remove(c); self.gy.append(c); self.casts += 1; self.spent += g_ + len(p_)
+        self.note(f"  {c.name} removes {what}")
+        return True
+
     def cast_removal(self, want, what):
         """Cast the cheapest held removal that can hit a `want` permanent (creature / artifact / enchantment)."""
-        for c in sorted((c for c in dict.fromkeys(self.hand) if want in c.kill), key=lambda c: (c.mv, c.name)):
-            opts = self.options(c, "hand")
-            if not opts or not self.pay(c, *opts[0]): continue
-            g_, p_ = opts[0]
-            self.hand.remove(c); self.gy.append(c); self.casts += 1; self.spent += g_ + len(p_)
-            self.note(f"  {c.name} removes {what}")
-            return c
+        for c in sorted((c for c in dict.fromkeys(self.hand) if want in c.kill),
+                        key=lambda c: (any(e[0] == "kill_blk" and e[6] for e in c.spell), c.mv, c.name)):   # wipes last
+            if self.cast_held(c, what): return c
         return None
+
+    def remove_blocker(self, i, b, e, src):
+        """Blocker b leaves opponent i's board: dies, is exiled, or (bounce) comes back on their next turn."""
+        o = self.opps[i]
+        if b in o["board"]: o["board"].remove(b)
+        if e[1] == "bounce": o.setdefault("bounced", []).append(b)
+        else: b["dead"] = True
+        if e[5]: o["life"] += max(0, b["p"])                 # Swords to Plowshares
+        self.bstat["removed_blk"] += 1
+        self.note(f"    {src}: opponent {i + 1}'s {b['name']} " + ("bounced" if e[1] == "bounce" else "removed"))
+
+    def blk_pick(self, e):
+        """The blocker a player aims removal at: the one whose removal lets the most damage through at the opponent
+        you're killing; with none there, the biggest legal one anywhere. (opponent, blocker) or None."""
+        f, ready = self.focus(), self.ready_attackers()
+        if f is not None:
+            board = self.opps[f]["board"]
+            legal = [b for b in board if can_kill(e, b, board)]
+            if legal:
+                base = self.through(f, ready, board) if ready else 0
+                return f, max(legal, key=lambda b: ((self.through(f, ready, board, drop=b) - base) if ready else 0,
+                                                    b["p"] + b["t"], b["name"]))
+        rest = [(i, b) for i in self.alive() for b in self.opps[i]["board"] if can_kill(e, b, self.opps[i]["board"])]
+        return max(rest, key=lambda t: (t[1]["p"] + t[1]["t"], t[1]["name"])) if rest else None
+
+    def kill_blockers(self, e, src):
+        """Apply a kill_blk effect (ETB/trigger/activated/spell removal) to opponents' --blockers creatures."""
+        if not any(self.opps[i]["board"] for i in self.alive()): return
+        if e[1] == "edict" or e[6]:
+            for i in (self.alive() if e[6] else [self.focus()]):
+                if i is None: continue
+                board = self.opps[i]["board"]
+                for b in [b for b in board if can_kill(e, b, board)][:None if e[1] != "edict" else 1]:
+                    self.remove_blocker(i, b, e, src)
+            return
+        for _ in range(e[2]):
+            pick = self.blk_pick(e)
+            if not pick: break
+            self.remove_blocker(pick[0], pick[1], e, src)
+
+    def blk_target_exists(self, fx):
+        return any(e[0] == "kill_blk" and self.blk_pick(e) for e in fx)
 
     def clear_path(self):
         """Before combat, held removal (the kind that clears stax) goes at what stops your attack: a Silent Arbiter,
@@ -3786,12 +3962,7 @@ class Game:
             if any(a[1] > len(self.hand) for a in ready): targets += [("bridge", i, d) for i, d in self.denial("bridge")]
             f = self.focus()
             targets += [("prop", i, d) for i, d in self.denial("prop") if i == f]
-            for i in self.alive():
-                o = self.opps[i]
-                if not o["board"] or self.through(i, ready, o["board"]) >= o["life"]: continue
-                b = next((b for b in sorted(o["board"], key=lambda b: (-(b["p"] + b["t"]), b["name"]))
-                          if "indestructible" not in b["kw"] and self.through(i, ready, o["board"], drop=b) >= o["life"]), None)
-                if b: targets.append(("blk", i, b))
+            if self.clear_blockers(ready): continue
             for kind, i, x in targets:
                 what = f"opponent {i + 1}'s " + (DENY[kind] if kind != "blk" else x["name"])
                 if not self.cast_removal(DENY_TYPE.get(kind, "creature"), what): continue
@@ -4704,6 +4875,7 @@ def explain(cache, names, commanders):
         if k.requires == "gy": bits.append("needs a target in your graveyard")
         elif k.requires == "gy_payoff": bits.append("cast only with a graveyard payoff (recursion in hand/play or a flashback-style card to fetch)")
         elif k.requires: bits.append("needs a " + k.requires)
+        if k.burn_blk: bits.append(f"can burn a blocker ({k.burn_blk[3]} damage)")
         if k.hold: bits.append("held (interaction)" + (f"; can kill tax/lock pieces: {'/'.join(sorted(k.kill))}" if k.kill else ""))
         if k.answer: bits.append(f"answers disruption: {k.answer}" + (" (free with a commander out)" if k.free_cmdr else ""))
         if k.cum_upkeep: bits.append("cumulative upkeep: let go after 3 upkeeps ~approx")

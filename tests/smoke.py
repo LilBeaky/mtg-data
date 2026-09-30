@@ -171,6 +171,19 @@ def checks():
         dict(name="goldfish coverage card", cmd=S("goldfish_coverage.py", "card", "Tromp the Domains", "Rites of Initiation"),
              must=["Tromp the Domains — pump team +1 per domain/+1 per domain trample EOT"],
              must_not=["Rites of Initiation — pump team"]),        # a 'for each' it can't count is never read flat
+        # removal is read as removal of opponents' blockers, never aimed at your own board; opponent-only lines are vacuum
+        dict(name="goldfish coverage removal + vacuum", cmd=S("goldfish_coverage.py", "card", "Ravenous Chupacabra", "Skinrender",
+             "Swords to Plowshares", "Nekrataal", "Plague Wind", "Deathrite Shaman", "Flickerwisp", "Goblin Snowman", "Beast Within",
+             "Propaganda", "Mind Rot", "Beacon of Tomorrows", "Thieving Amalgam"),
+             must=["Ravenous Chupacabra — ETB removal: destroy an opposing creature",
+                   "Skinrender — ETB removal: -3/-3 on an opposing creature",
+                   "Swords to Plowshares — removal: exile an opposing creature; its controller gains life = its power",
+                   "Nekrataal — ETB removal: destroy an opposing creature (nonartifact,nonblack)",
+                   "Plague Wind — removal: destroy every opposing creature",
+                   "vacuum   other  Propaganda", "vacuum   other  Mind Rot",
+                   "blank    other  Beacon of Tomorrows", "partial  other  Thieving Amalgam"],
+             must_not=["Deathrite Shaman — act [T 1]: removal", "Flickerwisp — ETB removal", "Goblin Snowman — act [T]: removal",
+                       "Beast Within — removal"]),   # graveyard card, flicker, 'it's blocking', gives them a body
         dict(name="goldfish mech explain", cmd=S("goldfish.py", MECH, "--explain"),
              must=["Nyxbloom Ancient — mana x3 (permanents)",
                    "Mana Reflection — mana x2 (permanents)", "Vorinclex, Voice of Hunger — mana +1 per tap (lands)",
@@ -186,7 +199,8 @@ def checks():
                    "Tolarian Terror — costs {1} less per gy_instsorc", "unmodeled: Convoke",
                    "conditional trigger (intervening 'if') not modeled", "Land Tax — on upkeep: if an opponent has more lands ~opp",
                    "Smothering Tithe — on opp_draw taxed: treasure 1; ~opp"],
-             must_not=["partly unread: n instant", "Kalitas, Bloodchief of Ghet — act", "Glen Elendra's Answer — token",
+             must_not=["partly unread: n instant", "Kalitas, Bloodchief of Ghet — act [T 3]: removal: destroy an opposing creature, token",   # its token copies their creature: unread
+                       "Glen Elendra's Answer — token",
                        "Embercleave — costs", "on opp_cast(noncreature) 1/turn: ;"]),
         dict(name="goldfish mech run", cmd=S("goldfish.py", MECH, "--trials", "200", "--shuffles", "10"),
              must=["tutor priorities from the list header: key: Nyxbloom Ancient", "disruption ladder, Bracket 3", "tutor targets"]),
