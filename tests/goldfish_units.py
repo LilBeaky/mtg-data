@@ -844,11 +844,28 @@ def _():
     G = fgame(perms=[RAGOST, "Nuka-Cola Vending Machine"], lands=["Mountain"] * 3); G.build_pool(); G.combat()
     H = fgame(perms=[RAGOST], lands=["Mountain"] * 3); H.build_pool(); H.combat()
     return G.dmg == 0 and not G.perms[0].tapped and H.dmg == 2
-@check("Experimental Confectioner: sacrificing a Food makes a Rat; guards: Ashnod's Altar (sacrifice for mana) and Food Chain stay unread")
+@check("Experimental Confectioner: sacrificing a Food makes a Rat; guard: Food Chain ('exile a creature' cost) stays unread")
 def _():
     G = fgame(perms=["Experimental Confectioner"]); G.make_tokens(g.FOOD_E, 1)
     G.leave(tokens(G, "Food")[0], "is sacrificed", sac=True)
-    return len(tokens(G, "Rat")) == 1 and FK["Ashnod's Altar"].status == "blank" and FK["Food Chain"].status == "blank"
+    return len(tokens(G, "Rat")) == 1 and FK["Food Chain"].status == "blank"
+@check("Ashnod's Altar: two Servo tokens are 4 extra mana, spent only after the lands; real creatures are never fodder")
+def _():
+    G = fgame(perms=["Ashnod's Altar", "Grizzly Bears"], lands=["Mountain"] * 2)
+    for _ in range(2): G.enter(G.sim.token_card(("token", 1, 1, ("Servo",), "", "artifact creature", 1, frozenset(), False)))
+    G.build_pool(); n = sum(1 for u in G.pool if not u[5])
+    ok2 = G.pay(None, 2, [])                             # lands cover it: no token dies
+    alive = len(tokens(G, "Servo"))
+    ok3 = G.pay(None, 3, [])                             # now both Servos go (CC each, one C left over)
+    return n == 6 and ok2 and alive == 2 and ok3 and not tokens(G, "Servo") and any(p.k.name == "Grizzly Bears" for p in G.perms)
+@check("Phyrexian Tower: one creature per tap; its own {C} and the sacrifice exclude each other")
+def _():
+    k = g.compile_card(next(c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] == "Phyrexian Tower"), g.ALL5)
+    G = fgame(perms=[])
+    G.lands = [g.Perm(k)]
+    for _ in range(2): G.enter(G.sim.token_card(("token", 1, 1, ("Servo",), "", "artifact creature", 1, frozenset(), False)))
+    G.build_pool(); ok = G.pay(None, 0, [frozenset("B"), frozenset("B")])
+    return ok and len(tokens(G, "Servo")) == 1 and G.lands[0].tapped and not G.pay(None, 1, [])
 
 # ---- life you pay yourself (docs/GOLDFISH.md "Life")
 LNAMES = ["Kenrith, the Returned King", "Llanowar Wastes", "City of Brass", "Ancient Tomb", "Mana Confluence", "Horizon Canopy",
@@ -949,7 +966,9 @@ XNAMES = ["Formidable Speaker", "Birthing Pod", "Eldritch Evolution", "Grizzly B
           "Gray Merchant of Asphodel", "Mox Opal", "Sol Ring", "Soulstinger", "Etched Oracle", "Glen Elendra Guardian",
           "Thought Scour", "Riveteers Overlook", "Mask of Memory", "Sign in Blood", "Pippin's Bravery", "Stargaze",
           "Culling Ritual", "Everflowing Chalice", "Tezzeret, Master of the Bridge", "Exotic Disease", "Storm the Citadel",
-          "Casting of Bones", "Liliana's Specter", "Cabal Coffers", "Elvish Archdruid", "Llanowar Elves", "Enigmatic Incarnation"]
+          "Casting of Bones", "Liliana's Specter", "Cabal Coffers", "Elvish Archdruid", "Llanowar Elves", "Enigmatic Incarnation",
+          "Krenko, Mob Boss", "Brightstone Ritual", "Relic of Sauron", "Return of the Wildspeaker", "Goblin Instigator",
+          "Earthshaker Dreadmaw", "Orcish Lumberjack", "Kozilek, the Great Distortion"]
 XRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(XNAMES)}
 XK = {n: g.compile_card(XRAW[n], g.ALL5) for n in XNAMES}
 
@@ -1052,6 +1071,24 @@ def _():
     return G.val(XK["Cabal Coffers"].dyn_mana, G.lands[0], 0) == 2 and G.val(XK["Elvish Archdruid"].dyn_mana, G.perms[0], 0) == 2
 @check("Culling Ritual's mana 'for each permanent destroyed' is never read as one {B}")
 def _(): return not any(e[0] == "mana" for e in XK["Culling Ritual"].spell)
+
+@check("'X, where X is ...' reads the clause, not the ability's X: Krenko makes one Goblin per Goblin (3 with 2 others)")
+def _():
+    G = xgame(perms=["Krenko, Mob Boss", "Goblin Instigator"])
+    G.make_tokens(XK["Krenko, Mob Boss"].acts[0]["fx"][0], 1)
+    G.do(XK["Krenko, Mob Boss"].acts[0]["fx"], XK["Krenko, Mob Boss"], G.perms[0])
+    return sum(1 for p in G.perms if p.k.token) == 1 + 3
+@check("Rituals that count: Brightstone Ritual adds R per Goblin; 'two mana in any combination of {U}, {B}, and/or {R}' is two")
+def _():
+    e = XK["Brightstone Ritual"].spell[0]
+    G = xgame(perms=["Krenko, Mob Boss", "Goblin Instigator"]); G.build_pool(); G.do([e], XK["Brightstone Ritual"])
+    return e[0] == "mana_n" and XK["Brightstone Ritual"].ritual and free_units(G) == 2 and len(XK["Relic of Sauron"].units) == 2
+@check("Counts keep their qualifiers: non-Human greatest power (Wildspeaker), other Dinosaurs (Dreadmaw); unreadable ones stay unread (Kozilek)")
+def _():
+    return XK["Return of the Wildspeaker"].spell == [("draw", ("power", "Human"))] and XK["Earthshaker Dreadmaw"].etb == [("draw", ("sub_other", "Dinosaur"))] \
+        and not XK["Kozilek, the Great Distortion"].castfx
+@check("Land fodder isn't read as a sac outlet (Orcish Lumberjack stays unread rather than never firing)")
+def _(): return not XK["Orcish Lumberjack"].sac_outlets and XK["Orcish Lumberjack"].status == "blank"
 
 def main():
     fails = 0

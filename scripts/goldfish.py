@@ -247,6 +247,17 @@ def _load_ability_words():
     return {w.strip().replace("’", "'") for w in re.split(r",\s*(?:and\s+)?", m.group(1))} if m else set()
 
 ABILITY_WORDS = _load_ability_words()
+
+def _load_land_types():
+    """CR 205.3i land types (Forest, Desert, Gate, ...): fodder of these is a land, which fodder filters don't take."""
+    try:
+        with open(mtg.RULES_FILE, encoding="utf-8", errors="ignore") as fh:
+            m = re.search(r"^205\.3i .*?The land types are (.+?)\.(?:\s|$)", fh.read(), re.M)
+    except Exception:
+        return set(t.capitalize() for t in BASIC)
+    return {w.strip().replace("’", "'") for w in re.split(r",\s*(?:and\s+)?", m.group(1))} if m else set(t.capitalize() for t in BASIC)
+
+LAND_TYPES = _load_land_types()
 TOKEN_CAP = 150          # permanents on your side; stops runaway token loops
 
 def as_subtype(w):
@@ -448,7 +459,9 @@ def _fx_token(m):
             and not re.search(r"you may have its controller $", before):     # Najeela: the attacking Warrior's controller is you
         return None                                   # the token comes off someone else's creature: not in a vacuum
     if re.search(r"\bcop(?:y|ies)\b", desc + rest): return None               # copies aren't modeled
-    n = num(m.group("n")); n = "X" if m.group("n") == "x" else n if isinstance(n, int) else 1
+    n = _xn(m) if m.group("n") == "x" else num(m.group("n"))              # Krenko: 'X, where X is the number of Goblins'
+    if n is None: return None
+    n = n if isinstance(n, (int, tuple)) or n == "X" else 1
     tapped = "tapped" if re.match(r"create \S+ tapped\b", m.group(0)) else False
     fe = re.search(r"\bfor each (.+)$", rest)
     if fe:
@@ -495,7 +508,19 @@ def _face_n(n, rest):
     if not wm: return "X"
     ms = re.fullmatch(r"(\w+?)s? you control", wm.group(1).strip())
     if ms and as_subtype(ms.group(1)): return ("sub", as_subtype(ms.group(1)))
-    return clean_dyn(wm.group(1))
+    return _count(wm.group(1))
+
+def _count(what):
+    """A count clause ('the number of creatures you control', 'the greatest power among creatures you control') -> key or None."""
+    w = re.sub(r"^the number of ", "", what.strip())
+    if re.match(r"(?:its|~'s) power$", w): return ("pow",)                        # Prime Speaker Zegana, Lifeblood Hydra
+    if re.match(r"cards? in (?:target|an) opponent's hand$", w): return ("opp_hand",)   # ~opp (Recurring Insight)
+    om = re.match(r"(?:the number of )?other ([a-z\-']+?)s? you control$", w)
+    if om and as_subtype(om.group(1)): return ("sub_other", as_subtype(om.group(1)))   # Earthshaker Dreadmaw: 'other Dinosaurs'
+    if re.match(r"(?:the )?greatest power among other creatures you control$", w): return ("power_o",)    # Zegana
+    gm = re.match(r"(?:the )?greatest power among (?:non-?([a-z]+) )?creatures you control$", w)
+    if gm: return ("power",) + ((as_subtype(gm.group(1)),) if gm.group(1) and as_subtype(gm.group(1)) else ()) if not gm.group(1) or as_subtype(gm.group(1)) else None
+    return clean_dyn(w)
 
 def _xn(m, g="n"):
     """A count word; 'x' reads its sentence's 'where X is ...' (a count key), else it's the spell's X. None: an unread count."""
@@ -570,12 +595,13 @@ def _fx_pump(m):
 
 def _fx_ctr_on(m):
     w = m.group("who")
+    if not _xn(m): return None                            # 'put X +1/+1 counters ..., where X is' something unread
     if m.group("kind").startswith("-"):                   # -1/-1 counters
         if w.startswith("target") and "you control" not in w: return None      # removal (the kill reader declined it)
         if re.match(r"\s*for each", m.string[m.end():]): return None           # a count not read flat
-        if "target" in w: return ("ctr_on", "least", m.group("kind"), num(m.group("n")), "other" in w)   # Soulstinger
+        if "target" in w: return ("ctr_on", "least", m.group("kind"), _xn(m), "other" in w) if _xn(m) else None   # Soulstinger
     tm = re.match(r"each of (?:up to )?(one|two|three) ", w)
-    if tm: return ("ctr_on", ("targets", num(tm.group(1))), m.group("kind"), num(m.group("n")), "other" in w)
+    if tm: return ("ctr_on", ("targets", num(tm.group(1))), m.group("kind"), _xn(m), "other" in w)
     if w.startswith("each"):
         am = re.match(r"each (?:other )?([a-z\-]+?)s?(?: creatures?)? you control$", w)
         word = am.group(1) if am else "creature"
@@ -585,8 +611,8 @@ def _fx_ctr_on(m):
         elif as_subtype(word):
             f = parse_filter("creature"); f["sub"] = {as_subtype(word)}; f["unknown"] = False
         else: return None
-        return ("ctr_on", ("each", f) if f else "each", m.group("kind"), num(m.group("n")), "other" in w)
-    return ("ctr_on", "obj" if w in ("it", "that creature") else "target", m.group("kind"), num(m.group("n")), "other" in w)
+        return ("ctr_on", ("each", f) if f else "each", m.group("kind"), _xn(m), "other" in w)
+    return ("ctr_on", "obj" if w in ("it", "that creature") else "target", m.group("kind"), _xn(m), "other" in w)
 
 def _fx_mana(m):
     if re.match(r"x mana", m.group(1)):
@@ -595,7 +621,11 @@ def _fx_mana(m):
     units, _ = parse_prod(m.group(1), ALL5)
     if units and re.match(r" for each card in (?:target|an) opponent's hand", m.string[m.end():]):
         units = units * OPP_HAND                          # ~opp: an opponent holds OPP_HAND cards
-    elif re.match(r"(?:\s*or \{[^}]+\})*\s*for each\b", m.string[m.end():]): return None      # Culling Ritual: a count not read flat
+    else:
+        fe = re.match(r"(?P<alt>(?:\s*or \{[^}]+\})*)\s*for each ([^.]+)", m.string[m.end():])
+        if fe:                                            # Brightstone Ritual ('for each Goblin on the battlefield'); Culling Ritual unread
+            key = None if fe.group("alt") else dyn_prod("for each " + fe.group(2))
+            return ("mana_n", units, key) if key and units else None
     return ("mana", units) if units else None
 
 # ---- creature removal: read as removal of opponents' creatures (--blockers boards), never aimed at your own
@@ -671,9 +701,9 @@ FX = [
     (re.compile(r"discards? (?:their|your) hand,? then draws? cards equal to the greatest number"),
      lambda m: ("wheel", "max", False)),
     (re.compile(SUBJ + r"draws? cards equal to (?:the number of )?(?P<what>[^.;]+)"),
-     lambda m: ("draw", dyn_key(m.group("what")) or ("unknown",)) if _subj_ok(m) else None),
+     lambda m: ("draw", _count(m.group("what"))) if _subj_ok(m) and _count(m.group("what")) else None),
     (re.compile(SUBJ + r"draws? (?:a|one) cards? for each (?P<what>[^.;]+)"),
-     lambda m: ("draw", dyn_key(m.group("what")) or ("unknown",)) if _subj_ok(m) else None),
+     lambda m: ("draw", _count(m.group("what"))) if _subj_ok(m) and _count(m.group("what")) else None),
     (re.compile(SUBJ + r"draws? (?P<n>a|an|one|two|three|four|five|six|seven|eight|x|\d+) (?:additional )?cards?"),
      lambda m: ("draw", _xn(m)) if _subj_ok(m) and _xn(m) else None),
     # Card filtering, not card advantage: Brainstorm-style put-backs and looter discards.
@@ -695,12 +725,12 @@ FX = [
      lambda m: ("dig_gy", num(m.group(1)), tu.parse_target(_orig(m, "what") + " card", _CTX["raw"] or {}))),
     (re.compile(SUBJ + r"mills? (?P<n>a|an|one|two|three|four|five|six|seven|eight|nine|ten|x|\d+) cards?"),
      lambda m: (("mill", _xn(m)) + (("choice",) if (m.group("subj") or "").strip() == "target player" else ())) if _subj_ok(m) and _xn(m) else None),
-    (re.compile(r"\bscry (\w+)"), lambda m: ("scry", num(m.group(1)))),
-    (re.compile(r"\bsurveil (\w+)"), lambda m: ("surveil", num(m.group(1)))),
+    (re.compile(r"\bscry (\w+)"), lambda m: ("scry", _xn(m, 1)) if _xn(m, 1) else None),
+    (re.compile(r"\bsurveil (\w+)"), lambda m: ("surveil", _xn(m, 1)) if _xn(m, 1) else None),
     (re.compile(r"you may play an additional land this turn"), lambda m: ("extra_land", 1)),
     (re.compile(r"put (?:a|up to one) land card from your hand onto the battlefield"), lambda m: ("land_from_hand", 1)),
     (re.compile(r"create (a|an|one|two|three|four|five|x|\w+) (tapped )?(?:(?:food|clue|blood) token or an? )?treasure tokens?"),
-     lambda m: ("treasure", num(m.group(1)), bool(m.group(2)))),
+     lambda m: ("treasure", _xn(m, 1), bool(m.group(2))) if _xn(m, 1) else None),
     (re.compile(r"\bcreate (?P<n>a|an|one|two|three|four|five|six|seven|x|\d+) (?:tapped )?(?:(?P<p>\d+|x)/(?P<t>\d+|x) )?"
                 r"(?P<desc>[a-z ,\-]*?)\btokens?\b(?P<rest>[^.]*)"), _fx_token),
     (re.compile(r"\binvestigate(?: (twice|three times))?"),
@@ -712,7 +742,7 @@ FX = [
     (re.compile(r"\badd ((?:\{[^}]+\})+|(?:two|three|four|five|six|seven|eight|nine|ten) \{[^}]+\}|one mana of any color|\w+ mana (?:of any one color|in any combination of colors))"), _fx_mana),
     (re.compile(r"\bproliferate(?:,? then proliferate again| twice)?"),
      lambda m: ("prolif", 2 if ("twice" in m.group(0) or "again" in m.group(0)) else 1)),
-    (re.compile(r"put (a|an|one|two|three|\w+) (\S+?) counters? on ~"), lambda m: ("ctr", m.group(2), num(m.group(1)))),
+    (re.compile(r"put (a|an|one|two|three|\w+) (\S+?) counters? on ~"), lambda m: ("ctr", m.group(2), _xn(m, 1)) if _xn(m, 1) else None),
     (re.compile(r"double the number of each kind of counter on"), lambda m: ("double_ctr",)),
     (re.compile(r"you may cast (?:a|an) (?:[\w ]+? )?spell with mana value (\w+) or less from your hand without paying its mana cost"),
      lambda m: ("free_cast", num(m.group(1)))),
@@ -895,6 +925,8 @@ def pv(v, sign=False):
     if v == "X": return "X"
     if isinstance(v, tuple) and v and v[0] == "per":
         return ("-" if v[1] < 0 else "+" if sign else "") + f"{abs(v[1])} per " + " ".join(v[2])
+    if isinstance(v, tuple) and v[0] == "power": return "greatest power" + (f" (non-{v[1]})" if len(v) > 1 else "")
+    if isinstance(v, tuple) and v[0] == "power_o": return "greatest power among others"
     if isinstance(v, tuple): return {"pow": "its power", "objpow": "that creature's power"}.get(v[0], "per " + " ".join(v))
     return str(v)
 
@@ -902,7 +934,7 @@ def fx_str(e):
     t = e[0]
     if t in ("draw", "scry", "surveil", "prolif", "treasure", "extra_land", "land_from_hand", "free_cast"):
         v = e[1]
-        return f"{t} {'/'.join(v) if isinstance(v, tuple) else v}" + (" tapped" if t == "treasure" and len(e) > 2 and e[2] else "")
+        return f"{t} {pv(v)}" + (" tapped" if t == "treasure" and len(e) > 2 and e[2] else "")
     if t == "wheel": return f"wheel {e[1]}" + (" ~opp" if e[1] == "max" else "")
     if t == "oracle": return f"win if devotion to {e[1]} >= library (held until it wins)"
     if t == "bob": return "draw 1, lose life equal to its MV"
@@ -935,7 +967,7 @@ def fx_str(e):
     if t == "mana": return "mana " + "".join("".join(sorted(u)) if len(u) == 1 else "*" for u in e[1])
     if t == "token":
         what = " ".join(e[3]) or "creature"
-        cnt = "/".join(e[1]) if isinstance(e[1], tuple) else e[1]
+        cnt = f"({pv(e[1])})" if isinstance(e[1], tuple) else e[1]
         cr = "creature" in e[5]
         return f"token {cnt}x {what}" + (f" {e[2]}/{e[6]}" if cr else "") + (" artifact" if e[5] == "artifact creature" else "") \
             + (" " + ",".join(sorted(e[7])) if e[7] else "") + (" attacking" if e[8] is True else " tapped" if e[8] else "") \
@@ -961,6 +993,7 @@ def fx_str(e):
     if t == "free_top": return f"free cast of the next nonland card (MV <= {e[1]})"
     if t == "biorhythm": return "life totals become creature counts ~opp"
     if t == "mana_x": return "mana X (total power of attackers)"
+    if t == "mana_n": return "mana " + "".join("".join(sorted(u)) if len(u) == 1 else "*" for u in e[1]) + " " + pv(e[2])
     if t == "double_pow": return "double power" + (" and toughness" if e[1] else "") + f" of each {e[2] or 'creature'} EOT"
     if t == "untap_cr": return f"untap {e[1]} creatures"
     if t == "untap_lands": return "untap your lands"
@@ -1046,6 +1079,7 @@ class Card:
         self.dyn_pt = None       # ('both' | 'power', dyn key): */* read at use time (Tarmogoyf-style counts)
         self.pt_unread = False   # a * power/toughness the parser couldn't read (counted as 0, never attacks)
         self.cond_units = []     # mana abilities with 'Activate only if you control ...': [(units, count key, n)]
+        self.sac_outlets = []    # 'Sacrifice a creature: Add {C}{C}' (Ashnod's Altar): [(fodder filter, units, taps?)]
         self.tough_known = True  # toughness read (printed, or counted): toughness 0 kills it (X/X tokens and * stay out)
         self.attach = None       # equipment/aura bonus to the creature it's on: (power, toughness, keywords)
         self.equip = None        # equip cost (generic, pips)
@@ -1201,6 +1235,9 @@ def parse_prod(prod, anyc):
     p = prod.lower().strip()
     m = re.match(r"(two|three|four|five|six|seven|eight|nine|ten) (\{[^}]+\})$", p)
     if m: return [frozenset(m.group(2)[1:-1].upper())] * num(m.group(1)), False
+    m = re.match(r"(\w+) mana in any combination of ((?:\{[wubrgc]\}(?:,? (?:and/or|or) |, )?)+)$", p)
+    if m and isinstance(num(m.group(1)), int):          # 'three mana in any combination of {R} and/or {G}' (Orcish Lumberjack)
+        return [frozenset(x.upper() for x in SYM.findall(m.group(2)))] * num(m.group(1)), False
     m = re.match(r"(\w+) mana (?:in any combination of colors|of any one color)", p)
     if m:
         n = num(m.group(1))
@@ -1256,7 +1293,7 @@ def fodder_filt(article, subj):
         if any(w not in FODDER_WORDS and not as_subtype(w) for w in re.findall(r"[a-z\-']+", part)):
             return None                                   # 'another colorless creature', 'a creature with ...': unread
         f = perm_filt("another" if article == "another" else "a", part.strip())
-        if not f or f["type"] == "Land": return None
+        if not f or f["type"] == "Land" or f["sub"] & LAND_TYPES: return None        # lands aren't fodder here (Orcish Lumberjack)
         fs.append(f)
     return {"any": fs, "n": n} if fs else None
 
@@ -1659,7 +1696,12 @@ def parse_line(k, L, anyc, abil):
     if m:
         tap, g, p, sac, rm, other, fod = ab_cost(m.group("cost"))
         if other or rm: return False
-        if fod: k.notes.append("mana ability with a sacrifice-a-permanent cost not modeled"); return False     # Ashnod's Altar, Gilded Goose
+        if fod:                                           # Ashnod's Altar, Phyrexian Tower, Gilded Goose: fodder becomes mana
+            units, approx = parse_prod(m.group("prod"), anyc)
+            restr, co = restriction(m.group("rest"))
+            if not units or approx or g or p or restr == "unknown" or re.search(r"activate only", m.group("rest").lower()): return False
+            k.sac_outlets.append((fod, [(NOC, u, restr, co) if restr else (u, NOC, None, co) for u in units], tap))
+            return True
         if m.group("vivid"): k.vivid = True; return True
         units, approx = parse_prod(m.group("prod"), anyc)
         if not units: return False
@@ -1706,6 +1748,10 @@ def parse_line(k, L, anyc, abil):
     m = re.search(r"~ enters with (a|an|one|two|three|four|five|six|x|\d+) (\S+?) counters? on it", lo)
     if m:
         n = num(m.group(1))
+        if m.group(1) == "x":                         # 'where X is ...' (Prime Speaker Zegana); a bare X is the spell's
+            n = _face_n("x", lo[m.end():].split(".")[0] if "where x is" in lo[m.end():].split(".")[0] else
+                        lo[lo.index("where x is"):] if "where x is" in lo else "")
+            if not n: return False
         fe = re.match(r" for each (.+?)\.?$", lo[m.end():])
         if fe:                                        # converge (Magmablood Archaic), 'for each creature you control'
             n = clean_dyn(fe.group(1))
@@ -1942,7 +1988,7 @@ def compile_card(c, anyc):
         k.alpha = True
     lt = re.sub(r'"[^"]*"', '""', text.lower())          # granted abilities in quotes aren't the card's own interaction
     if k.types & {"Instant", "Sorcery"}:
-        k.ritual = bool(k.spell) and all(e[0] == "mana" for e in k.spell)
+        k.ritual = bool(k.spell) and all(e[0] in ("mana", "mana_n") for e in k.spell)
         k.hold = bool(RX_INTERACT.search(re.sub(FACE_ONLY, "", lt))) and not k.ritual
     if "Instant" in k.types or "flash" in kws:
         if re.search(r"counter target [^.]*?spell\b", lt): k.answer = "counter"
@@ -2092,7 +2138,7 @@ def categorize(k):
     k.opp_approx = any(t[0] in ("opp_cast", "opp_draw", "opp_second", "opp_land") or t[4] for t in k.trig) \
         or any(e[0] == "cond" and e[1] == "opp_lands" or e[0] == "biorhythm" or e[0] == "wheel" and e[1] == "max"
                or e[0] == "draw" and e[1] == ("opp_hand",) for e in fxs)
-    ramp = (not k.is_land and (k.units or k.cond_units or k.vivid or k.convs or k.untapper)) or kinds & {"land_search", "extra_land", "land_from_hand", "treasure", "reveal_lands"} \
+    ramp = (not k.is_land and (k.units or k.cond_units or k.sac_outlets or k.vivid or k.convs or k.untapper)) or kinds & {"land_search", "extra_land", "land_from_hand", "treasure", "reveal_lands"} \
         or any(s[0] in ("lands_any", "lands_any_n", "spend_any", "reduce", "alt", "free", "extra_land",
                                 "mana_mult", "mana_add", "cr_mana", "reduce_dyn") for s in k.statics)
     draws = kinds & {"draw", "look", "tutor_multi", "wheel"} or any(
@@ -2175,7 +2221,8 @@ def solve(cands, pips, gen):
     """cands: [(pool index, usable colors, colored_only)]. Colored pips by bipartite
     matching (least flexible unit first), generic from leftovers. -> [indices] or None."""
     if len(pips) + gen > len(cands): return None
-    order = sorted(range(len(cands)), key=lambda i: (len(cands[i][1]), cands[i][3] if len(cands[i]) > 3 else 0))
+    order = sorted(range(len(cands)), key=lambda i: ((cands[i][3] if len(cands[i]) > 3 else 0) >= 10, len(cands[i][1]),
+                                                     cands[i][3] if len(cands[i]) > 3 else 0))   # fodder mana (>= 10) last
     match = {}
     def aug(j, seen):
         pj = pips[j]
@@ -2397,6 +2444,24 @@ class Game:
                     if self.pmatch(f, p, src):
                         self.pool += [[u[0], u[1], u[2], u[3], p, False] for u in units]; break
         self.eager_convs()
+        self.sac_units()
+
+    SAC_PRIO = 10            # cands priority of fodder mana: spent after every other source
+
+    def sac_units(self, fodder=None, outlet=None):
+        """Mana from sacrifice outlets: one group of units per outlet and eligible fodder (tokens, Food, Treasure, Clues;
+        never a real card or the commander). A tapping outlet (Phyrexian Tower) gives one group per turn; its own {T} mana
+        and the groups exclude each other (use_unit)."""
+        if self.pool is None: return
+        outs = [q for q in self.perms + self.lands if q.k.sac_outlets and (outlet is None or q is outlet)]
+        for o in outs:
+            for fod, units, taps in o.k.sac_outlets:
+                if taps and (o.tapped or not self.usable(o) and not o.k.is_land): continue
+                for q in ([fodder] if fodder is not None else self.perms):
+                    if q is o or q not in self.perms or not self.pmatch(fod, q, o) or self.fodder_cost(q) >= self.FODDER_MAX: continue
+                    grp = (id(o), id(fod), id(q))
+                    if any(len(u) > 6 and u[6][1] == grp for u in self.pool): continue
+                    for u in units: self.pool.append([u[0], u[1], u[2], u[3], o if taps else None, False, (q, grp, o)])
 
     def untap_units(self, p):
         """'{T}: Untap target land' (Arbor Elf, Voyaging Satyr): p taps to make the best matching land's mana again."""
@@ -2431,12 +2496,25 @@ class Game:
             if hurt and self.life - src.k.pain <= 0: continue
             out.append((i, eff, u[3], (2 if isinstance(src, Perm) and "Creature" in src.k.types and not src.k.is_land else 0)
                         + (1 if hurt and not src.k.pain_col else 0)
-                        + (3 if isinstance(src, Perm) and src.k.no_untap else 0)))   # Mana Vault: only when nothing else covers it
+                        + (3 if isinstance(src, Perm) and src.k.no_untap else 0)     # Mana Vault: only when nothing else covers it
+                        + (self.SAC_PRIO if len(u) > 6 else 0)))                        # sacrificing fodder: the last resort
         return out
 
     def use_unit(self, i, pool=None, colored=False):
         pool = self.pool if pool is None else pool
         u = pool[i]; u[5] = True
+        if len(u) > 6 and pool is self.pool:                 # fodder mana: the whole group is produced, the fodder goes
+            q, grp, o = u[6]
+            for v in pool:
+                if len(v) > 6 and v[6][1] != grp and (v[6][0] is q or (u[4] is not None and v[6][2] is o)): v[5] = True
+                if u[4] is not None and v[4] is o and len(v) <= 6: v[5] = True                  # the outlet's own {T} mana
+            for v in pool:
+                if len(v) > 6 and v[6][1] == grp: v[6] = (None, grp, o)                       # siblings stay, already made
+            if q is not None and q in self.perms:
+                self.note(f"    {o.k.name}: sacrifice {q.k.name} for mana"); self.leave(q, "is sacrificed for mana", quiet=True, sac=True)
+        elif u[4] is not None and u[4].k.sac_outlets and pool is self.pool:
+            for v in pool:
+                if len(v) > 6 and v[4] is u[4]: v[5] = True    # a tapping outlet tapped for its own mana
         if u[4] is not None:
             src = u[4]
             if isinstance(src, Perm) and src.k.pain and not src.tapped and (colored or not src.k.pain_col) and pool is self.pool:
@@ -2542,7 +2620,7 @@ class Game:
                         self.ctx_obj = q                          # 'the sacrificed creature's power' (Fling)
                 x = 0
                 if k.x:
-                    rest = [x_[0] for x_ in self.cands(k) if not x_[2]]
+                    rest = [x_[0] for x_ in self.cands(k) if not x_[2] and x_[3] < self.SAC_PRIO]
                     self.paid_cols += [self.pool[i][0] | self.pool[i][1] for i in rest]
                     for i in rest: self.use_unit(i)
                     x = len(rest) + 2
@@ -2598,6 +2676,7 @@ class Game:
                 for q in live.values(): self.add_units(q)
                 del self.convs[nc:]
             if self.usable(p): self.add_units(p); self.eager_convs()
+            if any(q.k.sac_outlets for q in self.perms + self.lands): self.sac_units(fodder=p) if not k.sac_outlets else self.sac_units()
         if "Aura" in k.subtypes and k.requires in ("creature", "legendary creature") and not k.debuff:
             cr = [q for q in self.perms if q is not p and self.is_creature(q) and (k.requires == "creature" or q.k.legendary)]
             neg = bool(k.attach) and any(isinstance(v, int) and v < 0 for v in k.attach[:2])
@@ -2724,7 +2803,7 @@ class Game:
                 if sel is None: continue
                 trial = [u[:] for u in self.pool]
                 for i in sel: trial[i][5] = True
-                for e in r.spell: trial += [[u, NOC, None, False, None, False] for u in e[1]]
+                for e in r.spell: trial += [[u, NOC, None, False, None, False] for u in e[1] * (max(0, self.val(e[2], None, 0)) if e[0] == "mana_n" else 1)]
                 if any(solve(self.cands(k, trial), p_, g_) is not None
                        for _, k, z in cands for g_, p_ in self.options(k, z)):
                     for i in sel: self.use_unit(i)
@@ -3046,7 +3125,8 @@ class Game:
         if key == "artifacts": return sum("Artifact" in q.k.types for q in self.perms + self.lands)      # artifact lands too
         if key == "enchantments": return sum("Enchantment" in q.k.types for q in self.perms + self.lands)
         if key == "opp_hand": return OPP_HAND
-        if key == "power": return max((q.k.power + (q.ctr or {}).get("+1/+1", 0) for q in self.perms if "Creature" in q.k.types), default=0)
+        if key == "power": return max((q.k.power + (q.ctr or {}).get("+1/+1", 0) for q in self.perms if "Creature" in q.k.types
+                                       and not (len(v) > 1 and v[1] in q.k.subtypes)), default=0)     # ('power', 'Human'): non-Human
         if key == "colors": return len(self.perm_colors())
         if key == "domain":                            # basic land types among your lands (Prismatic Omen-style: all five)
             if any("lands you control are every basic land type" in ((q.k.raw or {}).get("oracle_text") or "").lower() for q in self.perms): return 5
@@ -3056,6 +3136,8 @@ class Game:
         if key == "gy_land": return sum(c.is_land for c in self.gy)
         if key == "gy_instsorc": return sum(bool(c.types & {"Instant", "Sorcery"}) for c in self.gy)
         if key == "sub": return sum(v[1] in q.k.subtypes for q in self.perms + self.lands)
+        if key == "power_o": return max((self.stats(q)[0] for q in self.perms if q is not p and self.is_creature(q)), default=0)
+        if key == "sub_other": return sum(v[1] in q.k.subtypes for q in self.perms + self.lands if q is not p)
         if key == "devotion": return sum(1 for q in self.perms for pip in q.k.pips if pip & set(v[1:]))
         if key == "ctr": return (p.ctr or {}).get(v[1], 0) if isinstance(p, Perm) else 0
         if key == "hand": return len(self.hand)
@@ -3481,6 +3563,10 @@ class Game:
                         q.tapped = False
                         if self.pool is not None: self.add_units(q)
                 self.note(f"    {name} untaps your lands")
+            elif t == "mana_n":                                # 'Add {R} for each Goblin on the battlefield'
+                n = self.val(e[2], p, x)
+                if self.pool is not None and isinstance(n, int) and n > 0:
+                    self.pool += [[u & (self.sim.anyc | CLESS) or u, NOC, None, False, None, False] for u in e[1] * n]
             elif t == "mana_x":
                 n = self.val(e[1], p, x)
                 if self.pool is not None and isinstance(n, int) and n > 0:
@@ -3873,6 +3959,11 @@ class Game:
             if any(a["tap"] and a["gen"] + len(a["pips"]) <= free and self.face_value(a["fx"], p) >= max(1, pw)
                    and self.fodder_ready(a, p) for a in self.acts_of(p)):
                 return False
+            if any(a["tap"] and a["gen"] + len(a["pips"]) <= free and not a.get("fodder") and not a["sac"]
+                   and sum(max(0, self.val(e[1], p, 0) or 0) * max(1, e[2] if isinstance(e[2], int) else 1)
+                           for e in a["fx"] if e[0] == "token" and "creature" in e[5]) >= max(2, pw)
+                   for a in self.acts_of(p)):
+                return False                               # Krenko: X Goblins beat his own attack
         return pw > 0 or self.attack_payoff(p)
 
     def assign(self, atk):
@@ -4637,8 +4728,8 @@ class Game:
             self.ctr_held += [e for e in evs if e["kind"] == "counterK"]
             self.build_pool()
             if self.stax and not self.dry: self.clear_stax()
-            pool_n = sum(1 for u in self.pool if not u[5])
-            cols = set().union(*(u[0] | u[1] for u in self.pool if not u[5])) if self.pool else set()
+            pool_n = sum(1 for u in self.pool if not u[5] and len(u) <= 6)     # fodder mana (sac outlets) isn't development
+            cols = set().union(*(u[0] | u[1] for u in self.pool if not u[5] and len(u) <= 6)) if self.pool else set()
             if self.st.spend_any and cols - {"C"}: cols |= sim.anyc
             rec["lands"][t].append(len(self.lands)); rec["mana"][t].append(pool_n)
             rec["colors"][t].append(sim.anyc <= cols)
@@ -5259,12 +5350,16 @@ def explain(cache, names, commanders):
             if k.fetch: bits.append("fetch" + (" (tapped)" if k.fetch[1] else ""))
             if k.bounce: bits.append("bounce")
             if k.convs: bits.append(f"filter {k.convs[0][0]}->{len(k.convs[0][1])}")
+            for fod, su, tp in k.sac_outlets:
+                bits.append(f"sac outlet: {'T, ' if tp else ''}sacrifice {perm_desc(fod)} -> " + "+".join("".join(sorted(u[0] | u[1])) or "-" for u in su))
         else:
             counts[k.status] += 1
             bits = []
             if k.units: bits.append("mana " + "+".join("".join(sorted(u[0] | u[1])) or "-" for u in k.units)
                                     + (" (restricted)" if any(u[2] for u in k.units) else "")
                                     + (" (colored only)" if any(u[3] for u in k.units) else ""))
+            for fod, su, tp in k.sac_outlets:
+                bits.append(f"sac outlet: {'T, ' if tp else ''}sacrifice {perm_desc(fod)} -> " + "+".join("".join(sorted(u[0] | u[1])) or "-" for u in su))
             for cu, key, n in k.cond_units:
                 bits.append("mana " + "+".join("".join(sorted(u[0] | u[1])) or "-" for u in cu) + f" if {n}+ {pv(key)}")
             if k.vivid: bits.append("mana: 1 per color among your permanents")
