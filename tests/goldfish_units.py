@@ -200,7 +200,8 @@ CNAMES = ["Najeela, the Blade-Blossom", "Forest", "Mountain", "Grizzly Bears", "
           "Castle Garenbrig", "Encroaching Dragonstorm", "Lathliss, Dragon Queen", "Biorhythm", "Jeska's Will", "Animist's Awakening",
           "Questing Beast", "Ichorclaw Myr", "Samurai of the Pale Curtain", "Neheb, the Eternal", "Wolverine Pack", "Artful Dodge",
           "Falter", "Suq'Ata Lancer", "Swords to Plowshares", "Frenzied Goblin",
-          "Ravenous Chupacabra", "Shock", "Doom Blade", "Plague Wind", "Skinrender", "Swamp"]
+          "Ravenous Chupacabra", "Shock", "Doom Blade", "Plague Wind", "Skinrender", "Swamp",
+          "Psychosis Crawler", "Steel Overseer", "Rosie Cotton of South Lane", "Ponder", "Kinnan, Bonder Prodigy", "Managorger Hydra"]
 CRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(CNAMES)}
 CK = {n: g.compile_card(CRAW[n], g.ALL5) for n in CNAMES}
 
@@ -490,6 +491,26 @@ def _():
     H.do(CK["Skinrender"].etb, CK["Skinrender"])
     serra = next(p for p in H.perms if p.k.name == "Serra Angel")
     return first and not H.opps[0]["board"] and not (serra.ctr or {}).get("-1/-1")
+@check("'Whenever you draw a card': Psychosis Crawler drains each opponent once per card drawn")
+def _():
+    G = cgame(perms=["Psychosis Crawler"]); G.draw(2)
+    return lives(G) == [g.START_LIFE - 2] * 3
+@check("Steel Overseer counts only artifact creatures (Serra Angel gets none)")
+def _():
+    G = cgame(perms=["Steel Overseer", "Serra Angel"])
+    ov = next(p for p in G.perms if p.k.name == "Steel Overseer"); sa = next(p for p in G.perms if p.k.name == "Serra Angel")
+    G.do(CK["Steel Overseer"].acts[0]["fx"], CK["Steel Overseer"], ov)
+    return (ov.ctr or {}).get("+1/+1") == 1 and not (sa.ctr or {}).get("+1/+1")
+@check("'Whenever a player casts a spell' listens to your casts and opponents' (Managorger Hydra)")
+def _(): return {t[0] for t in CK["Managorger Hydra"].trig} == {"cast", "opp_cast"}
+@check("Legendary names shorten at ' of ': Rosie Cotton's 'When Rosie Cotton enters' is her ETB")
+def _(): return any(e[0] == "token" and "Food" in e[3] for e in CK["Rosie Cotton of South Lane"].etb)
+@check("Ponder arranges the top 3 (no bottoming) then draws; Kinnan digs 5 for a non-Human creature onto the battlefield")
+def _():
+    kin = CK["Kinnan, Bonder Prodigy"].acts
+    return [e[0] for e in CK["Ponder"].spell] == ["arrange", "draw"] and CK["Ponder"].spell[0][1] == 3 \
+        and any(e[0] == "look_f" and e[1] == 5 and e[3] == "bf" for a in kin for e in a["fx"])
+
 @check("ETB removal with no --blockers does nothing and costs nothing")
 def _():
     G = cgame(perms=["Serra Angel"]); G.do(CK["Ravenous Chupacabra"].etb, CK["Ravenous Chupacabra"])

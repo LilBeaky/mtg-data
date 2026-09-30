@@ -104,7 +104,7 @@ COMBAT_KW = ("flying", "reach", "trample", "vigilance", "haste", "lifelink", "de
              "training", "mentor", "living weapon", "unblockable", "hexproof", "shroud")
 COMBAT_KWN = ("toxic", "poisonous", "annihilator", "bushido", "rampage", "afflict")
 # trigger events -> the kinds the report counts them under
-TRIG_KIND = {"blocked_self": "combat", "blocked": "combat", "cast": "cast", "etb": "enter", "landfall": "enter", "upkeep": "timed", "end": "timed", "drawstep": "timed",
+TRIG_KIND = {"blocked_self": "combat", "blocked": "combat", "cast": "cast", "draw_card": "other", "etb": "enter", "landfall": "enter", "upkeep": "timed", "end": "timed", "drawstep": "timed",
              "combat_begin": "timed", "attack": "combat", "attack_self": "combat", "attack_any": "combat", "cdmg": "combat",
              "cdmg_self": "combat", "cdmg_any": "combat", "attack_att": "combat", "cdmg_att": "combat", "unblocked_self": "combat", "dies": "dies", "dies_self": "dies", "opp_cast": "~opp",
              "opp_draw": "~opp", "opp_second": "~opp", "opp_land": "~opp", "cycle": "other", "prolif": "other",
@@ -525,8 +525,19 @@ def _fx_pump(m):
 
 def _fx_ctr_on(m):
     w = m.group("who")
-    who = "each" if w.startswith("each") else "obj" if w in ("it", "that creature") else "target"
-    return ("ctr_on", who, m.group("kind"), num(m.group("n")), "other" in w)
+    tm = re.match(r"each of (?:up to )?(one|two|three) ", w)
+    if tm: return ("ctr_on", ("targets", num(tm.group(1))), m.group("kind"), num(m.group("n")), "other" in w)
+    if w.startswith("each"):
+        am = re.match(r"each (?:other )?([a-z\-]+?)s?(?: creatures?)? you control$", w)
+        word = am.group(1) if am else "creature"
+        if word == "creature": f = None
+        elif word in ("artifact", "enchantment", "legendary", "token", "nontoken") or word in COLOR_WORDS:
+            f = parse_filter(word + " creature")                         # 'each artifact creature you control' (Steel Overseer)
+        elif as_subtype(word):
+            f = parse_filter("creature"); f["sub"] = {as_subtype(word)}; f["unknown"] = False
+        else: return None
+        return ("ctr_on", ("each", f) if f else "each", m.group("kind"), num(m.group("n")), "other" in w)
+    return ("ctr_on", "obj" if w in ("it", "that creature") else "target", m.group("kind"), num(m.group("n")), "other" in w)
 
 def _fx_mana(m):
     if re.match(r"x mana", m.group(1)):
@@ -620,6 +631,11 @@ FX = [
      lambda m: ("putback", num(m.group(1)), "bottom" in m.group(0))),
     (re.compile(r"(?<!whenever you )(?<!if you would )(?<!unless you )(?<!may )(?<!player )(?<!opponent )(?<!opponents )\bdiscard (a|an|one|two|three|x|\d+) cards?"),
      lambda m: ("discard", num(m.group(1)))),
+    (re.compile(r"look at the top (\w+) cards? of your library,? (?:then )?put them back in any order"), lambda m: ("arrange", num(m.group(1)))),
+    (re.compile(r"look at the top (?P<n>\w+) cards? of your library\. you may (?:reveal |put )?(?:an? |up to one )?(?P<what>[^.]+?) cards? from among them"
+                r" (?:and put (?:it|that card) )?(?P<dest>into your hand|onto the battlefield)"),
+     lambda m: ("look_f", num(m.group("n")), tu.parse_target(_orig(m, "what") + " card", _CTX["raw"] or {}),
+                "bf" if "battlefield" in m.group("dest") else "hand")),
     (re.compile(r"look at the top (\w+) cards? of your library\.? [^.]*?put (a|one|two|three|up to one|up to two|any number) of (?:them|those cards) into your hand"),
      lambda m: ("look", num(m.group(1)), 2 if "two" in m.group(2) else 3 if "three" in m.group(2) else 1)),
     (re.compile(r"search your library(?: and/or graveyard)? for ([^.]+)"), _fx_search),
@@ -664,8 +680,9 @@ FX = [
     (re.compile(r"(?P<who>~|it|that creature|equipped creature|enchanted creature|(?:up to one )?(?:another )?target creature(?: you control)?"
                 r"|each other attacking creature|other attacking creatures|they|those creatures) (?:gets?|gains?|has) (?P<body>[^.]*?) until end of turn(?P<rest>[^.]*)"),
      _fx_pump),
-    (re.compile(r"put (?P<n>a|an|one|two|three|four|five|\d+) (?P<kind>\S+?) counters? on (?P<who>(?:up to one )?(?:another )?target creature"
-                r"(?: you control)?|each (?:other )?creature you control|it|that creature)"), _fx_ctr_on),
+    (re.compile(r"put (?P<n>a|an|one|two|three|four|five|\d+) (?P<kind>\S+?) counters? on (?P<who>(?:up to one )?(?:another )?target (?:artifact or )?creature"
+                r"(?: you control)?|each of (?:up to )?(?:one|two|three) (?:other )?target creatures?(?: you control)?"
+                r"|each (?:other )?(?:[a-z\-]+ )?creatures? you control|each other [a-z\-]+ you control|it|that creature)(?![a-z])"), _fx_ctr_on),
     (re.compile(r"untap (?:all|each) (?:other )?(creatures? you control|creatures? that attacked this turn|attacking creatures)"),
      lambda m: ("untap_cr", "attacked" if "attacked" in m.group(1) else "attacking" if "attacking" in m.group(1) else "all")),
     (re.compile(r"there(?: is|'s) an additional combat phase"), lambda m: ("extra_combat",)),
@@ -783,6 +800,10 @@ def fx_str(e):
         head = "if an opponent has more lands ~opp" if c == "opp_lands" else "if you gained life this turn" if c == "gained" \
             else f"if you have {c[1]}+ life" if isinstance(c, tuple) and c[0] == "life" else f"if {c}"
         return head + ": " + ", ".join(fx_str(x) for x in e[2])
+    if t == "arrange": return f"arrange top {e[1]}"
+    if t == "look_f":
+        tg = e[2]
+        return f"look {e[1]}, take {tg.describe()} -> {e[3]}" + (" (filter unread; not used)" if tutor_unread(tg) else "")
     if t == "dig_gy": return f"reveal {e[1]}, take {e[2].describe()}, rest to graveyard"
     if t == "mana": return "mana " + "".join("".join(sorted(u)) if len(u) == 1 else "*" for u in e[1])
     if t == "token":
@@ -816,7 +837,10 @@ def fx_str(e):
     if t == "untap_cr": return f"untap {e[1]} creatures"
     if t == "untap_lands": return "untap your lands"
     if t == "mana_dmg": return "mana " + "".join(sorted(e[1])) + " x damage dealt"
-    if t == "ctr_on": return f"+{e[3]} {e[2]} ctr on {e[1]}" + (" other" if e[4] else "")
+    if t == "ctr_on":
+        w = e[1] if isinstance(e[1], str) else f"up to {e[1][1]} targets" if e[1][0] == "targets" else \
+            "each " + " ".join(sorted(x.lower() for x in (e[1][1].get("sub") or set()) | (set(e[1][1].get("types") or ()) - {"Creature"}))) + " creature"
+        return f"+{e[3]} {e[2]} ctr on {w}" + (" other" if e[4] else "")
     if t == "ctr": return f"+{e[2]} {e[1]} ctr"
     if t == "paid": return f"pay {e[1] + len(e[2])}: " + ", ".join(fx_str(x) for x in e[3])
     if t == "untap_self": return "untap ~"
@@ -830,7 +854,7 @@ def fx_str(e):
 # ---------------------------------------------------------------- card compiler
 RX_MANA = re.compile(r'^(?P<cost>[^:"]*?):\s*(?:(?P<vivid>for each color among permanents you control, add one mana of that color)|add (?P<prod>[^.]+?))\.(?P<rest>.*)$', re.I)
 RX_INTERACT = re.compile(r"\b(destroy (?:target|all|each|up to)|exile (?:target|all|each|up to)|counter target|return (?:target|up to|all|each)[^.]*? to (?:its|their) owner(?:'s|s') hands?|deals? (?:\d+|x) damage|gets? -\d+/-\d+|gets? -x/-x|phase out|gains? (?:hexproof|indestructible|protection|shroud)|(?:opponent|player)s? sacrifices?)")
-RX_NEUTRAL = re.compile(r"\b(?:ha(?:s|ve)|gains?) (?:indestructible|hexproof|shroud|ward)|can't be (?:countered|the target)|^enchant |protection from|choose a (?:creature type|color|basic land type)|^as ~ enters, choose|for each color among|this spell can't be countered|if you would get one or more counters")
+RX_NEUTRAL = re.compile(r"\b(?:ha(?:s|ve)|gains?) (?:indestructible|hexproof|shroud|ward)|can't be (?:countered|the target)|^enchant |protection from|choose a (?:creature type|color|basic land type)|^as ~ enters, choose|for each color among|this spell can't be countered|if you would get one or more counters|^you may look at the top card of your library (?:at )?any time")
 # (combat lines - pumps, evasion, keyword grants, life - are no longer neutral: combat reads them, and a miss shows as partial)
 
 FACE_ONLY = r"deals? (?:\d+|x) damage to (?:each opponent|each player|target opponent|target player|(?:the )?defending player)\b"
@@ -1360,9 +1384,28 @@ def parse_trigger(k, lo):
         fx, tax = parse_fx(m.group(3)); f = parse_filter(m.group(2)) if m.group(2).strip() else None
         if fx: k.trig.append(("opp_cast", f, fx, "first" in m.group(1), tax, False))
         return bool(fx)
+    def gated(body):                                       # intervening 'if': left unmodeled, like the other trigger frames
+        if re.match(r"if ", body): k.notes.append("conditional trigger (intervening 'if') not modeled"); return True
+        return False
     m = re.match(r"^whenever an opponent draws a card,\s*(.+)$", lo)
     if m:
-        fx, tax = parse_fx(m.group(1)); k.trig.append(("opp_draw", None, fx, False, tax, False)); return bool(fx)
+        if gated(m.group(1)): return False
+        fx, tax = parse_fx(re.sub(r"\bto them\b", "to that player", m.group(1)))
+        if fx: k.trig.append(("opp_draw", None, fx, False, tax, False))
+        return bool(fx)
+    m = re.match(r"^whenever you draw a card,\s*(.+)$", lo)                  # Niv-Mizzet, Psychosis Crawler, Chasm Skulker
+    if m:
+        if gated(m.group(1)): return False
+        fx, tax = parse_fx(m.group(1))
+        if fx: k.trig.append(("draw_card", None, fx, False, tax, False))
+        return bool(fx)
+    m = re.match(r"^whenever a player casts (an|a)\b ?(.*?)spells?,\s*(.+)$", lo)   # yours and theirs (Forgotten Ancient, Managorger)
+    if m:
+        if gated(m.group(3)): return False
+        if re.search(r"\bthat player\b|\bthey\b", m.group(3)): return False   # rewards whoever cast it (Unifying Theory): not read
+        fx, tax = parse_fx(m.group(3)); f = parse_filter(m.group(2)) if m.group(2).strip() else None
+        if fx: k.trig += [("cast", f, fx, False, tax, False), ("opp_cast", f, fx, False, tax, False)]
+        return bool(fx)
     if re.search(r"attacks|combat damage|blocks", lo): k.notes.append("combat trigger not read")
     return False
 
@@ -1557,7 +1600,7 @@ def parse_line(k, L, anyc, abil):
     return "neutral" if is_neutral(lo) else False
 
 MODAL_RX = re.compile(r"^(?:(?P<pre>.*?),\s*)?choose (?P<n>one or both|one or more|any number|one|two|three)(?: or more)?\s*(?:—|-)\s*$", re.I)
-MODE_RANK = ("draw", "look", "tutor", "tutor_multi", "recur", "land_search", "treasure", "token", "mana", "extra_land",
+MODE_RANK = ("draw", "look", "look_f", "tutor", "tutor_multi", "recur", "land_search", "treasure", "token", "mana", "extra_land",
              "prolif", "ctr", "scry", "surveil", "mill")
 
 def modal_lines(lines):
@@ -1630,7 +1673,9 @@ def compile_card(c, anyc):
     k.loyalty = int(loy) if loy and str(loy).isdigit() else 0
     text = tildify(strip_reminder(face.get("oracle_text") or c.get("oracle_text") or ""),
                    [c["name"], face.get("name", ""), c["name"].split(",")[0].split(" // ")[0],
-                    c["name"].split(" the ")[0] if "Legendary" in (face.get("type_line") or c.get("type_line", "")) and "," not in c["name"] else ""])   # "Thrakkus the Butcher" -> "Thrakkus"
+                    c["name"].split(" the ")[0] if "Legendary" in (face.get("type_line") or c.get("type_line", "")) and "," not in c["name"] else "",
+                    c["name"].split(" of ")[0] if "Legendary" in (face.get("type_line") or c.get("type_line", "")) and "," not in c["name"]
+                    and " " in c["name"].split(" of ")[0] else ""])   # two words at least: never a bare 'Lord'/'Master'    # "Thrakkus the Butcher" -> "Thrakkus"
     k.raw = c
     k.life_per_mv = bool(re.search(r"lose life equal to (?:its|that card's) mana value", text.lower()))
     read_life_costs(k, text.lower())
@@ -1713,6 +1758,18 @@ def compile_card(c, anyc):
         elif "choose new targets for target spell" in lt: k.answer = "redirect"
         if k.answer and "Creature" not in k.types: k.hold = True
     if k.hold and not k.answer: k.kill = kill_types(lt)
+    if k.hold:                                             # held text isn't a miss: answers answer disruption; symmetric wipes stay held
+        rx = {"counter": r"^counter target", "protect": r"phase out|gains? [^.]*?(?:hexproof|indestructible|protection|shroud)",
+              "redirect": r"choose new targets"}.get(k.answer)
+        keep = []
+        for n_ in k.notes:
+            body = n_.split(": ", 1)[1].lower() if n_.startswith("unmodeled: ") else ""
+            if body and rx and re.search(rx, body): continue
+            if body and re.match(r"(?:~ deals \w+ damage to each creature|destroy all (?:other )?(?:creatures|nonland permanents|permanents)"
+                                 r"|exile all (?:other )?(?:creatures|nonland permanents)|all creatures get -|each creature gets? -)", body):
+                keep.append("held wipe (symmetric, never cast): " + n_[11:]); continue
+            keep.append(n_)
+        k.notes = keep
     if any(e[0] == "kill_blk" for e in k.spell): k.kill = k.kill | {"creature"}      # incl. one-sided wipes (Plague Wind)
     bm = re.search(r"deals (\d+) damage to any (?:other )?target", lt)
     if k.hold and bm and int(bm.group(1)) > 0 and not any(e[0] == "kill_blk" for e in k.spell):
@@ -2001,6 +2058,7 @@ class Game:
         self.noblock = False; self.mazed = set()   # 'creatures your opponents control can't block this turn'; Maze of Ith's target
         self.prop_paid = self.taxed_out = 0     # attack tax planned this combat; attackers it priced out
         self.won = 0                            # turn the last opponent died
+        self.draw_depth = 0                     # nesting of 'whenever you draw a card' triggers
         self.dmg = 0; self.cdmg = 0             # life lost by opponents (all sources / combat)
         self.dsrc = Counter(); self.trigs = Counter()   # damage by source; trigger fires by (source, kind)
         self.atk_n = 0; self.atk_turns = 0; self.lost = 0   # attackers this turn; turns you attacked; your creatures lost in combat
@@ -2460,7 +2518,7 @@ class Game:
                     else: p.ctr["loyalty"] = loy + cost
                     self.do(fx, k, p)
 
-    CARD_FLOW = frozenset({"draw", "look", "tutor", "tutor_multi", "land_search", "treasure"})
+    CARD_FLOW = frozenset({"draw", "look", "look_f", "tutor", "tutor_multi", "land_search", "treasure"})
     FODDER_MAX = 10          # fodder_cost at or above this is never sacrificed as a cost (unless it wins the game)
 
     def try_act(self, p, ab, instant, reserve, prolif_useful):
@@ -2474,7 +2532,9 @@ class Game:
         old = bool(kinds & self.CARD_FLOW) or ("ctr" in kinds and "draw" in kinds) or ("prolif" in kinds and prolif_useful) \
             or any(e[0] == "recur" and any(self.sim.tmatch(e[1], c) for c in self.gy) for e in fx)
         if instant: ok = face or life
-        else: ok = old or face or life or "token" in kinds or ("kill_blk" in kinds and not ab["sac"] and self.blk_target_exists(fx))
+        else: ok = old or face or life or "token" in kinds or ("kill_blk" in kinds and not ab["sac"] and self.blk_target_exists(fx)) \
+            or (not ab["sac"] and any((e[0] == "ctr_on" and e[2] == "+1/+1") or (e[0] == "ctr" and e[1] == "+1/+1") for e in fx)
+                and any(self.is_creature(q) for q in self.perms))           # Steel Overseer, Ozolith: grow the team each turn
         if not ok: return False
         if ab["tap"] and (p.tapped or not self.usable(p) and not k.is_land): return False
         if ab["sac"] and "draw" in kinds and not (len(self.hand) <= 1 and self.turn >= 5): return False
@@ -2684,6 +2744,11 @@ class Game:
         for _ in range(n): self.hand.append(self.lib.pop())
         if name: self.gain(n, name)
         else: self.drawn += n
+        if "draw_card" in self.st.events and self.draw_depth < 2:     # 'whenever you draw a card' (depth-capped: no loops)
+            self.draw_depth += 1
+            try:
+                for _ in range(n): self.fire("draw_card")
+            finally: self.draw_depth -= 1
 
     def val(self, v, p, x):
         if isinstance(v, int): return v
@@ -2879,6 +2944,21 @@ class Game:
                 for c in back: self.hand.remove(c)
                 self.lib += back                                               # the best of the rest ends on top
                 if keep: self.lose_life(4, "trigger"); self.gain(keep, name)
+            elif t == "arrange":                           # look at the top N, put them back in any order: best on top
+                if self.dry: continue
+                top = [self.lib.pop() for _ in range(min(e[1], len(self.lib)))]
+                self.lib += sorted(top, key=self.value)
+            elif t == "look_f":                            # dig for a matching card; the rest go to the bottom
+                if self.dry or tutor_unread(e[2]): continue
+                top = [self.lib.pop() for _ in range(min(e[1], len(self.lib)))]
+                ok = [c for c in top if self.sim.tmatch(e[2], c)]
+                if ok:
+                    pick = max(ok, key=lambda c: self.tutor_value(c, e[3], self.have())); top.remove(pick)
+                    self.note(f"    {name} finds {pick.name} -> {e[3]}")
+                    if e[3] == "bf" and pick.is_land: self.land_enters(pick)
+                    elif e[3] == "bf" and pick.types & PERMANENT: self.enter(pick)
+                    else: self.hand.append(pick); self.gain(1, name)
+                self.lib[0:0] = top
             elif t in ("scry", "surveil"):
                 n = self.val(e[1], p, x)
                 if self.dry or n <= 0: continue
@@ -3123,6 +3203,14 @@ class Game:
             elif t == "ctr_on":
                 _, who, kind, n, other = e
                 if who == "each": qs = [q for q in self.perms if self.is_creature(q) and not (other and q is p)]
+                elif isinstance(who, tuple) and who[0] == "each":
+                    f = who[1]                                   # every type named (artifact AND creature), subtype, color, legendary
+                    qs = [q for q in self.perms if self.is_creature(q) and not (other and q is p)
+                          and set(f["types"]) - {"Creature"} <= q.k.types and (not f.get("sub") or f["sub"] & q.k.subtypes)
+                          and (not f.get("colors") or set(f["colors"]) & set(q.k.colors)) and (not f.get("legendary") or q.k.legendary)]
+                elif isinstance(who, tuple) and who[0] == "targets":
+                    qs = sorted((q for q in self.perms if self.is_creature(q) and not (other and q is p)),
+                                key=lambda q: -self.stats(q)[0])[:who[1]]
                 elif who == "obj": qs = [self.ctx_obj]
                 else: qs = [self.best_attacker()]
                 for q in qs:
