@@ -1,0 +1,84 @@
+audited 300 of 300 cards
+
+== all: 300 cards
+  translation: {'correct': 273, 'conservative': 11, 'freetext': 13, 'wrong': 3}
+  parser:      {'approx': 25, 'correct': 265, 'wrong': 10}
+  cards with a real format gap: 69
+  cross (translation, parser): {('correct', 'approx'): 22, ('correct', 'correct'): 243, ('conservative', 'correct'): 10, ('correct', 'wrong'): 8, ('conservative', 'approx'): 1, ('freetext', 'approx'): 1, ('freetext', 'correct'): 10, ('wrong', 'correct'): 2, ('freetext', 'wrong'): 2, ('wrong', 'approx'): 1}
+  fully read: parser 195, GEF today 178 (freetext demoted 178), GEF expressed 213 (freetext demoted 213)
+  parser statuses: {'modeled': 142, 'partial': 44, 'land*': 28, 'blank': 33, 'held': 47, 'override': 1, 'vacuum': 5}
+  GEF today:       {'partial': 61, 'land*': 11, 'modeled': 126, 'blank': 50, 'vacuum': 4, 'land': 17, 'held': 31}
+  GEF expressed (freetext demoted): {'partial': 49, 'modeled': 159, 'land*': 10, 'blank': 28, 'vacuum': 4, 'land': 18, 'held': 32}
+
+== deck: 198 cards
+  translation: {'correct': 178, 'conservative': 6, 'freetext': 11, 'wrong': 3}
+  parser:      {'approx': 18, 'correct': 171, 'wrong': 9}
+  cards with a real format gap: 48
+  cross (translation, parser): {('correct', 'approx'): 15, ('correct', 'correct'): 156, ('conservative', 'correct'): 5, ('correct', 'wrong'): 7, ('conservative', 'approx'): 1, ('freetext', 'approx'): 1, ('freetext', 'correct'): 8, ('wrong', 'correct'): 2, ('freetext', 'wrong'): 2, ('wrong', 'approx'): 1}
+  fully read: parser 105, GEF today 107 (freetext demoted 107), GEF expressed 137 (freetext demoted 137)
+  parser statuses: {'modeled': 82, 'partial': 44, 'land*': 16, 'blank': 33, 'held': 19, 'override': 1, 'vacuum': 3}
+  GEF today:       {'partial': 48, 'land*': 5, 'modeled': 81, 'blank': 38, 'vacuum': 2, 'land': 11, 'held': 13}
+  GEF expressed (freetext demoted): {'partial': 38, 'modeled': 109, 'land*': 4, 'blank': 19, 'vacuum': 2, 'land': 12, 'held': 14}
+
+== pool: 102 cards
+  translation: {'correct': 95, 'conservative': 5, 'freetext': 2}
+  parser:      {'correct': 94, 'approx': 7, 'wrong': 1}
+  cards with a real format gap: 21
+  cross (translation, parser): {('correct', 'correct'): 87, ('correct', 'approx'): 7, ('conservative', 'correct'): 5, ('freetext', 'correct'): 2, ('correct', 'wrong'): 1}
+  fully read: parser 90, GEF today 71 (freetext demoted 71), GEF expressed 76 (freetext demoted 76)
+  parser statuses: {'held': 28, 'modeled': 60, 'land*': 12, 'vacuum': 2}
+  GEF today:       {'held': 18, 'modeled': 45, 'blank': 12, 'partial': 13, 'land*': 6, 'land': 6, 'vacuum': 2}
+  GEF expressed (freetext demoted): {'held': 18, 'modeled': 50, 'blank': 9, 'partial': 11, 'land*': 6, 'land': 6, 'vacuum': 2}
+
+comparator: 176 agree, 124 flagged; errors (translation wrong/freetext or parser wrong) among agree 10, among flagged 14
+   missed by comparator: Commander's Plate ('freetext', 'approx')
+   missed by comparator: Edgar, King of Figaro ('freetext', 'correct')
+   missed by comparator: Ethereal Usher ('freetext', 'correct')
+   missed by comparator: Jace, Wielder of Mysteries ('freetext', 'correct')
+   missed by comparator: Krark's Thumb ('freetext', 'correct')
+   missed by comparator: Library of Leng ('freetext', 'correct')
+   missed by comparator: Nexus of Fate ('freetext', 'correct')
+   missed by comparator: Astral Drift ('wrong', 'correct')
+   missed by comparator: Grasp of Fate ('wrong', 'approx')
+   missed by comparator: Necrodominance ('freetext', 'correct')
+
+per deck: cards | parser fully read (of which audit-wrong) | GEF today | GEF expressed (of which audit-wrong) | cards with a real format gap
+  klauth.txt   73 | 37 (50.7%) (0) | 34 (46.6%) | 47 (64.4%) (0) | 24
+  yusri.txt    69 | 36 (52.2%) (4) | 35 (50.7%) | 46 (66.7%) (0) | 17
+  zur.txt      68 | 40 (58.8%) (5) | 44 (64.7%) | 51 (75.0%) (2) | 11
+
+engine work to reach 'expressed' (deck): 30 cards blocked only by missing engine features
+  +effect flicker                   unlocks  5 (cumulative 5)
+  +effect untap                     unlocks  3 (cumulative 8)
+  +keyword storm                    unlocks  2 (cumulative 10)
+  +effect put_from_hand             unlocks  2 (cumulative 12)
+  +effect flip_coins                unlocks  1 (cumulative 13)
+  +event coin_flip_won              unlocks  3 (cumulative 16)
+  +cond you_control_commander       unlocks  1 (cumulative 17)
+  +keyword convoke                  unlocks  1 (cumulative 18)
+  +keyword eternalize               unlocks  1 (cumulative 19)
+  +cond x_at_least                  unlocks  1 (cumulative 20)
+  +effect impulse                   unlocks  1 (cumulative 21)
+  +keyword riot                     unlocks  1 (cumulative 22)
+  +cond opponent_state              unlocks  1 (cumulative 23)
+  +effect extra_turn                unlocks  1 (cumulative 24)
+  +keyword improvise                unlocks  1 (cumulative 25)
+  ... 5 more cards need 10 further features
+
+engine work to reach 'expressed' (all): 35 cards blocked only by missing engine features
+  +effect untap                     unlocks  5 (cumulative 5)
+  +effect flicker                   unlocks  5 (cumulative 10)
+  +cond you_control_commander       unlocks  3 (cumulative 13)
+  +keyword storm                    unlocks  2 (cumulative 15)
+  +effect put_from_hand             unlocks  2 (cumulative 17)
+  +effect flip_coins                unlocks  1 (cumulative 18)
+  +event coin_flip_won              unlocks  3 (cumulative 21)
+  +keyword convoke                  unlocks  1 (cumulative 22)
+  +keyword eternalize               unlocks  1 (cumulative 23)
+  +cond x_at_least                  unlocks  1 (cumulative 24)
+  +effect impulse                   unlocks  1 (cumulative 25)
+  +keyword riot                     unlocks  1 (cumulative 26)
+  +cond opponent_state              unlocks  1 (cumulative 27)
+  +effect extra_turn                unlocks  1 (cumulative 28)
+  +keyword improvise                unlocks  1 (cumulative 29)
+  ... 6 more cards need 11 further features

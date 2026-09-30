@@ -248,6 +248,7 @@ All 18 are in `translation/examples/examples.json` and accepted. Their statuses 
 ## Known limits of v0.1
 
 - **Opponent choices** (Gifts Ungiven, Fact or Fiction, "an opponent chooses one —") have no construct. They're format gaps until the engine has a stand-in rule for them.
+- **T2 found more** (`docs/TRANSLATION_T2.md`): 23% of 300 audited cards hit a real gap, and the free-text statics below let 13 translations count as read. The validator now counts `replacement` and `restriction` as unread; GEF 0.2 should replace them.
 - **Replacement effects** are a `static replacement {text, kind}`, marked by kind only. They are not executable without per-kind engine work: Library of Leng, Words of Worship, Rhox Faithmender.
 - **Timing and priority** (flash, split second, "any time you could cast an instant") are silent or out of scope, matching the engine's model.
 - **One ability per Oracle line.** Paragraphs that pack two abilities are one entry with several effects.

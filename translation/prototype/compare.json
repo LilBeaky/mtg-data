@@ -1,0 +1,6832 @@
+[
+ {
+  "name": "Klauth, Unrivaled Ancient",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "mana"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [
+     "attacks"
+    ],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Ancient Bronze Dragon",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Animist's Awakening",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Arena of Glory",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land*",
+  "gef_expressed": "land*",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Atarka, World Render",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Balefire Dragon",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Become the Avalanche",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "draw",
+     "pump_team"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Biorhythm",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "set_life"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Blast-Furnace Hellkite",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Bower Passage",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "vacuum",
+  "gef_expressed": "vacuum",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Breaching Dragonstorm",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "cast_free"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Broodcaller Scourge",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Chord of Calling",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Cinder Glade",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Dracogenesis",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Dragon Tempest",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Dragonborn Champion",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Dragonhawk, Fate's Tempest",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Dragonspeaker Shaman",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Dragonstorm",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Emerald Medallion",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Encroaching Dragonstorm",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Evendo, Waking Haven",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land*",
+  "gef_expressed": "land",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Exotic Orchard",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land*",
+  "gef_expressed": "land*",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "mana"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Fanatic of Rhonas",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Finale of Devastation",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "tutor"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Garruk's Uprising",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Goreclaw, Terror of Qal Sisma",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "pump_team"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": [
+     "attacks"
+    ]
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Green Sun's Zenith",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "self_to_library"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Gwenna, Eyes of Gaea",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Hunter's Insight",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Invasion of Ikoria // Zilortha, Apex of Ikoria",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": [
+     "reach"
+    ]
+   }
+  }
+ },
+ {
+  "name": "Jeska's Will",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "draw",
+     "mana"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Kessig Wolf Run",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "pump"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Klauth's Will",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "blank",
+  "gef_expressed": "held",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Knollspine Dragon",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "discard"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": [
+     "enters"
+    ]
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Last March of the Ents",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Lathliss, Dragon Queen",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Llanowar Elves",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Maelstrom of the Spirit Dragon",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Mossfire Valley",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Mosswort Bridge",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land*",
+  "gef_expressed": "land*",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Nature's Rhythm",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Ohran Frostfang",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Overwhelming Stampede",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Rampant Growth",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Return of the Wildspeaker",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "pump_team"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Rhythm of the Wild",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Rishkar's Expertise",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Ruby Medallion",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Savage Ventmaw",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Scourge of the Throne",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Selvala, Heart of the Wilds",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Shadow in the Warp",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Shamanic Revelation",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "gain_life"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Shared Animosity",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "pump"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [
+     "attacks"
+    ],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Signal the Clans",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "tutor"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Sol Ring",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Somberwald Sage",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Spinerock Knoll",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land*",
+  "gef_expressed": "land*",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Stormscale Scion",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Strength of the Tajuru",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Terror of the Peaks",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Nyxbloom Ancient",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Thrakkus the Butcher",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "pump"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [
+     "attacks"
+    ],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Three Visits",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Unnatural Growth",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "pump"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [
+     "combat_begin"
+    ],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Utvara Hellkite",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Valakut Awakening // Valakut Stoneforge",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "mana"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Vorinclex, Voice of Hunger",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Worldly Tutor",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Wrathful Red Dragon",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Wulfgar of Icewind Dale",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Yusri, Fortune's Flame",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "draw"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [
+     "attacks"
+    ],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Academy Ruins",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "recur"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Aetherflux Reservoir",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "gain_life"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": [
+     "cast"
+    ]
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Ancient Silver Dragon",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Basilisk Collar",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Chaos Warp",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "remove"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Commander's Plate",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Consecrated Sphinx",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Counterbalance",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Counterspell",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Cyclonic Rift",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Diplomatic Immunity",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Dream Halls",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Edgar, King of Figaro",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Enter the Infinite",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "draw",
+     "put_back"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Ethereal Usher",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Fabricate",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Frenetic Efreet",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Full Throttle",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "extra_combat"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Fury of the Horde",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "untap"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Gamble",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Loxodon Warhammer",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Gifts Ungiven",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "tutor"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Goblin Engineer",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Invert Polarity",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Jace, Wielder of Mysteries",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Jin-Gitaxias, Core Augur",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Krark's Thumb",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Laboratory Maniac",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Library of Leng",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Lightning Greaves",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Long-Term Plans",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "tutor"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Muddle the Mixture",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Mystic Remora",
+  "valid": true,
+  "parser_status": "override",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Mystical Tutor",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Nexus of Fate",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Okaun, Eye of Chaos",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Planar Chaos",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Pongify",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Prismari, the Inspiration",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Reality Shift",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Reckless Handling",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Resurrection Orb",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Rhystic Study",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Sapphire Medallion",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Seize the Day",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "extra_combat"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Show and Tell",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Simian Spirit Guide",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "mana"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Spellbook",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Squee's Revenge",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Stitch in Time",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Stock Up",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Swan Song",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Sword of War and Peace",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "drain",
+     "gain_life"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": [
+     "combat_damage_to_player"
+    ]
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Tavern Scoundrel",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Thassa's Oracle",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "win_game"
+    ],
+    "gef_only": [
+     "look"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "The Endstone",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Thought Vessel",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Tribute Mage",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Twenty-Toed Toad",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "counters",
+     "draw"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": [
+     "attacks"
+    ]
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Vivi Ornitier",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Whir of Invention",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Witch's Clinic",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "pump"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Zndrsplt, Eye of Wisdom",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Zur the Enchanter",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Aether Channeler",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove",
+     "token"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Approach of the Second Sun",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Arcane Signet",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Archaeomancer",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Archfiend of Ifnir",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Astral Drift",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Astral Slide",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Auramancer",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Azami, Lady of Scrolls",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "draw"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Bloodline Necromancer",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Brainspoil",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Complicate",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": [
+     "cycle"
+    ]
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Dark Ritual",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Deafening Silence",
+  "valid": true,
+  "parser_status": "vacuum",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Disciple of Caelus Nin",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Dour Port-Mage",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Drannith Magistrate",
+  "valid": true,
+  "parser_status": "vacuum",
+  "gef_today": "vacuum",
+  "gef_expressed": "vacuum",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Emeritus of Ideation // Ancestral Recall",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "draw"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": [
+     "attacks"
+    ]
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Ephemerate",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Ertai Resurrected",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "draw",
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": [
+     "enters"
+    ]
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Escape Protocol",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "remove"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [
+     "cycle"
+    ],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Feed the Swarm",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "lose_life"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Fluctuator",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Forsake the Worldly",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Ghostway",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Glen Elendra Archmage",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Grasp of Fate",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Greater Auramancy",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Hall of Heliod's Generosity",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "recur"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Land Tax",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Locust Spray",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "remove"
+    ],
+    "gef_only": [
+     "pump"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Mage's Attendant",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Miscalculation",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Mistveil Plains",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "recur"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Naban, Dean of Iteration",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Necrodominance",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Neutralize",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "New Perspectives",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Patron Wizard",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Personal Tutor",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Pest Control",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Prairie Stream",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Requisition Raid",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "blank",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "remove"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Rule of Law",
+  "valid": true,
+  "parser_status": "vacuum",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Scheming Symmetry",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Skycloud Expanse",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Solitary Confinement",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "sacrifice"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": [
+     "upkeep"
+    ]
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Solve the Equation",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Spellseeker",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Step Through",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Sunken Hollow",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Talisman of Dominance",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "lose_life"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Talisman of Progress",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "lose_life"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Triskaidekaphile",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Unearth",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Unquestioned Authority",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Vedalken Aethermage",
+  "valid": true,
+  "parser_status": "partial",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": [
+     "enters"
+    ]
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Wander in Death",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Wishclaw Talisman",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Words of Worship",
+  "valid": true,
+  "parser_status": "blank",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Swords to Plowshares",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Swiftfoot Boots",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Path to Exile",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Fellwar Stone",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "mana"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Cultivate",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "tutor"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Blasphemous Act",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Farseek",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Bojuka Bog",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land*",
+  "gef_expressed": "land*",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Beast Within",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Nature's Lore",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Heroic Intervention",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Mind Stone",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "An Offer You Can't Refuse",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Birds of Paradise",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Kodama's Reach",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "tutor"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Solemn Simulacrum",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Skullclamp",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Arcane Denial",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "draw"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Commander's Sphere",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Reanimate",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "lose_life"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Negate",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Generous Gift",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Demonic Tutor",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Smothering Tithe",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Toxic Deluge",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Brainstorm",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Deflecting Swat",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "blank",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Urborg, Tomb of Yawgmoth",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "mana"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Boseiju, Who Endures",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land*",
+  "gef_expressed": "land*",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Yavimaya, Cradle of Growth",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "mana"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Esper Sentinel",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "draw"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [
+     "opponent_casts"
+    ],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Fierce Guardianship",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Chromatic Lantern",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Otawara, Soaring City",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land*",
+  "gef_expressed": "land*",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Smoldering Marsh",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "The One Ring",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Faithless Looting",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Frantic Search",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "discard",
+     "draw",
+     "untap"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Vandalblast",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Elvish Mystic",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Phyrexian Arena",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Canopy Vista",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Deadly Rollick",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Teferi's Protection",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Propaganda",
+  "valid": true,
+  "parser_status": "vacuum",
+  "gef_today": "vacuum",
+  "gef_expressed": "vacuum",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Sakura-Tribe Elder",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [
+     "enters"
+    ],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Vampiric Tutor",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Mana Drain",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Eternal Witness",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Lotus Petal",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Assassin's Trophy",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Enlightened Tutor",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Wayfarer's Bauble",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Talisman of Creativity",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "lose_life"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Talisman of Indulgence",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "lose_life"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Victimize",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "recur"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Black Market Connections",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Deadly Dispute",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Roaming Throne",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Ashnod's Altar",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Talisman of Hierarchy",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "lose_life"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Big Score",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "discard"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "War Room",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land*",
+  "gef_expressed": "land*",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Blood Artist",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Abrade",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Ponder",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "look"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Delighted Halfling",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Mana Vault",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "untap"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [
+     "upkeep"
+    ],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Talisman of Conviction",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "lose_life"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Herald's Horn",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Chrome Mox",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Anguished Unmaking",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Lightning Bolt",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Windfall",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "wheel"
+    ],
+    "gef_only": [
+     "discard"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Dimir Signet",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Ghostly Prison",
+  "valid": true,
+  "parser_status": "vacuum",
+  "gef_today": "vacuum",
+  "gef_expressed": "vacuum",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Sink into Stupor // Soporific Springs",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "mana"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Rakdos Signet",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Austere Command",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Izzet Signet",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Mystic Sanctuary",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "recur"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": [
+     "enters"
+    ]
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Farewell",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "remove"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Flawless Maneuver",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Gemstone Caverns",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land*",
+  "gef_expressed": "land*",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "mana"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Boros Charm",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "drain"
+    ],
+    "gef_only": [
+     "pump",
+     "pump_team"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Night's Whisper",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Command Beacon",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land*",
+  "gef_expressed": "land*",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Tireless Provisioner",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Hardened Scales",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Akroma's Will",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "blank",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "pump_team"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Orzhov Signet",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Doubling Season",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Idol of Oblivion",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "draw"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Force of Will",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Thran Dynamo",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Cabal Coffers",
+  "valid": true,
+  "parser_status": "land*",
+  "gef_today": "land",
+  "gef_expressed": "land",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Storm-Kiln Artist",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "modeled",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Fell the Profane // Fell Mire",
+  "valid": true,
+  "parser_status": "held",
+  "gef_today": "held",
+  "gef_expressed": "held",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": [
+     "mana"
+    ]
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Impact Tremors",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Village Rites",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "modeled",
+  "gef_expressed": "modeled",
+  "agree": true,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Patchwork Banner",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "partial",
+  "gef_expressed": "partial",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ },
+ {
+  "name": "Mox Amber",
+  "valid": true,
+  "parser_status": "modeled",
+  "gef_today": "blank",
+  "gef_expressed": "blank",
+  "agree": false,
+  "diff": {
+   "fx": {
+    "parser_only": [
+     "mana"
+    ],
+    "gef_only": []
+   },
+   "ev": {
+    "parser_only": [],
+    "gef_only": []
+   },
+   "kw": {
+    "parser_only": [],
+    "gef_only": []
+   }
+  }
+ }
+]
