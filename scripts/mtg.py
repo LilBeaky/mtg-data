@@ -61,6 +61,11 @@ SCHEMA REMINDER: missing "game_changer" key = not a Game Changer.
 """
 import glob, json, os, re, signal, sys
 if hasattr(signal, "SIGPIPE"): signal.signal(signal.SIGPIPE, signal.SIG_DFL)  # quiet when piped to head (not on Windows)
+def utf8_stdio():
+    """Write stdout/stderr as UTF-8 (Windows consoles and pipes default to cp1252, which can't print ≤ etc.)."""
+    for s in (sys.stdout, sys.stderr):
+        if hasattr(s, "reconfigure"): s.reconfigure(encoding="utf-8", errors="replace")
+utf8_stdio()   # every script that imports mtg gets it
 from collections import Counter
 
 ROOT = os.path.dirname(os.path.abspath(__file__))       # .../scripts

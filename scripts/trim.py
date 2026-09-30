@@ -20,6 +20,9 @@ import gzip
 import json
 import sys
 
+for _s in (sys.stdout, sys.stderr):   # UTF-8 output on Windows (cp1252 default); standalone, so no mtg.utf8_stdio()
+    if hasattr(_s, "reconfigure"): _s.reconfigure(encoding="utf-8", errors="replace")
+
 
 # =============================================================================
 # SCRYFALL — oracle cards bulk export -> trimmed_scryfall_v2.json

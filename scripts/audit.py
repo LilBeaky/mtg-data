@@ -270,7 +270,7 @@ def main():
     cmd = [sys.executable, os.path.join(ROOT, "mtg.py"), "deck", path]
     if o.get("commander"): cmd += ["--commander", o["commander"]]
     if o.get("all-combos"): cmd += ["--all-combos"]
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     for line in (r.stdout + r.stderr).strip().splitlines():
         if not line.startswith("note: MLD and extra-turn"):     # audit.py flags these itself below
             print("  " + line)
@@ -477,7 +477,7 @@ def main():
             cmd = [sys.executable, os.path.join(ROOT, "edhrec_diff.py"), "diff", snap, path]
             for k in ("min", "limit", "commander"):
                 if o.get(k): cmd += [f"--{k}", o[k]]
-            r = subprocess.run(cmd, capture_output=True, text=True)
+            r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
             for line in (r.stdout + r.stderr).strip().splitlines():
                 print("  " + line)
 

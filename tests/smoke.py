@@ -213,7 +213,8 @@ def checks():
 def run(c):
     try:
         p = subprocess.run([PY] + c["cmd"], cwd=REPO, capture_output=True, text=True, timeout=300,
-                           encoding="utf-8", errors="replace", env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+                           encoding="utf-8", errors="replace",
+                           env={k: v for k, v in os.environ.items() if k != "PYTHONIOENCODING"})   # scripts must set UTF-8 themselves
         out, rc = (p.stdout or "") + (p.stderr or ""), p.returncode
     except subprocess.TimeoutExpired:
         return ["timed out after 300s"]

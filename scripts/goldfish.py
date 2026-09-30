@@ -3844,7 +3844,6 @@ def header_wants(path, found, cache, names):
     return keys, pk
 
 def main():
-    if hasattr(sys.stdout, "reconfigure"): sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # Windows consoles (cp1252)
     ap = argparse.ArgumentParser(description="Monte Carlo goldfish simulator (see module docstring)")
     ap.add_argument("deck")
     ap.add_argument("--turns", type=int, default=8); ap.add_argument("--trials", type=int, default=2000)
