@@ -1276,6 +1276,7 @@ class Card:
         self.cond_units = []     # mana abilities with 'Activate only if you control ...': [(units, count key, n)]
         self.chapters = {}       # Saga: chapter number -> effects (CR 714); final chapter = max key
         self.granted_ch = set()  # chapters that grant the Saga an ability (Urza's Saga), read as its own
+        self.animate = None      # manland: (generic, pips, power, toughness, keywords, subtypes, quoted ability) until end of turn
         self.levels = {}         # Class: level -> (generic, pips, the Card at that level, level-up effects); self.level: this Card's
         self.level = 1
         self.gy_acts = []        # 'Return ~ from your graveyard to the battlefield/hand' abilities (Reassembling Skeleton)
@@ -2044,6 +2045,16 @@ def parse_line(k, L, anyc, abil):
     if re.fullmatch(r"whenever ~ becomes tapped, it deals \d+ damage to you\.?", lo2): return True   # pain (read_life_costs)
     if re.fullmatch(r"if you would draw a card while your library has no cards in it, you win the game instead\.?", lo2):
         k.labman = True; return True
+    m = re.match(r"^((?:\{[^}]+\})+): (?:until end of turn, )?~ becomes an? (\d+)/(\d+) ([a-z ,\-]*?)(?:artifact )?creature(?P<rest>[^.]*?)"
+                 r"(?: until end of turn)?\.(?: it's still a land\.)?$", re.sub(r'"[^"]*"', "@q@", lo))
+    if m and k.is_land:                                   # Mutavault, Restless lands, Celestial Colonnade: animated for combat
+        g_, p_, x_, l_ = parse_cost(m.group(1))
+        rest = re.sub(r"\bwith all creature types\b|\bwith ward \{[^}]+\}|,? and\b", "", m.group("rest"))
+        subs = tuple(x for x in (as_subtype(w) for w in re.findall(r"[a-z\-']+", m.group(4))) if x)
+        qt = re.search(r'"([^"]+)"', L)
+        if x_ or l_ or (re.search(r"@q|\bwith\b", rest) and not qt and not _kw_in(rest)): return False
+        k.animate = (g_, p_, int(m.group(2)), int(m.group(3)), _kw_in(rest), subs, qt.group(1) if qt else "")
+        return True
     m = re.match(r"^((?:\{[^}]+\})+): return ~ from your graveyard to (the battlefield( tapped)?|your hand)\.?$", lo)
     if m:                                                 # Reassembling Skeleton: activated from the graveyard
         g_, p_, x_, l_ = parse_cost(m.group(1))
@@ -2710,6 +2721,7 @@ class Game:
         self.combat_on = False; self.combat_done = False; self.attackers = {}   # attacker Perm -> defending opponent
         self.xcombat = 0; self.xcombats = 0     # additional combats pending this turn / taken this game
         self.pending_untap = []; self.attacked = set()   # untaps waiting for the next combat; creatures that attacked this turn
+        self.animated = []                      # manlands animated this turn (a land again at cleanup)
         self.eot = []                           # (Perm, "sacrifice"/"exile"): leaves at the next end step (Kiki-Jiki copies, Sneak Attack)
         self.casting = None                     # the card resolving from a cast (an ETB's 'if you cast it')
         self.opp_turn = False                   # an opponent's turn is being played (opponents())
@@ -2731,6 +2743,7 @@ class Game:
         g.hand, g.lib, g.gy, g.cmd, g.rebound = self.hand[:], self.lib[:], self.gy[:], self.cmd[:], self.rebound[:]
         g.exile, g.unearthed = self.exile[:], [mp[id(p)] for p in self.unearthed if id(p) in mp]
         g.eot = [(mp[id(p)], d) for p, d in self.eot if id(p) in mp]
+        g.animated = [mp[id(p)] for p in self.animated if id(p) in mp]
         g.rattr = Counter(); g.tut = Counter(); g.life_paid = Counter()
         g.cmd_casts = Counter(self.cmd_casts); g.first = dict(self.first); g.cmd_first = dict(self.cmd_first)
         g.attr = Counter(); g.pool = None; g.convs = []; g._st = None
@@ -3114,7 +3127,7 @@ class Game:
         return True
 
     def land_enters(self, k, force_tapped=False):
-        p = Perm(k, tapped=force_tapped or self.etapped(k))
+        p = Perm(k, tapped=force_tapped or self.etapped(k), sick=True)     # an animated land can't attack the turn it came
         if k.etap and k.etap[0] == "shock" and not p.tapped: self.lose_life(k.etap[1], "shockland")
         self.lands.append(p)
         if k.statics: self._st = None
@@ -4889,6 +4902,27 @@ class Game:
             self.note(f"  equip {q.k.name} -> {v.k.name} (paid {g_ + len(p_)})")
             self.leave(v, "dies (toughness 0)")
 
+    def animate_step(self):
+        """Before combat: animate manlands with mana to spare (Mutavault): each attacks as a creature this turn, not
+        spending its own mana; at cleanup it's a land again (a land that entered this turn stays home)."""
+        if self.dry or not self.alive() or self.pool is None: return
+        for p in [p for p in self.lands if p.k.animate and not p.tapped and not p.sick]:
+            g_, pp_, pw, tg, kws, subs, qt = p.k.animate
+            own = [u for u in self.pool if u[4] is p and not u[5]]
+            for u in own: u[5] = True
+            if pw <= 0 or not self.pay(None, g_, pp_):
+                for u in own: u[5] = False
+                continue
+            ak = self.sim.animated(p.k)
+            self.lands.remove(p); p.k = ak; self.perms.append(p); self._st = None; self.animated.append(p)
+            self.spent += g_ + len(pp_); self.note(f"  animate {ak.name} ({pw}/{tg})")
+
+    def unanimate(self):
+        for p in self.animated:
+            if p in self.perms:
+                self.perms.remove(p); p.k = p.k.base; self.lands.append(p); self._st = None
+        self.animated = []
+
     def equip_step(self):
         """Before combat: put unattached Equipment on the best attacker, paying its equip cost."""
         if self.dry or not self.alive() or self.pool is None: return
@@ -5136,8 +5170,8 @@ class Game:
                 if u[4] is p: u[5] = True
         if p.k in self.sim.commanders: self.cmd.append(p.k)
         elif p.k.token: pass
-        elif dest == "top": self.lib.append(p.k)
-        else: {"gy": self.gy, "exile": self.exile, "hand": self.hand}[dest].append(p.k)
+        elif dest == "top": self.lib.append(getattr(p.k, "base", None) or p.k)
+        else: {"gy": self.gy, "exile": self.exile, "hand": self.hand}[dest].append(getattr(p.k, "base", None) or p.k)   # an animated land: the card
         if not quiet: self.note(f"    {p.k.name} {why}")
         on_it = [q for q in self.perms if q.att is p]            # Equipment / Auras it wore: their 'equipped creature dies'
         for q in list(self.perms):
@@ -5280,7 +5314,7 @@ class Game:
         for t in range(1, turns + 1):
             self.turn = t; self.phase += 1; self.tcast = (); self.gained = 0; self.turns_left = len(self.alive())
             if self.bspec: self.expire(t)
-            for p in self.lands: p.tapped = False
+            for p in self.lands: p.tapped = False; p.sick = False
             for p in self.perms:
                 p.sick = False
                 if not p.k.no_untap: p.tapped = False            # Mana Vault stays tapped
@@ -5314,6 +5348,7 @@ class Game:
             rec["stranded"][t].append(self.stranded())
             self.note(f"  mana {pool_n} ({''.join(sorted(cols))}) at the start of main")
             self.cast_loop(activate=False)                          # main phase 1: cast everything (nothing to hide)
+            self.animate_step()
             self.equip_step()
             if self.bspec and not self.dry: self.clear_path()
             faced = sum(len(self.opps[i]["board"]) for i in self.alive())
@@ -5339,6 +5374,7 @@ class Game:
             self.open_pool = [u for u in self.pool if not u[5]] if self.pool else []
             self.pool = None; self.convs = []
             self.fire("end")
+            self.unanimate()
             for q in self.unearthed:
                 if q in self.perms: self.leave(q, "is exiled (unearth)", "exile", quiet=True)
             self.unearthed = []
@@ -5426,7 +5462,7 @@ class Sim:
         self.order = {c: i for i, c in enumerate(args.order.split(","))}
         self.on_play, self.kill_turn, self.cast_hold = not args.draw, args.kill_commander, args.cast_interaction
         self.dry_rng = random.Random(0)
-        self.tm = {}; self.tokens = {}; self.copies = {}
+        self.tm = {}; self.tokens = {}; self.copies = {}; self.anims = {}
         self.dis_rng = random.Random(0)
         self.persist = 3
         self.board_spec = getattr(args, "board_spec", None) or []     # --blockers: [(turn, until, seats, item)]
@@ -5469,6 +5505,20 @@ class Sim:
             fired.append(f"{slot}={e['code'] if e['backup'] else e['code'].rstrip('!')}@{t}")
             out.setdefault(t, []).append(e)
         return out, fired
+
+    def animated(self, k):
+        """k as the creature its manland ability makes (cached): printed land plus the creature type, P/T, keywords, and
+        the quoted ability it gains (Den of the Bugbear)."""
+        c = self.anims.get(id(k))
+        if c is None:
+            g_, pp_, pw, tg, kws, subs, qt = k.animate
+            c = copy.copy(k); c.base = k; c.types = k.types | {"Creature"}; c.power, c.tough = pw, tg
+            c.kw = set(k.kw) | set(kws); c.subtypes = set(k.subtypes) | set(subs); c.tough_known = True
+            if qt:
+                extra = compile_card({"name": k.name, "type_line": "Creature", "oracle_text": qt, "cmc": 0, "colors": []}, self.anyc)
+                c.trig = list(k.trig) + list(extra.trig)
+            self.anims[id(k)] = c
+        return c
 
     def copy_card(self, k, haste=False, nonleg=False):
         """A token that's a copy of k (its copiable values: CR 707.2), cached."""
@@ -5948,6 +5998,8 @@ def explain(cache, names, commanders):
                             + "+".join("".join(sorted(u[0] | u[1])) or "-" for u in su))
             for cu, key, n in k.cond_units:
                 bits.append("mana " + "+".join("".join(sorted(u[0] | u[1])) or "-" for u in cu) + f" if {n}+ {pv(key)}")
+            if k.animate: bits.append(f"becomes a {k.animate[2]}/{k.animate[3]}" + (" " + ",".join(sorted(k.animate[4])) if k.animate[4] else "")
+                                      + f" creature for {k.animate[0] + len(k.animate[1])}" + (" (has an ability)" if k.animate[6] else ""))
         else:
             counts[k.status] += 1
             bits = []
