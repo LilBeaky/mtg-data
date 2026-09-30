@@ -1,81 +1,74 @@
 # Goldfish parser coverage roadmap
 
-For the assistant. Goal: goldfish.py reads as much of the Commander card pool as pattern parsing reasonably allows, without reading anything *wrong*. Measure with `scripts/goldfish_coverage.py` (usage: run it with no args).
+For the assistant. Goal: goldfish.py reads as much of the Commander card pool as regex parsing reasonably allows, without reading anything *wrong*. Every number below is measured with `scripts/goldfish_coverage.py report` (weight = 1/√edhrec_rank, so staples count far more than draft chaff).
 
-## The rule
+## Where it stands (2026-09-30, end of the second session)
 
-**Coverage is worthless if the read is wrong.** "modeled" only means every line matched something. A regex that matches and produces the wrong effect is worse than an honest "unmodeled", because it silently corrupts the numbers. Every parser change: `goldfish_coverage.py diff HEAD`, read every changed reading against Oracle text, fix misreads first, then `tests/goldfish_units.py` + `tests/smoke.py`, then push.
+| Status | Cards | Share | Popularity-weighted |
+|---|---|---|---|
+| modeled | 9,878 | 31.4% | 33.1% |
+| partial | 9,105 | 28.9% | 28.4% |
+| blank | 8,697 | 27.6% | 24.2% |
+| held | 2,888 | 9.2% | 10.1% |
+| vacuum | 413 | 1.3% | 1.2% |
+| land* | 486 | 1.5% | 3.0% |
 
-## Baseline (2026-09-30, after Phase 0; see the Phase 1 line below for the current figure)
+**Fully read (modeled + held + vacuum + override), weighted: 44.4%.**
 
-32,116 Commander-legal cards (667 lands). Weight = 1/sqrt(edhrec_rank).
+### The honesty reset (read this before comparing numbers)
 
-| Status | Share | Weighted |
-|---|---|---|
-| modeled | 36.4% | 36.6% |
-| blank | 25.8% | 23.0% |
-| partial | 23.4% | 23.7% |
-| held | 9.2% | 10.0% |
-| vacuum | 3.8% | 3.8% |
-| land* (land with an unread line) | 1.5% | 2.8% |
+The first session ended at 50.9% weighted "fully read". That number was inflated: the second session found that `modeled` was being claimed for text the parser never read.
+- Keyword lines nothing reads (kicker, morph, storm, echo, sunburst, ...) were skipped silently. The same fallback's `startswith` also swallowed every unparsed "Enchanted/Equipped creature ..." line.
+- "[You may] COST. If you do, EFFECT" ran the effect without paying the cost (326 abilities).
+- Any "If COND, EFFECT" whose condition wasn't read ran unconditionally (Skyclave Relic made kicked copies for free).
+- A line read in part (Frantic Search's untap, Sensei's Top going back on top) still counted as read.
+- Trigger filters ignored words they didn't know: "a creature with power 2 or less", "face-down", "enchanted player controls" all read as "any creature".
+- Counts read flat ("for each ...", "where X is ..." read as 1 or as the spell's X).
 
-**Fully read (modeled + held + vacuum + override), weighted: 50.5%.** The miss tail is flat: the biggest effect cluster is ~3.5% of weighted misses.
+Making those honest dropped the number to ~42%. Everything since is real reading: 42.3% → 44.4% over the rest of the session, while the misread fixes kept landing.
 
-**Ceiling:** full coverage isn't reachable with pattern parsing. Target ~85% weighted fully read, and every card in the user's decks read via parser or override. Stop chasing a cluster under ~0.3% weighted; overrides for anything under ~5 cards.
+## The rules that govern everything
 
-## Decisions (user, 2026-09-30)
+**Coverage is worthless if the read is wrong.** `modeled` means every line matched something *and* nothing substantive was left over. A regex that matches a line and produces the wrong effect is worse than an honest "unmodeled", because it silently corrupts the numbers.
+- An unreadable cost, condition, count or filter drops the effect (the line is partial/blank). Never make it free or unconditional, and never treat a filter as "any creature".
+- Keyword lines are either read, listed as silent (`KW_SILENT`: ward, partner, enchant, landwalk...) or reported as `keyword not modeled`.
+- The leftover detector (`_leftover`) marks a line partial when an effect verb or a condition survives the effect regexes. Opponent-directed text doesn't count against it.
 
-- **Removal aimed at opponents' creatures is modeled against `--blockers`**: it can kill a blocker. Without `--blockers` there's nothing to hit.
-- **Order: biggest weighted clusters first** (`report` re-ranks after every pass).
-- **File split: deferred** (assistant's call, allowed by the user). The parser and simulator share module state (`_CTX`, `_EXPLAIN_DECK`, constants); tests, smoke and docs import/reference `scripts/goldfish.py`; targeted `grep -n`/`sed -n` reads already keep token cost low. Revisit if the parser outgrows that. If split, per the user: the goldfish tool gets its own folder with everything specific to it (script, coverage tool, overrides, gradients, fixtures, docs).
+**Every change passes three nets before it's pushed:**
+1. `goldfish_coverage.py diff HEAD --all`: read every changed reading. Group them with a scratch script by what changed, read the most-played first, and fix misreads before anything else.
+2. `tests/goldfish_units.py` (210 checks, deterministic board states) and `tests/goldfish_sweep.py`: every card's effects executed once in a live game, which fails on any exception. The sweep found crashes the fixtures never hit.
+3. `tests/smoke.py` (70 checks, ~2.5 min). Run it in a separate git worktree at the commit being pushed, so editing can continue. Read the result before pushing.
 
-## Phase 0: safety net ✅ (2026-09-30)
+## Done
 
-- Fixed the `_fx_pump_team` crash (10 cards failed to compile; any deck with one couldn't run).
-- Team pumps now read "for each X" (was dropped: every scaling team pump read flat). Unreadable counts stay unread. Added a `domain` count key.
-- `goldfish_coverage.py` (`report`, `diff REF`, `card NAME`), 3 unit checks, 2 smoke checks (every legal card compiles).
+- **Phase 0/1 (session 1):** safety net, removal read against `--blockers`, opponent-only lines.
+- **Phase 2 passes (session 1):** draw/cast triggers, counters, look-at, sacrifice-cost spells, Skullclamp.
+- **Session 2, correctness:** the honesty reset above. Also:
+  - pod searches tied to the sacrificed permanent; Eldritch Evolution onto the battlefield;
+  - Etched Oracle's four-counter cost; "its controller draws" isn't you; "target player mills" only with a graveyard payoff;
+  - quoted granted text isn't the card's own interaction; CR 704.5f toughness-0 deaths;
+  - -1/-1 costs on your own creature go where they hurt least.
+- **Session 2, mechanics:**
+  - Mana: sac-for-mana outlets; rituals and dynamic mana; conditional mana (metalcraft); Chrome Mox / Mox Diamond.
+  - Counts: converge/sunburst; cascade; devotion; "for each [subtype]"; "X, where X is ..." everywhere; kicker/multikicker.
+  - Doublers and tribes: token doublers; trigger doublers (cause and source); "the chosen type" = the deck's tribe.
+  - New structures: sagas (CR 714) incl. Urza's Saga; token copies; conditions (`parse_cond`); qualified trigger filters.
+  - Individual cards: Black Market Connections, Harrow / Crop Rotation, Natural Order, Chaos Warp, Victimize, Animate Dead, Frantic Search, Mana Vault, Sensei's Top, amass, artifact/enchantment removal as stax answers, Krenko's tap-over-attack.
 
-## Phase 1: removal vs blockers, opponent-only lines ✅ (2026-09-30)
+## Next (by weight in `report`, re-rank each session)
 
-Decision rule from the user for every pilot choice from here on: **model the decision a player is most likely to make, without over-complexifying.**
+1. **"put N" (3.1%):** mostly "+1/+1 counter" riders on new trigger frames and "put a card from among them into your hand" digs. Also "put a creature card from your hand onto the battlefield" (Sneak Attack, Stoneforge Mystic: a `cheat` effect with the end-step list already built for copies).
+2. **"create N" (1.9%):** Treasures on odd triggers, Curse of Opulence (~opp), Caretaker's Talent (level-up classes).
+3. **"~ deals" / "it deals" (2.6%):** damage to any target with counted amounts, pingers.
+4. **"target creature gets" / pumps on activated abilities (1.8%):** Kessig Wolf Run and friends in `combat_acts`.
+5. **Conditions still unread (3.2%: "if you", "if N", "if ~"):** the land conditions (Field of the Dead), "as long as" statics (Anger), counts of cards drawn, spells cast this turn.
+6. **Auras on your creatures ("enchanted creature", 1.2%).**
+7. **Clones (Phyrexian Metamorph, Spark Double):** enter as a copy; `copy_card` exists.
+8. **Phase 3 correctness audit:** ~40 `modeled` cards stratified by popularity, reading compared to Oracle; log the misread rate.
 
-- Held removal already fired at the one blocker between you and a kill (`clear_path`). Now it only uses a spell that can actually kill that blocker (filters, damage vs toughness, indestructible, edicts take the weakest, Swords' life gain counted), one-sided wipes go when clearing boards is lethal, and held any-target burn can kill a blocker.
-- Removal on permanents (ETB, triggers, activated, planeswalker abilities) is read as `kill_blk` and aimed at blockers. **Fixed a real bug:** -1/-1 counters and -N/-N on "target creature" (~118 cards incl. Skinrender) used to land on your own best creature; -X/-0 debuffs used to shrink your own attacker.
-- Opponent-only lines are vacuum, but only if they touch nothing the sim tracks (you, their life, their creatures).
-- Reviewed by category and by a random sample of 40 new removal readings (2 misreads found and fixed via an allowlist after the target noun).
-- **Fully read, weighted: 49.9%** (was 50.5%). Removal gains were offset by ~780 cards moving vacuum → blank/partial: the old vacuum rule was hiding real payoffs (drains, extra turns, recursion, "you draw" riders). The old figure was inflated; this one is honest.
-- Next cheap win: counterspells/protection are modeled as held answers, yet their text still shows as "unmodeled" and pads the "counter target" cluster.
+## Working conventions
 
-## Phase 2: cluster passes (repeat)
-
-Log:
-- **Pass 1** (2026-09-30): draw-a-card and player-casts triggers, legendary names at " of " (Rosie Cotton), counters on each [type] creature / up to N targets + +1/+1 activations, look-at variants, held answers/symmetric wipes no longer logged as misses. Sampled: fixed intervening-"if" leaks, empty triggers, caster-rewarding lines.
-- **Pass 2** (2026-09-30): sacrifice-as-additional-cost spells, Fling-only-when-lethal, equipped/enchanted-creature-dies triggers + the Skullclamp play, Mana Vault/Monoliths don't untap and are spent last, tightened the damage-mana regex (9 old misreads: Mana Drain, Mana Echoes, Energy Tap...), empty triggers dropped everywhere.
-- Measured: only ~20% of triggered misses are frame-limited, and those frames are a flat tail; effects are the bottleneck. Prioritize by play rate (the report's most-played list) over cluster size.
-- Still open from the top of the most-played list: Chaos Warp, Victimize, Black Market Connections, Roaming Throne, Ashnod's Altar / Phyrexian Tower (sac-for-mana abilities), Chrome Mox, Doubling Season, Herald's Horn, Natural Order ("green creature" fodder filter).
-
-Per pass: `report` → top weighted cluster → pull 10-20 example cards from the repo → parser change → unit check (plus a guard card that must stay unread, where relevant) → `diff HEAD` review → units + smoke → push. One cluster per commit; the message names the cluster and the diff counts.
-
-Current top clusters: destroy target, put N (counters), ~ deals N, create N (token variants, sagas), counter target, exile target, look at, intervening "if", target creature, "as long as". Top-played misses: Chaos Warp, Skullclamp, Propaganda, Victimize, Black Market Connections, Deadly Dispute, Roaming Throne, Ashnod's Altar, Ponder, Mana Vault, Herald's Horn, Chrome Mox, Doubling Season.
-
-## Phase 3: correctness audit (every ~3 passes)
-
-Sample ~40 "modeled" cards stratified by popularity; compare `card` readings to Oracle; log and fix misreads; track the misread rate.
-
-Idea to build here: a **leftover detector**. `parse_fx` masks what it matched; if a line still has substantive words unmasked (e.g. "you gain X life" after the drain half matched), mark the card partial instead of modeled. This would catch silent clause drops automatically.
-
-## Known misreads (found, not yet fixed)
-- Casting of Bones reads 'draw 3' and drops 'then discard two' (leftover-detector class).
-- Eldritch Evolution's tutor reads as to-hand; it's onto the battlefield (tutors.py destination).
-- Soulstinger-style "-1/-1 counters on target creature you control" go on your best attacker; a player picks the weakest (usually the card itself).
-- "target player mills/draws" reads as you; a player picks per deck (Necron Deathmark).
-- Cast-only-during-an-opponent's-turn / only-if-fewer-creatures cards are vacuum but still take a slot; fine, but worth knowing.
-
-- Storm the Citadel is `held`: hold detection reads the quoted granted ability's "destroy target". Hold detection should ignore quoted text.
-- Exotic Disease reads "an opponent loses per domain" as modeled but drops "you gain X life" (X-valued life gain isn't read). Leftover detector would catch this class.
-- Magmablood Archaic's converge counter reads as 1 (should be colors spent).
-- "for each [subtype] you control" isn't a count key in `dyn_key` (Chong and Lily's Bards, Nissa, Ascended Animist's Forests).
-
-## Out of scope
-
-Pilot decision quality (separate track), opponent behavior (future separate script, per the user's scope rule), ML classifiers, exact-probability engines.
+- Load only the goldfish.py section being changed (grep -n / sed -n), never the whole file.
+- One cluster per commit; the message names the cluster and the diff counts.
+- Patches that touch many places go in a scratchpad script with an assert per replacement, so a missed anchor aborts before writing anything.
+- Update GOLDFISH.md's feature notes and "Not modeled" list whenever something leaves it; update pinned smoke strings when a reading legitimately changes (say why in the commit).
