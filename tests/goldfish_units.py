@@ -1096,7 +1096,9 @@ PNAMES = ["Krenko, Mob Boss", "Goblin Instigator", "Goblin Warchief", "Mountain"
           "Mox Diamond", "Black Market Connections", "Harrow", "Chaos Warp", "Morbid Opportunist", "Grizzly Bears",
           "Lightning Bolt", "Mulldrifter", "Sol Ring", "Siege-Gang Commander", "Llanowar Elves", "Welcoming Vampire",
           "Windreader Sphinx", "Serra Angel", "Craw Wurm", "Trespasser's Curse", "History of Benalia", "Urza's Saga",
-          "Mox Opal", "Sol Ring", "Ophiomancer", "Gorehorn Raider", "Garruk's Uprising", "Valakut, the Molten Pinnacle"]
+          "Mox Opal", "Sol Ring", "Ophiomancer", "Gorehorn Raider", "Garruk's Uprising", "Valakut, the Molten Pinnacle",
+          "Helm of the Host", "Kiki-Jiki, Mirror Breaker", "Skyclave Relic", "Second Harvest", "Smothering Tithe",
+          "Oko, the Ringleader", "Dwynen's Elite"]
 PRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(PNAMES)}
 g.CHOSEN_TYPE = g.chosen_type([PRAW["Krenko, Mob Boss"]], [PRAW[n] for n in ("Goblin Instigator", "Goblin Warchief", "Siege-Gang Commander")])
 PK = {n: g.compile_card(PRAW[n], g.ALL5) for n in PNAMES}
@@ -1181,6 +1183,31 @@ def _():
     J = pgame(perms=["Grizzly Bears"]); J.enter(PK["Garruk's Uprising"]); K_ = pgame(perms=["Craw Wurm"]); K_.enter(PK["Garruk's Uprising"])
     v = [t for t in PK["Valakut, the Molten Pinnacle"].trig if t[0] == "etb"][0][2][0][1]
     return a == 1 and b == [40] * 3 and c == 118 and len(J.hand) == 0 and len(K_.hand) == 1 and v[0] == "pcount" and v[2] == 6
+
+@check("Token copies: Helm of the Host copies the equipped Mulldrifter (its ETB draws 2); Kiki-Jiki's copy has haste and is sacrificed at end step")
+def _():
+    G = pgame(perms=["Mulldrifter"]); q = g.Perm(PK["Helm of the Host"]); q.att = G.perms[0]; G.perms.append(q); G._st = None
+    G.fire("combat_begin")
+    H = pgame(perms=["Kiki-Jiki, Mirror Breaker", "Mulldrifter"], lands=["Mountain"] * 2); H.sim.commanders = []
+    H.build_pool(); ok = H.try_act(H.perms[0], PK["Kiki-Jiki, Mirror Breaker"].acts[0], False, 0, False)
+    cp = [p for p in H.perms if p.k.token]
+    tok = cp[0] if cp else None
+    H.pool = None; H.fire("end")
+    for q_, fate in H.eot:
+        if q_ in H.perms: H.leave(q_, "end", sac=True)
+    return len(G.hand) == 2 and sum(1 for p in G.perms if p.k.token) == 1 and ok and tok is not None and tok.k.haste \
+        and len(H.hand) == 2 and tok not in H.perms
+
+@check("An unreadable 'If' drops its effect (Skyclave Relic's kicked copies; Oko's 'Otherwise' goes with it); the tax clause stays (Smothering Tithe)")
+def _():
+    oko = [fx for c_, fx in PK["Oko, the Ringleader"].pw if c_ == 1][0]
+    return not any(e[0] == "copy_token" for e in g.all_fx(PK["Skyclave Relic"])) and PK["Skyclave Relic"].status == "partial" \
+        and oko == [("draw", 2)] and PK["Smothering Tithe"].trig and PK["Smothering Tithe"].status == "modeled"
+@check("Second Harvest copies each token; Dwynen's Elite needs another Elf; 'if you cast it' is false for a creature put onto the battlefield")
+def _():
+    G = pgame(perms=["Grizzly Bears"]); G.make_tokens(PK["Krenko, Mob Boss"].acts[0]["fx"][0], 2); G.do(PK["Second Harvest"].spell, PK["Second Harvest"])
+    H = pgame(); H.enter(PK["Dwynen's Elite"]); I = pgame(perms=["Llanowar Elves"]); I.enter(PK["Dwynen's Elite"])
+    return sum(1 for q in G.perms if q.k.token) == 4 and sum(1 for q in H.perms if q.k.token) == 0 and sum(1 for q in I.perms if q.k.token) == 1
 
 def main():
     fails = 0

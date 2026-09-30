@@ -46,7 +46,7 @@ Card behavior is compiled from Oracle text once per card. data/goldfish_override
 replaces the parse for the cards it names. --explain marks each card modeled / partial /
 blank; a blank is still cast (it costs its mana) but does nothing.
 """
-import argparse, itertools, json, os, random, re, sys
+import argparse, copy, itertools, json, os, random, re, sys
 from collections import Counter
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mtg
@@ -448,6 +448,8 @@ def _fx_search(m):
     orig = re.sub(r"with mana cost \{0\} or \{1\}", "with mana value 1 or less", orig, flags=re.I)   # Urza's Saga ~approx (X costs too)
     tm = tu.SEARCH_RX.search(orig)
     tg = tu.parse_target(tm.group("what") if tm else _orig(m, 1), _CTX["raw"] or {})
+    if re.search(r"mana value x or less, where x is the amount of mana spent to cast", s + m.string[m.end():m.end() + 120]):
+        tg.approx.append("mana value <= mana spent")             # Rocco, Cabaretti Caterer
     rm = re.search(r"mana value (equal to|x or less, where x is) (\w+) plus the sacrificed (\w+)'s mana value", s)
     if rm:                                                     # Birthing Pod, Neoform, Eldritch Evolution: tied to the fodder
         tg.approx = [a for a in tg.approx if not a.startswith("mana value")]
@@ -511,6 +513,45 @@ def _fx_token(m):
         if not nm and not text: return None
         return ("token", n, 0, (nm.group(1).strip().title(),) if nm else (), text, "artifact", 0, frozenset(), tapped)
     return None
+
+COPY_RX = re.compile(
+    r"\bcreate (?P<n>a|an|one|two|three|x|\d+) (?P<tapped>tapped )?tokens? that(?:'s| are) (?:a )?cop(?:y|ies) of (?P<who>[^,.]+?)"
+    r"(?P<rest>(?:,? except [^.]*)?(?:(?:,| and|\.) (?:it|that token|the token|those tokens|they) (?:gains?|has|have) haste(?: until end of turn)?)?"
+    r"(?:\. (?P<eot>sacrifice|exile) (?:it|that token|the token|them|those tokens) at the beginning of the next end step)?)(?=\.|$)")
+
+def _fx_copy(m):
+    """'create a token that's a copy of target creature you control, except it has haste. Sacrifice it at the beginning of the
+    next end step' -> ('copy_token', n, who, filter, haste, end-step fate). who: self / obj / attach / target (your best)."""
+    w = m.group("who").strip()
+    n = _xn(m) if m.group("n") == "x" else num(m.group("n"))
+    if not n: return None
+    before = m.string[:m.start()]
+    fe = re.search(r"for each (?P<w>[^,.]+?),\s*$", before)
+    if fe:                                          # Second Harvest, Clone Legion: one copy of each
+        if fe.group("w") == "of them": fe = None
+        else:
+            f = perm_filt("a", re.sub(r"\btarget player controls\b", "you control", fe.group("w")))
+            if not f or w not in ("that permanent", "that creature", "that token", "it"): return None
+            return ("copy_token", 1, "each", f, bool(re.search(r"\bhaste\b", m.group("rest") or "")), m.group("eot"), False)
+    ct = re.search(r"choose (?:up to one )?(another )?target ([^.]+?)\.\s*[^.]*$", before)
+    if ct and w in ("it", "that creature", "that permanent", "that card"):     # Daretti: 'Choose target artifact ... copies of it'
+        f = perm_filt("another" if ct.group(1) else "a", ct.group(2))
+        if not f: return None
+        w, pre_f = "target", f
+    else: pre_f = None
+    if pre_f: who, f = "target", pre_f
+    elif w in ("~", "this creature", "this permanent", "this artifact"): who, f = "self", None
+    elif w in ("it", "that creature", "that token", "that permanent", "that artifact", "the creature"): who, f = "obj", None
+    elif w in ("equipped creature", "enchanted creature", "enchanted permanent", "enchanted artifact"): who, f = "attach", None
+    else:
+        tm = re.fullmatch(r"(?:up to one )?(another )?target (.+?)", w)
+        if not tm or re.search(r"\b(?:card|graveyard|opponent|spell|you don't control)\b", tm.group(2)): return None
+        f = perm_filt("another" if tm.group(1) else "a", tm.group(2))
+        if not f: return None
+        who = "target"
+    rest = m.group("rest") or ""
+    haste = bool(re.search(r"\bhaste\b", rest))
+    return ("copy_token", n, who, f, haste, m.group("eot"), bool(re.search(r"isn't legendary|is not legendary", rest)))
 
 # noncreature token templates (the effect tuple of a 'token' effect; e[8] = True attacking / "tapped" / False)
 CLUE_E = ("token", 1, 0, ("Clue",), "{2}, Sacrifice ~: Draw a card.", "artifact", 0, frozenset(), False)
@@ -758,6 +799,7 @@ FX = [
     (re.compile(r"put (?:a|up to one) land card from your hand onto the battlefield"), lambda m: ("land_from_hand", 1)),
     (re.compile(r"create (a|an|one|two|three|four|five|x|\w+) (tapped )?(?:(?:food|clue|blood) token or an? )?treasure tokens?"),
      lambda m: ("treasure", _xn(m, 1), bool(m.group(2))) if _xn(m, 1) else None),
+    (COPY_RX, _fx_copy),
     (re.compile(r"\bcreate (?P<n>a|an|one|two|three|four|five|six|seven|x|\d+) (?:tapped )?(?:(?P<p>\d+|x)/(?P<t>\d+|x) )?"
                 r"(?P<desc>[a-z ,\-]*?)\btokens?\b(?P<rest>[^.]*)"), _fx_token),
     (re.compile(r"\binvestigate(?: (twice|three times))?"),
@@ -832,6 +874,12 @@ def parse_cond(c):
     'you have N or more life'; cards in hand; 'you attacked (with N or more creatures) this turn'; graveyard counts."""
     c = c.strip().lower()
     if c == "you gained life this turn": return "gained"
+    if re.fullmatch(r"you cast (?:it|~)|(?:it|~|he|she|they) was cast|(?:it|~) was cast from your hand|you cast it from your hand", c):
+        return ("cast_self",)                           # Rocco, Light-Paws: an ETB that needs the permanent to have been cast
+    m = re.fullmatch(r"you control another (.+)", c)
+    if m:                                               # Dwynen's Elite: 'another Elf' (not itself)
+        f = perm_filt("another", m.group(1))
+        return ("pcount", f, 1) if f else None
     m = re.fullmatch(r"you have (\d+) or more life", c)
     if m: return ("life", int(m.group(1)))
     m = re.fullmatch(r"you have at least (\d+) life more than your starting life total", c)
@@ -859,10 +907,12 @@ def parse_cond(c):
     return None
 
 def cond_str(c):
+    if isinstance(c, tuple) and c[0] == "not": return "otherwise (" + cond_str(c[1]) + ")"
     if c == "opp_lands": return "if an opponent has more lands ~opp"
     if c == "gained": return "if you gained life this turn"
     k = c[0]
     if k == "life": return f"if you have {c[1]}+ life"
+    if k == "cast_self": return "if it was cast"
     if k == "hand_le": return f"if {c[1]} or fewer cards in hand"
     if k == "hand_ge": return f"if {c[1]}+ cards in hand"
     if k == "attacked": return "if you attacked" + (f" with {c[1]}+" if c[1] > 1 else "")
@@ -870,6 +920,12 @@ def cond_str(c):
     if k == "pcount": return f"if you control {c[2]}+ {perm_desc(c[1])}"
     if k == "pcount_le": return f"if you control {'no' if c[2] == 0 else str(c[2]) + ' or fewer'} {perm_desc(c[1])}"
     return f"if {c}"
+
+def _probe(text):
+    """Does text read as any effect? (a speculative parse: its leftovers aren't recorded)"""
+    saved = _CTX.get("left"); _CTX["left"] = None
+    try: return bool(parse_fx(text)[0])
+    finally: _CTX["left"] = saved
 
 def _ifdo_cost(cost):
     """The cost sentence before 'If you do,' -> a cost the sim pays ('discard', n, filter) / ('sac_self',) / ('sac', fodder)
@@ -907,12 +963,7 @@ def parse_fx(s):
         inner, t2 = parse_fx(s0[m.start(1):])
         return ([("cond", "opp_lands", inner)] if inner else []), tax or t2
     if re.match(r"(?:you may )?if (?:an|each) opponent (?:controls|has) more\b", s): return [], tax
-    m = re.match(r"(?:then )?if (?P<c>[^,]+), (?P<rest>.+)$", s)
-    if m and not re.match(r"(?:then )?if you do\b", s):
-        cond = parse_cond(m.group("c"))
-        if cond:                                   # Garruk's Uprising: 'if you control a creature with power 4 or greater, draw'
-            inner, t2 = parse_fx(s0[m.start("rest"):])
-            return ([("cond", cond, inner)] if inner else []), tax or t2
+
     m = re.search(r"you may pay ((?:\{[^}]+\})+)\. if you do,? (.+)", s)
     if m:
         g, p, _, _ = parse_cost(m.group(1))
@@ -937,6 +988,29 @@ def parse_fx(s):
             pre, _ = parse_fx(s0[:cs]) if cs else ([], False)
             if not c: return pre + other, tax                                    # an unread cost: the effect isn't free
             return pre + ([("ifdo", c, inner, other)] if inner else other), tax
+    parts = re.split(r"(?<=\.)\s+", s0)
+    COND_OWN = (r"(?:then )?if (?!you do\b|it's an? |it is an? |x is greater than or equal to the number of cards in your library"
+                r"|(?:the|that) player doesn't|they don't)")   # reveal checks, Thassa's Oracle, the tax clause (Smothering Tithe)
+    if any(re.match(COND_OWN + r"[^,]+, ", x, re.I) for x in parts):
+        conds, keep, last = [], [], None               # 'If COND, EFFECT' sentences (Garruk's Uprising, Skyclave Relic's kicker)
+        for x in parts:
+            om = re.match(r"otherwise,? (?P<rest>.+)$", x, re.I)
+            if om and last is not None:                  # Oko: the 'Otherwise' goes with its 'If' (negated, or dropped with it)
+                if last:
+                    inner, _ = parse_fx(x[om.start("rest"):])
+                    if inner: conds.append(("cond", ("not", last), inner))
+                elif _CTX.get("left") is not None and LEFT_VERB.search(x.lower()): _CTX["left"].append(x.strip()[:90])
+                last = None; continue
+            cm = re.match(COND_OWN + r"(?P<c>[^,]+), (?P<rest>.+)$", x, re.I)
+            if not cm: keep.append(x); last = None; continue
+            cond = parse_cond(cm.group("c")); last = cond or False           # False: an unread 'If' (its 'Otherwise' drops too)
+            if cond:
+                inner, _ = parse_fx(x[cm.start("rest"):])
+                if inner: conds.append(("cond", cond, inner))
+            elif _CTX.get("left") is not None and not LEFT_OPP.search(x.lower()) and LEFT_VERB.search(x[cm.start("rest"):].lower()):
+                _CTX["left"].append(x.strip()[:90])      # an unread condition: its effect is dropped, and the line is partial
+        fx, t2 = parse_fx(" ".join(keep)) if keep else ([], False)
+        return fx + conds, tax or t2
     out, masked = [], s
     for rx, fn in FX:
         for mm in rx.finditer(masked):
@@ -1075,6 +1149,10 @@ def fx_str(e):
     if t == "unblock": return f"{ {'self': '~', 'obj': 'that creature'}.get(e[1], 'target creature') } can't be blocked EOT"
     if t == "reveal_lands": return f"reveal {e[1]}, lands onto the battlefield tapped"
     if t == "bounce_self": return "return ~ to hand"
+    if t == "copy_token":
+        src = {"self": "~", "obj": "that creature", "attach": "the equipped/enchanted creature"}.get(e[2]) or \
+            ("each " if e[2] == "each" else "your best ") + perm_desc(e[3])
+        return f"token copy x{pv(e[1])} of {src}" + (" (haste)" if e[4] else "") + (f" ({e[5]} at end step)" if e[5] else "")
     if t == "cascade": return "cascade" + (f" x{e[2]}" if e[2] > 1 else "") + f" (MV < {e[1]})"
     if t == "free_top": return f"free cast of the next nonland card (MV <= {e[1]})"
     if t == "biorhythm": return "life totals become creature counts ~opp"
@@ -1299,7 +1377,7 @@ def combat_static(k, lo):
     k.statics.append(("anthem", cf[0], dp, dt, frozenset(kws), cf[1], cf[2]))
     return True
 
-PERM_QUALS = ("pow_max", "kw", "ctr", "nonsub", "modified", "equipped", "enchanted", "historic")
+PERM_QUALS = ("pow_max", "kw", "ctr", "nonsub", "modified", "equipped", "enchanted", "historic", "nonleg")
 PERM_OK_WORDS = {"a", "an", "another", "other", "or", "and", "nontoken", "token", "tokens", "creature", "creatures", "artifact",
                  "artifacts", "enchantment", "enchantments", "permanent", "permanents", "land", "lands", "planeswalker",
                  "planeswalkers", "legendary"}
@@ -1317,11 +1395,12 @@ def perm_filt(article, subj):
     if m: extra["ctr"] = "+1/+1" if m.group(1) else "any"; subj = subj.replace(m.group(0), "")
     m = re.search(r"\bnon-?([a-z]+)\b", subj)
     if m and as_subtype(m.group(1)): extra["nonsub"] = as_subtype(m.group(1)); subj = subj.replace(m.group(0), "")
+    if re.search(r"\bnonlegendary\b", subj): extra["nonleg"] = True; subj = re.sub(r"\bnonlegendary\b", "", subj)
     for w in ("modified", "equipped", "enchanted", "historic"):
         if re.search(r"\b" + w + r"\b", subj): extra[w] = True; subj = re.sub(r"\b" + w + r"\b", "", subj)
     tm = re.search(r"\b(creature|artifact|enchantment|permanent|land|planeswalker)s?\b", subj)
     subs = {x for x in (as_subtype(w) for w in re.findall(r"[a-z\-']+", subj)) if x}
-    if not tm and not subs: return None
+    if not tm and not subs and not re.search(r"\btokens?\b", subj): return None      # 'each token you control' (Second Harvest)
     pw = re.search(r"power (\d+) or greater", subj)
     words = re.findall(r"[a-z\-']+", re.sub(r"with power \d+ or greater", "", subj))
     if any(w not in PERM_OK_WORDS and w not in COLOR_WORDS and not as_subtype(w) for w in words): return None   # 'modified', 'attacking'...
@@ -2530,6 +2609,9 @@ class Game:
         self.combat_on = False; self.combat_done = False; self.attackers = {}   # attacker Perm -> defending opponent
         self.xcombat = 0; self.xcombats = 0     # additional combats pending this turn / taken this game
         self.pending_untap = []; self.attacked = set()   # untaps waiting for the next combat; creatures that attacked this turn
+        self.eot = []                           # (Perm, "sacrifice"/"exile"): leaves at the next end step (Kiki-Jiki copies, Sneak Attack)
+        self.casting = None                     # the card resolving from a cast (an ETB's 'if you cast it')
+        self.trig_obj = None; self.last_paid = 0 # the object a firing trigger is about; mana paid for the last spell cast
         self.paid_cols = []; self.converge = 0  # colors of the units that paid for the spell being cast (converge, sunburst)
         self.log = None
 
@@ -2545,6 +2627,7 @@ class Game:
         g.lands = [mp[id(p)] for p in self.lands]; g.perms = [mp[id(p)] for p in self.perms]
         g.hand, g.lib, g.gy, g.cmd, g.rebound = self.hand[:], self.lib[:], self.gy[:], self.cmd[:], self.rebound[:]
         g.exile, g.unearthed = self.exile[:], [mp[id(p)] for p in self.unearthed if id(p) in mp]
+        g.eot = [(mp[id(p)], d) for p, d in self.eot if id(p) in mp]
         g.rattr = Counter(); g.tut = Counter(); g.life_paid = Counter()
         g.cmd_casts = Counter(self.cmd_casts); g.first = dict(self.first); g.cmd_first = dict(self.cmd_first)
         g.attr = Counter(); g.pool = None; g.convs = []; g._st = None
@@ -2827,13 +2910,15 @@ class Game:
         if zone == "hand": self.hand.remove(k)
         elif zone == "cmd":
             self.cmd.remove(k); self.cmd_casts[k] += 1; self.cmd_first.setdefault(k.name, self.turn)
-        self.casts += 1; self.spent += paid; self.tcast += (k,)
+        self.casts += 1; self.spent += paid; self.tcast += (k,); self.last_paid = paid
         self.note(f"  cast {k.name} ({zone}, paid {paid})")
         for gi in k.groups: self.first.setdefault(gi, self.turn)
         self.fire("cast", k)
         if k.castfx: self.count_trig(k.name, "cast"); self.do(k.castfx, k, None, x)
         if k.types & PERMANENT:
-            self.enter(k, from_hand=(zone == "hand"), x=x)
+            self.casting = k
+            try: self.enter(k, from_hand=(zone == "hand"), x=x)
+            finally: self.casting = None
         else:
             self.do(k.spell, k, None, x)
             if zone == "gy" and k.gycast["exile_after"]: self.exile.append(k)
@@ -3069,7 +3154,7 @@ class Game:
         old = bool(kinds & self.CARD_FLOW) or ("ctr" in kinds and "draw" in kinds) or ("prolif" in kinds and prolif_useful) \
             or any(e[0] == "recur" and any(self.sim.tmatch(e[1], c) for c in self.gy) for e in fx)
         if instant: ok = face or life
-        else: ok = old or face or life or "token" in kinds or ("kill_blk" in kinds and not ab["sac"] and self.blk_target_exists(fx)) \
+        else: ok = old or face or life or "token" in kinds or ("copy_token" in kinds and self.copy_worth(fx, p)) or ("kill_blk" in kinds and not ab["sac"] and self.blk_target_exists(fx)) \
             or (not ab["sac"] and any((e[0] == "ctr_on" and e[2] == "+1/+1") or (e[0] == "ctr" and e[1] == "+1/+1") for e in fx)
                 and any(self.is_creature(q) for q in self.perms))           # Steel Overseer, Ozolith: grow the team each turn
         if not ok: return False
@@ -3186,6 +3271,14 @@ class Game:
             c.append((cost, i, q))
         n = fod.get("n", 1)
         return [q for _, _, q in sorted(c, key=lambda t: t[:2])[:n]] if len(c) >= n else None
+
+    def copy_worth(self, fx, p):
+        """A copy ability has something worth copying: a creature with an ETB, or any creature for a hasty attacker."""
+        for e in fx:
+            if e[0] != "copy_token": continue
+            if e[2] != "target": return True
+            if any(self.pmatch(e[3], q, p) and (q.k.etb or e[4]) for q in self.perms): return True
+        return False
 
     def pod_ok(self, tg, q):
         """A card the pod-style search could find if q were sacrificed."""
@@ -3569,6 +3662,7 @@ class Game:
                 if tutor_unread(tg): continue
                 have = self.have(); picks = []
                 xcap = x if any(re.match(r"mana value (?:x or less|less than or equal to x)", a) for a in tg.approx) else None
+                if "mana value <= mana spent" in tg.approx: xcap = self.last_paid
                 lo_, rel = 0, rel_mv(tg)
                 if rel:                                         # Birthing Pod: the sacrificed permanent's MV sets the range
                     if not isinstance(self.ctx_obj, Perm): continue
@@ -3621,7 +3715,7 @@ class Game:
                         else: self.gy.append(pick)
                     else: self.hand.append(pick); self.gain(1, name)
             elif t == "cond":
-                if self.cond_ok(e[1]): self.do(e[2], k, p, x)
+                if self.cond_ok(e[1], p): self.do(e[2], k, p, x)
             elif t == "untap_self":
                 if isinstance(p, Perm) and p in self.perms and p.tapped:
                     p.tapped = False; self.note(f"    {name} untaps")
@@ -3803,6 +3897,32 @@ class Game:
                 self.note(f"    {name} puts {sum(c.is_land for c in top)} land(s) onto the battlefield")
             elif t == "bounce_self":
                 if isinstance(p, Perm) and p in self.perms: self.leave(p, "returns to hand", "hand")
+            elif t == "copy_token":
+                _, n, who, f, haste, fate, nonleg = e
+                n = self.val(n, p, x)
+                if who == "each":
+                    srcs = [q for q in self.perms if self.pmatch(f, q, p)]
+                    for q0 in srcs:
+                        if len(self.perms) >= TOKEN_CAP: break
+                        q = self.enter(self.sim.copy_card(q0.k, haste, nonleg))
+                        if q is not None and fate: self.eot.append((q, fate))
+                    self.note(f"    {name}: copies of {len(srcs)} permanent(s)"); continue
+                if who == "self": src = p
+                elif who == "obj": src = self.ctx_obj
+                if who == "obj" and not isinstance(src, Perm) and k.types & {"Instant", "Sorcery"}:     # Twinflame: your best creature
+                    cr = [q for q in self.perms if self.is_creature(q)]
+                    src = max(cr, key=lambda q: (bool(q.k.etb), q.k.mv, self.stats(q)[0])) if cr else None
+                elif who == "attach": src = p.att if isinstance(p, Perm) else None
+                else:
+                    cands = [q for q in self.perms if self.pmatch(f, q, p)]
+                    src = max(cands, key=lambda q: (bool(q.k.etb), q.k.mv, self.stats(q)[0]) if self.is_creature(q) else (False, q.k.mv, 0)) if cands else None
+                if not isinstance(src, Perm) or not isinstance(n, int) or n <= 0: continue
+                tk = self.sim.copy_card(src.k, haste, nonleg)
+                for _ in range(min(n, 20)):
+                    if len(self.perms) >= TOKEN_CAP: break
+                    q = self.enter(tk)
+                    if q is not None and fate: self.eot.append((q, fate))
+                self.note(f"    {name}: {n} token cop{'y' if n == 1 else 'ies'} of {src.k.name}")
             elif t == "cascade":                                # exile until a nonland card with lesser MV; cast it free
                 if self.dry: continue
                 for _ in range(e[2]):
@@ -3923,6 +4043,7 @@ class Game:
             if filt.get("enchanted") and not any("Aura" in r.k.subtypes for r in on_it): return False
             if filt.get("modified") and not (on_it or (obj.ctr and any(v > 0 for v in obj.ctr.values()))): return False
             if filt.get("historic") and not (obj.k.legendary or "Artifact" in types or "Saga" in subs): return False
+            if filt.get("nonleg") and obj.k.legendary: return False
         return True
 
     def targets_mine(self, k, how, p):
@@ -3939,11 +4060,12 @@ class Game:
         if how == "modified": return bool(tgt.ctr and any(v > 0 for v in tgt.ctr.values())) or any(r.att is tgt for r in self.perms)
         return True
 
-    def cond_ok(self, c):
+    def cond_ok(self, c, p=None):
         """A condition (parse_cond): opponent lands (~opp), life gained, life, hand size, attacks, graveyard, permanents you control."""
         if c == "opp_lands": return self.opp_lands() > len(self.lands)
         if c == "gained": return self.gained > 0
         if not isinstance(c, tuple): return False
+        if c[0] == "not": return not self.cond_ok(c[1], p)
         k = c[0]
         if k == "life": return self.life >= c[1]
         if k == "hand_le": return len(self.hand) <= c[1]
@@ -3952,8 +4074,11 @@ class Game:
         if k == "gy_ge":
             want = {"creature": "Creature", "land": "Land"}.get(c[2])
             return sum(1 for x in self.gy if not want or want in x.types or (c[2].startswith("instant") and x.types & {"Instant", "Sorcery"})) >= c[1]
+        if k == "cast_self":                         # the permanent (or the trigger's object: Light-Paws' Aura) resolved from a cast
+            o = self.trig_obj
+            return self.casting is not None and any(isinstance(q, Perm) and q.k is self.casting for q in (p, o))
         if k in ("pcount", "pcount_le"):
-            n = sum(1 for q in self.perms + self.lands if self.pmatch(c[1], q, None))
+            n = sum(1 for q in self.perms + self.lands if self.pmatch(c[1], q, p if c[1].get("another") else None))
             return n >= c[2] if k == "pcount" else n <= c[2]
         return False
 
@@ -3983,7 +4108,8 @@ class Game:
                 if (ev, self.phase) in p.once: continue
                 p.once.add((ev, self.phase))
             if tax and self.rng.random() < TAX_PAID: continue
-            if len(fx) == 1 and fx[0][0] == "cond" and fx[0][1] != "opp_lands" and not self.cond_ok(fx[0][1]): continue   # intervening 'if'
+            self.trig_obj = obj
+            if len(fx) == 1 and fx[0][0] == "cond" and fx[0][1] != "opp_lands" and not self.cond_ok(fx[0][1], p): continue   # intervening 'if'
             for _ in range(self.trig_reps(p, event, obj)):
                 self.count_trig(p.k.name, TRIG_KIND.get(event, "other"))
                 saved = self.ctx_obj, self.ctx_opp
@@ -4243,6 +4369,8 @@ class Game:
                            for e in a["fx"] if e[0] == "token" and "creature" in e[5]) >= max(2, pw)
                    for a in self.acts_of(p)):
                 return False                               # Krenko: X Goblins beat his own attack
+            if any(a["tap"] and a["gen"] + len(a["pips"]) <= free and self.copy_worth(a["fx"], p) for a in self.acts_of(p)):
+                return False                               # Kiki-Jiki: a copy of your best ETB creature over a 2-power attack
         return pw > 0 or self.attack_payoff(p)
 
     def assign(self, atk):
@@ -5045,6 +5173,10 @@ class Game:
             for q in self.unearthed:
                 if q in self.perms: self.leave(q, "is exiled (unearth)", "exile", quiet=True)
             self.unearthed = []
+            for q, fate in self.eot:
+                if q in self.perms: self.leave(q, f"is {'sacrificed' if fate == 'sacrifice' else 'exiled'} (end step)",
+                                               "exile" if fate == "exile" else "gy", quiet=True, sac=fate == "sacrifice")
+            self.eot = []
             for q in self.perms: q.pp = q.pt = q.dmg = 0; q.tkw = None          # cleanup: pumps wear off, damage heals
             self.noblock = False
             for o in self.opps:
@@ -5125,7 +5257,7 @@ class Sim:
         self.order = {c: i for i, c in enumerate(args.order.split(","))}
         self.on_play, self.kill_turn, self.cast_hold = not args.draw, args.kill_commander, args.cast_interaction
         self.dry_rng = random.Random(0)
-        self.tm = {}; self.tokens = {}
+        self.tm = {}; self.tokens = {}; self.copies = {}
         self.dis_rng = random.Random(0)
         self.persist = 3
         self.board_spec = getattr(args, "board_spec", None) or []     # --blockers: [(turn, until, seats, item)]
@@ -5168,6 +5300,17 @@ class Sim:
             fired.append(f"{slot}={e['code'] if e['backup'] else e['code'].rstrip('!')}@{t}")
             out.setdefault(t, []).append(e)
         return out, fired
+
+    def copy_card(self, k, haste=False, nonleg=False):
+        """A token that's a copy of k (its copiable values: CR 707.2), cached."""
+        key = (id(k), haste, nonleg)
+        c = self.copies.get(key)
+        if c is None:
+            c = copy.copy(k); c.token = True; c.groups = (); c.cat = "token"
+            if haste: c.haste = True; c.kw = set(k.kw) | {"haste"}
+            if nonleg: c.legendary = False
+            self.copies[key] = c
+        return c
 
     def token_card(self, e):
         _, n, pw, subs, text, kind, tg, kws, _ = e
