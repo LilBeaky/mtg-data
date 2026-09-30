@@ -254,7 +254,7 @@ def chosen_type(cmds, lib):
 
 def chosen_text(text):
     """'creature spells you cast of the chosen type' -> 'Elf creature spells you cast' (CHOSEN_TYPE or the placeholder)."""
-    if "chosen type" not in text.lower(): return text
+    if "chosen type" not in text.lower() or "choose a creature type" not in text.lower(): return text   # Cloud Key: a card type
     t = CHOSEN_TYPE or "Chosen"
     text = re.sub(r"\b(creatures?|creature spells?|creature cards?|permanents?|spells?|cards?)( you (?:control|cast))? of the chosen type\b",
                   lambda m: f"{t} {m.group(1)}{m.group(2) or ''}", text, flags=re.I)
@@ -367,7 +367,8 @@ ATTACHED_DYN = ((r"^auras? and equipment attached to (?:it|~|that creature|encha
 RX_DOMAIN = r"^basic land types? among lands you control"
 
 def dyn_key(what):
-    w = what.lower()
+    w = re.sub(r"(?:,| and| then)+ (?:then )?(?:discard|draw|has|have|gains?|gets?|you|put|create|loses?|is|are|can't|deals?)\b.*$", "",
+               what.lower().strip())
     if re.search(RX_DOMAIN, w): return ("domain",)
     if re.search(r"colors? of mana spent to cast (?:it|~|this spell)", w): return ("converge",)
     if re.search(r"^times? (?:it|~) was kicked", w): return ("kicks",)                     # multikicker (Everflowing Chalice)
@@ -375,19 +376,21 @@ def dyn_key(what):
     if m: return ("devotion",) + tuple(COLOR_WORDS[c] for c in m.groups() if c)          # Gray Merchant
     for rx, key in ATTACHED_DYN:
         if re.search(rx, w): return key
-    m = re.match(r"^(?:the number of )?([a-z\-']+?)(?: creatures?| permanents?| lands?)? you control$", w.strip())
+    m = re.match(r"^(?:the number of )?([a-z\-']+?)(?: creatures?| permanents?| lands?)? (?:you control|on the battlefield)$", w.strip())
     if m and as_subtype(m.group(1)): return ("sub", as_subtype(m.group(1)))      # 'Elves you control', 'Forests you control'
     for rx, key in ((r"(\S+) counters? on (?:it|~)", "ctr"), (r"cards? in [^.]*?opponent's hand", "opp_hand"),
                     (r"greatest power", "power"),
                     (r"^creature cards? in your graveyard", "gy_creature"), (r"^land cards? in your graveyard", "gy_land"),
                     (r"^instant and(?:/or)? sorcery cards? in your graveyard", "gy_instsorc"),
                     (r"(?:^|\beach )cards? in your graveyard", "gy"), (r"^cards? in your hand", "hand"), (r"^opponents? you have", "opps"), (r"^your life total", "life"),
-                    (r"colors? among", "colors"), (r"lands? you control", "lands"),
-                    (r"creatures? you control", "creatures"), (r"artifacts? you control", "artifacts"),
-                    (r"enchantments? you control", "enchantments"), (r"permanents? you control", "permanents")):
-        m = re.search(rx, w)
+                    (r"colors? among", "colors"), (r"^(?:the number of |each )?lands? you control$", "lands"),
+                    (r"^(?:the number of |each )?creatures? you control$", "creatures"), (r"^(?:the number of |each )?artifacts? you control$", "artifacts"),
+                    (r"^(?:the number of |each )?enchantments? you control$", "enchantments"), (r"^(?:the number of |each )?permanents? you control$", "permanents")):
+        m = re.search(rx, w.strip())
         if m: return ("ctr", m.group(1)) if key == "ctr" else (key,)
-    return None
+    m = re.match(r"^(?:the number of |each )?(.+?) you control$", w.strip())
+    f = perm_filt("a", m.group(1)) if m else None
+    return ("pcount", f) if f else None                 # 'colorless creature you control', 'token you control' 
 
 QUALIFIED = re.compile(r"\b(attacking|blocking|tapped|untapped|with|that|other|another|opponents?|each player|died|this turn|named|modified|type|party|among|exiled)\b")
 
@@ -474,6 +477,7 @@ RECUR_RX = re.compile(r"(?:returns?|puts?) (?P<what>[^.]*?\bcards?\b[^.]*?) from
 def _fx_recur(m):
     what = re.sub(r"\b(?:another )?target ", "", _orig(m, "what"), flags=re.I)
     what = re.sub(r"^all ", "any number of ", what, flags=re.I)
+    if re.search(r"\bof the chosen\b", what, re.I): _miss(m); return None      # tutors.py would read it as any card
     tg = tu.parse_target(what, _CTX["raw"] or {})
     if m.group("whose") != "your": tg.approx.append("only your own graveyard is modeled")
     return ("recur", tg, "bf" if "battlefield" in m.group("dest") else "hand", max(1, min(tg.count, 7)))
@@ -551,8 +555,21 @@ def _fx_copy(m):
         if not f: return None
         who = "target"
     rest = m.group("rest") or ""
-    haste = bool(re.search(r"\bhaste\b", rest))
-    return ("copy_token", n, who, f, haste, m.group("eot"), bool(re.search(r"isn't legendary|is not legendary", rest)))
+    haste, eot = bool(re.search(r"\bhaste\b", rest)), m.group("eot")
+    em = re.search(r"\bexcept ([^.]*)", rest)
+    quotes = _CTX.get("quotes") or []
+    for part in (re.split(r",? and |, ", em.group(1)) if em else []):
+        part = part.strip()
+        if re.fullmatch(r"(?:it|they|the tokens?|that token)(?: isn't| aren't| is not| are not|'s not|'re not) legendary"
+                        r"|(?:(?:it|they|the tokens?|that token) (?:has|have) )?(?:" + "|".join(COMBAT_KW) + ")", part): continue   # flying: not added (~approx)
+        if re.fullmatch(r"(?:it|they)(?:'s| is|'re| are) (?:an? )?[a-z ]+ in addition to (?:its|their) other types", part) \
+                and not re.search(r"\bcreatures?\b", part): continue          # Molten Duplication: also an artifact
+        qm = re.fullmatch(r"(?:(?:it|they) (?:has|have) )?@q(\d+)@", part)
+        qe = re.fullmatch(r"at the beginning of the end step, (sacrifice|exile) (?:this (?:token|permanent|creature)|~)\.?",
+                          quotes[int(qm.group(1))].lower()) if qm and int(qm.group(1)) < len(quotes) else None
+        if qe: eot = eot or qe.group(1); continue       # Electroduplicate, Heat Shimmer: gone at the end step
+        _miss(m); return None                          # Astral Dragon: 'except they're 3/3 Dragon creatures'
+    return ("copy_token", n, who, f, haste, eot, bool(re.search(r"(?:isn't|aren't|is not|are not|'s not|'re not) legendary", rest)))
 
 # noncreature token templates (the effect tuple of a 'token' effect; e[8] = True attacking / "tapped" / False)
 CLUE_E = ("token", 1, 0, ("Clue",), "{2}, Sacrifice ~: Draw a card.", "artifact", 0, frozenset(), False)
@@ -588,11 +605,17 @@ def _count(what):
     if gm: return ("power",) + ((as_subtype(gm.group(1)),) if gm.group(1) and as_subtype(gm.group(1)) else ()) if not gm.group(1) or as_subtype(gm.group(1)) else None
     return clean_dyn(w)
 
+def _miss(m):
+    """An effect matched but its count or filter wasn't read: the line is partial, never a silent read (Search for Glory)."""
+    if _CTX.get("left") is not None: _CTX["left"].append(m.group(0).strip()[:90])
+
 def _xn(m, g="n"):
     """A count word; 'x' reads its sentence's 'where X is ...' (a count key), else it's the spell's X. None: an unread count."""
     n = m.group(g)
     if n != "x": return num(n)
-    return _face_n("x", _where_x(m))
+    r = _face_n("x", _where_x(m))
+    if r is None: _miss(m)
+    return r
 
 def _where_x(m):
     """The text that defines a match's X: its own sentence, else a 'where X is' elsewhere in the ability (Tezzeret's
@@ -613,7 +636,12 @@ def _fx_face(m):
     d = m.groupdict()
     n = _face_what(d["what"]) if d.get("what") else _face_n(d["n"], d.get("rest") if "where x is" in (d.get("rest") or "") else _where_x(m))
     if n == ("pow",) and re.search(r"\b(?:it|that creature) $", m.string[:m.start()]): n = ("objpow",)   # 'it deals damage equal to its power'
-    return ("face", n, _face_who(d["who"]), "damage" in m.group(0)) if n else None
+    fe = re.match(r"\s*for each ([^.;]+)", d.get("rest") or "")
+    if fe and isinstance(n, int):                   # Last Stand: 'loses 2 life for each Swamp you control'
+        key = clean_dyn(fe.group(1))
+        n = ("per", n, key) if key else None
+    if not n: _miss(m); return None
+    return ("face", n, _face_who(d["who"]), "damage" in m.group(0))
 
 def _pt_val(s, rest=""):
     """'+2' -> 2, '-1' -> -1, '+x' with 'where x is ...' / 'for each ...' -> ('per', 1, dyn key); unreadable -> None."""
@@ -632,7 +660,7 @@ def _fx_pump_team(m):
     if not cf: return None
     body, rest = m.group("body"), m.group("rest") or ""      # the duration-first pump regex's rest is optional
     pm = re.search(r"([+-](?:\d+|x))/([+-](?:\d+|x))", body)
-    dp, dt = (_pt_val(pm.group(1), rest + body), _pt_val(pm.group(2), rest + body)) if pm else (0, 0)
+    dp, dt = (_pt_val(pm.group(1), rest + ". " + body), _pt_val(pm.group(2), rest + ". " + body)) if pm else (0, 0)
     fe = re.search(r"for each ([^.,]+)", body + " " + rest)
     if fe and pm and isinstance(dp, int):              # '+1/+1 for each basic land type...' (Tromp the Domains): never read it flat
         key = clean_dyn(fe.group(1))
@@ -649,7 +677,7 @@ def _fx_pump(m):
         else "others_attacking" if "attacking" in w else "attackers" if w in ("they", "those creatures") else "target"
     body, rest = m.group("body"), m.group("rest") or ""      # the duration-first pump regex's rest is optional
     pm = re.search(r"([+-](?:\d+|x))/([+-](?:\d+|x))", body)
-    dp, dt = (_pt_val(pm.group(1), rest + body), _pt_val(pm.group(2), rest + body)) if pm else (0, 0)
+    dp, dt = (_pt_val(pm.group(1), rest + ". " + body), _pt_val(pm.group(2), rest + ". " + body)) if pm else (0, 0)
     fe = re.search(r"for each ([^.]+)", rest)
     if fe and isinstance(dp, int):                    # '+1/+0 until end of turn for each other attacking Goblin'
         key = ("atk_share",) if re.match(r"other attacking creature that shares a creature type with it", fe.group(1)) else clean_dyn(fe.group(1))
@@ -799,7 +827,7 @@ FX = [
     (re.compile(r"\bsurveil (\w+)"), lambda m: ("surveil", _xn(m, 1)) if _xn(m, 1) else None),
     (re.compile(r"you may play an additional land this turn"), lambda m: ("extra_land", 1)),
     (re.compile(r"put (?:a|up to one) land card from your hand onto the battlefield"), lambda m: ("land_from_hand", 1)),
-    (re.compile(r"create (a|an|one|two|three|four|five|x|\w+) (tapped )?(?:(?:food|clue|blood) token or an? )?treasure tokens?"),
+    (re.compile(r"(?<!opponent )(?<!that player )(?<!controller )creates? (a|an|one|two|three|four|five|x|\w+) (tapped )?(?:(?:food|clue|blood) token or an? )?treasure tokens?"),
      lambda m: ("treasure", _xn(m, 1), bool(m.group(2))) if _xn(m, 1) else None),
     (COPY_RX, _fx_copy),
     (re.compile(r"\bcreate (?P<n>a|an|one|two|three|four|five|six|seven|x|\d+) (?:tapped )?(?:(?P<p>\d+|x)/(?P<t>\d+|x) )?"
@@ -830,7 +858,12 @@ FX = [
     (re.compile(FACE_WHO_L + r" loses? life equal to (?P<what>[^.]+)"), _fx_face),
     (re.compile(r"deals? (?P<n>\d+|x) damage to " + FACE_WHO + r"(?=(?P<rest>[^.]*))"), _fx_face),     # rest: read, not consumed
     (re.compile(FACE_WHO_L + r" loses? (?P<n>\d+|x) life(?=(?P<rest>[^.]*))"), _fx_face),
-    (re.compile(r"\byou gain (\d+) life"), lambda m: ("life", int(m.group(1)))),
+    (re.compile(FACE_WHO_L + r" loses? that much life"), lambda m: ("face", ("ctx_gain",), _face_who(m.group("who")), False) if _CTX.get("ev") == "gain" else None),   # Sanguine Bond
+    (re.compile(r"(?:\byou|\bthen|\band) gain (\d+) life(?P<fe> for each [^.;]+)?"), lambda m: ("life", int(m.group(1))) if not m.group("fe") else
+     (("life", ("per", int(m.group(1)), clean_dyn(m.group("fe")[10:]))) if clean_dyn(m.group("fe")[10:]) else _miss(m))),   # Dwynen: 'for each attacking Elf' unread
+    (re.compile(r", then discards (?P<n>a|an|one|two|three|four|five|six|seven|\d+) cards?(?! at random)"),
+     lambda m: ("discard", num(m.group("n"))) if re.search(r"\b(?:each|target) player draws? (?:a|an|one|two|three|\d+) cards?$",
+                                                            (_CTX["orig"] or "")[:m.start()], re.I) else None),                                                          # Geier Reach Sanitarium
     (re.compile(r"\byou gain (?P<n>x) life"), lambda m: ("life", _xn(m)) if _xn(m) else None),
     (re.compile(r"\byou gain (?:that much life|life equal to the damage dealt)"), lambda m: ("life_dmg",)),     # Spirit Loop
     (re.compile(r"\byou gain life equal to the (?:life lost|damage dealt) this way"), lambda m: ("life_lost",)),   # Gray Merchant
@@ -897,6 +930,9 @@ def parse_cond(c):
         return ("pcount", f, 1) if f else None
     m = re.fullmatch(r"you have (\d+) or more life", c)
     if m: return ("life", int(m.group(1)))
+    m = re.fullmatch(r"you have (\d+) or less life", c)
+    if m: return ("life_le", int(m.group(1)))            # fateful hour
+    if re.fullmatch(r"you cast (?:~|it|this spell) during your (?:precombat )?main phase", c): return ("main",)   # addendum
     m = re.fullmatch(r"you have at least (\d+) life more than your starting life total", c)
     if m: return ("life", START_LIFE + int(m.group(1)))
     m = re.fullmatch(r"you have (no|one or fewer|two or fewer|\d+ or fewer) cards in (?:your )?hand", c)
@@ -907,13 +943,17 @@ def parse_cond(c):
     if m: return ("attacked", _n(m.group(1)) if m.group(1) else 1)
     m = re.fullmatch(r"(?:there are )?(" + NUMW + r") or more (creature |land |instant and/or sorcery |)cards (?:are )?in your graveyard", c)
     if m: return ("gy_ge", _n(m.group(1)), m.group(2).strip())
+    m = re.fullmatch(r"you control (an? [^,]+?) and (an? [^,]+)", c)
+    if m:                                               # Naomi, Pillar of Order: both
+        c1, c2 = parse_cond("you control " + m.group(1)), parse_cond("you control " + m.group(2))
+        return ("and", c1, c2) if c1 and c2 else None
     m = re.fullmatch(r"you control (no|(" + NUMW + r")(?: or (more|fewer))?|at least (" + NUMW + r")) (other )?(.+)", c)
     if m:
         what, other = m.group(6), 1 if m.group(5) else 0      # Valakut: 'five other Mountains' is six with the new one
         if re.search(r"\bdifferent\b|\bgreatest\b|\bnamed\b|\bchosen\b|\bbasic land types?\b", what): return None
         f = perm_filt("a", re.sub(r"\bthat\b.*$", "", what)) if not re.search(r"\bthat\b", what) else None
         if not f: return None
-        if m.group(1) == "no": return ("pcount_le", f, 0)
+        if m.group(1) == "no": return ("pcount_le", f, other)        # Dust Stalker: 'no other colorless creatures' (itself counts)
         n = _n(m.group(2) or m.group(4))
         if not isinstance(n, int): return None
         if m.group(3) == "fewer": return ("pcount_le", f, n + other)
@@ -923,10 +963,12 @@ def parse_cond(c):
 
 def cond_str(c):
     if isinstance(c, tuple) and c[0] == "not": return "otherwise (" + cond_str(c[1]) + ")"
+    if isinstance(c, tuple) and c[0] == "and": return cond_str(c[1]) + " and " + re.sub(r"^if ", "", cond_str(c[2]))
     if c == "opp_lands": return "if an opponent has more lands ~opp"
     if c == "gained": return "if you gained life this turn"
     k = c[0]
     if k == "life": return f"if you have {c[1]}+ life"
+    if k == "life_le": return f"if you have {c[1]} or less life"
     if k == "cast_self": return "if it was cast"
     if k == "kicked": return "if kicked"
     if k in ("self_tapped", "self_untapped"): return "if ~ is " + k[5:]
@@ -970,7 +1012,7 @@ def parse_fx(s):
     """Effect text -> ([effect tuples in text order], tax). tax = a Rhystic-style
     'unless that player pays' clause (resolved per trigger with --opp-pay)."""
     quotes = re.findall(r'"([^"]*)"', s)
-    _CTX["quotes"] = quotes
+    if quotes or not re.search(r"@q\d+@", s): _CTX["quotes"] = quotes     # a fragment of an outer call keeps its quotes
     qi = iter(range(len(quotes)))
     s0 = re.sub(r'"[^"]*"', lambda m: f"@q{next(qi)}@", s.strip())
     km = re.search(r"(?:^|(?<=\. ))if (?:~|this spell|it) was kicked, ([^.]*?)\s*instead\.?", s0, re.I)
@@ -979,6 +1021,7 @@ def parse_fx(s):
         kick, t2 = parse_fx(km.group(1))
         if base and kick: return [("cond", ("not", ("kicked",)), base), ("cond", ("kicked",), kick)], t1 or t2
     s0 = re.sub(r"[^.]*\binstead\b[^.]*\.?", "", s0, flags=re.I).strip()
+    s0 = re.sub(r"(?:^|(?<=\. ))[A-Za-z' ]+ — (?=if\b)", "", s0, flags=re.I)        # Rally for the Throne: 'Adamant — If ...'
     s = s0.lower()
     if len(s) != len(s0): s0 = s
     tax = bool(re.search(r"unless (?:that player|they) pays?|that player may pay \{", s))
@@ -1031,7 +1074,8 @@ def parse_fx(s):
             if cond:
                 inner, _ = parse_fx(x[cm.start("rest"):])
                 if inner: (first if not keep else conds).append(("cond", cond, inner))   # text order: a leading 'If' first
-            elif _CTX.get("left") is not None and not LEFT_OPP.search(x.lower()) and LEFT_VERB.search(x[cm.start("rest"):].lower()):
+            elif _CTX.get("left") is not None and not LEFT_OPP.search(x.lower()) and (LEFT_VERB.search(x[cm.start("rest"):].lower())
+                                                                                 or _probe(x[cm.start("rest"):])):
                 _CTX["left"].append(x.strip()[:90])      # an unread condition: its effect is dropped, and the line is partial
         fx, t2 = parse_fx(" ".join(keep)) if keep else ([], False)
         return first + fx + conds, tax or t2
@@ -1043,20 +1087,20 @@ def parse_fx(s):
             if e: out.append((mm.start(), e))
         masked = rx.sub(lambda mm: "#" * len(mm.group(0)), masked)
     out.sort(key=lambda t: t[0])
-    if out: _leftover(masked)
+    if out: _leftover(masked, s)
     return [e for _, e in out], tax
 
 # ---- leftover detector: what the effect regexes didn't consume. A sentence with an effect verb nobody read, or a
 # condition on an effect that was read ('if X is 10 or more, ...'), makes its line partial, not modeled.
-LEFT_VERB = re.compile(r"\b(?:create|destroy|exile|search|return|cop(?:y|ies)|discard|put|draws?|sacrifice|untap|tap|gain control|"
-                       r"mills?|cast|add|scry|surveil|look at|reveal|attach|transform|double|proliferate|investigate|counter target|"
+LEFT_VERB = re.compile(r"\b(?:creates?|destroys?|exiles?|search(?:es)?|returns?|cop(?:y|ies)|discards?|puts?|draws?|sacrifices?|untaps?|taps?|gains? control|"
+                       r"mills?|casts?|adds?|scry|surveil|looks? at|reveals?|attach(?:es)?|transforms?|doubles?|proliferate|investigates?|counter target|"
                        r"deals? (?:\d+|x)|loses? (?:\d+|x) life|gains? (?:\d+|x) life|gets? [+-]|win the game|lose the game|skip|"
                        r"prevent|phases? (?:in|out)|explores?|connives?|amass|venture|populate|fights?|goad)\b")
 LEFT_GLUE = re.compile(r"if you search your library this way,? shuffle|(?:then )?(?:you may )?shuffle(?: your library| it into your library)?|reveal (?:it|them|that card|those cards)"
                        r"|where x is [^.#]*|activate only [^.#]*|this ability triggers only [^.#]*|@q\d+@|\bif able\b|\bif you do,?"
                        r"|(?:(?:and )?put )?(?:all )?(?:the )?rest(?: of the cards)? (?:on the bottom|on top|into (?:your|their owner's) graveyard|back)[^.#]*"
                        r"|put (?:them|those cards|the rest) back[^.#]*|in a random order|in any order|this way"
-                       r"|as an additional cost to cast (?:~|this spell),?|spend this mana only [^.#]*")
+                       r"|as an additional cost to cast (?:~|this spell),?|spend this mana only [^.#]*|\breveals (?:their|his or her) hand")
 LEFT_OPP = re.compile(r"\b(?:its controller|its owner|their controller|controller of|that player|each opponent|target opponent|an opponent"
                       r"|defending player|each other player|opponents?|they|their)\b")
 LEFT_VS = re.compile(r"\b(?:gain control of|tap (?:up to \w+ )?(?:another )?target|tap all creatures)\b|\b(?:an opponent|defending player|your opponents|you don't) control"
@@ -1064,12 +1108,19 @@ LEFT_VS = re.compile(r"\b(?:gain control of|tap (?:up to \w+ )?(?:another )?targ
                      r"|\btarget players\b")
 LEFT_COND = re.compile(r"\b(?:if|unless|as long as|only if)\b")
 
-def _leftover(masked):
+OPP_LEAD = re.compile(r"(?:then )?(?:each opponent|target opponent|an opponent|each other player|defending player|its controller|its owner"
+                      r"|their controller|the (?:owner|controller) of|that (?:creature|permanent|spell)'s (?:controller|owner)"
+                      r"|target [a-z ]+'s (?:owner|controller)|target player (?:discards|loses|sacrifices))\b")
+
+def _leftover(masked, orig=None):
     if "left" not in _CTX or _CTX["left"] is None: return
     spell = bool(re.search(r"\b(?:instant|sorcery)\b", ((_CTX.get("raw") or {}).get("type_line") or "").lower()))
-    prev = ""
+    prev, pos = "", 0
     for sent in re.split(r"(?<=[.;])\s+", masked):
+        a = masked.find(sent, pos); pos = a + len(sent)
+        osent = orig[a:pos] if orig and len(orig) == len(masked) and a >= 0 else ""
         was, prev = prev, sent
+        if osent and OPP_LEAD.match(osent) and not re.search(r"(?:,|\band|\bthen) you\b", osent): continue
         if "#" in was and re.match(r"(?:then )?put (?:that card|it|them|those cards) (?:onto the battlefield|into your hand)", sent) \
                 and not re.search(r"\bif\b|\bunless\b", sent): continue    # a search's destination, read by _fx_search
         bare = re.sub(r"#+", " ", LEFT_GLUE.sub("", sent))
@@ -1105,12 +1156,16 @@ def kill_str(e):
     tgt = "every opposing creature" if each else ("an opposing creature" if n == 1 else f"{n} opposing creatures")
     return f"removal: {verb} {tgt}{q}" + ("; its controller gains life = its power" if gain else "")
 
+def kstr(key):
+    """A count key as words: ('sub', 'Elf') -> 'sub Elf'; ('pcount', filter) -> the filter."""
+    return perm_desc(key[1]) if key and key[0] == "pcount" else " ".join(str(x) for x in key)
+
 def pv(v, sign=False):
     """A readable amount: 3 / +3 / X / per creatures / power."""
     if isinstance(v, int): return f"{v:+d}" if sign else str(v)
     if v == "X": return "X"
     if isinstance(v, tuple) and v and v[0] == "per":
-        return ("-" if v[1] < 0 else "+" if sign else "") + f"{abs(v[1])} per " + " ".join(v[2])
+        return ("-" if v[1] < 0 else "+" if sign else "") + f"{abs(v[1])} " + pv(v[2])
     if isinstance(v, tuple) and v[0] == "power": return "greatest power" + (f" (non-{v[1]})" if len(v) > 1 else "")
     if isinstance(v, tuple) and v[0] == "power_o": return "greatest power among others"
     if isinstance(v, tuple) and v[0] == "pcount": return "per " + perm_desc(v[1])
@@ -1412,7 +1467,8 @@ def combat_static(k, lo):
     k.statics.append(("anthem", cf[0], dp, dt, frozenset(kws), cf[1], cf[2]))
     return True
 
-PERM_QUALS = ("pow_max", "kw", "ctr", "nonsub", "modified", "equipped", "enchanted", "historic", "nonleg")
+PERM_QUALS = ("pow_max", "kw", "ctr", "nonsub", "modified", "equipped", "enchanted", "historic", "nonleg", "colorless", "nontype",
+              "basic", "alltypes")
 PERM_OK_WORDS = {"a", "an", "another", "other", "or", "and", "nontoken", "token", "tokens", "creature", "creatures", "artifact",
                  "artifacts", "enchantment", "enchantments", "permanent", "permanents", "land", "lands", "planeswalker",
                  "planeswalkers", "legendary"}
@@ -1428,10 +1484,23 @@ def perm_filt(article, subj):
     if m: extra["kw"] = m.group(1); subj = subj.replace(m.group(0), "")          # 'a creature you control with flying'
     m = re.search(r"\bwith (?:a |one or more )?(\+1/\+1 )?counters? on (?:it|them)\b", subj)
     if m: extra["ctr"] = "+1/+1" if m.group(1) else "any"; subj = subj.replace(m.group(0), "")
+    if re.search(r"\band (?:an?|one|two|three)\b", subj): return None            # 'an artifact and an enchantment': two permanents
+    m = re.search(r"\bnon-?(land|creature|artifact|enchantment|planeswalker)\b", subj)
+    if m: extra["nontype"] = m.group(1).capitalize(); subj = subj.replace(m.group(0), "")     # 'nonland permanent'
     m = re.search(r"\bnon-?([a-z]+)\b", subj)
     if m and as_subtype(m.group(1)): extra["nonsub"] = as_subtype(m.group(1)); subj = subj.replace(m.group(0), "")
     if re.search(r"\bnonlegendary\b", subj): extra["nonleg"] = True; subj = re.sub(r"\bnonlegendary\b", "", subj)
-    for w in ("modified", "equipped", "enchanted", "historic"):
+    if re.search(r"\bbasic\b", subj): extra["basic"] = True; subj = re.sub(r"\bbasic\b", "", subj)
+    tms = re.findall(r"\b(creature|artifact|enchantment|permanent|land|planeswalker)s?\b", subj)
+    if len(set(tms)) > 1:
+        if re.search(r"\bor\b", subj):                 # 'artifact and/or enchantment' (Nettlecyst): any of them
+            parts = [x.strip() for x in re.split(r",?\s*\b(?:and/or|or)\s+|,\s+", subj) if x.strip()]
+            lead = re.match(r"(?:(?:another|other|nontoken|token|legendary|white|blue|black|red|green|colorless) )*", parts[0]).group(0)
+            parts = [parts[0]] + [x if x.startswith(lead) else lead + x for x in parts[1:]]    # 'another nontoken artifact creature or Vehicle'
+            fs = [perm_filt(article, x) for x in parts]
+            return {"any": fs} if not extra and len(fs) > 1 and all(fs) else None
+        extra["alltypes"] = frozenset(t.capitalize() for t in tms)      # 'artifact creature': both
+    for w in ("modified", "equipped", "enchanted", "historic", "colorless"):
         if re.search(r"\b" + w + r"\b", subj): extra[w] = True; subj = re.sub(r"\b" + w + r"\b", "", subj)
     tm = re.search(r"\b(creature|artifact|enchantment|permanent|land|planeswalker)s?\b", subj)
     subs = {x for x in (as_subtype(w) for w in re.findall(r"[a-z\-']+", subj)) if x}
@@ -1517,21 +1586,31 @@ def fodder_filt(article, subj):
         if any(w not in FODDER_WORDS and w not in COLOR_WORDS and not as_subtype(w) for w in re.findall(r"[a-z\-']+", part)):
             return None                                   # 'another colorless creature', 'a creature with ...': unread
         f = perm_filt("another" if article == "another" else "a", part.strip())
-        if not f or f["type"] == "Land" or f["sub"] & LAND_TYPES: return None        # lands aren't fodder here (Orcish Lumberjack)
-        fs.append(f)
+        sub_fs = f["any"] if f and "any" in f else [f]
+        if any(not x or x["type"] == "Land" or x["sub"] & LAND_TYPES for x in sub_fs): return None   # lands aren't fodder here (Orcish Lumberjack)
+        fs.extend(sub_fs)
     return {"any": fs, "n": n} if fs else None
+
+def no_another(f):
+    """The filter without 'another' ('whenever ~ or another creature or artifact ...'): every alternative includes ~."""
+    return {**f, "any": [no_another(x) for x in f["any"]]} if "any" in f else dict(f, another=False)
 
 def perm_desc(f):
     """A permanent filter as words, for --explain."""
     if "any" in f: return ("two " if f.get("n") == 2 else "three " if f.get("n") == 3 else "") + " or ".join(perm_desc(x) for x in f["any"])
+    if "type" not in f: return "alone" if f.get("alone") else f"with {f.get('min_att')}+ attackers"      # attack_self conditions
     return ("another " if f["another"] else "") + ("commander " if f.get("commander") else "") \
+        + ("basic " if f.get("basic") else "") + ("colorless " if f.get("colorless") else "") \
+        + (f"non{f['nontype'].lower()} " if f.get("nontype") else "") \
+        + "".join(t.lower() + " " for t in sorted(f.get("alltypes") or ()) if t != f["type"]) \
         + ("legendary " if f.get("legendary") else "") + ("".join(sorted(f["colors"])) + " " if f.get("colors") else "") \
         + ("nontoken " if f.get("nontoken") else "") + ("token " if f.get("token") else "") \
         + (" ".join(sorted(f["sub"])) + " " if f.get("sub") else "") \
         + "".join(q + " " for q in ("modified", "equipped", "enchanted", "historic") if f.get(q)) \
         + ("" if f.get("sub") and f["type"] == "Permanent" else f["type"].lower()) + (f" power>={f['power']}" if f["power"] else "") \
         + (f" power<={f['pow_max']}" if f.get("pow_max") is not None else "") + (f" with {f['kw']}" if f.get("kw") else "") \
-        + (f" non-{f['nonsub']}" if f.get("nonsub") else "") + (" with a counter" if f.get("ctr") else "")
+        + (f" non-{f['nonsub']}" if f.get("nonsub") else "") + (" with a counter" if f.get("ctr") else "") \
+        + (" attacking alone" if f.get("alone") else "")
 
 def ab_cost(cost):
     """Ability cost -> (tap, generic, pips, sacrifice ~, (counter kind, n) or None, unparsed?, fodder).
@@ -1662,9 +1741,10 @@ def combat_trigger(k, lo):
     if m: return add("attack_att", None, m.group(1))
     m = re.match(r"^whenever (?:equipped|enchanted) creature deals combat damage to (?:a player|an opponent),\s*(.+)$", lo)
     if m: return add("cdmg_att", None, m.group(1))
-    m = re.match(r"^whenever ~ attacks(?: or blocks| or becomes the target of a spell(?: or ability)?(?: an opponent controls)?)?(?: alone)?,\s*(.+)$", lo) or \
-        re.match(r"^whenever ~ and at least \w+ other creatures? attack,\s*(.+)$", lo)
-    if m: return add("attack_self", None, m.group(1))
+    m = re.match(r"^whenever ~ attacks(?: or blocks| or becomes the target of a spell(?: or ability)?(?: an opponent controls)?)?( alone)?,\s*(.+)$", lo)
+    if m: return add("attack_self", {"alone": True} if m.group(1) else None, m.group(2))
+    m = re.match(r"^whenever ~ and at least (\w+) other creatures? attack,\s*(.+)$", lo)
+    if m and isinstance(num(m.group(1)), int): return add("attack_self", {"min_att": num(m.group(1)) + 1}, m.group(2))
     m = re.match(r"^whenever ~ deals combat damage to (?:a player|an opponent)(?: or (?:a )?(?:planeswalker|battle))?,\s*(.+)$", lo) or \
         re.match(r"^whenever ~ deals damage to (?:a player|an opponent),\s*(.+)$", lo)
     if m: return add("cdmg_self", None, m.group(1))
@@ -1706,7 +1786,7 @@ def combat_trigger(k, lo):
         if "opponent" in m.group("subj"): return False
         f = perm_filt("another" if "other" in m.group("a") else "a", m.group("subj"))
         if not f: return False
-        if m.group("self"): f = dict(f, another=False)          # 'whenever ~ or another creature dies'
+        if m.group("self"): f = no_another(f)                  # 'whenever ~ or another creature dies'
         if m.group("a").startswith("one or more"):               # one trigger for a batch: ~approx once per phase
             fx, tax = parse_fx(re.sub(r"\s*this ability triggers only once each turn\.?", "", m.group("fx")))
             if fx: k.trig.append(("dies", f, fx, True, tax, False))
@@ -1749,7 +1829,7 @@ def parse_trigger(k, lo):
         return bool(fx)
     m = re.match(r"^whenever you gain life( for the first time each turn)?,\s*(.+)$", lo)
     if m:                                               # Well of Lost Dreams, Heliod, Trudge Garden
-        fx, tax = parse_fx(m.group(2))
+        _CTX["ev"] = "gain"; fx, tax = parse_fx(m.group(2)); _CTX["ev"] = None
         if fx: k.trig.append(("gain", None, fx, bool(m.group(1)), tax, False))
         return bool(fx)
     m = re.match(r"^whenever (enchanted creature|equipped creature|~) deals damage,\s*(.+)$", lo)
@@ -1796,10 +1876,12 @@ def parse_trigger(k, lo):
         if re.search(r"opponent|each player|a player", subj): return False       # others' permanents aren't simulated
         f = perm_filt(m.group(2), subj)
         if not f: return False
-        if m.group("self"): f = dict(f, another=False)       # constellation: 'whenever ~ or another enchantment enters'
+        if m.group("self"): f = no_another(f)                # constellation: 'whenever ~ or another enchantment enters'
         once = bool(re.search(r"this ability triggers only once each turn", m.group("fx"))) or m.group(2) == "one or more"
         fx, tax = parse_fx(re.sub(r"\s*this ability triggers only once each turn\.?", "", m.group("fx")))
-        if f["type"] == "Land":
+        types_ = {x["type"] for x in f["any"]} if "any" in f else {f["type"]}
+        if "Land" in types_ and len(types_) > 1: return False              # 'a creature or land': lands enter as landfall
+        if types_ == {"Land"}:
             k.trig.append(("landfall", None, fx, once, tax, False)); return bool(fx)
         k.trig.append(("etb", f, fx, once, tax, False))
         if m.group("oratk") and fx: k.trig.append(("attack", f, fx, once, tax, False))     # Kindred Discovery: 'enters or attacks'
@@ -1915,7 +1997,8 @@ def grant_line(k, lo, anyc):
     got = False
     for ev, f, fx, once, tax, each in tmp.trig:
         if ev not in ev_map: k.notes.append(f"granted {ev} trigger not modeled"); continue
-        k.trig.append((ev_map[ev], None if attach else dict(pf), _as_obj(fx), once, tax, each)); got = True
+        cf = {q: f[q] for q in ("alone", "min_att") if f and q in f}          # Idolized: 'attacks alone'
+        k.trig.append((ev_map[ev], (cf or None) if attach else dict(pf, **cf), _as_obj(fx), once, tax, each)); got = True
     return got
 
 RX_TYPE_GRANT = re.compile(r'^(?:all )?(?P<subj>artifacts|creatures|enchantments|nonland permanents|permanents)(?: you control)? are '
@@ -3566,6 +3649,7 @@ class Game:
         if isinstance(v, int): return v
         if v == "X": return x
         key = v[0]
+        if key == "per": return v[1] * self.num(v[2], p, x)
         if key == "lands": return len(self.lands)
         if key == "permanents": return len(self.lands) + len(self.perms)
         if key == "creatures": return sum(self.is_creature(q) for q in self.perms)
@@ -3600,6 +3684,7 @@ class Game:
         if key == "opps": return len(self.alive())
         if key == "converge": return self.converge
         if key == "pcount": return sum(1 for q in self.perms + self.lands if self.pmatch(v[1], q, None))
+        if key == "ctx_gain": return self.ctx_gain
         if key == "kicks": return self.kicked if self.casting is not None and (p is None or (isinstance(p, Perm) and p.k is self.casting)) else 0
         if key == "life": return self.life
         if key == "pow": return self.stats(p)[0] if isinstance(p, Perm) and p.k.types & {"Creature"} else 0
@@ -3972,7 +4057,7 @@ class Game:
                 n = self.val(e[1], p, x)
                 if isinstance(n, int) and n > 0: self.lose_life(n, "spell")
             elif t == "life":
-                n = self.val(e[1], p, x)
+                n = e[1][1] * self.num(e[1][2], p, x) if isinstance(e[1], tuple) and e[1][0] == "per" else self.val(e[1], p, x)
                 if not isinstance(n, int): continue
                 if n > 0: self.gain_life(n)
                 elif n < 0 and isinstance(e[1], int): self.lose_life(-n, "spell")
@@ -4215,6 +4300,10 @@ class Game:
             if filt.get("modified") and not (on_it or (obj.ctr and any(v > 0 for v in obj.ctr.values()))): return False
             if filt.get("historic") and not (obj.k.legendary or "Artifact" in types or "Saga" in subs): return False
             if filt.get("nonleg") and obj.k.legendary: return False
+            if filt.get("colorless") and obj.k.colors: return False
+            if filt.get("nontype") and filt["nontype"] in types: return False
+            if filt.get("basic") and not obj.k.basic: return False
+            if filt.get("alltypes") and not filt["alltypes"] <= types: return False
         return True
 
     def targets_mine(self, k, how, p):
@@ -4237,8 +4326,10 @@ class Game:
         if c == "gained": return self.gained > 0
         if not isinstance(c, tuple): return False
         if c[0] == "not": return not self.cond_ok(c[1], p)
+        if c[0] == "and": return self.cond_ok(c[1], p) and self.cond_ok(c[2], p)
         k = c[0]
         if k == "life": return self.life >= c[1]
+        if k == "life_le": return self.life <= c[1]
         if k == "hand_le": return len(self.hand) <= c[1]
         if k == "hand_ge": return len(self.hand) >= c[1]
         if k == "attacked": return len(self.attacked) >= c[1]
@@ -4277,13 +4368,16 @@ class Game:
             if event in ("cast", "opp_cast") and filt and not spell_ok(obj, filt): continue
             if event == "cast" and filt and filt.get("targets") and not self.targets_mine(obj, filt["targets"], p): continue
             if event in ("etb", "attack", "cdmg", "dies", "sac", "blocked"):
-                if not self.pmatch(filt, obj, p) or (filt.get("alone") and len(self.attackers) != 1): continue
+                if not self.pmatch(filt, obj, p) or (filt.get("alone") and len(self.attackers) != 1) \
+                        or len(self.attackers) < filt.get("min_att", 0): continue
             elif event in ("attack_self", "cdmg_self", "dies_self", "unblocked_self", "blocked_self", "gy_self", "leave_self", "dmg_self"):
                 if obj is not p: continue
+                if filt and ((filt.get("alone") and len(self.attackers) != 1) or len(self.attackers) < filt.get("min_att", 0)): continue
             elif event in ("attack_att", "cdmg_att", "dmg_att"):
                 if p.att is not obj: continue
+                if filt and ((filt.get("alone") and len(self.attackers) != 1) or len(self.attackers) < filt.get("min_att", 0)): continue
             elif event in ("attack_any", "cdmg_any"):
-                if filt and not any(self.pmatch(dict(filt, another=False), q, p) for q in obj): continue
+                if filt and not any(self.pmatch(no_another(filt), q, p) for q in obj): continue
             if once:
                 if p.once is None: p.once = set()
                 if (ev, self.phase) in p.once: continue
@@ -6063,7 +6157,7 @@ def explain(cache, names, commanders):
             elif s[0] == "mana_mult": bits.append(f"mana x{s[2]} ({s[1]}s)")
             elif s[0] == "reduce_dyn":
                 f = s[1]
-                bits.append("reduce " + (" ".join(sorted(f["types"]) + sorted(f.get("sub") or ())) or "all") + " spells by 1 per " + " ".join(s[2]))
+                bits.append("reduce " + (" ".join(sorted(f["types"]) + sorted(f.get("sub") or ())) or "all") + " spells by 1 per " + kstr(s[2]))
             elif s[0] == "equip_red": bits.append(f"equip costs {{{s[1]}}} less")
             elif s[0] == "attack_limit": bits.append(f"at most {s[1]} attacker(s) each combat (yours too)")
             elif s[0] == "neutral_block": bits.append("block limit (opponents never attack)")
@@ -6082,7 +6176,7 @@ def explain(cache, names, commanders):
             elif s[0] == "thopter_plus": bits.append("artifact tokens: +1 Thopter 1/1 flying each time")
             elif s[0] == "dmg_mult": bits.append(f"damage x{s[1]}" + (" (your sources)" if s[2] else ""))
             else: bits.append(s[0])
-        if k.self_red: bits.append(f"costs {{{k.self_red[0]}}} less per " + " ".join(k.self_red[1]))
+        if k.self_red: bits.append(f"costs {{{k.self_red[0]}}} less per " + kstr(k.self_red[1]))
         if k.leyline: bits.append("leyline")
         if k.requires == "gy": bits.append("needs a target in your graveyard")
         elif k.requires == "gy_payoff": bits.append("cast only with a graveyard payoff (recursion in hand/play or a flashback-style card to fetch)")
@@ -6117,7 +6211,7 @@ def explain(cache, names, commanders):
         if k.alpha: bits.append("pump: cast before combat only when it kills an opponent or adds 2 x MV + 2 damage")
         if "Creature" in k.types and not k.is_land:                 # combat bits last, so the ability read leads the line
             pt = f"{k.power}/{k.tough}" if not k.dyn_pt else \
-                ("X/X" if k.dyn_pt[0] == "both" else f"X/{k.tough}") + " (X = " + " ".join(k.dyn_pt[1]) + ")"
+                ("X/X" if k.dyn_pt[0] == "both" else f"X/{k.tough}") + " (X = " + kstr(k.dyn_pt[1]) + ")"
             kws = sorted(k.kw) + [f"{a} {b}" for a, b in sorted(k.kwn.items()) if a != "exalted"] + [EVADE_TXT[r[0]].format(*r[1:]) for r in k.evade]
             bits.append(pt + (" " + ", ".join(kws) if kws else "") + (f" (a creature only at devotion {k.god[1]}+)" if k.god else ""))
         elif k.kw and not k.is_land: bits.append(", ".join(sorted(k.kw)))

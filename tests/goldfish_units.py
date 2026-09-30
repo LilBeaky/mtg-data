@@ -1260,6 +1260,62 @@ def _():
     return mv and dmg == 2 and any(q.k.name == "Mutavault" for q in G.lands) and not any(q.k.name == "Mutavault" for q in G.perms) \
         and not any(q.k.name == "Mutavault" for q in H.perms) and I.dmg == 3 + 1
 
+# ---- Phase 3 audit (session 3): misreads found by sampling modeled cards and reading the diff against Oracle text
+ANAMES = ["Last Stand", "Swamp", "Plains", "Mountain", "Tomb of the Spirit Dragon", "Ornithopter", "Grizzly Bears", "Vizkopa Guildmage",
+          "Sanguine Bond", "Electroduplicate", "Asari Captain", "Nettlecyst", "Sol Ring", "Doubling Season", "Dust Stalker",
+          "Naomi, Pillar of Order", "Search for Glory", "Geier Reach Sanitarium", "Rally for the Throne", "Astral Dragon",
+          "Craterhoof Behemoth", "Dusk Mangler", "Cloud Key", "Descent into Avernus", "Dwynen, Gilt-Leaf Daen"]
+ARAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(ANAMES)}
+AK = {n: g.compile_card(ARAW[n], g.ALL5) for n in ANAMES}
+
+def agame(lands=(), perms=(), life=40):
+    args = argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False)
+    sim = g.Sim([n for n in ANAMES if n != "Grizzly Bears"], ["Grizzly Bears"], args, [], AK, g.ALL5)
+    G = g.Game(sim, [], [AK["Swamp"]] * 10, random.Random(1))
+    G.turn = 3; G.phase = 3; G.turns_left = g.OPP_N; G.life = life; G.cmd = []
+    G.lands = [g.Perm(AK[n]) for n in lands]; G.perms = [g.Perm(AK[n]) for n in perms]; G._st = None
+    return G
+
+def _fx_all(k):
+    return [e for fx in [k.spell, k.etb] + [a["fx"] for a in k.acts] + [t[2] for t in k.trig] for e in fx]
+
+@check("Audit: Last Stand drains 2 per Swamp and gains 2 per Plains (never a flat 2); Craterhoof counts creatures")
+def _():
+    G = agame(lands=["Swamp"] * 3 + ["Plains"]); G.do(AK["Last Stand"].spell, AK["Last Stand"], None)
+    crater = [e for e in AK["Craterhoof Behemoth"].etb if e[0] == "pump_team"]
+    return 34 in [o["life"] for o in G.opps] and G.life == 42 and crater and crater[0][1] == ("per", 1, ("creatures",))
+@check("Audit: 'colorless creature you control' counts only colorless ones; 'artifact and/or enchantment' counts both")
+def _():
+    G = agame(perms=["Ornithopter", "Grizzly Bears", "Sol Ring", "Doubling Season"])
+    life = [e for a in AK["Tomb of the Spirit Dragon"].acts for e in a["fx"] if e[0] == "life"]
+    key = AK["Nettlecyst"].attach[0][2]
+    return life and G.val(life[0][1], None, 0) == 1 and G.val(key, None, 0) == 3     # Ornithopter, Sol Ring, Doubling Season
+@check("Audit: 'loses that much life' is the life gained only in a gain trigger (Sanguine Bond yes, Vizkopa Guildmage's delayed trigger no)")
+def _():
+    sb = any(t[0] == "gain" and any(e[0] == "face" and e[1] == ("ctx_gain",) for e in t[2]) for t in AK["Sanguine Bond"].trig)
+    return sb and not any(e[0] == "face" for e in _fx_all(AK["Vizkopa Guildmage"]))
+@check("Audit: copies keep 'sacrifice at end step' from a quoted clause (Electroduplicate); Astral Dragon's 3/3 Dragon copies aren't plain copies")
+def _():
+    cp = [e for e in AK["Electroduplicate"].spell if e[0] == "copy_token"]
+    return cp and cp[0][5] == "sacrifice" and not any(e[0] == "copy_token" for e in _fx_all(AK["Astral Dragon"]))
+@check("Audit: 'attacks alone' and 'no other' and 'an artifact and an enchantment' are conditions, not dropped words")
+def _():
+    alone = any(t[0] == "attack" and t[1] and t[1].get("alone") for t in AK["Asari Captain"].trig)
+    ds = [e for t in AK["Dust Stalker"].trig for e in t[2] if e[0] == "cond"]
+    nm = [e for t in AK["Naomi, Pillar of Order"].trig for e in t[2] if e[0] == "cond"]
+    G = agame(perms=["Dust Stalker"])
+    return alone and ds and ds[0][1][0] == "pcount_le" and G.cond_ok(ds[0][1]) and nm and nm[0][1][0] == "and"
+@check("Audit: unread counts and conditions leave the line partial (Search for Glory's snow life, Rally's adamant, Dwynen's attackers)")
+def _():
+    rally = any(e[0] == "life" for e in AK["Rally for the Throne"].spell)
+    dwy = any(e[0] == "life" for e in _fx_all(AK["Dwynen, Gilt-Leaf Daen"]))
+    return any("unread part" in n for n in AK["Search for Glory"].notes) and not rally and not dwy
+@check("Audit: Geier Reach loots; Descent into Avernus makes Treasures; Cloud Key's card type isn't the tribe; Dusk Mangler's opponent clauses aren't ours")
+def _():
+    geier = any(e[0] == "discard" for a in AK["Geier Reach Sanitarium"].acts for e in a["fx"])
+    tre = any(e[0] == "treasure" for t in AK["Descent into Avernus"].trig for e in t[2])
+    return geier and tre and not any(x[0] == "reduce" for x in AK["Cloud Key"].statics) and not any("unread part" in n for n in AK["Dusk Mangler"].notes)
+
 def main():
     fails = 0
     for name, fn in CHECKS:

@@ -2,18 +2,18 @@
 
 For the assistant. Goal: goldfish.py reads as much of the Commander card pool as regex parsing reasonably allows, without reading anything *wrong*. Every number below is measured with `scripts/goldfish_coverage.py report` (weight = 1/√edhrec_rank, so staples count far more than draft chaff).
 
-## Where it stands (2026-09-30, end of the second session)
+## Where it stands (2026-09-30, third session, after the Phase 3 audit)
 
 | Status | Cards | Share | Popularity-weighted |
 |---|---|---|---|
-| modeled | 9,878 | 31.4% | 33.1% |
-| partial | 9,105 | 28.9% | 28.4% |
-| blank | 8,697 | 27.6% | 24.2% |
+| modeled | 9,850 | 31.3% | 33.1% |
+| partial | 9,119 | 29.0% | 28.5% |
+| blank | 8,711 | 27.7% | 24.3% |
 | held | 2,888 | 9.2% | 10.1% |
 | vacuum | 413 | 1.3% | 1.2% |
-| land* | 486 | 1.5% | 3.0% |
+| land* | 441 | 1.4% | 2.7% |
 
-**Fully read (modeled + held + vacuum + override), weighted: 44.4%.**
+**Fully read (modeled + held + vacuum + override), weighted: 44.5%.** Classes and manlands added reads after the second-session rewrite of this file. The audit then took about 100 wrongly `modeled` cards out and added about 40 correct reads, so the number held steady while getting more accurate.
 
 ### The honesty reset (read this before comparing numbers)
 
@@ -36,7 +36,7 @@ Making those honest dropped the number to ~42%. Everything since is real reading
 
 **Every change passes three nets before it's pushed:**
 1. `goldfish_coverage.py diff HEAD --all`: read every changed reading. Group them with a scratch script by what changed, read the most-played first, and fix misreads before anything else.
-2. `tests/goldfish_units.py` (210 checks, deterministic board states) and `tests/goldfish_sweep.py`: every card's effects executed once in a live game, which fails on any exception. The sweep found crashes the fixtures never hit.
+2. `tests/goldfish_units.py` (220 checks, deterministic board states) and `tests/goldfish_sweep.py`: every card's effects executed once in a live game, which fails on any exception. The sweep found crashes the fixtures never hit.
 3. `tests/smoke.py` (70 checks, ~2.5 min). Run it in a separate git worktree at the commit being pushed, so editing can continue. Read the result before pushing.
 
 ## Done
@@ -55,6 +55,31 @@ Making those honest dropped the number to ~42%. Everything since is real reading
   - New structures: sagas (CR 714) incl. Urza's Saga; token copies; conditions (`parse_cond`); qualified trigger filters.
   - Individual cards: Black Market Connections, Harrow / Crop Rotation, Natural Order, Chaos Warp, Victimize, Animate Dead, Frantic Search, Mana Vault, Sensei's Top, amass, artifact/enchantment removal as stax answers, Krenko's tap-over-attack.
 
+## Phase 3 audit (third session)
+
+**Sample.** 40 `modeled` cards, seed 7, 10 from each of four popularity strata, each reading compared to Oracle text.
+
+**Result: 4 misreads (10%).**
+- Cloud Key: "the chosen type" was a card type, not the tribe.
+- Descent into Avernus: "each player creates X Treasures" was dropped.
+- Dwynen: "1 life for each attacking Elf" was read as a flat 1.
+- Crowded Crypt: decayed tokens are treated as ordinary tokens. This one is a known approximation and was left alone.
+
+**Reading the diff of those fixes found the same families all over the pool.** These were real misreads on cards that said `modeled`:
+- "N for each X" read flat on face damage and life (Last Stand, Guiltfeeder, Aven Gagglemaster).
+- A qualified count read as the generic one ("colorless creature", "artifact and/or enchantment", "basic Island", "nonland permanent", "snow lands", "permanents you control but don't own" all counted as creatures/permanents/lands). The root cause was an unanchored `re.search` in `dyn_key`, plus a pump parser gluing two clauses together ("…you controlgain trample").
+- "attacks alone" and battalion dropped.
+- An "except it's a 3/3 Dragon" copy read as a plain copy.
+- Quoted "sacrifice this token at end step" copies kept forever: parse_fx lost the quotes in recursive calls.
+- "loses that much life" read outside gain triggers.
+- "artifact creature" read as any artifact; "an artifact and an enchantment" as one permanent.
+- "no other" counted ~ itself.
+- An ability word before "If" (adamant, spell mastery…) made the condition invisible, so the effect always applied.
+
+All fixed or made honest, with seven audit checks in `goldfish_units.py` that fail on the old parser.
+
+**Standing lesson.** The 10% sample rate understates the risk of a *family*. When a sampled misread is found, grep for the construction across the pool and read the diff, don't just fix the one card. Repeat the sampled audit each session (new seed) and log the rate here.
+
 ## Next (by weight in `report`, re-rank each session)
 
 1. **"put N" (3.1%):** mostly "+1/+1 counter" riders on new trigger frames and "put a card from among them into your hand" digs. Also "put a creature card from your hand onto the battlefield" (Sneak Attack, Stoneforge Mystic: a `cheat` effect with the end-step list already built for copies).
@@ -64,7 +89,8 @@ Making those honest dropped the number to ~42%. Everything since is real reading
 5. **Conditions still unread (3.2%: "if you", "if N", "if ~"):** the land conditions (Field of the Dead), "as long as" statics (Anger), counts of cards drawn, spells cast this turn.
 6. **Auras on your creatures ("enchanted creature", 1.2%).**
 7. **Clones (Phyrexian Metamorph, Spark Double):** enter as a copy; `copy_card` exists.
-8. **Phase 3 correctness audit:** ~40 `modeled` cards stratified by popularity, reading compared to Oracle; log the misread rate.
+8. **Unread conditions worth reading next:** adamant (three mana of one color spent), delirium (card types in the graveyard), revolt, "for each other creature" (count minus ~), "1 plus the number of", "twice the number of", snow permanents.
+9. **Re-run the sampled audit** with a new seed after each cluster pass.
 
 ## Working conventions
 
