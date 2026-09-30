@@ -57,6 +57,7 @@ COLORS = "WUBRG"
 ALL5 = frozenset(COLORS)
 NOC = frozenset()
 CLESS = frozenset("C")
+ROMAN = ("I", "II", "III", "IV", "V", "VI", "VII")
 WORDNUM = {"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
            "seven": 7, "eight": 8, "nine": 9, "ten": 10, "x": "X"}
 TYPES = ("Land", "Creature", "Artifact", "Enchantment", "Planeswalker", "Instant", "Sorcery", "Battle")
@@ -444,6 +445,7 @@ def _fx_search(m):
         nx = re.match(r"\.\s*((?:then )?put (?:that card|it|them|those cards)[^.]*)", m.string[m.end():])
         if nx and not re.search(r"\bif\b|\bunless\b", nx.group(1)): dest = tutor_dest(nx.group(1))    # not 'onto the battlefield if it's a land'
     orig = "search your library for " + _orig(m, 1)          # "and/or graveyard" searches read as library-only
+    orig = re.sub(r"with mana cost \{0\} or \{1\}", "with mana value 1 or less", orig, flags=re.I)   # Urza's Saga ~approx (X costs too)
     tm = tu.SEARCH_RX.search(orig)
     tg = tu.parse_target(tm.group("what") if tm else _orig(m, 1), _CTX["raw"] or {})
     rm = re.search(r"mana value (equal to|x or less, where x is) (\w+) plus the sacrificed (\w+)'s mana value", s)
@@ -787,7 +789,7 @@ FX = [
      if re.search(r"(?:^|[.,] )(?:you|target player) draws? [^.]*$", (_CTX["orig"] or "")[:m.start()], re.I) else None),   # cards and loses 2 life'
     (re.compile(r"\b(?:you|and) lose (?P<n>x) life"), lambda m: ("lose", _xn(m)) if _xn(m) else None),     # Painful Truths
     (re.compile(r"(?P<subj>(?:other |each |each other )?(?:attacking )?(?:[a-z\-]+ )?(?:creatures?|creature tokens?) you control|"
-                r"other [a-z\-]+s you control) (?P<body>(?:get|gain|have)\b[^.]*?) until end of turn(?P<rest>[^.]*)"), _fx_pump_team),
+                r"(?:other )?[a-z\-]+s you control) (?P<body>(?:get|gain|have)\b[^.]*?) until end of turn(?P<rest>[^.]*)"), _fx_pump_team),   # Knights you control
     (re.compile(r"(?P<who>~|it|that creature|equipped creature|enchanted creature|(?:up to one )?(?:another )?target creature(?: you control)?"
                 r"|each other attacking creature|other attacking creatures|they|those creatures) (?:gets?|gains?|has) (?P<body>[^.]*?) until end of turn(?P<rest>[^.]*)"),
      _fx_pump),
@@ -1110,6 +1112,8 @@ class Card:
         self.dyn_pt = None       # ('both' | 'power', dyn key): */* read at use time (Tarmogoyf-style counts)
         self.pt_unread = False   # a * power/toughness the parser couldn't read (counted as 0, never attacks)
         self.cond_units = []     # mana abilities with 'Activate only if you control ...': [(units, count key, n)]
+        self.chapters = {}       # Saga: chapter number -> effects (CR 714); final chapter = max key
+        self.granted_ch = set()  # chapters that grant the Saga an ability (Urza's Saga), read as its own
         self.imprint = False     # Chrome Mox: exiles a nonartifact, nonland card from hand; taps for its colors
         self.mox_diamond = False # Mox Diamond: enters only by discarding a land card
         self.sac_outlets = []    # 'Sacrifice a creature: Add {C}{C}' (Ashnod's Altar): [(fodder filter, units, taps?)]
@@ -2024,6 +2028,21 @@ def compile_card(c, anyc):
                     if r is True: done += 1
                     elif r is False: missed += 1; k.notes.append("unmodeled: " + rest[:72])
                 continue
+        cm = re.match(r"^((?:[IVX]+)(?:, [IVX]+)*) — (.+)$", L)
+        if cm and "Saga" in k.subtypes:                   # CR 714.2: 'I, II — effect' are chapter abilities
+            chs = [ROMAN.index(x) + 1 for x in cm.group(1).split(", ") if x in ROMAN]
+            body = cm.group(2)
+            gm = re.fullmatch(r'~ gains "([^"]+)"\.?', body)
+            if gm:                                        # Urza's Saga: the granted ability is read as its own ~approx
+                inner = re.sub(r"(?<=with )'([^']+)'", r'"\1"', gm.group(1))     # its token's own ability, in nested quotes
+                r = parse_line(k, inner, anyc, abil)
+                for ch in chs: k.chapters.setdefault(ch, []); k.granted_ch.add(ch)
+            else:
+                fx, _ = parse_fx(body); r = bool(fx)
+                for ch in chs: k.chapters[ch] = k.chapters.get(ch, []) + fx
+            if r is True: done += 1
+            elif r is False: missed += 1; k.notes.append("unmodeled: " + L[:72])
+            continue
         if re.fullmatch(r"~ doesn't untap during your untap step\.?", L.lower()):
             k.no_untap = True; done += 1; continue
         if re.fullmatch(r"if you control a commander, you may cast ~ without paying its mana cost\.?", L.lower()):
@@ -2786,6 +2805,7 @@ class Game:
             kind, n, if_cast = k.ctr_enter
             if from_hand or not if_cast: self.add_ctr(p, kind, self.val(n, p, x))
         if k.loyalty: self.add_ctr(p, "loyalty", k.loyalty)
+        if k.chapters: self.add_lore(p, 1)                  # CR 714.3a: a Saga enters with a lore counter
         if self.pool is not None:
             if k.statics:
                 if self.any_lands():
@@ -2846,6 +2866,7 @@ class Game:
             back = min(others, key=lambda q: (len(q.k.units) > 1, len(q.k.units[0][0]) if q.k.units else 0)) if others else p
             self.lands.remove(back); self.hand.append(back.k)
         if k.etb: self.do(k.etb, k, p)
+        if k.chapters: self.add_lore(p, 1)                  # Urza's Saga: chapter I as it enters
         self.fire("landfall", p)
         if k.fetch:
             filt, tapped = k.fetch
@@ -3781,6 +3802,7 @@ class Game:
 
     def add_ctr(self, p, kind, n):
         if not isinstance(n, int) or n <= 0: return
+        if kind == "lore" and p.k.chapters: return self.add_lore(p, n)
         st = self.st
         for scope, kinds in st.plus:
             if (kinds is None or kind in kinds) and (scope is None or p.k.types & scope): n += 1
@@ -3788,6 +3810,29 @@ class Game:
             if (kinds is None or kind in kinds) and (scope is None or p.k.types & scope): n *= 2
         if p.ctr is None: p.ctr = {}
         p.ctr[kind] = p.ctr.get(kind, 0) + n
+
+    def add_lore(self, p, n):
+        """CR 714.2b / 714.4: each chapter the lore count passes triggers; at the final chapter the Saga is sacrificed.
+        Counter modifiers apply (Doubling Season skips chapters)."""
+        st = self.st
+        for scope, kinds in st.plus:
+            if (kinds is None or "lore" in kinds) and (scope is None or p.k.types & scope): n += 1
+        for scope, kinds in st.times:
+            if (kinds is None or "lore" in kinds) and (scope is None or p.k.types & scope): n *= 2
+        if p.ctr is None: p.ctr = {}
+        old = p.ctr.get("lore", 0); p.ctr["lore"] = old + n
+        for ch in range(old + 1, old + n + 1):
+            if ch in p.k.chapters and p.k.chapters[ch]:
+                self.count_trig(p.k.name, "timed"); self.note(f"    {p.k.name} chapter {ROMAN[ch - 1]}")
+                self.do(p.k.chapters[ch], p.k, p)
+        if p.ctr["lore"] >= max(p.k.chapters) and (p in self.perms or p in self.lands):
+            if p in self.lands:
+                self.lands.remove(p); self.bury(p.k); self._st = None
+                if self.pool is not None:
+                    for u in self.pool:
+                        if u[4] is p: u[5] = True
+                self.note(f"    {p.k.name} is sacrificed (final chapter)")
+            else: self.leave(p, "is sacrificed (final chapter)", sac=True)
 
     def proliferate(self, n=1):
         for _ in range(n * self.st.prolif):
@@ -4893,6 +4938,7 @@ class Game:
             self.ctr_held += [e for e in evs if e["kind"] == "counterK"]
             self.build_pool()
             if self.stax and not self.dry: self.clear_stax()
+            for q in [q for q in self.perms + self.lands if q.k.chapters]: self.add_lore(q, 1)   # CR 714.3c
             self.fire("main1")                                  # 'at the beginning of your first main phase': BMC, Black Market's mana
             pool_n = sum(1 for u in self.pool if not u[5] and len(u) <= 6)     # fodder mana (sac outlets) isn't development
             cols = set().union(*(u[0] | u[1] for u in self.pool if not u[5] and len(u) <= 6)) if self.pool else set()
@@ -5537,6 +5583,8 @@ def explain(cache, names, commanders):
         if k.etb: bits.append("ETB " + ", ".join(fx_str(e) for e in k.etb) + (" (sacrificed)" if k.sac_etb else ""))
         if k.spell: bits.append(", ".join(fx_str(e) for e in k.spell))
         if k.castfx: bits.append("when cast: " + ", ".join(fx_str(e) for e in k.castfx))
+        if k.chapters: bits.append("saga " + "; ".join(f"{ROMAN[c - 1]}: " + (", ".join(fx_str(e) for e in fx) or ("(ability)" if c in k.granted_ch else "(unread)"))
+                                                       for c, fx in sorted(k.chapters.items())) + f" (sacrificed after {ROMAN[max(k.chapters) - 1]})")
         for ev, f, fx, once, tax, each in k.trig:
             if not f: fl = ""
             elif "types" in f:

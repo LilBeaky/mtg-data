@@ -181,7 +181,7 @@ def checks():
                    "Nekrataal — ETB removal: destroy an opposing creature (nonartifact,nonblack)",
                    "Plague Wind — removal: destroy every opposing creature",
                    "vacuum   other  Propaganda", "vacuum   other  Mind Rot",
-                   "blank    other  Beacon of Tomorrows", "partial  other  Thieving Amalgam"],
+                   "blank    other  Beacon of Tomorrows", "blank    other  Thieving Amalgam"],   # its 'creature you control but don't own dies' trigger is not any creature
              must_not=["Deathrite Shaman — act [T 1]: removal", "Flickerwisp — ETB removal", "Goblin Snowman — act [T]: removal",
                        "Beast Within — removal"]),   # graveyard card, flicker, 'it's blocking', gives them a body
         dict(name="goldfish mech explain", cmd=S("goldfish.py", MECH, "--explain"),

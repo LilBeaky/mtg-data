@@ -1095,7 +1095,8 @@ PNAMES = ["Krenko, Mob Boss", "Goblin Instigator", "Goblin Warchief", "Mountain"
           "Doubling Season", "Parallel Lives", "Panharmonicon", "Teysa Karlov", "Blood Artist", "Herald's Horn", "Chrome Mox",
           "Mox Diamond", "Black Market Connections", "Harrow", "Chaos Warp", "Morbid Opportunist", "Grizzly Bears",
           "Lightning Bolt", "Mulldrifter", "Sol Ring", "Siege-Gang Commander", "Llanowar Elves", "Welcoming Vampire",
-          "Windreader Sphinx", "Serra Angel", "Craw Wurm", "Trespasser's Curse"]
+          "Windreader Sphinx", "Serra Angel", "Craw Wurm", "Trespasser's Curse", "History of Benalia", "Urza's Saga",
+          "Mox Opal", "Sol Ring"]
 PRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(PNAMES)}
 g.CHOSEN_TYPE = g.chosen_type([PRAW["Krenko, Mob Boss"]], [PRAW[n] for n in ("Goblin Instigator", "Goblin Warchief", "Siege-Gang Commander")])
 PK = {n: g.compile_card(PRAW[n], g.ALL5) for n in PNAMES}
@@ -1157,6 +1158,19 @@ def _():
     G = pgame(perms=["Welcoming Vampire"]); G.enter(PK["Llanowar Elves"]); G.enter(PK["Grizzly Bears"]); G.enter(PK["Craw Wurm"])
     H = pgame(perms=["Windreader Sphinx", "Serra Angel", "Grizzly Bears"]); H.fire("attack", H.perms[2]); H.fire("attack", H.perms[1])
     return len(G.hand) == 1 and len(H.hand) == 1 and not PK["Trespasser's Curse"].trig
+
+@check("Sagas (CR 714): History of Benalia makes a Knight on entering and next turn, pumps on III and is sacrificed; Doubling Season skips a chapter")
+def _():
+    G = pgame(); p = G.enter(PK["History of Benalia"]); a = sum(1 for q in G.perms if q.k.token)
+    G.add_lore(p, 1); b = sum(1 for q in G.perms if q.k.token)
+    G.add_lore(p, 1); gone = p not in G.perms and PK["History of Benalia"] in G.gy
+    H = pgame(perms=["Doubling Season"]); q = H.enter(PK["History of Benalia"])
+    return (a, b) == (1, 2) and gone and q.ctr["lore"] == 2 and sum(1 for r in H.perms if r.k.token) == 2 * 2
+@check("Urza's Saga: taps for {C}, finds a 0-1 MV artifact on III onto the battlefield, then it's gone (a land lost)")
+def _():
+    G = pgame(lib=["Mountain", "Sol Ring", "Mountain"]); G.land_enters(PK["Urza's Saga"])
+    p = G.lands[0]; G.add_lore(p, 1); G.add_lore(p, 1)
+    return PK["Urza's Saga"].units and any(q.k.name == "Sol Ring" for q in G.perms) and not G.lands and PK["Urza's Saga"] in G.gy
 
 def main():
     fails = 0
