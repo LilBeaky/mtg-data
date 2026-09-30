@@ -176,6 +176,326 @@ def _():
     G.enter(K["Deranged Hermit"])
     return len(G.perms) == g.TOKEN_CAP + 1
 
+# ---- combat (opponents have no boards in real runs; the blocker checks set one by hand)
+CNAMES = ["Najeela, the Blade-Blossom", "Forest", "Mountain", "Grizzly Bears", "Serra Angel", "Baneslayer Angel",
+          "Boros Swiftblade", "Vampire Nighthawk", "Glistener Elf", "Bloated Contaminator", "Hero of Bladehold",
+          "Glorious Anthem", "Bonesplitter", "Impact Tremors", "Blood Artist", "Guttersnipe", "Lightning Bolt",
+          "Sword of Fire and Ice", "Purphoros, God of the Forge", "Crusader of Odric", "Overrun", "Rafiq of the Many",
+          "Exsanguinate", "Llanowar Elves", "Professional Face-Breaker", "Invisible Stalker", "Craterhoof Behemoth",
+          "Goblin Rabblemaster", "Ophidian", "Intangible Virtue", "Monastery Swiftspear", "Opt", "Relentless Assault",
+          "Aurelia, the Warleader", "Karlach, Fury of Avernus", "Moraug, Fury of Akoum", "Hellrider", "Plains", "Island", "Swamp",
+          "Castle Garenbrig", "Encroaching Dragonstorm", "Lathliss, Dragon Queen", "Biorhythm", "Jeska's Will", "Animist's Awakening"]
+CRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(CNAMES)}
+CK = {n: g.compile_card(CRAW[n], g.ALL5) for n in CNAMES}
+
+def cgame(perms=(), lands=(), hand=(), lib=("Forest",) * 10):
+    args = argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False)
+    sim = g.Sim([n for n in CNAMES if n != "Najeela, the Blade-Blossom"], ["Najeela, the Blade-Blossom"], args, [], CK, g.ALL5)
+    G = g.Game(sim, [CK[n] for n in hand], [CK[n] for n in lib], random.Random(1))
+    G.turn = 3; G.phase = 3
+    G.lands = [g.Perm(CK[n]) for n in lands]
+    G.perms = [g.Perm(CK[n]) for n in perms]
+    G._st = None
+    return G
+
+def lives(G): return [o["life"] for o in G.opps]
+def blocker(p, t, *kw): return {"name": f"{p}/{t}", "p": p, "t": t, "kw": set(kw)}
+
+@check("combat keywords read (Baneslayer, Glistener infect, Contaminator toxic 1 + trample)")
+def _():
+    return {"flying", "first strike", "lifelink"} <= CK["Baneslayer Angel"].kw and "infect" in CK["Glistener Elf"].kw \
+        and CK["Bloated Contaminator"].kwn.get("toxic") == 1 and "trample" in CK["Bloated Contaminator"].kw
+@check("unblocked attack: Grizzly Bears deals 2 to one opponent")
+def _():
+    G = cgame(perms=["Grizzly Bears"]); G.combat()
+    return sorted(lives(G)) == [38, 40, 40] and G.dmg == 2 and G.cdmg == 2
+@check("summoning-sick creature doesn't attack; haste does (Swiftspear)")
+def _():
+    G = cgame(); G.enter(CK["Grizzly Bears"]); G.enter(CK["Monastery Swiftspear"]); G.combat()
+    return G.dmg == 1
+@check("double strike deals damage twice (Boros Swiftblade: 2)")
+def _():
+    G = cgame(perms=["Boros Swiftblade"]); G.combat(); return G.dmg == 2
+@check("lifelink gains you life (Vampire Nighthawk: 42)")
+def _():
+    G = cgame(perms=["Vampire Nighthawk"]); G.combat(); return G.life == 42
+@check("infect deals poison, not life loss")
+def _():
+    G = cgame(perms=["Glistener Elf"]); G.combat()
+    return lives(G) == [40, 40, 40] and max(o["poison"] for o in G.opps) == 1
+@check("toxic 1 + its proliferate trigger: 4 damage, 2 poison")
+def _():
+    G = cgame(perms=["Bloated Contaminator"]); G.combat()
+    o = [o for o in G.opps if o["life"] < 40][0]
+    return o["life"] == 36 and o["poison"] == 2
+@check("10 poison kills")
+def _():
+    G = cgame(perms=["Glistener Elf"]); G.opps[0]["poison"] = 9; G.opps[1]["life"] = 30; G.opps[2]["life"] = 30
+    G.combat(); return G.opps[0]["dead"] == 3 and G.opps[0]["how"] == "poison"
+@check("commander damage is tallied per opponent; 21 kills")
+def _():
+    G = cgame(); p = G.enter(CK["Najeela, the Blade-Blossom"]); p.sick = False
+    G.opps[1]["cmd"]["Najeela, the Blade-Blossom"] = 19; G.combat()
+    return G.opps[1]["dead"] and G.opps[1]["how"] == "commander damage" and G.opps[1]["life"] == 40 - 3 - 1   # + its Warrior token
+@check("focus fire: an attack that kills one opponent spills the rest onto the next")
+def _():
+    G = cgame(perms=["Serra Angel", "Grizzly Bears"]); G.opps[0]["life"] = 3; G.combat()
+    return G.opps[0]["dead"] and sorted(lives(G)[1:]) == [38, 40]
+@check("killing all three opponents ends the game (won = turn)")
+def _():
+    G = cgame(perms=["Serra Angel", "Grizzly Bears", "Boros Swiftblade"])
+    for o in G.opps: o["life"] = 2
+    G.combat(); return G.won == 3 and not G.alive()
+@check("anthem: Glorious Anthem makes Bears 3/3")
+def _():
+    G = cgame(perms=["Grizzly Bears", "Glorious Anthem"]); b = G.perms[0]
+    return G.stats(b)[:2] == (3, 3)
+@check("Intangible Virtue pumps tokens only")
+def _():
+    G = cgame(perms=["Grizzly Bears", "Intangible Virtue", "Hero of Bladehold"]); G.combat()
+    return G.dmg == 3 + 3 + 2 * 3                  # Bears 2+1 battle cry, Hero 3, two Soldiers 1 +1 Virtue +1 battle cry
+@check("equip: Bonesplitter moves onto the attacker and adds 2")
+def _():
+    G = cgame(perms=["Grizzly Bears", "Bonesplitter"], lands=["Mountain"]); G.build_pool(); G.equip_step(); G.combat()
+    return G.perms[1].att is G.perms[0] and G.dmg == 4
+@check("Hero of Bladehold: two Soldiers enter attacking, battle cry pumps them (3 + 2x2 = 7)")
+def _():
+    G = cgame(perms=["Hero of Bladehold"]); G.combat()
+    return G.dmg == 7 and sum(p.k.token for p in G.perms) == 2
+@check("blocks: flying goes over a ground blocker; a 3/3 blocker keeps Bears home")
+def _():
+    G = cgame(perms=["Serra Angel", "Grizzly Bears"])
+    for o in G.opps: o["board"] = [blocker(3, 3)]
+    G.combat(); return G.dmg == 4
+@check("blocks: first strike kills the blocker first (Baneslayer vs a 5/5); the attacker survives")
+def _():
+    G = cgame(perms=["Baneslayer Angel"])
+    for o in G.opps: o["board"] = [blocker(5, 5, "flying")]
+    G.combat()
+    return G.perms and G.perms[0].k.name == "Baneslayer Angel" and sum(len(o["board"]) for o in G.opps) == 2 and G.dmg == 0
+@check("blocks: a lethal attack draws a chump; trample carries the excess (Contaminator 4 over a 1/1 = 3)")
+def _():
+    G = cgame(perms=["Bloated Contaminator"])
+    for o in G.opps: o["life"] = 4; o["board"] = [blocker(1, 1)]
+    G.combat(); o = [o for o in G.opps if o["life"] < 4][0]
+    return o["life"] == 1 and len(o["board"]) == 0
+@check("blocks: menace can't be blocked by one creature; deathtouch blocker kills")
+def _():
+    G = cgame(perms=["Professional Face-Breaker"])
+    for o in G.opps: o["board"] = [blocker(0, 1)]
+    G.combat(); menace_ok = G.dmg == 2
+    H = cgame(perms=["Grizzly Bears"])
+    for o in H.opps: o["life"] = 2; o["board"] = [blocker(1, 1, "deathtouch")]
+    H.combat()
+    return menace_ok and not H.perms and H.lost == 1
+@check("noncombat triggers: Impact Tremors on enter, Guttersnipe on cast, Blood Artist on a death")
+def _():
+    G = cgame(perms=["Impact Tremors"]); G.enter(CK["Grizzly Bears"]); a = lives(G) == [39, 39, 39]
+    H = cgame(perms=["Guttersnipe"]); H.fire("cast", CK["Opt"]); b = lives(H) == [38, 38, 38]
+    I = cgame(perms=["Blood Artist", "Grizzly Bears"]); I.leave(I.perms[1], "dies"); c = sum(lives(I)) == 119 and I.life == 41
+    return a and b and c and G.trigs[("Impact Tremors", "enter")] == 1
+@check("Sword of Fire and Ice triggers off its equipped creature (2 damage + a card)")
+def _():
+    G = cgame(perms=["Grizzly Bears", "Sword of Fire and Ice"]); G.perms[1].att = G.perms[0]; G.combat()
+    return G.dmg == 4 + 2 and len(G.hand) == 1
+@check("Purphoros isn't a creature below devotion 5; Crusader of Odric counts creatures")
+def _():
+    G = cgame(perms=["Purphoros, God of the Forge", "Crusader of Odric", "Grizzly Bears"])
+    return not G.can_attack(G.perms[0]) and G.stats(G.perms[1])[:2] == (2, 2)
+@check("Overrun waits for a board: not with 1 creature, yes with 4")
+def _():
+    G = cgame(perms=["Grizzly Bears"]); H = cgame(perms=["Grizzly Bears"] * 4)
+    return not G.alpha_ok(CK["Overrun"]) and H.alpha_ok(CK["Overrun"])
+@check("Rafiq: exalted +1/+1 and double strike when a creature attacks alone (3/3 -> 4 x 2 = 8)")
+def _():
+    G = cgame(perms=["Rafiq of the Many"]); G.combat(); return G.dmg == 8
+@check("Najeela: an attacking Warrior makes a 1/1 Warrior attacking (3 + 1)")
+def _():
+    G = cgame(); p = G.enter(CK["Najeela, the Blade-Blossom"]); p.sick = False; G.combat()
+    return G.dmg == 4
+@check("Exsanguinate drains each opponent for X")
+def _():
+    G = cgame(); G.do(CK["Exsanguinate"].spell, CK["Exsanguinate"], None, 5); return lives(G) == [35, 35, 35]
+@check("Ophidian draws when it attacks and isn't blocked")
+def _():
+    G = cgame(perms=["Ophidian"]); G.combat(); return len(G.hand) == 1
+@check("mana: a land pays before a would-be attacker (Forest, not Llanowar Elves)")
+def _():
+    G = cgame(perms=["Llanowar Elves"], lands=["Forest"]); G.build_pool(); G.pay(None, 1, [])
+    return not G.perms[0].tapped and G.lands[0].tapped
+@check("subtype list has no rule-text words ('Creatures', 'The')")
+def _(): return not ({"Creatures", "The", "Artifacts"} & g.SUBTYPES)
+
+# ---- additional combat phases
+def turn_combat(G):
+    """The turn loop's combat block: combat, then each additional combat after its main phase."""
+    G.combat(); n = 0
+    while G.xcombat and G.alive() and n < g.XCOMBAT_CAP:
+        G.xcombat -= 1; n += 1; G.xcombats += 1
+        for sc in G.pending_untap: G.untap_cr(sc)
+        G.pending_untap = []; G.combat()
+    return n
+
+@check("Relentless Assault cast before combat: its untap waits, Bears attack twice and Hellrider triggers twice")
+def _():
+    G = cgame(perms=["Grizzly Bears", "Hellrider"])
+    G.do(CK["Relentless Assault"].spell, CK["Relentless Assault"])
+    return turn_combat(G) == 1 and G.dmg == 2 * (2 + 3 + 2)    # each combat: Bears 2, Hellrider 3, two Hellrider pings
+@check("Aurelia: untap and one extra combat, and only on her first attack each turn")
+def _():
+    G = cgame(perms=["Aurelia, the Warleader", "Grizzly Bears"]); G.phase = 7
+    return turn_combat(G) == 1 and G.dmg == 2 * (3 + 2)
+@check("Karlach: first combat only, attackers untap and gain first strike")
+def _():
+    G = cgame(perms=["Karlach, Fury of Avernus"]); G.phase = 7
+    return turn_combat(G) == 1 and G.dmg == 2 * 5
+@check("Najeela's combat ability: paid from the pool, another combat (Warriors trigger again)")
+def _():
+    G = cgame(lands=["Plains", "Island", "Swamp", "Mountain", "Forest"]); p = G.enter(CK["Najeela, the Blade-Blossom"]); p.sick = False
+    G.build_pool(); n = turn_combat(G)
+    return n == 1 and G.dmg == (3 + 1) + (3 + 1 + 1 + 1)    # 2nd combat: Najeela + first token + a token each for both
+@check("extra combats stop at the cap")
+def _():
+    G = cgame(perms=["Grizzly Bears"]); G.xcombat = 50; return turn_combat(G) == g.XCOMBAT_CAP
+@check("Relentless Assault waits: not with Bears alone, yes when attacking twice kills")
+def _():
+    G = cgame(perms=["Grizzly Bears"]); H = cgame(perms=["Grizzly Bears"] * 3); H.opps[0]["life"] = 10
+    return not G.alpha_ok(CK["Relentless Assault"]) and H.alpha_ok(CK["Relentless Assault"])
+
+# ---- ramp reads found by the Klauth test deck
+@check("Castle Garenbrig filters 4 into six G (creature-only)")
+def _(): return CK["Castle Garenbrig"].convs[0][0] == 4 and len(CK["Castle Garenbrig"].convs[0][1]) == 6
+@check("Encroaching Dragonstorm returns to hand when a Dragon enters")
+def _():
+    G = cgame(lib=["Forest"] * 10); G.enter(CK["Encroaching Dragonstorm"]); G.enter(CK["Lathliss, Dragon Queen"])
+    return CK["Encroaching Dragonstorm"] in G.hand and len(G.lands) == 2
+@check("Jeska's Will: both modes, R per card in an opponent's hand (~opp 4) and three impulse cards")
+def _(): return [e[0] for e in CK["Jeska's Will"].spell] == ["draw", "mana"] and len(CK["Jeska's Will"].spell[1][1]) == g.OPP_HAND
+@check("Animist's Awakening X=4 puts the lands among the top 4 onto the battlefield")
+def _():
+    G = cgame(lib=["Opt", "Forest", "Opt", "Forest"]); G.do(CK["Animist's Awakening"].spell, CK["Animist's Awakening"], None, 4)
+    return len(G.lands) == 2 and all(l.tapped for l in G.lands)
+@check("Biorhythm: opponents drop to their estimated creature count, you to yours")
+def _():
+    G = cgame(perms=["Grizzly Bears"] * 2); G.turn = 6; G.do(CK["Biorhythm"].spell, CK["Biorhythm"])
+    return lives(G) == [G.opp_creatures()] * 3 and G.life == 2
+
+# ---- voltron / enchantress reads found by the Wilson + Flaming Fist deck
+VNAMES = ["Wilson, Refined Grizzly", "Flaming Fist", "Forest", "Plains", "Grizzly Bears", "Mark of Sakiko", "Bear Umbra",
+          "Snake Umbra", "Strong Back", "Pearl-Ear, Imperial Advisor", "Kor Spiritdancer", "Shield of the Oversoul",
+          "Face of Divinity", "Alpha Authority", "Arbor Elf", "Gift of Paradise", "Season of Growth", "Phalanx Leader",
+          "Kudo, King Among Bears", "Silent Arbiter", "Kenrith's Transformation", "Cryptolith Rite", "Calix, Guided by Fate",
+          "Sage's Reverie", "Sol Ring", "Blacksmith's Skill", "Karametra's Blessing"]
+VRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(VNAMES)}
+VK = {n: g.compile_card(VRAW[n], frozenset("GW")) for n in VNAMES}
+
+def vgame(perms=(), lands=(), hand=(), lib=("Forest",) * 10, auras=()):
+    """Wilson is the commander. perms enter untapped and unsick; auras = [(aura, index of the perm it's on)]."""
+    args = argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False)
+    sim = g.Sim([n for n in VNAMES if n != "Wilson, Refined Grizzly"], ["Wilson, Refined Grizzly"], args, [], VK, frozenset("GW"))
+    G = g.Game(sim, [VK[n] for n in hand], [VK[n] for n in lib], random.Random(1))
+    G.turn = 3; G.phase = 3
+    G.lands = [g.Perm(VK[n]) for n in lands]
+    G.perms = [g.Perm(VK[n]) for n in perms]
+    for a, i in auras:
+        q = g.Perm(VK[a]); q.att = G.perms[i]; G.perms.append(q)
+    G._st = None
+    return G
+
+@check("Flaming Fist: the commander gains double strike when it attacks (Wilson 2 x 2 = 4 commander damage)")
+def _():
+    G = vgame(perms=["Wilson, Refined Grizzly", "Flaming Fist"]); G.combat()
+    return G.dmg == 4 and max(v for o in G.opps for v in o["cmd"].values()) == 4
+@check("Flaming Fist grants nothing to a non-commander (Grizzly Bears deal 2)")
+def _():
+    G = vgame(perms=["Grizzly Bears", "Flaming Fist"]); G.combat(); return G.dmg == 2
+@check("Mark of Sakiko: combat damage adds that much G for main phase 2")
+def _():
+    G = vgame(perms=["Wilson, Refined Grizzly"], auras=[("Mark of Sakiko", 0)]); G.build_pool(); G.combat()
+    return free_units(G) == 2 and G.dmg == 2
+@check("Bear Umbra: +2/+2, and attacking untaps your lands (two tapped Forests -> 2 mana)")
+def _():
+    G = vgame(perms=["Wilson, Refined Grizzly"], lands=["Forest", "Forest"], auras=[("Bear Umbra", 0)]); G.build_pool()
+    for u in G.pool: g_ = G.use_unit(G.pool.index(u))
+    G.combat(); return G.dmg == 4 and free_units(G) == 2
+@check("umbra armor: a creature wipe destroys the Aura instead; the creature stays")
+def _():
+    G = vgame(perms=["Wilson, Refined Grizzly", "Grizzly Bears"], auras=[("Snake Umbra", 0)]); G.disrupt({"kind": "wipe"})
+    return [p.k.name for p in G.perms] == ["Wilson, Refined Grizzly"]
+@check("Shield of the Oversoul on a green creature: +1/+1 indestructible, survives spot removal (not the white bonus)")
+def _():
+    G = vgame(perms=["Grizzly Bears"], auras=[("Shield of the Oversoul", 0)])
+    pw, tg, kws = G.stats(G.perms[0])
+    return (pw, tg) == (3, 3) and "indestructible" in kws and "flying" not in kws and G.survives(G.perms[0], True) and len(G.perms) == 2
+@check("Face of Divinity: first strike and lifelink only with another Aura on the creature")
+def _():
+    a = vgame(perms=["Grizzly Bears"], auras=[("Face of Divinity", 0)])
+    b = vgame(perms=["Grizzly Bears"], auras=[("Face of Divinity", 0), ("Snake Umbra", 0)])
+    return "lifelink" not in a.stats(a.perms[0])[2] and {"lifelink", "first strike"} <= b.stats(b.perms[0])[2]
+@check("Alpha Authority: hexproof commander can't be targeted by commander removal (answered, stays)")
+def _():
+    G = vgame(perms=["Wilson, Refined Grizzly"], auras=[("Alpha Authority", 0)]); G.disrupt({"kind": "cmd"})
+    return len(G.perms) == 2 and G.dis[-1] == ("cmd", "answered")
+@check("Arbor Elf untaps a Forest: Forest + Elf = 2 mana; no land, no mana")
+def _(): return pool_v(lands=["Forest"], perms=["Arbor Elf"]) == 2 and pool_v(perms=["Arbor Elf"]) == 0
+@check("Gift of Paradise: its land taps for two (Forest + Gift = 2)")
+def _(): return pool_v(lands=["Forest"], perms=["Gift of Paradise"]) == 2
+@check("Cryptolith Rite: an unsick creature taps for mana")
+def _(): return pool_v(perms=["Grizzly Bears", "Cryptolith Rite"]) == 1
+@check("Strong Back: Auras cost 3 less, generic only ({2}{G}{G} -> GG); +2/+2 per Aura on it (Wilson + Strong Back + Snake Umbra = 7/7)")
+def _():
+    G = vgame(perms=["Wilson, Refined Grizzly"], auras=[("Strong Back", 0), ("Snake Umbra", 0)])
+    return min(o[0] + len(o[1]) for o in G.options(VK["Bear Umbra"], "hand")) == 2 and G.stats(G.perms[0])[:2] == (7, 7)
+@check("Pearl-Ear: enchantment spells have affinity for Auras (two Auras out: Bear Umbra 4 -> 2)")
+def _():
+    G = vgame(perms=["Wilson, Refined Grizzly", "Pearl-Ear, Imperial Advisor"], auras=[("Snake Umbra", 0), ("Alpha Authority", 0)])
+    return min(o[0] + len(o[1]) for o in G.options(VK["Bear Umbra"], "hand")) == 2
+@check("Kor Spiritdancer gets +2/+2 per Aura on it (one Snake Umbra: 3/5)")
+def _():
+    G = vgame(perms=["Kor Spiritdancer"], auras=[("Snake Umbra", 0)]); return G.stats(G.perms[0])[:2] == (3, 5)
+@check("Season of Growth draws for an Aura on your creature, not for Sol Ring")
+def _():
+    G = vgame(perms=["Wilson, Refined Grizzly", "Season of Growth"], hand=["Snake Umbra", "Sol Ring"])
+    G.resolve(VK["Snake Umbra"], "hand", 3); a = G.extra
+    G.resolve(VK["Sol Ring"], "hand", 1); return a == 1 and G.extra == 1
+@check("heroic: an Aura on Phalanx Leader puts a +1/+1 counter on each creature; one on another creature doesn't")
+def _():
+    G = vgame(perms=["Phalanx Leader"], hand=["Snake Umbra"]); G.resolve(VK["Snake Umbra"], "hand", 3)
+    H = vgame(perms=["Phalanx Leader", "Wilson, Refined Grizzly"], auras=[("Bear Umbra", 1)], hand=["Snake Umbra"])
+    H.resolve(VK["Snake Umbra"], "hand", 3)
+    return (G.perms[0].ctr or {}).get("+1/+1") == 1 and not H.perms[0].ctr
+@check("Kudo: other creatures are base 2/2 (Pearl-Ear 3/4 -> 2/2), Kudo itself 2/2")
+def _():
+    G = vgame(perms=["Kudo, King Among Bears", "Pearl-Ear, Imperial Advisor"])
+    return G.stats(G.perms[1])[:2] == (2, 2) and G.stats(G.perms[0])[:2] == (2, 2)
+@check("Silent Arbiter: only one creature attacks, yours included")
+def _():
+    G = vgame(perms=["Grizzly Bears", "Grizzly Bears", "Silent Arbiter"]); G.combat(); return G.dmg == 2
+@check("removal Auras stay off your creatures; a Background-style grant doesn't count as a debuff")
+def _():
+    G = vgame(perms=["Wilson, Refined Grizzly"]); p = G.enter(VK["Kenrith's Transformation"]); q = G.enter(VK["Snake Umbra"])
+    return p.att is None and q.att is G.perms[0] and VK["Kenrith's Transformation"].debuff and not VK["Snake Umbra"].debuff
+@check("Calix constellation fires on itself and on another enchantment (+1/+1 counters)")
+def _():
+    G = vgame(perms=["Wilson, Refined Grizzly"]); G.enter(VK["Calix, Guided by Fate"]); G.enter(VK["Snake Umbra"])
+    return sum((p.ctr or {}).get("+1/+1", 0) for p in G.perms) == 2
+@check("Sage's Reverie counts itself: second Aura on a creature draws 2")
+def _():
+    G = vgame(perms=["Wilson, Refined Grizzly"], auras=[("Snake Umbra", 0)]); G.enter(VK["Sage's Reverie"]); return G.extra == 2
+@check("protection answers: Blacksmith's Skill (target permanent gains shroud), Karametra's Blessing (it also gains hexproof)")
+def _(): return VK["Blacksmith's Skill"].answer == "protect" and VK["Karametra's Blessing"].answer == "protect"
+@check("override DSL: multi-word keywords with underscores (double_strike)")
+def _(): return g.dsl("pump 0 0 obj double_strike")[0][4] == frozenset({"double strike"})
+@check("mulligan: 2 lands + 3 cheap spells is a keep; 2 lands + expensive spells isn't")
+def _():
+    G = vgame(); sim = G.sim
+    cheap = [VK[n] for n in ("Forest", "Plains", "Snake Umbra", "Sol Ring", "Arbor Elf", "Strong Back", "Calix, Guided by Fate")]
+    dear = [VK[n] for n in ("Forest", "Plains", "Sage's Reverie", "Bear Umbra", "Calix, Guided by Fate", "Silent Arbiter", "Face of Divinity")]
+    return sim.keep(cheap, 0) and not sim.keep(dear, 0)
+
+def pool_v(**kw):
+    G = vgame(**kw); G.build_pool(); return free_units(G)
+
 def main():
     fails = 0
     for name, fn in CHECKS:

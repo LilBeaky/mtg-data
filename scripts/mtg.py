@@ -60,7 +60,7 @@ EDHREC comparisons live in edhrec_diff.py (see USE_INSTRUCTIONS.md section 9).
 SCHEMA REMINDER: missing "game_changer" key = not a Game Changer.
 """
 import glob, json, os, re, signal, sys
-signal.signal(signal.SIGPIPE, signal.SIG_DFL)  # quiet when piped to head
+if hasattr(signal, "SIGPIPE"): signal.signal(signal.SIGPIPE, signal.SIG_DFL)  # quiet when piped to head (not on Windows)
 from collections import Counter
 
 ROOT = os.path.dirname(os.path.abspath(__file__))       # .../scripts

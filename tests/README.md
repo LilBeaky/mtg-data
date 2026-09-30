@@ -31,6 +31,22 @@ Adding an edge case: add the card to `test_deck.txt` (keep the total at 100 with
 
 `goldfish_units.py` builds exact board states and asserts numbers (Nyxbloom on a Forest = 3 mana; Goreclaw takes exactly 2 off a 4-power creature; an X=2 Nature's Rhythm can't find a 7-drop; tokens never reach the graveyard). No shuffles, no RNG, no pilot choices, so a failure there is a mechanics bug, not noise. Run against the pre-2026-09-29 goldfish.py it fails 26 of 31. Add a check whenever a mechanic is added or a parse bug is fixed.
 
+## Goldfish combat fixture
+
+`goldfish_combat_deck.txt` (Najeela, one card per combat mechanic) pins the combat work of 2026-09-29 through `--explain`, a run, a trace and a `--variant`:
+- keywords (Baneslayer, Swiftblade, Nighthawk, Glistener Elf, Bloated Contaminator's toxic);
+- evasion (Invisible Stalker, Dauthi Slayer, menace);
+- anthems (Glorious Anthem, Intangible Virtue, Elvish Archdruid, Akroma's Memorial, Fervor, Sublime Archangel's granted exalted);
+- equipment and auras (Bonesplitter, Loxodon Warhammer, Sword of Fire and Ice, Batterskull's living weapon, Rancor);
+- attack, combat damage, unblocked and "attacks alone" triggers (Hero of Bladehold, Hellrider, Ophidian, Coastal Piracy, Professional Face-Breaker, Rafiq, Najeela's attacking tokens);
+- additional combats (Relentless Assault, Aurelia, Karlach, Moraug, Najeela's combat ability);
+- noncombat damage (Impact Tremors, Purphoros with its devotion check, Guttersnipe, Blood Artist, Zulaport, Warstorm Surge, Terror of the Peaks, Exsanguinate);
+- counted bodies (Crusader of Odric, Serra Avatar) and alpha pumps (Overrun, Craterhoof, Giant Growth).
+
+The combat checks in `goldfish_units.py` build exact boards and assert damage, life, poison, commander damage, focus fire and the table-kill ending. Opponents have no boards in real runs yet, so the blocker checks (first strike, trample over a chump, menace, deathtouch, flying over a ground blocker) set boards by hand.
+
+The voltron/enchantress checks (`vgame`, Wilson as commander) cover granted quoted abilities (Flaming Fist, Mark of Sakiko, Bear Umbra), land untappers, Aura reducers and affinity, attached-Aura counts, conditional Aura bonuses, cast triggers that need a target (Season of Growth, heroic), umbra armor / indestructible / hexproof against disruption, Silent Arbiter's attack limit, Kudo's base P/T, and the curve-aware mulligan.
+
 ## Known approximations (not bugs)
 
 - goldfish.py stops on NOT FOUND cards (tutors.py and the audit warn and continue), so the smoke test runs goldfish on the deck without the fake card. `goldfish_gy_deck.txt` is a second fixture for goldfish's graveyard, tutor and cycling model; the gy trace check pins the pilot's Entomb → Demonic Tutor → Reanimate line on a fixed seed, so a pilot change that moves it will show up there first.

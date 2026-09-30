@@ -1,0 +1,64 @@
+# Goldfish combat fixture. Not a real deck: one card per combat mechanic (keywords, anthems, equipment, attack /
+# combat damage / dies / enter / cast / upkeep triggers, face damage and drain, team pumps), plus guards that must stay
+# unread (see tests/README.md). Najeela's identity covers every color.
+# bracket: 3
+
+Commander
+1 Najeela, the Blade-Blossom
+
+Deck
+1 Serra Angel
+1 Baneslayer Angel
+1 Boros Swiftblade
+1 Vampire Nighthawk
+1 Glistener Elf
+1 Bloated Contaminator
+1 Invisible Stalker
+1 Dauthi Slayer
+1 Monastery Swiftspear
+1 Hero of Bladehold
+1 Goblin Rabblemaster
+1 Hellrider
+1 Ophidian
+1 Professional Face-Breaker
+1 Coastal Piracy
+1 Glorious Anthem
+1 Intangible Virtue
+1 Elvish Archdruid
+1 Akroma's Memorial
+1 Bonesplitter
+1 Loxodon Warhammer
+1 Sword of Fire and Ice
+1 Batterskull
+1 Rancor
+1 Craterhoof Behemoth
+1 Overrun
+1 Giant Growth
+1 Impact Tremors
+1 Purphoros, God of the Forge
+1 Guttersnipe
+1 Blood Artist
+1 Zulaport Cutthroat
+1 Warstorm Surge
+1 Terror of the Peaks
+1 Crusader of Odric
+1 Lightning Bolt
+1 Exsanguinate
+1 Llanowar Elves
+1 Sol Ring
+1 Arcane Signet
+1 Serra Avatar
+1 Brimaz, King of Oreskos
+1 Rafiq of the Many
+1 Sublime Archangel
+1 Fervor
+1 Grizzly Bears
+1 Sakura-Tribe Elder
+1 Command Tower
+1 City of Brass
+21 Forest
+1 Relentless Assault
+1 Aurelia, the Warleader
+1 Karlach, Fury of Avernus
+1 Moraug, Fury of Akoum
+24 Mountain

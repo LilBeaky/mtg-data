@@ -34,6 +34,7 @@ def deck_without_fake():
 def S(*args): return ["scripts/" + args[0]] + list(args[1:])
 
 MECH = "tests/goldfish_mech_deck.txt"
+COMBAT = "tests/goldfish_combat_deck.txt"
 
 def checks():
     nofake = deck_without_fake()
@@ -120,7 +121,8 @@ def checks():
         dict(name="goldfish explain", cmd=S("goldfish.py", nofake, "--explain"),
              must=["Entomb — tutor->graveyard", "Step Through — wizardcycling {2}: tutor->hand: Wizard",
                    "Dimir House Guard — transmute {3}: tutor->hand: card MV=4", "Demonic Tutor — tutor->hand: any card",
-                   "Kraum, Ludevic's Opus — on opp_second: draw 1; ~opp", "vacuum   other  Tymna the Weaver"]),
+                   "Kraum, Ludevic's Opus — on opp_second: draw 1; ~opp", "vacuum   other  Nezumi Graverobber",
+                   "partial  other  Tymna the Weaver — 2/2 lifelink"]),
         dict(name="goldfish run", cmd=S("goldfish.py", nofake, "--trials", "300"),
              must=["tutor priorities from the list header: key: Demonic Tutor, Stroke of Genius; 2 package(s)", "tutor targets"],
              must_not=["Entomb 0."]),                       # a graveyard tutor is never card advantage
@@ -168,7 +170,7 @@ def checks():
                    "Karametra's Acolyte — mana G; X = devotion G", "Goreclaw, Terror of Qal Sisma — reduce {2}: Creature power>=4",
                    "reduce {2}: Creature (first each turn)", "Dragonspeaker Shaman — reduce {2}: Dragon",
                    "Dracogenesis — free: Dragon spells (command zone too)", "Omniscience — free: all spells from hand",
-                   "Lathliss, Dragon Queen — on etb(another nontoken Dragon ): token 1x Dragon 5/-",
+                   "Lathliss, Dragon Queen — on etb(another nontoken Dragon ): token 1x Dragon 5/5 flying",
                    "Deranged Hermit — ETB token 4x Squirrel", "Tireless Tracker — on landfall: token 1x Clue",
                    "Young Pyromancer — on cast(instant,sorcery): token 1x Elemental", "Unbounded Potential — prolif 1",
                    "Dragonstorm — tutor->bf: Dragon permanent", "non-Human creature", "Sire of Stagnation — on opp_land: draw 2; ~opp",
@@ -182,12 +184,37 @@ def checks():
              must=["tutor priorities from the list header: key: Nyxbloom Ancient", "disruption ladder, Bracket 3", "tutor targets"]),
         dict(name="goldfish gy trace", cmd=S("goldfish.py", "tests/goldfish_gy_deck.txt", "--trials", "2", "--trace", "2"),
              must=["Entomb finds Griselbrand -> graveyard", "Demonic Tutor finds Reanimate -> hand", "cast Reanimate"]),
+        # ---- goldfish combat fixture (Sept 29 2026): keywords, anthems, equipment, combat/noncombat triggers, face damage
+        dict(name="goldfish combat explain", cmd=S("goldfish.py", COMBAT, "--explain"),
+             must=["Baneslayer Angel — 5/5 first strike, flying, lifelink", "Bloated Contaminator — on cdmg_self: prolif 1",
+                   "Hero of Bladehold — on attack_self: token 2x Soldier 1/1 attacking", "pump others_attacking +1/+0 EOT",
+                   "Hellrider — on attack(creature): an opponent loses 1", "Ophidian — on unblocked_self: draw 1",
+                   "Glorious Anthem — anthem creatures +1/+1", "Intangible Virtue — anthem tokens +1/+1 vigilance",
+                   "Bonesplitter — equipped creature +2/+0; equip 1", "Sword of Fire and Ice — on cdmg_att: an opponent loses 2, draw 1; equipped creature +2/+2; equip 2",
+                   "Overrun — pump team +3/+3 trample EOT; pump: cast before combat only",
+                   "Impact Tremors — on etb(creature): each opponent loses 1", "Blood Artist — on dies(creature): an opponent loses 1, you gain 1 life",
+                   "Warstorm Surge — on etb(creature): an opponent loses that creature's power", "Crusader of Odric — X/X (X = creatures)",
+                   "(a creature only at devotion 5+)", "Exsanguinate — each opponent loses X", "Rafiq of the Many — on attack(creature): pump obj double strike EOT",
+                   "Najeela, the Blade-Blossom — on attack(Warrior ): token 1x Warrior 1/1 attacking", "held     other  Lightning Bolt",
+                   "act [5]: untap attacking creatures, pump attackers haste,lifelink,trample EOT, additional combat",
+                   "Relentless Assault — untap attacked creatures, additional combat", "Aurelia, the Warleader — on attack_self 1/turn: untap all creatures, additional combat",
+                   "Moraug, Fury of Akoum — on landfall: additional combat, untap all creatures"],
+             must_not=["Crusader of Odric's power", "Creatures creature"]),
+        dict(name="goldfish combat run", cmd=S("goldfish.py", COMBAT, "--trials", "200", "--turns", "10", "--shuffles", "10"),
+             must=["combat and damage", "all opponents dead:", "additional combat phases per game", "damage by source", "triggers fired (avg per game)",
+                   "disruption ladder, Bracket 3", "Δkill t"]),
+        dict(name="goldfish combat trace", cmd=S("goldfish.py", COMBAT, "--trials", "3", "--trace", "3", "--turns", "10", "--disruption", "off"),
+             must=["  attack: ", "combat damage: ", "opponents: 1:"]),
+        dict(name="goldfish combat variant", cmd=S("goldfish.py", COMBAT, "--trials", "100", "--disruption", "off",
+                                                  "--variant", "No hero|Hero of Bladehold=>Grizzly Bears"),
+             must=["table killed <=T8", "damage T8 P10/med/P90"]),
     ]
 
 def run(c):
     try:
-        p = subprocess.run([PY] + c["cmd"], cwd=REPO, capture_output=True, text=True, timeout=300)
-        out, rc = p.stdout + p.stderr, p.returncode
+        p = subprocess.run([PY] + c["cmd"], cwd=REPO, capture_output=True, text=True, timeout=300,
+                           encoding="utf-8", errors="replace", env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+        out, rc = (p.stdout or "") + (p.stderr or ""), p.returncode
     except subprocess.TimeoutExpired:
         return ["timed out after 300s"]
     fails = []

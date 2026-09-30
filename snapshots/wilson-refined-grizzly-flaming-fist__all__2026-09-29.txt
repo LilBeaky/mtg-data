@@ -1,0 +1,288 @@
+# commander: Wilson, Refined Grizzly + Flaming Fist
+# variant: all
+# url: https://edhrec.com/commanders/wilson-refined-grizzly-flaming-fist
+# decks: 1322
+# fetched: 2026-09-29
+Beorn the Fierce|5.0|2
+Dancing from Dark to Dawn|3.4|1
+Bilbo's Gambit|3.2|0
+Pia, Aether Ascetic|2.9|1
+Little Bear|2.8|1
+All That Glitters|77|68
+Sram, Senior Edificer|63|59
+Ethereal Armor|69|59
+Snake Umbra|63|59
+Ancestral Mask|60|51
+Mantle of the Ancients|55|51
+Strong Back|51|50
+Hyena Umbra|49|46
+Spirit Mantle|49|45
+Sythis, Harvest's Hand|53|45
+Swords to Plowshares|64|-1
+Swiftfoot Boots|56|31
+Wild Growth|56|37
+Path to Exile|52|-3
+Bear Umbra|52|44
+Kutzil, Malamet Exemplar|48|16
+Utopia Sprawl|47|30
+Open the Armory|47|43
+Enchantress's Presence|47|34
+Sage's Reverie|45|41
+Enlightened Tutor|18|4
+Teferi's Protection|12|-4
+Smothering Tithe|7.6|-5
+Farewell|5.3|-6
+Worldly Tutor|5.1|-6
+Sanctum Weaver|42|28
+Pearl-Ear, Imperial Advisor|41|37
+Llanowar Elves|40|9
+Danitha Capashen, Paragon|39|36
+Satyr Enchanter|39|31
+Avacyn's Pilgrim|38|2
+Mesa Enchantress|38|29
+Jukai Naturalist|38|26
+Setessan Champion|35|23
+Danitha, New Benalia's Light|33|30
+Bastion Protector|29|24
+Eidolon of Blossoms|29|17
+Elvish Mystic|28|6
+Kor Spiritdancer|26|21
+Heliod's Pilgrim|23|21
+Destiny Spinner|22|10
+Birds of Paradise|21|-4
+Puresteel Paladin|20|19
+Tanglespan Lookout|20|16
+Transcendent Envoy|18|15
+Verduran Enchantress|17|12
+Ellivere of the Wild Court|17|14
+Codsworth, Handy Helper|14|13
+Umbra Mystic|13|10
+Esper Sentinel|13|-4
+Silent Arbiter|13|12
+Eidolon of Countless Battles|12|8
+Calix, Guided by Fate|11|5
+Fyndhorn Elves|11|-1
+Yenna, Redtooth Regent|10|6
+Eternal Witness|10|-5
+Stoneforge Mystic|10|9
+Starnheim Courser|10|8
+Mother of Runes|10|3
+Sun Titan|10|2
+Ardenn, Intrepid Archaeologist|10|9
+Kudo, King Among Bears|9.5|8
+Herald of the Pantheon|8.9|3
+Guardian Augmenter|8.8|8
+Selfless Samurai|8.7|8
+Arbor Elf|8.7|2
+Qasali Pridemage|8.6|4
+Light-Paws, Emperor's Voice|8.5|6
+Generous Visitor|8.4|7
+Forgotten Ancient|8.0|-1
+Argothian Enchantress|7.8|4
+Witch Enchanter|7.6|-2
+Lion Sash|7.6|4
+Sakura-Tribe Elder|7.3|-2
+Siona, Captain of the Pyleas|7.0|4
+Beast Within|37|1
+Generous Gift|35|4
+Tamiyo's Safekeeping|33|26
+Ram Through|32|30
+Heroic Intervention|30|-6
+Snakeskin Veil|29|21
+Hunter's Insight|28|23
+Tyvar's Stand|26|23
+Loran's Escape|20|18
+Return of the Wildspeaker|17|6
+Stroke of Midnight|15|2
+Blacksmith's Skill|15|13
+Collective Resistance|14|11
+Karametra's Blessing|14|13
+Nature's Claim|13|7
+Fog|12|5
+Royal Treatment|12|10
+Return to Nature|11|6
+Invigorate|11|9
+Flawless Maneuver|11|-2
+Restoration Magic|8.9|3
+Giant Growth|8.6|6
+Reprieve|8.5|2
+Gaea's Gift|8.4|6
+Sejiri Shelter|8.3|5
+Gods Willing|8.2|7
+Blossoming Defense|8.2|6
+Overprotect|7.6|5
+Rebuff the Wicked|7.6|6
+Vines of Vastwood|7.3|6
+Khalni Ambush|6.7|5
+Take Up the Shield|6.7|4
+Krosan Grip|6.5|2
+Valorous Stance|6.3|4
+Titanic Growth|6.1|5
+Dawn's Truce|6.0|-3
+Heritage Reclamation|5.7|4
+Your Temple Is Under Attack|5.1|2
+Silkguard|5.1|3
+Winds of Rath|42|35
+Cultivate|38|-4
+Nature's Lore|32|1
+Single Combat|31|29
+Rampant Growth|30|-2
+Kodama's Reach|22|-3
+Three Visits|18|-3
+Retether|17|14
+Divine Reckoning|16|14
+Farseek|15|-9
+Rishkar's Expertise|15|6
+Bridgeworks Battle|15|9
+Steelshaper's Gift|14|13
+Slash the Ranks|14|13
+Harmonize|13|-1
+Austere Command|13|-5
+Promise of Loyalty|11|8
+Idyllic Tutor|11|3
+Sevinne's Reclamation|8.0|5
+Avatar's Wrath|7.2|5
+Explore|5.7|-1
+Hunter's Prowess|5.7|5
+Unfinished Business|5.4|4
+Brilliant Restoration|5.1|2
+Thran Power Suit|36|35
+Basilisk Collar|34|30
+Blackblade Reforged|34|31
+Mithril Coat|18|15
+Belt of Giant Strength|17|16
+Commander's Plate|16|15
+Helm of the Gods|15|14
+Sword of the Animist|15|10
+Hammer of Nazahn|15|11
+Colossus Hammer|14|14
+Trailblazer's Boots|14|12
+Robe of Stars|13|12
+Power Fist|11|10
+Mask of Memory|11|10
+Champion's Helm|11|10
+Nettlecyst|10|10
+Lightning Greaves|10|-6
+Shadowspear|10|7
+Brotherhood Regalia|10|8
+Celestial Armor|8.9|8
+Caduceus, Staff of Hermes|8.7|6
+Greatsword of Tyr|8.2|8
+Cloak of the Bat|8.1|8
+Sword of Feast and Famine|8.0|7
+Bloodforged Battle-Axe|7.8|7
+Buster Sword|7.8|7
+Sword of Fire and Ice|7.2|6
+Genji Glove|6.9|6
+Maul of the Skyclaves|6.5|6
+Lavaspur Boots|6.0|5
+Excalibur, Sword of Eden|5.7|5
+Behemoth Sledge|5.7|2
+Darksteel Plate|5.7|5
+Rogue's Gloves|5.6|5
+Goldvein Pick|5.5|5
+Masterwork of Ingenuity|5.4|5
+Strength of the Harvest|50|36
+Alpha Authority|40|38
+Sixth Sense|37|36
+Kenrith's Transformation|36|25
+Rancor|35|27
+Darksteel Mutation|31|20
+Idolized|31|30
+Raised by Giants|31|30
+Sheltered by Ghosts|31|25
+Daybreak Coronet|28|24
+Sterling Grove|28|18
+Timely Ward|26|23
+Lion Umbra|26|24
+Boar Umbra|24|24
+Keen Sense|24|23
+Sigarda's Aid|24|22
+Armadillo Cloak|24|20
+Indomitable Might|24|22
+Fertile Ground|23|14
+Unquestioned Authority|22|20
+Shield of the Oversoul|22|17
+Season of Growth|22|19
+Almost Perfect|19|18
+Angelic Destiny|19|15
+Unflinching Courage|17|14
+Canopy Cover|16|14
+Spider Umbra|15|14
+Blanchwood Armor|15|14
+Feather of Flight|15|14
+Ghostly Prison|15|4
+Level Up|14|13
+Songbirds' Blessing|14|11
+Shardmage's Rescue|14|13
+Angelic Gift|14|13
+One with Nature|14|13
+Benevolent Blessing|12|11
+Eldrazi Conscription|11|10
+Tempest Technique|11|10
+Sphere of Safety|11|4
+Super State|11|10
+Hydra's Growth|11|9
+Crystal Carapace|9.4|9
+Gryff's Boon|9.4|8
+With Great Power . . .|9.2|8
+Felidar Umbra|8.7|8
+Unnatural Growth|8.4|2
+Colossification|8.3|7
+Dog Umbra|8.2|7
+Spirit Link|7.9|7
+Overgrowth|7.9|4
+Rogue's Passage|59|35
+Hall of Heliod's Generosity|30|18
+Reliquary Tower|25|-3
+Boseiju, Who Endures|16|-2
+Yavimaya, Cradle of Growth|14|-4
+Witch's Clinic|9.0|8
+Tyrite Sanctum|8.4|7
+Eiganjo, Seat of the Empire|8.1|-1
+Mosswort Bridge|7.0|-4
+Cathedral of War|6.7|6
+Buried Ruin|6.4|5
+War Room|6.3|3
+Temple of the False God|5.9|-1
+Urza's Saga|5.6|2
+Sol Ring|70|-5
+Arcane Signet|53|-4
+Selesnya Signet|17|-1
+Talisman of Unity|14|-1
+Commander's Sphere|5.2|-1
+Command Tower|85|1
+Canopy Vista|63|-3
+Sunpetal Grove|53|-4
+Fortified Village|47|2
+Sungrass Prairie|42|8
+Brushland|40|3
+Temple Garden|38|-9
+Overgrown Farmland|36|-5
+Bountiful Promenade|35|-3
+Temple of Plenty|28|-4
+Hushwood Verge|25|-3
+Exotic Orchard|25|3
+Selesnya Sanctuary|24|-6
+Windswept Heath|24|-7
+Branchloft Pathway|23|1
+Evolving Wilds|18|-1
+Blossoming Sands|15|-7
+Scattered Groves|14|-5
+Wooded Bastion|14|0
+Horizon Canopy|13|-1
+Razorverge Thicket|13|-3
+Krosan Verge|13|-5
+Radiant Grove|12|0
+Terramorphic Expanse|11|-1
+Lush Portico|10|-8
+Myriad Landscape|10|-3
+Savannah|9.4|-3
+Fabled Passage|7.9|-2
+Selesnya Guildgate|7.6|1
+Opal Palace|7.6|5
+Gathering Place|7.5|-3
+Arctic Treeline|6.4|0
+Path of Ancestry|5.4|-15
+Plaza of Heroes|5.3|3
+Prismatic Vista|5.1|0
