@@ -201,7 +201,8 @@ CNAMES = ["Najeela, the Blade-Blossom", "Forest", "Mountain", "Grizzly Bears", "
           "Questing Beast", "Ichorclaw Myr", "Samurai of the Pale Curtain", "Neheb, the Eternal", "Wolverine Pack", "Artful Dodge",
           "Falter", "Suq'Ata Lancer", "Swords to Plowshares", "Frenzied Goblin",
           "Ravenous Chupacabra", "Shock", "Doom Blade", "Plague Wind", "Skinrender", "Swamp",
-          "Psychosis Crawler", "Steel Overseer", "Rosie Cotton of South Lane", "Ponder", "Kinnan, Bonder Prodigy", "Managorger Hydra"]
+          "Psychosis Crawler", "Steel Overseer", "Rosie Cotton of South Lane", "Ponder", "Kinnan, Bonder Prodigy", "Managorger Hydra",
+          "Deadly Dispute", "Skullclamp", "Fling", "Mana Vault"]
 CRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(CNAMES)}
 CK = {n: g.compile_card(CRAW[n], g.ALL5) for n in CNAMES}
 
@@ -510,6 +511,37 @@ def _():
     kin = CK["Kinnan, Bonder Prodigy"].acts
     return [e[0] for e in CK["Ponder"].spell] == ["arrange", "draw"] and CK["Ponder"].spell[0][1] == 3 \
         and any(e[0] == "look_f" and e[1] == 5 and e[3] == "bf" for a in kin for e in a["fx"])
+
+TOK = ("token", 1, 1, ("Soldier",), None, "creature", 1, frozenset(), False)     # a 1/1 creature token
+@check("Deadly Dispute sacrifices the Treasure, never Serra Angel; with only Serra it can't be cast")
+def _():
+    G = cgame(perms=["Serra Angel"], lands=["Swamp", "Swamp"], hand=["Deadly Dispute"])
+    G.do([("treasure", 1, False)], CK["Deadly Dispute"]); G.build_pool()
+    h = len(G.hand); ok = G.try_cast(CK["Deadly Dispute"], "hand")
+    serra = any(p.k.name == "Serra Angel" for p in G.perms)
+    H = cgame(perms=["Serra Angel"], lands=["Swamp", "Swamp"], hand=["Deadly Dispute"]); H.build_pool()
+    return ok and serra and len(G.hand) == h - 1 + 2 and not H.options(CK["Deadly Dispute"], "hand")
+@check("Skullclamp kills 1/1 tokens for 2 cards each while mana lasts; Serra Angel is never clamped")
+def _():
+    G = cgame(perms=["Skullclamp", "Serra Angel"], lands=["Plains", "Plains"])
+    G.do([TOK, TOK], CK["Skullclamp"]); G.build_pool(); h = len(G.hand)
+    G.clamp_step()
+    return len(G.hand) == h + 4 and any(p.k.name == "Serra Angel" for p in G.perms) \
+        and not any(p.k.token for p in G.perms)
+@check("Fling waits for lethal: Serra (4) is flung at 4 life, not at 10")
+def _():
+    G = cgame(perms=["Serra Angel"], lands=["Mountain", "Mountain"], hand=["Fling"])
+    for o in G.opps: o["life"] = 10
+    G.build_pool(); held = not G.options(CK["Fling"], "hand")
+    H = cgame(perms=["Serra Angel"], lands=["Mountain", "Mountain"], hand=["Fling"])
+    H.opps[0]["life"] = 4; H.build_pool(); H.try_cast(CK["Fling"], "hand")
+    return held and H.opps[0]["dead"]
+
+@check("Mana Vault doesn't untap and is spent last: a 1-mana payment taps the Plains, not the Vault")
+def _():
+    G = cgame(perms=["Mana Vault"], lands=["Plains"]); G.build_pool(); G.pay(None, 1, [])
+    vault = next(p for p in G.perms if p.k.name == "Mana Vault")
+    return CK["Mana Vault"].no_untap and not vault.tapped and G.lands[0].tapped
 
 @check("ETB removal with no --blockers does nothing and costs nothing")
 def _():

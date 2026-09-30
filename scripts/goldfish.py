@@ -104,7 +104,7 @@ COMBAT_KW = ("flying", "reach", "trample", "vigilance", "haste", "lifelink", "de
              "training", "mentor", "living weapon", "unblockable", "hexproof", "shroud")
 COMBAT_KWN = ("toxic", "poisonous", "annihilator", "bushido", "rampage", "afflict")
 # trigger events -> the kinds the report counts them under
-TRIG_KIND = {"blocked_self": "combat", "blocked": "combat", "cast": "cast", "draw_card": "other", "etb": "enter", "landfall": "enter", "upkeep": "timed", "end": "timed", "drawstep": "timed",
+TRIG_KIND = {"blocked_self": "combat", "blocked": "combat", "cast": "cast", "draw_card": "other", "dies_att": "dies", "etb": "enter", "landfall": "enter", "upkeep": "timed", "end": "timed", "drawstep": "timed",
              "combat_begin": "timed", "attack": "combat", "attack_self": "combat", "attack_any": "combat", "cdmg": "combat",
              "cdmg_self": "combat", "cdmg_any": "combat", "attack_att": "combat", "cdmg_att": "combat", "unblocked_self": "combat", "dies": "dies", "dies_self": "dies", "opp_cast": "~opp",
              "opp_draw": "~opp", "opp_second": "~opp", "opp_land": "~opp", "cycle": "other", "prolif": "other",
@@ -656,7 +656,8 @@ FX = [
     (re.compile(r"\binvestigate(?: (twice|three times))?"),
      lambda m: ("token", {"twice": 2, "three times": 3}.get(m.group(1), 1), 0, ("Clue",), "{2}, Sacrifice ~: Draw a card.", "artifact",
                 0, frozenset(), False)),
-    (re.compile(r"\badd (?:that much|an amount of) \{(\w)\}"), lambda m: ("mana_dmg", frozenset(m.group(1).upper()))),   # Mark of Sakiko: the damage dealt
+    (re.compile(r"\badd (?:that much \{(\w)\}|an amount of \{(\w)\} equal to (?:the |that )?(?:amount of )?damage)"),
+     lambda m: ("mana_dmg", frozenset((m.group(1) or m.group(2)).upper()))),   # Mark of Sakiko: the damage dealt
     (re.compile(r"\buntap (?:all|each) lands you control"), lambda m: ("untap_lands",)),     # Bear Umbra, Nature's Will, Sword of Feast and Famine
     (re.compile(r"\badd ((?:\{[^}]+\})+|(?:two|three|four|five|six|seven|eight|nine|ten) \{[^}]+\}|one mana of any color|\w+ mana (?:of any one color|in any combination of colors))"), _fx_mana),
     (re.compile(r"\bproliferate(?:,? then proliferate again| twice)?"),
@@ -890,6 +891,9 @@ class Card:
         self.life_per_mv = False # Reanimate: lose life equal to the returned card's mana value
         self.ppips = []          # Phyrexian pips' colors: paid with 2 life each, or with mana below the floor
         self.addlife = 0         # "As an additional cost to cast ~, pay N life"
+        self.addsac = None       # "As an additional cost to cast ~, sacrifice a creature": fodder filter (Deadly Dispute, Village Rites)
+        self.addsac_bf = False
+        self.no_untap = False    # "~ doesn't untap during your untap step" (Mana Vault, Grim Monolith): tapped once, spent last   # ...and the spell puts a creature onto the battlefield (a small creature is fair trade)
         self.pain = 0            # life lost each time this mana source taps (painlands, Ancient Tomb, City of Brass, Horizon lands)
         self.pain_col = False    # ...only when it makes colored mana (a painless {C} ability exists)
         self.fetch_life = 0      # "Pay N life, sacrifice ~: search" fetchlands
@@ -1393,6 +1397,12 @@ def parse_trigger(k, lo):
         fx, tax = parse_fx(re.sub(r"\bto them\b", "to that player", m.group(1)))
         if fx: k.trig.append(("opp_draw", None, fx, False, tax, False))
         return bool(fx)
+    m = re.match(r"^when(?:ever)? (?:equipped|enchanted) creature dies,\s*(.+)$", lo)   # Skullclamp, Malefic Scythe
+    if m:
+        if gated(m.group(1)): return False
+        fx, tax = parse_fx(m.group(1))
+        if fx: k.trig.append(("dies_att", None, fx, False, tax, False))
+        return bool(fx)
     m = re.match(r"^whenever you draw a card,\s*(.+)$", lo)                  # Niv-Mizzet, Psychosis Crawler, Chasm Skulker
     if m:
         if gated(m.group(1)): return False
@@ -1697,6 +1707,19 @@ def compile_card(c, anyc):
             if kw: done += 1
             else: missed += 1; k.notes.append("unmodeled: " + L[:72])
             continue
+        am = re.match(r"^as an additional cost to cast (?:this spell|~), sacrifice (a|an|another|two|three) ([^.]+?)\.\s*(.*)$", L.lower() + ("" if L.endswith(".") else "."))
+        if am:
+            f = fodder_filt(am.group(1), am.group(2))
+            if f:
+                k.addsac = f; done += 1
+                rest = L[len(L) - len(am.group(3)):].strip() if am.group(3) else ""
+                if rest:
+                    r = parse_line(k, rest, anyc, abil)
+                    if r is True: done += 1
+                    elif r is False: missed += 1; k.notes.append("unmodeled: " + rest[:72])
+                continue
+        if re.fullmatch(r"~ doesn't untap during your untap step\.?", L.lower()):
+            k.no_untap = True; done += 1; continue
         if re.fullmatch(r"if you control a commander, you may cast ~ without paying its mana cost\.?", L.lower()):
             k.free_cmdr = True; done += 1; continue
         r = parse_line(k, L, anyc, abil)
@@ -1782,7 +1805,9 @@ def compile_card(c, anyc):
         if a["kind"] != "transmute": a["fx"] = a["fx"] + k.cycle_fx
     allfx = k.etb + k.castfx + k.spell + [e for t in k.trig for e in t[2]] + [e for a in k.acts for e in a["fx"]] \
         + [e for _, f in k.pw for e in f]
+    k.trig = [t for t in k.trig if t[2]]                   # a trigger whose effect didn't parse does nothing (and isn't 'read')
     k.recur_fx = [e for e in allfx if e[0] == "recur"]
+    k.addsac_bf = bool(k.addsac) and any(e[0] in ("tutor", "recur") and e[2] in ("bf", "bf_t") for e in k.spell)
     k.gain_untap = any(t[0] == "end" and any(e[0] == "cond" and e[1] == "gained" and any(x[0] == "untap_self" for x in e[2])
                                              for e in t[2]) for t in k.trig)
     k.haste = k.haste or "haste" in k.kw
@@ -2191,7 +2216,8 @@ class Game:
             hurt = isinstance(src, Perm) and src.k.pain and not src.tapped
             if hurt and self.life - src.k.pain <= 0: continue
             out.append((i, eff, u[3], (2 if isinstance(src, Perm) and "Creature" in src.k.types and not src.k.is_land else 0)
-                        + (1 if hurt and not src.k.pain_col else 0)))
+                        + (1 if hurt and not src.k.pain_col else 0)
+                        + (3 if isinstance(src, Perm) and src.k.no_untap else 0)))   # Mana Vault: only when nothing else covers it
         return out
 
     def use_unit(self, i, pool=None, colored=False):
@@ -2248,6 +2274,7 @@ class Game:
         return any(e["kind"] == "lock" and self.live(e) for e in self.stax)
 
     def options(self, k, zone):
+        if k.addsac and not self.addsac_pick(k): return []       # no fodder the pilot would give up: can't cast it
         st = self.st
         tax = (2 * self.cmd_casts[k] if zone == "cmd" else 0) + self.spell_tax(k)
         red = sum(n for f, n in st.reduce if spell_ok(k, f)
@@ -2292,6 +2319,10 @@ class Game:
                 if zone == "gy": self.gy_extra_pay(k)
                 if k.ppips and pips is k.pips: self.lose_life(k.life, "phyrexian")   # the life option (see options)
                 self.lose_life(k.addlife, "spell")
+                if k.addsac:
+                    for q in self.addsac_pick(k) or []:
+                        self.note(f"    {k.name}: sacrifice {q.k.name}"); self.leave(q, "is sacrificed", quiet=True, sac=True)
+                        self.ctx_obj = q                          # 'the sacrificed creature's power' (Fling)
                 x = 0
                 if k.x:
                     rest = [x_[0] for x_ in self.cands(k) if not x_[2]]
@@ -2642,6 +2673,24 @@ class Game:
             cost = self.fodder_cost(q)
             if cost >= 999 or (cost >= self.FODDER_MAX and not win): continue
             if self.is_creature(q) and not win and max(0, self.stats(q)[0]) > 0 and val < 3 * max(0, self.stats(q)[0]): continue
+            c.append((cost, i, q))
+        n = fod.get("n", 1)
+        return [q for _, _, q in sorted(c, key=lambda t: t[:2])[:n]] if len(c) >= n else None
+
+    def addsac_pick(self, k):
+        """Fodder for a spell's 'sacrifice ... as an additional cost': Treasure, Food, Clues and tokens first, never a real
+        card; a spell that puts a creature onto the battlefield (Natural Order) may trade a small plain creature. None if none."""
+        fod, c = k.addsac, []
+        if any(e[0] == "face" and e[1] == ("objpow",) for e in k.spell):  # Fling: the biggest creature, and only when it's lethal
+            big = [q for q in self.perms if self.pmatch(fod, q, None) and self.is_creature(q) and q.k not in self.sim.commanders]
+            al = self.alive()
+            if not big or not al: return None
+            q = max(big, key=lambda q: (self.stats(q)[0], -self.fodder_cost(q)))
+            return [q] if self.stats(q)[0] >= min(self.opps[i]["life"] for i in al) else None
+        for i, q in enumerate(self.perms):
+            if not self.pmatch(fod, q, None): continue
+            cost = self.fodder_cost(q)
+            if cost >= self.FODDER_MAX + (4 if k.addsac_bf and self.is_creature(q) else 0): continue
             c.append((cost, i, q))
         n = fod.get("n", 1)
         return [q for _, _, q in sorted(c, key=lambda t: t[:2])[:n]] if len(c) >= n else None
@@ -3099,6 +3148,7 @@ class Game:
                         and not (c.requires and not self.has(c.requires, c))]
                 if opts: self.resolve(min(opts, key=lambda c: self.sim.prio(c, "hand")), "hand", 0)
             elif t == "paid":
+                if all(x_[0] == "untap_self" for x_ in e[3]) and k.units and e[1] + len(e[2]) >= len(k.units): continue   # {4} to untap a {C}{C}{C} rock: never
                 if self.pool is not None and sum(1 for u in self.pool if not u[5]) - e[1] - len(e[2]) >= self.engine_reserve(self.turns_left) \
                         and self.pay(None, e[1], e[2]): self.do(e[3], k, p, x)
             elif t == "face":
@@ -3865,9 +3915,29 @@ class Game:
                 self.do(ab["fx"], p.k, p)
                 return
 
+    def clamp_step(self):
+        """Skullclamp and friends: Equipment with 'whenever equipped creature dies, draw' goes on a creature it kills
+        (toughness drops to 0) that the pilot doesn't mind losing (tokens, fodder), again while mana lasts (cap 6)."""
+        for _ in range(6):
+            q = next((q for q in self.perms if q.k.equip and q.k.attach and any(t[0] == "dies_att" and any(e[0] == "draw" for e in t[2])
+                                                                                 for t in q.k.trig)), None)
+            if not q: return
+            dt = q.k.attach[1]
+            vic = [c for c in self.perms if self.is_creature(c) and c.k not in self.sim.commanders and self.stats(c)[1] + dt <= 0
+                   and self.fodder_cost(c) < self.FODDER_MAX]
+            if not vic: return
+            g_, p_ = q.k.equip
+            g_ = max(0, g_ - self.st.equip_red)
+            if not self.pay(None, g_, p_): return
+            v = min(vic, key=self.fodder_cost)
+            q.att = v; self.spent += g_ + len(p_)
+            self.note(f"  equip {q.k.name} -> {v.k.name} (paid {g_ + len(p_)})")
+            self.leave(v, "dies (toughness 0)")
+
     def equip_step(self):
         """Before combat: put unattached Equipment on the best attacker, paying its equip cost."""
         if self.dry or not self.alive() or self.pool is None: return
+        self.clamp_step()
         for q in [q for q in self.perms if q.k.equip and q.k.attach and (q.att is None or q.att not in self.perms)]:
             ready = [p for p in self.perms if self.can_attack(p)]
             if not ready: return
@@ -3877,6 +3947,7 @@ class Game:
             best = max(ready, key=self.attack_value)
             q.att = best; self.spent += g_ + len(p_)
             self.note(f"  equip {q.k.name} -> {best.k.name} (paid {g_ + len(p_)})")
+            if self.stats(best)[1] <= 0 and "indestructible" not in self.stats(best)[2]: self.leave(best, "dies (toughness 0)")
 
     def alpha_ok(self, k):
         """Cast a pump (Giant Growth, Overrun, Craterhoof) only before combat, when its damage kills an opponent this
@@ -4112,12 +4183,14 @@ class Game:
         elif p.k.token: pass
         else: {"gy": self.gy, "exile": self.exile, "hand": self.hand}[dest].append(p.k)
         if not quiet: self.note(f"    {p.k.name} {why}")
+        on_it = [q for q in self.perms if q.att is p]            # Equipment / Auras it wore: their 'equipped creature dies'
         for q in list(self.perms):
             if q.att is p:
                 q.att = None
                 if "Aura" in q.k.subtypes: self.leave(q, "goes to the graveyard with it")
         if dies:
             self.fire("dies", p); self.fire_one(p, "dies", p); self.fire_one(p, "dies_self", p)
+            for q in on_it: self.fire_one(q, "dies_att", p)
         if sac:
             self.fire("sac", p); self.fire_one(p, "sac", p)
         if p.k.trig:
@@ -4252,7 +4325,9 @@ class Game:
             self.turn = t; self.phase += 1; self.tcast = (); self.gained = 0; self.turns_left = len(self.alive())
             if self.bspec: self.expire(t)
             for p in self.lands: p.tapped = False
-            for p in self.perms: p.tapped = False; p.sick = False
+            for p in self.perms:
+                p.sick = False
+                if not p.k.no_untap: p.tapped = False            # Mana Vault stays tapped
             self.drops = 1 + self.st.extra_land
             self.combat_done = False; self.atk_n = 0
             for q in [q for q in self.perms if q.k.cum_upkeep]:
@@ -4964,6 +5039,8 @@ def explain(cache, names, commanders):
         elif k.requires == "gy_payoff": bits.append("cast only with a graveyard payoff (recursion in hand/play or a flashback-style card to fetch)")
         elif k.requires: bits.append("needs a " + k.requires)
         if k.burn_blk: bits.append(f"can burn a blocker ({k.burn_blk[3]} damage)")
+        if k.addsac: bits.append("costs a sacrifice: " + perm_desc(k.addsac))
+        if k.no_untap: bits.append("doesn't untap (spent last)")
         if k.hold: bits.append("held (interaction)" + (f"; can kill tax/lock pieces: {'/'.join(sorted(k.kill))}" if k.kill else ""))
         if k.answer: bits.append(f"answers disruption: {k.answer}" + (" (free with a commander out)" if k.free_cmdr else ""))
         if k.cum_upkeep: bits.append("cumulative upkeep: let go after 3 upkeeps ~approx")

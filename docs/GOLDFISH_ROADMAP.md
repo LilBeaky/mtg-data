@@ -48,6 +48,12 @@ Decision rule from the user for every pilot choice from here on: **model the dec
 
 ## Phase 2: cluster passes (repeat)
 
+Log:
+- **Pass 1** (2026-09-30): draw-a-card and player-casts triggers, legendary names at " of " (Rosie Cotton), counters on each [type] creature / up to N targets + +1/+1 activations, look-at variants, held answers/symmetric wipes no longer logged as misses. Sampled: fixed intervening-"if" leaks, empty triggers, caster-rewarding lines.
+- **Pass 2** (2026-09-30): sacrifice-as-additional-cost spells, Fling-only-when-lethal, equipped/enchanted-creature-dies triggers + the Skullclamp play, Mana Vault/Monoliths don't untap and are spent last, tightened the damage-mana regex (9 old misreads: Mana Drain, Mana Echoes, Energy Tap...), empty triggers dropped everywhere.
+- Measured: only ~20% of triggered misses are frame-limited, and those frames are a flat tail; effects are the bottleneck. Prioritize by play rate (the report's most-played list) over cluster size.
+- Still open from the top of the most-played list: Chaos Warp, Victimize, Black Market Connections, Roaming Throne, Ashnod's Altar / Phyrexian Tower (sac-for-mana abilities), Chrome Mox, Doubling Season, Herald's Horn, Natural Order ("green creature" fodder filter).
+
 Per pass: `report` → top weighted cluster → pull 10-20 example cards from the repo → parser change → unit check (plus a guard card that must stay unread, where relevant) → `diff HEAD` review → units + smoke → push. One cluster per commit; the message names the cluster and the diff counts.
 
 Current top clusters: destroy target, put N (counters), ~ deals N, create N (token variants, sagas), counter target, exile target, look at, intervening "if", target creature, "as long as". Top-played misses: Chaos Warp, Skullclamp, Propaganda, Victimize, Black Market Connections, Deadly Dispute, Roaming Throne, Ashnod's Altar, Ponder, Mana Vault, Herald's Horn, Chrome Mox, Doubling Season.
@@ -59,6 +65,8 @@ Sample ~40 "modeled" cards stratified by popularity; compare `card` readings to 
 Idea to build here: a **leftover detector**. `parse_fx` masks what it matched; if a line still has substantive words unmasked (e.g. "you gain X life" after the drain half matched), mark the card partial instead of modeled. This would catch silent clause drops automatically.
 
 ## Known misreads (found, not yet fixed)
+- Casting of Bones reads 'draw 3' and drops 'then discard two' (leftover-detector class).
+- Eldritch Evolution's tutor reads as to-hand; it's onto the battlefield (tutors.py destination).
 - Soulstinger-style "-1/-1 counters on target creature you control" go on your best attacker; a player picks the weakest (usually the card itself).
 - "target player mills/draws" reads as you; a player picks per deck (Necron Deathmark).
 - Cast-only-during-an-opponent's-turn / only-if-fewer-creatures cards are vacuum but still take a slot; fine, but worth knowing.
