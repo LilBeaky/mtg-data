@@ -1090,6 +1090,74 @@ def _():
 @check("Land fodder isn't read as a sac outlet (Orcish Lumberjack stays unread rather than never firing)")
 def _(): return not XK["Orcish Lumberjack"].sac_outlets and XK["Orcish Lumberjack"].status == "blank"
 
+# ---- priority cards (2026-09-30, session 2): token/trigger doublers, chosen type, moxen, BMC, land fodder
+PNAMES = ["Krenko, Mob Boss", "Goblin Instigator", "Goblin Warchief", "Mountain", "Forest", "Swamp", "Island", "Plains",
+          "Doubling Season", "Parallel Lives", "Panharmonicon", "Teysa Karlov", "Blood Artist", "Herald's Horn", "Chrome Mox",
+          "Mox Diamond", "Black Market Connections", "Harrow", "Chaos Warp", "Morbid Opportunist", "Grizzly Bears",
+          "Lightning Bolt", "Mulldrifter", "Sol Ring", "Siege-Gang Commander", "Llanowar Elves", "Welcoming Vampire",
+          "Windreader Sphinx", "Serra Angel", "Craw Wurm", "Trespasser's Curse"]
+PRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(PNAMES)}
+g.CHOSEN_TYPE = g.chosen_type([PRAW["Krenko, Mob Boss"]], [PRAW[n] for n in ("Goblin Instigator", "Goblin Warchief", "Siege-Gang Commander")])
+PK = {n: g.compile_card(PRAW[n], g.ALL5) for n in PNAMES}
+g.CHOSEN_TYPE = None
+
+def pgame(lands=(), perms=(), hand=(), lib=("Mountain",) * 10, life=40):
+    args = argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False)
+    sim = g.Sim([n for n in PNAMES if n != "Krenko, Mob Boss"], ["Krenko, Mob Boss"], args, [], PK, g.ALL5)
+    G = g.Game(sim, [PK[n] for n in hand], [PK[n] for n in lib], random.Random(1))
+    G.turn = 3; G.phase = 3; G.turns_left = g.OPP_N; G.life = life; G.cmd = []
+    G.lands = [g.Perm(PK[n]) for n in lands]; G.perms = [g.Perm(PK[n]) for n in perms]; G._st = None
+    return G
+
+@check("Token doublers stack: Doubling Season + Parallel Lives turn one Goblin into four")
+def _():
+    G = pgame(perms=["Doubling Season", "Parallel Lives"]); G.make_tokens(PK["Krenko, Mob Boss"].acts[0]["fx"][0], 1)
+    return sum(1 for p in G.perms if p.k.token) == 4
+@check("Panharmonicon doubles a creature's ETB (Mulldrifter draws 4); Teysa doubles dies triggers (Blood Artist drains twice)")
+def _():
+    G = pgame(perms=["Panharmonicon"]); G.enter(PK["Mulldrifter"])
+    H = pgame(perms=["Teysa Karlov", "Blood Artist", "Grizzly Bears"]); H.leave(H.perms[2], "dies")
+    return len(G.hand) == 4 and sorted(o["life"] for o in H.opps) == [38, 40, 40]
+@check("The chosen type is the deck's tribe: Herald's Horn reduces Goblins and takes a Goblin off the top")
+def _():
+    k = PK["Herald's Horn"]
+    G = pgame(perms=["Herald's Horn"], lib=["Mountain", "Goblin Instigator"]); G.fire("upkeep")
+    return g.CHOSEN_TYPE is None and any(s_[0] == "reduce" and "Goblin" in s_[1]["sub"] for s_ in k.statics) \
+        and [c.name for c in G.hand] == ["Goblin Instigator"]
+@check("Chrome Mox imprints the least useful colored card and taps for its colors; with no card it makes nothing")
+def _():
+    G = pgame(hand=["Lightning Bolt", "Mulldrifter"], lands=["Island"]); p = G.enter(PK["Chrome Mox"])
+    H = pgame(hand=["Sol Ring"]); q = H.enter(PK["Chrome Mox"])
+    return p.imp == frozenset("R") and [c.name for c in G.exile] == ["Lightning Bolt"] and q.imp is None
+@check("Mox Diamond: castable only with a spare land, which it discards; one land and a drop left: not cast")
+def _():
+    G = pgame(hand=["Mox Diamond", "Forest", "Island"]); G.drops = 1
+    H = pgame(hand=["Mox Diamond", "Forest"]); H.drops = 1
+    ok = G.has("spare_land", PK["Mox Diamond"]); G.enter(PK["Mox Diamond"])
+    return ok and not H.has("spare_land", PK["Mox Diamond"]) and len(G.hand) == 2 and any(c.is_land for c in G.gy)
+@check("Black Market Connections: each mode on its own, skipped when its life cost crosses the floor")
+def _():
+    fx = PK["Black Market Connections"].trig[0][2]
+    G = pgame(life=40); G.do(fx, PK["Black Market Connections"])
+    H = pgame(life=22); H.do(fx, PK["Black Market Connections"])
+    return G.life == 34 and len(G.hand) == 1 and H.life == 20 and len(H.hand) == 1 and PK["Black Market Connections"].trig[0][0] == "main1"
+@check("Harrow sacrifices a tapped land as its cost and fetches two basics untapped")
+def _():
+    G = pgame(lands=["Forest", "Forest", "Swamp"], hand=["Harrow"], lib=["Island", "Plains", "Mountain"])
+    G.build_pool(); ok = G.try_cast(PK["Harrow"], "hand")
+    return ok and len(G.lands) == 4 and sum(not q.tapped for q in G.lands) == 2 and any(c.name in ("Forest", "Swamp") for c in G.gy)
+@check("Chaos Warp is held removal of any permanent; Morbid Opportunist draws once per batch")
+def _():
+    k = PK["Chaos Warp"]
+    G = pgame(perms=["Morbid Opportunist", "Grizzly Bears", "Llanowar Elves"]); G.leave(G.perms[1], "dies"); G.leave(G.perms[1], "dies")
+    return k.hold and k.kill >= {"artifact", "creature", "enchantment"} and len(G.hand) == 1
+
+@check("Trigger filters keep their qualifiers: Welcoming Vampire (power 2 or less, once a turn), Windreader Sphinx (with flying); an 'enchanted player' curse is unread")
+def _():
+    G = pgame(perms=["Welcoming Vampire"]); G.enter(PK["Llanowar Elves"]); G.enter(PK["Grizzly Bears"]); G.enter(PK["Craw Wurm"])
+    H = pgame(perms=["Windreader Sphinx", "Serra Angel", "Grizzly Bears"]); H.fire("attack", H.perms[2]); H.fire("attack", H.perms[1])
+    return len(G.hand) == 1 and len(H.hand) == 1 and not PK["Trespasser's Curse"].trig
+
 def main():
     fails = 0
     for name, fn in CHECKS:
