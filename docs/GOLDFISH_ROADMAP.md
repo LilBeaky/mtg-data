@@ -27,6 +27,18 @@ The first session ended at 50.9% weighted "fully read". That number was inflated
 
 Making those honest dropped the number to ~42%. Everything since is real reading: 42.3% → 44.4% over the rest of the session, while the misread fixes kept landing.
 
+## Translation track T0–T2 (fourth session): where it stands
+
+A separate track, not the Phase 0–3 parser work: have an LLM translate Oracle text once into a checkable format (GEF) and let the engine execute that. Write-ups: `docs/TRANSLATION_T0.md` (measurement), `docs/GOLDFISH_EFFECT_FORMAT.md` (format), `docs/TRANSLATION_T2.md` (300-card prototype). `goldfish.py` was not changed; the headline 44.5% above is untouched.
+
+- **T0:** 44.5% reproduced. The unread weight is a long tail: 19,646 distinct line templates for 25,981 unread lines, and the top 100 templates cover 10.6% of the weight. Parser clusters can't finish it; that's the case for translation.
+- **T1:** GEF 0.1, a closed JSON Schema with an explicit `unexpressible` escape and a status mapping to modeled/partial/blank/held/vacuum/land. The validator rejects instead of guessing.
+- **T2:** 300 cards (all three test decks plus the top 102 of the pool), translated by subagents, every card audited by hand.
+  - Rejects: 3/300 first pass after fixing a validator bug (14 as run), 0 after one retry.
+  - Translator misreads: 3/300 (1.0%). Parser misreads on the same cards: 10/300 (3.3%). 13 translations hid their meaning in free-text constructs (a schema hole, now counted as unread), 11 were over-cautious, 69 hit a real format gap.
+  - Deck cards fully read: parser 53%. GEF on today's engine is about the same, 54%, because it refuses the parser's approximations. GEF once the engine runs what it expresses: 69%.
+  - **Decision: partly.** Translate per deck as decks are built, after GEF 0.2 and a GEF-to-engine adapter; not the full pool (35–100× the prototype's cost, and the format still has gaps). T3 plan in `docs/TRANSLATION_T2.md`.
+
 ## The rules that govern everything
 
 **Coverage is worthless if the read is wrong.** `modeled` means every line matched something *and* nothing substantive was left over. A regex that matches a line and produces the wrong effect is worse than an honest "unmodeled", because it silently corrupts the numbers.
@@ -111,6 +123,12 @@ These readings are wrong or approximate, and the parser knows it only where the 
 - **"for each X on the battlefield"** (Shepherd of Rot, Timberwatch Elf, Fruition) counts only your own permanents. Opponents' boards are unknown, so it undercounts.
 - **Copies with "except it has flying"** don't add the keyword. That's an undercount.
 - **Polymorph, Blessed Reincarnation:** "The player puts that card onto the battlefield" is flagged unread although it's the opponent's. The card is wrongly partial, which is harmless.
+- **Found by the T2 audit (fourth session), not yet fixed** (details in `docs/TRANSLATION_T2.md`):
+  - A final sentence dropped while the card says `modeled`: Ancient Silver Dragon (the d20 draw), Enter the Infinite (the draw), Reckless Handling (conditional damage), Wishclaw Talisman (the opponent gains control, so it tutors three times instead of once), Idol of Oblivion (the draw's token condition, so it draws every turn). The leftover detector misses these.
+  - Long-Term Plans puts the card on top instead of third from the top.
+  - Deafening Silence and Rule of Law are `vacuum`, but "each player can't" limits you too. Same family as Maralen above.
+  - Ephemerate is `held` as interaction, and Escape Protocol's flicker is read as stax removal.
+- **Measured again:** T2 audited every one of 142 `modeled` cards in its 300. 6 were misreads, 4.2% (95% CI 2.0–8.9%). This is a different sample from Phase 3 (deck cards plus top staples, not strata), so it isn't a trend, but it is inside the earlier interval.
 - **Unsampled:** the audit was 40 cards. 4/40 gives a 95% interval of roughly 3–24% for the misread rate among `modeled` cards. The family sweep after it removed the biggest known sources, but the true rate is unmeasured until the next sample.
 
 ## Working conventions
