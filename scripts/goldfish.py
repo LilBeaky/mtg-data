@@ -309,8 +309,11 @@ ATTACHED_DYN = ((r"^auras? and equipment attached to (?:it|~|that creature|encha
                 (r"^equipment attached to (?:it|~|that creature|equipped creature)", ("attached", "equip")),
                 (r"^auras? you control (?:that's|that are) attached to (?:a )?creatures?", ("auras_on_cr",)))
 
+RX_DOMAIN = r"^basic land types? among lands you control"
+
 def dyn_key(what):
     w = what.lower()
+    if re.search(RX_DOMAIN, w): return ("domain",)
     for rx, key in ATTACHED_DYN:
         if re.search(rx, w): return key
     for rx, key in ((r"(\S+) counters? on (?:it|~)", "ctr"), (r"cards? in [^.]*?opponent's hand", "opp_hand"),
@@ -330,6 +333,7 @@ QUALIFIED = re.compile(r"\b(attacking|blocking|tapped|untapped|with|that|other|a
 def clean_dyn(what):
     """dyn_key for counts the sim can read exactly; a qualified count ('attacking creature', 'creature with a counter') is None."""
     if any(re.search(rx, what.lower()) for rx, _ in ATTACHED_DYN): return dyn_key(what)     # 'Aura attached to it': read exactly
+    if re.search(RX_DOMAIN, what.lower()): return ("domain",)                                # domain: 'type' and 'among' aren't qualifiers here
     return None if QUALIFIED.search(what.lower()) else dyn_key(what)
 
 OPP_SUBJ = ("target opponent", "each opponent", "an opponent", "that player")
@@ -480,9 +484,14 @@ def _fx_pump_team(m):
     """'creatures you control get +3/+3 and gain trample until end of turn' (Overrun, Craterhoof)."""
     cf = creature_filter(m.group("subj"))
     if not cf: return None
-    body, rest = m.group("body"), m.group("rest")
+    body, rest = m.group("body"), m.group("rest") or ""      # the duration-first pump regex's rest is optional
     pm = re.search(r"([+-](?:\d+|x))/([+-](?:\d+|x))", body)
     dp, dt = (_pt_val(pm.group(1), rest + body), _pt_val(pm.group(2), rest + body)) if pm else (0, 0)
+    fe = re.search(r"for each ([^.,]+)", body + " " + rest)
+    if fe and pm and isinstance(dp, int):              # '+1/+1 for each basic land type...' (Tromp the Domains): never read it flat
+        key = clean_dyn(fe.group(1))
+        if not key: return None
+        dp, dt = ("per", dp, key), ("per", dt, key)
     kws = _kw_in(body)
     if dp is None or dt is None or not (pm or kws): return None
     return ("pump_team", dp, dt, kws) + cf
@@ -492,7 +501,7 @@ def _fx_pump(m):
     w = m.group("who")
     who = "self" if w == "~" else "obj" if w in ("it", "that creature") else "attach" if w.startswith(("equipped", "enchanted")) \
         else "others_attacking" if "attacking" in w else "attackers" if w in ("they", "those creatures") else "target"
-    body, rest = m.group("body"), m.group("rest")
+    body, rest = m.group("body"), m.group("rest") or ""      # the duration-first pump regex's rest is optional
     pm = re.search(r"([+-](?:\d+|x))/([+-](?:\d+|x))", body)
     dp, dt = (_pt_val(pm.group(1), rest + body), _pt_val(pm.group(2), rest + body)) if pm else (0, 0)
     fe = re.search(r"for each ([^.]+)", rest)
@@ -2588,6 +2597,9 @@ class Game:
         if key == "opp_hand": return OPP_HAND
         if key == "power": return max((q.k.power + (q.ctr or {}).get("+1/+1", 0) for q in self.perms if "Creature" in q.k.types), default=0)
         if key == "colors": return len(self.perm_colors())
+        if key == "domain":                            # basic land types among your lands (Prismatic Omen-style: all five)
+            if any("lands you control are every basic land type" in ((q.k.raw or {}).get("oracle_text") or "").lower() for q in self.perms): return 5
+            return len(frozenset().union(*(q.k.land_types for q in self.lands))) if self.lands else 0
         if key == "gy": return len(self.gy)
         if key == "gy_creature": return sum("Creature" in c.types for c in self.gy)
         if key == "gy_land": return sum(c.is_land for c in self.gy)

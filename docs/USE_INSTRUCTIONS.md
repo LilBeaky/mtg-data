@@ -18,6 +18,7 @@ Re-clone every session (sandbox resets). Use git, not the GitHub API, for readin
 | Draw odds beyond the audit | `stats_math.py` (§6) |
 | Tutor chains / access odds | `tutors.py` (§6) |
 | How a deck plays out (timing, mana, swaps) | `goldfish.py` (§6 → `docs/GOLDFISH.md`) |
+| Goldfish parser coverage / regression diff | `goldfish_coverage.py` (`docs/GOLDFISH_ROADMAP.md`) |
 | EDHREC comparison | `edhrec_diff.py` (§9); audit runs it if a snapshot exists |
 | Data refresh | automatic (§12); `trim.py` is the manual fallback |
 

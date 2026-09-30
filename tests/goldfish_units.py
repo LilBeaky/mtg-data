@@ -21,7 +21,8 @@ NAMES = ["Klauth, Unrivaled Ancient", "Forest", "Mountain", "Sol Ring", "Llanowa
          "Unbounded Potential", "Return of the Wildspeaker", "Sire of Stagnation", "Kalitas, Bloodchief of Ghet",
          "Glen Elendra's Answer", "Syndicate Heavy", "Embercleave", "Valiant Changeling", "Frogmite", "Ghoultree",
          "Emerald Medallion", "Lightning Bolt", "Tolarian Terror", "Invasion of Ikoria // Zilortha, Apex of Ikoria",
-         "Dragonstorm", "Tireless Tracker", "Chord of Calling", "Hamza, Guardian of Arashin"]
+         "Dragonstorm", "Tireless Tracker", "Chord of Calling", "Hamza, Guardian of Arashin",
+         "Triumph of the Hordes", "Tromp the Domains", "Rites of Initiation"]
 
 RAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(NAMES)}
 ANYC = frozenset("RG")
@@ -53,6 +54,18 @@ def check(name):
     return deco
 
 # ---- mana
+# ---- team pumps (2026-09-30 coverage pass)
+@check("Duration-first team pump compiles and reads (Triumph of the Hordes crashed compile_card)")
+def _():
+    e = K["Triumph of the Hordes"].spell
+    return len(e) == 1 and e[0][0] == "pump_team" and e[0][1:3] == (1, 1) and {"infect", "trample"} <= set(e[0][3])
+@check("Team pump 'for each' scales, never flat: Tromp the Domains = +2/+2 with Forest, Mountain, Forest")
+def _():
+    e = K["Tromp the Domains"].spell[0]
+    return e[0] == "pump_team" and e[1] == ("per", 1, ("domain",)) and game(lands=["Forest", "Mountain", "Forest"]).val(e[1][2], None, 0) == 2
+@check("Team pump with an unreadable 'for each' stays unread (Rites of Initiation, was read as a flat +1/+0)")
+def _(): return not any(x[0] == "pump_team" for x in K["Rites of Initiation"].spell) and K["Rites of Initiation"].status != "modeled"
+
 @check("Nyxbloom triples a land")
 def _(): return pool(lands=["Forest"], perms=["Nyxbloom Ancient"]) == 3
 @check("Nyxbloom triples Sol Ring (2 -> 6)")

@@ -165,6 +165,12 @@ def checks():
         dict(name="goldfish json", cmd=S("goldfish.py", nofake, "--trials", "50", "--disruption", "off", "--json"), must=['"kill": 0']),
         # ---- goldfish mechanics fixture (Sept 29 2026 parser work) + deterministic unit checks
         dict(name="goldfish units", cmd=["tests/goldfish_units.py"], must=["units: all"]),
+        # ---- goldfish coverage (parser over the whole Commander pool): a parse change must never crash a card
+        dict(name="goldfish coverage: every legal card compiles", cmd=S("goldfish_coverage.py", "report", "--top", "3"),
+             must=[" 0 compile errors", "fully read (modeled + held + vacuum + override), weighted:"]),
+        dict(name="goldfish coverage card", cmd=S("goldfish_coverage.py", "card", "Tromp the Domains", "Rites of Initiation"),
+             must=["Tromp the Domains — pump team +1 per domain/+1 per domain trample EOT"],
+             must_not=["Rites of Initiation — pump team"]),        # a 'for each' it can't count is never read flat
         dict(name="goldfish mech explain", cmd=S("goldfish.py", MECH, "--explain"),
              must=["Nyxbloom Ancient — mana x3 (permanents)",
                    "Mana Reflection — mana x2 (permanents)", "Vorinclex, Voice of Hunger — mana +1 per tap (lands)",
