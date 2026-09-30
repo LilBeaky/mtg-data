@@ -259,7 +259,7 @@ def checks():
                    "Test of Endurance — on upkeep: if you have 50+ life: you win the game", "Goblin Bombardment — act [sac creature]: an opponent loses 1",
                    "Ravenous Squirrel — on sac(artifact or creature): +1 +1/+1 ctr; act [3 sac artifact or creature]",
                    "Mayhem Devil — on sac(permanent): an opponent loses 1", "only your own sacrifices are modeled",
-                   "blank    other  Ashnod's Altar", "blank    other  Food Chain"],
+                   "Ashnod's Altar — sac outlet: sacrifice creature -> C+C", "blank    other  Food Chain"],
              must_not=["Ragost, Deft Gastronaut — 2/2  [", "blank    other  Nuka-Cola", "Cauldron Familiar — act"]),
         dict(name="goldfish food run", cmd=S("goldfish.py", FOOD, "--trials", "200", "--shuffles", "10"),
              must=["damage by source (avg per game): Ragost, Deft Gastronaut", "Nuka-Cola Vending Machine (other)", "disruption ladder, Bracket 2"]),
