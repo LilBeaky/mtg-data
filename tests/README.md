@@ -47,6 +47,22 @@ The combat checks in `goldfish_units.py` build exact boards and assert damage, l
 
 The voltron/enchantress checks (`vgame`, Wilson as commander) cover granted quoted abilities (Flaming Fist, Mark of Sakiko, Bear Umbra), land untappers, Aura reducers and affinity, attached-Aura counts, conditional Aura bonuses, cast triggers that need a target (Season of Growth, heroic), umbra armor / indestructible / hexproof against disruption, Silent Arbiter's attack limit, Kudo's base P/T, and the curve-aware mulligan.
 
+## Goldfish Food/sacrifice fixture
+
+`goldfish_food_deck.txt` (Ragost, Deft Gastronaut, bracket 2) pins the work of 2026-09-30 through `--explain`, a run and a trace:
+- sacrifice-another-permanent costs ("Sacrifice a Food", "a creature", "an artifact or creature") with the pilot's fodder choice;
+- type grants with a quoted ability (Ragost: artifacts are Foods and have "{2}, {T}, Sacrifice this artifact: You gain 3 life");
+- "whenever you sacrifice" triggers (Nuka-Cola, Experimental Confectioner, Ravenous Squirrel, Mayhem Devil);
+- the life-gain untap engine and its instant-speed activations on opponents' turns;
+- lifelink on ability damage (Basilisk Collar), "whenever enchanted creature deals damage" (Spirit Loop), "whenever you gain life" (Well of Lost Dreams, Heliod);
+- damage doublers (Furnace of Rath, City on Fire);
+- Treasures and Food as artifact tokens, token replacements (Academy Manufactor, Stridehangar Automaton), named artifact tokens (Weapons Manufacturing's Munitions);
+- "enters or is put into a graveyard" artifacts (Prized Statue, the Wellsprings, Servo Schematic) and Test of Endurance's upkeep win.
+
+Guards that must stay unread: Ashnod's Altar (a mana ability with a sacrifice cost), Food Chain ("exile a creature"), Cauldron Familiar's graveyard ability; Gilded Goose's "Sacrifice a Food: Add" stays partial. Barrage Tyrant in `test_deck.txt` guards the strict fodder reader ("another colorless creature" is unread).
+
+The Food checks in `goldfish_units.py` (`fgame`, Ragost as commander, `rest_of_round` = main phase 2 through the opponents' turns) assert the headline case: Ragost + Nuka-Cola + Basilisk Collar with 5 lands deals 3 to each opponent on all 4 turns of a round; with 2 lands, once; without life gain Ragost doesn't untap; a spare Food's own life ability untaps him. They also cover the fodder order, Nuka-Cola's tapped Treasure (a Treasure spent for mana is a Food under Ragost), Manufactor + Stridehangar, doublers, Spirit Loop + Well of Lost Dreams holding mana for the engine, lifelink vs. life loss, Munitions, graveyard triggers, Test of Endurance, creature fodder (Goblin Bombardment keeps a 1/1 unless the ping kills), and Ragost staying home when fodder is ready.
+
 ## Known approximations (not bugs)
 
 - goldfish.py stops on NOT FOUND cards (tutors.py and the audit warn and continue), so the smoke test runs goldfish on the deck without the fake card. `goldfish_gy_deck.txt` is a second fixture for goldfish's graveyard, tutor and cycling model; the gy trace check pins the pilot's Entomb → Demonic Tutor → Reanimate line on a fixed seed, so a pilot change that moves it will show up there first.

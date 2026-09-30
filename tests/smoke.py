@@ -35,6 +35,7 @@ def S(*args): return ["scripts/" + args[0]] + list(args[1:])
 
 MECH = "tests/goldfish_mech_deck.txt"
 COMBAT = "tests/goldfish_combat_deck.txt"
+FOOD = "tests/goldfish_food_deck.txt"
 
 def checks():
     nofake = deck_without_fake()
@@ -122,7 +123,8 @@ def checks():
              must=["Entomb — tutor->graveyard", "Step Through — wizardcycling {2}: tutor->hand: Wizard",
                    "Dimir House Guard — transmute {3}: tutor->hand: card MV=4", "Demonic Tutor — tutor->hand: any card",
                    "Kraum, Ludevic's Opus — on opp_second: draw 1; ~opp", "vacuum   other  Nezumi Graverobber",
-                   "partial  other  Tymna the Weaver — 2/2 lifelink"]),
+                   "partial  other  Tymna the Weaver — 2/2 lifelink"],
+             must_not=["Barrage Tyrant — act"]),               # 'another colorless creature': a qualified fodder cost stays unread
         dict(name="goldfish run", cmd=S("goldfish.py", nofake, "--trials", "300"),
              must=["tutor priorities from the list header: key: Demonic Tutor, Stroke of Genius; 2 package(s)", "tutor targets"],
              must_not=["Entomb 0."]),                       # a graveyard tutor is never card advantage
@@ -208,6 +210,27 @@ def checks():
         dict(name="goldfish combat variant", cmd=S("goldfish.py", COMBAT, "--trials", "100", "--disruption", "off",
                                                   "--variant", "No hero|Hero of Bladehold=>Grizzly Bears"),
              must=["table killed <=T8", "damage T8 P10/med/P90"]),
+        # ---- goldfish Food/sacrifice fixture (Sept 30 2026): Ragost's engine, sacrifice costs and triggers, type grants, doublers
+        dict(name="goldfish food explain", cmd=S("goldfish.py", FOOD, "--explain"),
+             must=["Ragost, Deft Gastronaut — on end +opp turns: if you gained life this turn: untap ~; act [T 1 sac Food]: each opponent loses 3; "
+                   "artifacts you control are also Food; they have act [T 2 sac]: you gain 3 life",
+                   "Nuka-Cola Vending Machine — on sac(Food ): treasure 1 tapped; act [T 1]: token 1x Food",
+                   "Academy Manufactor — a Clue, Food or Treasure token -> one of each",
+                   "Stridehangar Automaton — anthem Thopter creatures +1/+1; artifact tokens: +1 Thopter 1/1 flying each time",
+                   "Spirit Loop — on dmg_att: you gain life equal to the damage; on gy_self: return ~ to hand",
+                   "Well of Lost Dreams — on gain: pay X (up to the life gained): draw X", "Furnace of Rath — damage x2",
+                   "City on Fire — damage x3 (your sources)", "Weapons Manufacturing — on etb(nontoken artifact): token 1x Munitions (has an ability)",
+                   "Prized Statue — ETB treasure 1; on gy_self: treasure 1", "Servo Schematic — ETB token 1x Servo 1/1 artifact; on gy_self:",
+                   "Test of Endurance — on upkeep: if you have 50+ life: you win the game", "Goblin Bombardment — act [sac creature]: an opponent loses 1",
+                   "Ravenous Squirrel — on sac(artifact or creature): +1 +1/+1 ctr; act [3 sac artifact or creature]",
+                   "Mayhem Devil — on sac(permanent): an opponent loses 1", "only your own sacrifices are modeled",
+                   "blank    other  Ashnod's Altar", "blank    other  Food Chain"],
+             must_not=["Ragost, Deft Gastronaut — 2/2  [", "blank    other  Nuka-Cola", "Cauldron Familiar — act"]),
+        dict(name="goldfish food run", cmd=S("goldfish.py", FOOD, "--trials", "200", "--shuffles", "10"),
+             must=["damage by source (avg per game): Ragost, Deft Gastronaut", "Nuka-Cola Vending Machine (other)", "disruption ladder, Bracket 2"]),
+        dict(name="goldfish food trace", cmd=S("goldfish.py", FOOD, "--trials", "2", "--trace", "2", "--disruption", "off"),
+             must=["opponent 1's turn (", "activate Ragost, Deft Gastronaut (sacrifice ", "Ragost, Deft Gastronaut untaps",
+                   "Ragost, Deft Gastronaut: 3 to each opponent"]),
     ]
 
 def run(c):

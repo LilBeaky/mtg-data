@@ -496,6 +496,138 @@ def _():
 def pool_v(**kw):
     G = vgame(**kw); G.build_pool(); return free_units(G)
 
+# ---- sacrifice costs, type grants and the life-gain untap engine (Ragost, Deft Gastronaut deck)
+FNAMES = ["Ragost, Deft Gastronaut", "Nuka-Cola Vending Machine", "Basilisk Collar", "Academy Manufactor", "Spirit Loop",
+          "Well of Lost Dreams", "Furnace of Rath", "City on Fire", "Weapons Manufacturing", "Prized Statue", "Ichor Wellspring",
+          "Servo Schematic", "Test of Endurance", "Stridehangar Automaton", "Goblin Bombardment", "Grizzly Bears", "Mountain",
+          "Plains", "Ashnod's Altar", "Food Chain", "Experimental Confectioner"]
+FRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(FNAMES)}
+FK = {n: g.compile_card(FRAW[n], g.ALL5) for n in FNAMES}
+RAGOST = "Ragost, Deft Gastronaut"
+
+def fgame(perms=(), lands=(), lib=("Mountain",) * 10, collar=False):
+    """Ragost is the commander. perms enter untapped and unsick; collar: Basilisk Collar on the first perm."""
+    args = argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False)
+    sim = g.Sim([n for n in FNAMES if n != RAGOST], [RAGOST], args, [], FK, g.ALL5)
+    G = g.Game(sim, [], [FK[n] for n in lib], random.Random(1))
+    G.turn = 3; G.phase = 3; G.turns_left = g.OPP_N
+    G.lands = [g.Perm(FK[n]) for n in lands]
+    G.perms = [g.Perm(FK[n]) for n in perms]
+    if collar:
+        q = g.Perm(FK["Basilisk Collar"]); q.att = G.perms[0]; G.perms.append(q)
+    G._st = None
+    return G
+
+def rest_of_round(G):
+    """The turn loop from main phase 2: activations, your end step, then each opponent's turn (instant-speed engine)."""
+    G.build_pool(); G.activations()
+    G.open_pool = [u for u in G.pool if not u[5]]; G.pool = None
+    G.fire("end"); G.opponents()
+
+def perm(G, name): return next(p for p in G.perms if p.k.name == name)
+def ragost_act(): return FK[RAGOST].acts[0]
+def tokens(G, sub): return [p for p in G.perms if p.k.token and sub in p.k.subtypes]
+
+@check("Ragost reads: sacrifice-a-Food cost, Food grant with its quoted ability, life-gain untap on every end step")
+def _():
+    k = FK[RAGOST]; a = ragost_act()
+    tg = [s for s in k.statics if s[0] == "type_grant"]
+    return a["tap"] and a["gen"] == 1 and a["fodder"]["any"][0]["sub"] == {"Food"} and k.gain_untap and k.status == "modeled" \
+        and tg and tg[0][3] == frozenset({"Food"}) and tg[0][4][0]["sac"] and tg[0][4][0]["gen"] == 2
+@check("Ragost + Nuka-Cola + Basilisk Collar, 5 lands: 3 to each opponent on each of the round's 4 turns (lifelink 9 each)")
+def _():
+    G = fgame(perms=[RAGOST, "Nuka-Cola Vending Machine"], lands=["Mountain"] * 5, collar=True); rest_of_round(G)
+    return lives(G) == [40 - 12] * 3 and G.life == 40 + 4 * 9
+@check("same board, 2 lands: Nuka-Cola + one activation on your turn, nothing left open for the opponents' turns")
+def _():
+    G = fgame(perms=[RAGOST, "Nuka-Cola Vending Machine"], lands=["Mountain"] * 2, collar=True); rest_of_round(G)
+    return lives(G) == [37] * 3
+@check("no life gained, no untap: without lifelink Ragost activates once a round")
+def _():
+    G = fgame(perms=[RAGOST, "Nuka-Cola Vending Machine"], lands=["Mountain"] * 5); rest_of_round(G)
+    return lives(G) == [37] * 3 and perm(G, RAGOST).tapped
+@check("a spare Food's own life ability untaps Ragost (no lifelink, 5 lands: 2 activations)")
+def _():
+    G = fgame(perms=[RAGOST, "Nuka-Cola Vending Machine"], lands=["Mountain"] * 5); G.make_tokens(g.FOOD_E, 1); rest_of_round(G)
+    return lives(G) == [34] * 3
+@check("Nuka-Cola: a sacrificed Food makes a tapped Treasure; under Ragost a Treasure spent for mana is a Food too")
+def _():
+    G = fgame(perms=[RAGOST, "Nuka-Cola Vending Machine"]); G.make_tokens(g.TREASURE_E, 1); G.build_pool(); G.pay(None, 1, [])
+    H = fgame(perms=["Nuka-Cola Vending Machine"]); H.make_tokens(g.TREASURE_E, 1); H.build_pool(); H.pay(None, 1, [])
+    t = tokens(G, "Treasure")
+    return len(t) == 1 and t[0].tapped and not tokens(H, "Treasure")
+@check("fodder order: tapped Treasure, Food, Ichor Wellspring, untapped Treasure; never Nuka-Cola or the equipped Collar")
+def _():
+    G = fgame(perms=[RAGOST, "Nuka-Cola Vending Machine", "Ichor Wellspring"], collar=True)
+    G.make_tokens(g.TREASURE_E, 1); G.make_tokens(g.TREASURE_E, 1, tapped=True); G.make_tokens(g.FOOD_E, 1)
+    order = []
+    while True:
+        pk = G.pick_fodder(ragost_act()["fodder"], perm(G, RAGOST), ragost_act()["fx"])
+        if not pk: break
+        order.append(pk[0].k.name + (" tapped" if pk[0].tapped else "")); G.perms.remove(pk[0]); G._st = None
+    return order == ["Treasure token tapped", "Food token", "Ichor Wellspring", "Treasure token"]
+@check("Academy Manufactor: a Food becomes a Food, a Clue and a Treasure; Stridehangar adds a Thopter per artifact-token event")
+def _():
+    G = fgame(perms=["Academy Manufactor", "Stridehangar Automaton"]); G.make_tokens(g.FOOD_E, 1)
+    return [len(tokens(G, s)) for s in ("Food", "Clue", "Treasure", "Thopter")] == [1, 1, 1, 1]
+@check("damage doublers: Furnace doubles Ragost's 3 (6 each), City on Fire + Furnace = 18; Furnace doubles combat damage")
+def _():
+    G = fgame(perms=[RAGOST, "Furnace of Rath"]); G.do(ragost_act()["fx"], FK[RAGOST], G.perms[0])
+    H = fgame(perms=[RAGOST, "Furnace of Rath", "City on Fire"]); H.do(ragost_act()["fx"], FK[RAGOST], H.perms[0])
+    I = fgame(perms=["Grizzly Bears", "Furnace of Rath"]); I.combat()
+    return lives(G) == [34] * 3 and lives(H) == [22] * 3 and I.dmg == 4
+@check("Spirit Loop on Ragost: one damage event gains 9; Well of Lost Dreams draws 3 of 6 open mana, holding 3 for Ragost's opponent turns")
+def _():
+    G = fgame(perms=[RAGOST, "Well of Lost Dreams"], lands=["Mountain"] * 6)
+    q = g.Perm(FK["Spirit Loop"]); q.att = G.perms[0]; G.perms.append(q); G._st = None
+    G.build_pool(); G.do(ragost_act()["fx"], FK[RAGOST], G.perms[0])
+    return G.life == 49 and G.gained == 9 and len(G.hand) == 3 and G.trigs[("Well of Lost Dreams", "other")] == 1
+@check("lifelink covers noncombat damage (Collar on Ragost: +9), not life loss")
+def _():
+    G = fgame(perms=[RAGOST], collar=True); G.do(ragost_act()["fx"], FK[RAGOST], G.perms[0])
+    H = fgame(perms=[RAGOST], collar=True); H.do([("face", 3, "each", False)], FK[RAGOST], H.perms[0])
+    return G.life == 49 and H.life == 40 and lives(H) == [37] * 3
+@check("Weapons Manufacturing: a nontoken artifact makes Munitions; it's first fodder and deals 2 (4 with Furnace) as it leaves")
+def _():
+    G = fgame(perms=[RAGOST, "Weapons Manufacturing", "Furnace of Rath"]); G.enter(FK["Ichor Wellspring"])
+    mu = tokens(G, "Munitions")
+    pk = G.pick_fodder(ragost_act()["fodder"], perm(G, RAGOST), ragost_act()["fx"])
+    G.leave(mu[0], "is sacrificed", sac=True)
+    return len(mu) == 1 and pk == mu and sum(lives(G)) == 120 - 4
+@check("'enters or is put into a graveyard': Prized Statue makes a Treasure both ways; Servo Schematic's Servo is an artifact (a Food under Ragost)")
+def _():
+    G = fgame(perms=[RAGOST]); G.enter(FK["Prized Statue"]); G.leave(perm(G, "Prized Statue"), "is sacrificed", sac=True)
+    G.enter(FK["Servo Schematic"])
+    sv = tokens(G, "Servo")
+    return len(tokens(G, "Treasure")) == 2 and len(sv) == 1 and G.pmatch(ragost_act()["fodder"], sv[0], G.perms[0]) \
+        and G.board_n() == 3                    # Ragost, Schematic, Servo: Treasures are mana, not board
+@check("Test of Endurance: win at upkeep with 50 life, not with 49")
+def _():
+    G = fgame(perms=["Test of Endurance"]); G.life = 50; G.fire("upkeep")
+    H = fgame(perms=["Test of Endurance"]); H.life = 49; H.fire("upkeep")
+    return G.won == 3 and not G.alive() and not H.won
+@check("Goblin Bombardment keeps a 1/1 attacker unless the ping kills; Ragost sacrifices Servo Schematic, then a Servo (9 damage is worth it)")
+def _():
+    G = fgame(perms=["Goblin Bombardment"]); G.enter(FK["Servo Schematic"])
+    ab = FK["Goblin Bombardment"].acts[0]; bomb = perm(G, "Goblin Bombardment")
+    no = G.pick_fodder(ab["fodder"], bomb, ab["fx"]); G.opps[0]["life"] = 1
+    yes = G.pick_fodder(ab["fodder"], bomb, ab["fx"])
+    H = fgame(perms=[RAGOST]); H.enter(FK["Servo Schematic"])
+    first = H.pick_fodder(ragost_act()["fodder"], H.perms[0], ragost_act()["fx"])
+    H.leave(first[0], "is sacrificed", sac=True)                  # the Schematic makes a second Servo on its way out
+    second = H.pick_fodder(ragost_act()["fodder"], H.perms[0], ragost_act()["fx"])
+    return no is None and yes and first[0].k.name == "Servo Schematic" and second[0].k.name == "Servo token"         and len(tokens(H, "Servo")) == 2
+@check("Ragost stays home to use his ability when fodder is ready (Nuka-Cola), attacks without it")
+def _():
+    G = fgame(perms=[RAGOST, "Nuka-Cola Vending Machine"], lands=["Mountain"] * 3); G.build_pool(); G.combat()
+    H = fgame(perms=[RAGOST], lands=["Mountain"] * 3); H.build_pool(); H.combat()
+    return G.dmg == 0 and not G.perms[0].tapped and H.dmg == 2
+@check("Experimental Confectioner: sacrificing a Food makes a Rat; guards: Ashnod's Altar (sacrifice for mana) and Food Chain stay unread")
+def _():
+    G = fgame(perms=["Experimental Confectioner"]); G.make_tokens(g.FOOD_E, 1)
+    G.leave(tokens(G, "Food")[0], "is sacrificed", sac=True)
+    return len(tokens(G, "Rat")) == 1 and FK["Ashnod's Altar"].status == "blank" and FK["Food Chain"].status == "blank"
+
 def main():
     fails = 0
     for name, fn in CHECKS:
