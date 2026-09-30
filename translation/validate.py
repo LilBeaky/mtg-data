@@ -100,6 +100,7 @@ def coverage(gef, card):
                  face.get("name", "").split(",")[0]]
         blocks = oracle_blocks(face)
         want = [[_norm(x, names) for x in b] for b in blocks]
+        fulls = [_norm("\n".join(b), names) for b in blocks]   # a modal block as one text (keeps inner periods)
         got = [(_norm(a.get("text", ""), names), a) for a in _texts(gface.get("abilities", []))]
         used = [False] * len(want)
         for t, a in got:
@@ -107,7 +108,7 @@ def coverage(gef, card):
                 errs.append(f"{face.get('name', card['name'])}: an ability of kind '{a.get('kind')}' has no text"); continue
             hit = False
             for i, b in enumerate(want):
-                full = " ".join(b)
+                full = fulls[i]
                 parts = [p.strip() for p in re.split(r"[,;]", b[0])]
                 if t == full or t in b or t in parts or (len(t) >= 30 and (full.startswith(t) or t.startswith(full[:max(30, len(full) - 2)]))):
                     used[i] = True; hit = True
@@ -148,6 +149,7 @@ SILENT_KEYWORDS = {"hexproof", "shroud", "protection", "ward", "flash", "changel
                    "companion", "choose a background", "friends forever", "enchant", "split second", "umbra armor",
                    "banding", "phasing", "crew", "reconfigure"}
 INTERACTION = {"counter_spell", "protect", "remove", "wipe", "gain_control", "prevent_damage", "opponent_discards"}
+FREE_TEXT = {"replacement", "restriction"}        # statics that carry the Oracle sentence instead of a structure (T2 finding)
 OPPONENT_ONLY = {"opponent_discards", "gain_control", "prevent_damage"}
 
 def _walk(effects):
@@ -171,6 +173,7 @@ def ability_state(a, today):
     fx = list(_walk(a.get("effects", [])))
     if k == "static":
         st = a["effect"]["static"]
+        if st in FREE_TEXT: return "missed", False          # a sentence, not a construct: nothing can execute it
         if today and st not in ENGINE_STATICS: lacks.append(st)
         for sub in a["effect"].get("abilities", []):
             s2, _ = ability_state(sub, today)
