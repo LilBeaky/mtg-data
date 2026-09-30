@@ -631,7 +631,7 @@ def _():
 # ---- life you pay yourself (docs/GOLDFISH.md "Life")
 LNAMES = ["Kenrith, the Returned King", "Llanowar Wastes", "City of Brass", "Ancient Tomb", "Mana Confluence", "Horizon Canopy",
           "Talisman of Dominance", "Polluted Delta", "Watery Grave", "Island", "Swamp", "Gitaxian Probe", "Dark Confidant",
-          "Sylvan Library", "Birthing Pod", "Snuff Out", "Night's Whisper", "Phyrexian Arena", "Wastes"]
+          "Sylvan Library", "Birthing Pod", "Laboratory Maniac", "Thassa's Oracle", "Snuff Out", "Night's Whisper", "Phyrexian Arena", "Wastes"]
 LRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(LNAMES)}
 LK = {n: g.compile_card(LRAW[n], g.ALL5) for n in LNAMES}
 _OV = g.load_overrides()
@@ -696,6 +696,29 @@ def _():
 def _():
     G = lgame(perms=["Dark Confidant"], lib=("Wastes", "Phyrexian Arena"), life=3); G.fire("upkeep")
     return G.died == 3 and G.life <= 0
+@check("Bracket 4 floor 10: shockland pays at 12, Phyrexian life at 12; the floor resets to 20")
+def _():
+    g.LIFE_FLOOR = 10
+    try:
+        G = lgame(life=12); G.land_enters(LK["Watery Grave"])
+        H = lgame(hand=["Gitaxian Probe"], life=12); H.build_pool(); ok = H.try_cast(LK["Gitaxian Probe"], "hand")
+        return G.life == 10 and not G.lands[0].tapped and ok and H.life == 10
+    finally: g.LIFE_FLOOR = 20
+@check("Drawing from an empty library loses; Laboratory Maniac wins instead")
+def _():
+    G = lgame(lib=()); G.draw(1)
+    H = lgame(perms=["Laboratory Maniac"], lib=()); H.draw(1)
+    return G.died == 3 and G.death == "decked" and not G.won and LK["Laboratory Maniac"].labman and H.won == 3 and not H.died
+@check("A draw that fits the library is fine; drawing 2 from 1 still loses")
+def _():
+    G = lgame(lib=("Wastes",)); G.draw(1); H = lgame(lib=("Wastes",)); H.draw(2)
+    return not G.died and H.death == "decked"
+@check("Thassa's Oracle: held until devotion covers the library, then wins on entering")
+def _():
+    k = LK["Thassa's Oracle"]
+    G = lgame(hand=["Thassa's Oracle"], lands=["Island"] * 2, lib=("Wastes",) * 5); G.build_pool(); held = not G.try_cast(k, "hand")
+    H = lgame(hand=["Thassa's Oracle"], lands=["Island"] * 2, lib=("Wastes",) * 2); H.build_pool(); ok = H.try_cast(k, "hand")
+    return k.status == "modeled" and k.requires == "oracle" and held and ok and H.won == 3
 
 def main():
     fails = 0

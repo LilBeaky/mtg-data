@@ -76,6 +76,7 @@ _EXPLAIN_DECK = []                              # raw cards of the list, so --ex
 OPP_CREATURE_SHARE, OPP_SECOND, TAX_PAID, OPP_HAND = 0.4, 0.3, 0.75, 4
 OPP_LINE = re.compile(r"\bopponents?\b|attacks you\b|\bother players?\b|each player(?! may)")
 START_LIFE, LIFE_FLOOR = 40, 20
+FLOOR_BY_BRACKET = {4: 10}   # optional life payments stop here; set from the deck's bracket at run time (default 20)
 # Combat (docs/GOLDFISH.md "Combat"). Three opponents at START_LIFE. An opponent dies at 0 life, POISON_KILL
 # poison, or CMD_KILL combat damage from one commander; killing all of them ends the game. Opponents never attack.
 # Their boards (blockers) are empty until the blocker gradient exists; blocks already resolve if a board is set.
@@ -458,6 +459,8 @@ def _fx_mana(m):
     return ("mana", units) if units else None
 
 FX = [
+    (re.compile(r"look at the top x cards of your library, where x is your devotion to (white|blue|black|red|green)\..*?if x is greater than or equal to the number of cards in your library, you win the game"),
+     lambda m: ("oracle", COLOR_WORDS[m.group(1)])),                                 # Thassa's Oracle
     (re.compile(r"reveal the top card of your library and put that card into your hand\. you lose life equal to its mana value"),
      lambda m: ("bob",)),                                                          # Dark Confidant
     # Well of Lost Dreams: X is capped by the life just gained (read before the plain 'draw x cards')
@@ -589,6 +592,7 @@ def fx_str(e):
         v = e[1]
         return f"{t} {'/'.join(v) if isinstance(v, tuple) else v}" + (" tapped" if t == "treasure" and len(e) > 2 and e[2] else "")
     if t == "wheel": return f"wheel {e[1]}" + (" ~opp" if e[1] == "max" else "")
+    if t == "oracle": return f"win if devotion to {e[1]} >= library (held until it wins)"
     if t == "bob": return "draw 1, lose life equal to its MV"
     if t == "sylvan": return "draw 2, keep 1 for 4 life above the floor, put the rest back"
     if t == "putback": return f"put back {e[1]}" + (" (bottom)" if e[2] else "")
@@ -685,6 +689,7 @@ class Card:
         self.gy_need = None      # recursion spell: a Target that must be in the graveyard to cast it
         self.recur_fx = []       # every recursion effect on the card (for reanimation-aware tutoring)
         self.cycle_fx = []       # "when you cycle ~" riders (Krosan Tusker)
+        self.labman = False      # drawing from an empty library wins instead (Laboratory Maniac, Jace, Wielder of Mysteries)
         self.life_per_mv = False # Reanimate: lose life equal to the returned card's mana value
         self.ppips = []          # Phyrexian pips' colors: paid with 2 life each, or with mana below the floor
         self.addlife = 0         # "As an additional cost to cast ~, pay N life"
@@ -1325,6 +1330,8 @@ def parse_line(k, L, anyc, abil):
     if combat_static(k, lo): return True
     lo2 = re.sub(r"^[a-z][\w' ]* — ", "", lo)
     if re.fullmatch(r"whenever ~ becomes tapped, it deals \d+ damage to you\.?", lo2): return True   # pain (read_life_costs)
+    if re.fullmatch(r"if you would draw a card while your library has no cards in it, you win the game instead\.?", lo2):
+        k.labman = True; return True
     if lo2.startswith(("when", "whenever", "at the beginning")):
         return parse_trigger(k, lo2) or ("neutral" if is_neutral(lo2) else False)
     m = re.match(r"^([+−\-]?)(\d+|x):\s*(.+)$", lo)
@@ -1539,6 +1546,7 @@ def compile_card(c, anyc):
         if rec and not k.requires: k.requires, k.gy_need = "gy", rec[0][1]
         if all(e[0] == "tutor" and e[2] == "graveyard" for e in k.spell): k.requires = "gy_payoff"
     categorize(k)
+    if any(e[0] == "oracle" for e in k.etb): k.requires = "oracle"
     k.status = "blank" if missed and not done and not k.units else "partial" if missed else "modeled"
     if k.status == "blank" and vac == missed: k.status = "vacuum"
     if k.hold: k.status = "held"
@@ -1790,7 +1798,7 @@ class Game:
         self.attr = Counter(); self.first = {}; self.cmd_first = {}; self.rebound = []
         self.exile, self.unearthed = [], []
         self.recur = 0; self.cycled = 0; self.rattr = Counter(); self.tut = Counter(); self.life = START_LIFE
-        self.died = 0; self.life_paid = Counter()   # turn your own payments killed you; life paid by kind
+        self.died = 0; self.death = None; self.life_paid = Counter()   # turn your own payments killed you; life paid by kind
         self.events = {}; self.open_pool = []; self.dis = []
         self.ctr_now, self.ctr_held = [], []   # counters live this turn / held for your commander or key cards
         self.stax = []                          # live tax/lock effects: {"kind", "start", "until", "on"}
@@ -2018,6 +2026,9 @@ class Game:
             if any(e[0] == "recur" and e[2] == "bf" for e in k.spell + k.etb): return self.worth_target(k)
             return any(self.sim.tmatch(k.gy_need, c) for c in self.gy)
         if req == "gy_payoff": return self.gy_payoff()
+        if req == "oracle":                                   # Thassa's Oracle: cast only when it wins
+            col = next(e[1] for e in k.etb if e[0] == "oracle")
+            return self.val(("devotion", col), None, 0) + sum(1 for pip in k.pips if col in pip) >= len(self.lib)
         leg = req.startswith("legendary")
         return any("Creature" in p.k.types and (p.k.legendary or not leg) for p in self.perms)
 
@@ -2418,7 +2429,7 @@ class Game:
         if n <= 0: return
         self.life -= n; self.life_paid[why] += n
         if self.life <= 0 and not self.died and not self.won:
-            self.died = self.turn; self.note(f"  you die to your own life payments on T{self.turn} ({why})")
+            self.died = self.turn; self.death = "life"; self.note(f"  you die to your own life payments on T{self.turn} ({why})")
 
     def gain_life(self, n):
         """You gain n life: counted for 'if you gained life this turn', and 'whenever you gain life' triggers fire."""
@@ -2473,6 +2484,9 @@ class Game:
 
     def draw(self, n, name=None):
         if self.dry or n <= 0: return
+        if n > len(self.lib) and not self.won and not self.died:     # a draw from an empty library
+            if any(p.k.labman for p in self.perms): self.note("  draw from an empty library: Laboratory Maniac effect"); self.win_now()
+            else: self.died = self.turn; self.death = "decked"; self.note(f"  you draw from an empty library on T{self.turn}: you lose")
         n = min(n, len(self.lib))
         for _ in range(n): self.hand.append(self.lib.pop())
         if name: self.gain(n, name)
@@ -2655,6 +2669,8 @@ class Game:
                 n = e[1] if isinstance(e[1], int) else max(size, OPP_HAND)
                 self.hand = []; self.draw(n)                       # count only the net gain
                 self.gain(max(0, n - size), name)
+            elif t == "oracle":
+                if self.val(("devotion", e[1]), p, 0) >= len(self.lib): self.win_now()
             elif t == "bob":
                 if self.dry or not self.lib: continue
                 self.draw(1, name); self.lose_life(self.hand[-1].mv, "trigger")
@@ -3821,7 +3837,7 @@ class Sim:
         g.final = {"cmd_out": rec["cmd_out"][turns][-1], "cmd_turns": sum(rec["cmd_out"][t][-1] for t in range(1, turns + 1)), "casts": g.casts, "spent": g.spent, "extra": g.extra,
                    "board": g.board_n(), "recur": g.recur, "dead": sum(1 for t in range(1, last + 1) if ct[t] == ct[t - 1]),
                    "dmg": g.dmg, "kills": len(deaths), "won": g.won or None, "killt": g.won or turns + 1, "deaths": deaths,
-                   "died": g.died or None, "life_paid": dict(g.life_paid), "life": g.life,
+                   "died": g.died or None, "death": g.death, "life_paid": dict(g.life_paid), "life": g.life,
                    "how": [o["how"] for o in g.opps if o["dead"]],
                    "rebuild": rebuild, "dis": list(g.dis), "cleared": g.cleared, "resolved": g.casts - g.ctrd,
                    "first": {gi: g.first.get(gi) for gi in range(len(self.groups))}}
@@ -3927,6 +3943,7 @@ def summary(res, groups):
     died = sorted(f["died"] for f in F if f.get("died"))
     out["self_life"] = {"paid_avg": round(sum(paid.values()) / n, 2), "paid_by": {k: round(v / n, 2) for k, v in paid.most_common()},
                         "died_share": round(len(died) / n, 4), "died_med": q(died, .5) if died else None,
+                        "died_by": dict(Counter(f.get("death") for f in F if f.get("died"))), "floor": LIFE_FLOOR,
                         "end_p10": q(sorted(f.get("life", START_LIFE) for f in F), .1)}
     return out
 
@@ -3989,10 +4006,13 @@ def print_combat(label, sm, T):
     for lab, name in (("first", "first opponent dead"), ("table", "all opponents dead")):
         print(f"{name}: " + " | ".join(f"<=T{t} {pct(kb[lab][t]).strip()}" for t in show))
     sl = sm.get("self_life")
+    if sl and sl["died_share"]:
+        print(f"you lost in {pct(sl['died_share']).strip()} of games (median T{sl['died_med']}): "
+              + " | ".join(f"{'your own life payments' if k == 'life' else 'drew from an empty library'} {v / sum(sl['died_by'].values()):.0%}" for k, v in sl["died_by"].items()))
     if sl and sl["paid_avg"]:
         print(f"life you paid yourself (avg per game): {sl['paid_avg']:.2f} = " + " | ".join(f"{k} {v:.2f}" for k, v in sl["paid_by"].items())
-              + f"; life at the end P10 {sl['end_p10']}; floor {LIFE_FLOOR} for optional payments"
-              + (f"; you died to your own payments in {pct(sl['died_share']).strip()} of games (median T{sl['died_med']})" if sl["died_share"] else ""))
+              + f"; life at the end P10 {sl['end_p10']}; floor {sl['floor']} for optional payments"
+              )
     tk = sm["table_kill"]
     print(f"table killed in {pct(tk['share']).strip()} of games by T{T}" +
           (f" (P10 T{tk['p10']} / median T{tk['med']} / P90 T{tk['p90']} of those)" if tk["med"] else "")
@@ -4388,6 +4408,7 @@ def main():
         explain(cache, raw_lib + [i for _, pairs in variants for _, i in pairs], raw_cmd); return
     want = header_wants(args.deck, found, cache, raw_lib + raw_cmd)
     bracket = args.bracket or (mtg.parse_deck_meta(args.deck).get("bracket") or 0)
+    globals()["LIFE_FLOOR"] = FLOOR_BY_BRACKET.get(int(str(bracket)[0]) if str(bracket)[:1].isdigit() else 0, 20)
     lad, mode, mode_note = None, args.disruption if fixed is None else "fixed", ""
     if mode in ("auto", "ladder"):
         lad = load_ladder(bracket, args.horizon) if bracket else None
