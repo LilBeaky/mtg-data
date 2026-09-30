@@ -15,11 +15,11 @@
       {
         "on": "drawstep",
         "do": [
-          "scry 2"
+          "sylvan"
         ]
       }
     ],
-    "note": "draw two, put two back unless you pay 4 life each; modeled as card selection (scry 2), paying life not modeled"
+    "note": "draw two; keeps one extra card for 4 life while that stays at or above the life floor (20), puts the rest back (best on top)"
   },
   "Mystic Remora": {
     "triggers": [

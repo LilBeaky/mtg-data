@@ -458,6 +458,8 @@ def _fx_mana(m):
     return ("mana", units) if units else None
 
 FX = [
+    (re.compile(r"reveal the top card of your library and put that card into your hand\. you lose life equal to its mana value"),
+     lambda m: ("bob",)),                                                          # Dark Confidant
     # Well of Lost Dreams: X is capped by the life just gained (read before the plain 'draw x cards')
     (re.compile(r"you may pay \{x\}, where x is less than or equal to the amount of life you gained\. if you do, draw x cards?"),
      lambda m: ("pay_x_draw",)),
@@ -514,7 +516,7 @@ FX = [
     (re.compile(r"\byou gain (\d+) life"), lambda m: ("life", int(m.group(1)))),
     (re.compile(r"\byou gain (?:that much life|life equal to the damage dealt)"), lambda m: ("life_dmg",)),     # Spirit Loop
     (re.compile(r"\buntap ~(?![\w'])"), lambda m: ("untap_self",)),                                            # Ragost
-    (re.compile(r"\byou lose (\d+) life"), lambda m: ("life", -int(m.group(1)))),
+    (re.compile(r"\b(?:you|and) lose (\d+) life"), lambda m: ("life", -int(m.group(1)))),       # "you draw a card and lose 1 life"
     (re.compile(r"(?P<subj>(?:other |each |each other )?(?:attacking )?(?:[a-z\-]+ )?(?:creatures?|creature tokens?) you control|"
                 r"other [a-z\-]+s you control) (?P<body>(?:get|gain|have)\b[^.]*?) until end of turn(?P<rest>[^.]*)"), _fx_pump_team),
     (re.compile(r"(?P<who>~|it|that creature|equipped creature|enchanted creature|(?:up to one )?(?:another )?target creature(?: you control)?"
@@ -587,6 +589,8 @@ def fx_str(e):
         v = e[1]
         return f"{t} {'/'.join(v) if isinstance(v, tuple) else v}" + (" tapped" if t == "treasure" and len(e) > 2 and e[2] else "")
     if t == "wheel": return f"wheel {e[1]}" + (" ~opp" if e[1] == "max" else "")
+    if t == "bob": return "draw 1, lose life equal to its MV"
+    if t == "sylvan": return "draw 2, keep 1 for 4 life above the floor, put the rest back"
     if t == "putback": return f"put back {e[1]}" + (" (bottom)" if e[2] else "")
     if t == "discard": return f"discard {e[1]}"
     if t == "look": return f"look {e[1]} take {e[2]}"
@@ -682,6 +686,11 @@ class Card:
         self.recur_fx = []       # every recursion effect on the card (for reanimation-aware tutoring)
         self.cycle_fx = []       # "when you cycle ~" riders (Krosan Tusker)
         self.life_per_mv = False # Reanimate: lose life equal to the returned card's mana value
+        self.ppips = []          # Phyrexian pips' colors: paid with 2 life each, or with mana below the floor
+        self.addlife = 0         # "As an additional cost to cast ~, pay N life"
+        self.pain = 0            # life lost each time this mana source taps (painlands, Ancient Tomb, City of Brass, Horizon lands)
+        self.pain_col = False    # ...only when it makes colored mana (a painless {C} ability exists)
+        self.fetch_life = 0      # "Pay N life, sacrifice ~: search" fetchlands
         self.opp_approx = False  # leans on the fixed opponent approximations (~opp)
         self.cum_upkeep = False  # cumulative upkeep: kept for 3 of your upkeeps, then let go (~approx)
         self.answer = None       # counter / protect / redirect: can stop a disruption event
@@ -926,8 +935,25 @@ def ab_cost(cost):
     rest = re.sub(r"\{[^}]+\}|pay \d+ life|sacrifice ~|remove [^,]+? counters? from ~|,|\s", "", lo)
     return "{t}" in lo, g, p, "sacrifice ~" in lo, ((rm.group(2), num(rm.group(1))) if rm else None), bool(rest), fod
 
+PAIN_LINE = re.compile(r"(?:^|\n)\{t\}(?P<pay>, pay (?P<n1>\d+) life)?: add [^\n]*?(?:~ deals (?P<n2>\d+) damage to you)?\.?(?=\n|$)")
+def read_life_costs(k, lo):
+    """Life the deck pays itself: pain on mana abilities, additional life costs on spells."""
+    m = re.search(r"as an additional cost to cast (?:this spell|~), pay (\d+) life", lo)
+    if m: k.addlife = int(m.group(1))
+    m = re.search(r"whenever ~ becomes tapped, it deals (\d+) damage to you", lo)
+    if m: k.pain = int(m.group(1)); return
+    free_c, hurt = False, []
+    for a in PAIN_LINE.finditer(lo):
+        n = int(a.group("n1") or a.group("n2") or 0)
+        if n: hurt.append((n, a.group(0)))
+        elif re.search(r"add \{c\}", a.group(0)): free_c = True
+    if hurt:
+        k.pain = max(n for n, _ in hurt)
+        k.pain_col = free_c and all(re.search(r"\{[wubrg]\}|any color", t) for _, t in hurt)
+
 def etap_rule(lo):
-    if re.search(r"you may pay \d+ life\. if you don't", lo): return None
+    m = re.search(r"you may pay (\d+) life\. if you don't", lo)
+    if m: return ("shock", int(m.group(1)))
     if "two or fewer other lands" in lo: return ("fast",)
     if "two or more other lands" in lo: return ("slow",)
     if "two or more opponents" in lo: return None
@@ -1280,7 +1306,8 @@ def parse_line(k, L, anyc, abil):
         return True
     m = re.match(r"^(?:\{t\}, )?(?:pay \d+ life, )?sacrifice ~: search your library for (?:an? |up to one )?(.+?) cards?,.*?put (?:it|that card) onto the battlefield( tapped)?", lo)
     if m and k.is_land:
-        k.fetch = (land_filter(m.group(1)), bool(m.group(2))); return True
+        k.fetch = (land_filter(m.group(1)), bool(m.group(2)))
+        fl = re.search(r"pay (\d+) life", lo); k.fetch_life = int(fl.group(1)) if fl else 0; return True
     if re.search(r"if (?:this card|~) is in your opening hand, you may begin the game with it on the battlefield", lo):
         k.leyline = True; return True
     m = re.search(r"~ enters with (a|an|one|two|three|four|five|six|x|\d+) (\S+?) counters? on it", lo)
@@ -1297,6 +1324,7 @@ def parse_line(k, L, anyc, abil):
             k.statics.append(fn(m, lo)); return True
     if combat_static(k, lo): return True
     lo2 = re.sub(r"^[a-z][\w' ]* — ", "", lo)
+    if re.fullmatch(r"whenever ~ becomes tapped, it deals \d+ damage to you\.?", lo2): return True   # pain (read_life_costs)
     if lo2.startswith(("when", "whenever", "at the beginning")):
         return parse_trigger(k, lo2) or ("neutral" if is_neutral(lo2) else False)
     m = re.match(r"^([+−\-]?)(\d+|x):\s*(.+)$", lo)
@@ -1315,7 +1343,7 @@ def parse_line(k, L, anyc, abil):
         if not tap and not g and not p and sac and not rm and not fod and any(e[0] == "land_search" for e in fx):
             k.etb += fx; k.sac_etb = True; return True        # Sakura-Tribe Elder style: sacrifice at once
         lm = re.search(r"pay (\d+) life", m.group("cost").lower())
-        k.acts.append({"tap": tap, "gen": g, "pips": p, "sac": sac, "rm": rm, "fx": fx, "life": int(lm.group(1)) if lm else 0,
+        k.acts.append({"tap": tap, "gen": g, "pips": p, "sac": sac, "rm": rm, "fx": fx, "life": (int(lm.group(1)) if lm else 0) + parse_cost(m.group("cost"))[3],
                        "combat": "activate only during combat" in lo, "sorcery": "activate only as a sorcery" in lo, "fodder": fod})
         return True
     if "Aura" in k.subtypes and re.match(r"^enchant creature card in a graveyard$", lo):
@@ -1397,6 +1425,8 @@ def compile_card(c, anyc):
     k.is_land = "Land" in k.types
     k.land_types = frozenset(t.lower() for t in k.subtypes if t.lower() in BASIC)
     k.gen, k.pips, k.x, k.life = parse_cost(face.get("mana_cost") or c.get("mana_cost") or "")
+    k.ppips = [frozenset(p for p in s.upper().split("/") if p in COLORS) or frozenset(COLORS)
+               for s in SYM.findall(face.get("mana_cost") or c.get("mana_cost") or "") if "P" in s.upper().split("/")]
     k.colors = frozenset(face.get("colors") or c.get("colors") or [])
     pw = face.get("power") or c.get("power")
     k.power = int(pw) if pw and str(pw).isdigit() else 0
@@ -1412,6 +1442,7 @@ def compile_card(c, anyc):
                     c["name"].split(" the ")[0] if "Legendary" in (face.get("type_line") or c.get("type_line", "")) and "," not in c["name"] else ""])   # "Thrakkus the Butcher" -> "Thrakkus"
     k.raw = c
     k.life_per_mv = bool(re.search(r"lose life equal to (?:its|that card's) mana value", text.lower()))
+    read_life_costs(k, text.lower())
     saved = dict(_CTX); _CTX.update(raw=c, text=text)
     abil, done, missed, vac = [], 0, 0, 0
     for L in modal_lines([l.strip() for l in text.split("\n")]):
@@ -1656,6 +1687,7 @@ def dsl(s):
     if t == "mill": return [("mill", int(w[1]))]
     if t in ("face", "face_each"): return [("face", int(w[1]), "each" if t == "face_each" else "one")]
     if t == "life": return [("life", int(w[1]))]
+    if t in ("sylvan", "bob"): return [(t,)]
     if t == "pump": return [("pump", w[3] if len(w) > 3 else "self", int(w[1]), int(w[2]), frozenset(x.replace("_", " ") for x in w[4:]))]
     if t == "pump_team":                   # 'pump_team 1 1 trample' : creatures you control get +1/+1 and gain trample EOT
         f = parse_filter("creature"); f["types"] = {"Creature"}
@@ -1758,6 +1790,7 @@ class Game:
         self.attr = Counter(); self.first = {}; self.cmd_first = {}; self.rebound = []
         self.exile, self.unearthed = [], []
         self.recur = 0; self.cycled = 0; self.rattr = Counter(); self.tut = Counter(); self.life = START_LIFE
+        self.died = 0; self.life_paid = Counter()   # turn your own payments killed you; life paid by kind
         self.events = {}; self.open_pool = []; self.dis = []
         self.ctr_now, self.ctr_held = [], []   # counters live this turn / held for your commander or key cards
         self.stax = []                          # live tax/lock effects: {"kind", "start", "until", "on"}
@@ -1789,7 +1822,7 @@ class Game:
         g.lands = [mp[id(p)] for p in self.lands]; g.perms = [mp[id(p)] for p in self.perms]
         g.hand, g.lib, g.gy, g.cmd, g.rebound = self.hand[:], self.lib[:], self.gy[:], self.cmd[:], self.rebound[:]
         g.exile, g.unearthed = self.exile[:], [mp[id(p)] for p in self.unearthed if id(p) in mp]
-        g.rattr = Counter(); g.tut = Counter()
+        g.rattr = Counter(); g.tut = Counter(); g.life_paid = Counter()
         g.cmd_casts = Counter(self.cmd_casts); g.first = dict(self.first); g.cmd_first = dict(self.cmd_first)
         g.attr = Counter(); g.pool = None; g.convs = []; g._st = None
         g.rng = self.sim.dry_rng; g.log = None
@@ -1895,14 +1928,20 @@ class Game:
             eff = u[0] | u[1] if (u[1] and restr_ok(u[2], k, sim)) else u[0]
             if not eff: continue
             if sa: eff = eff | anyc
-            src = u[4]                       # tap would-be attackers last (lands and rocks first)
-            out.append((i, eff, u[3], 1 if isinstance(src, Perm) and "Creature" in src.k.types and not src.k.is_land else 0))
+            src = u[4]                       # tap would-be attackers last (lands and rocks first); painful sources after painless
+            hurt = isinstance(src, Perm) and src.k.pain and not src.tapped
+            if hurt and self.life - src.k.pain <= 0: continue
+            out.append((i, eff, u[3], (2 if isinstance(src, Perm) and "Creature" in src.k.types and not src.k.is_land else 0)
+                        + (1 if hurt and not src.k.pain_col else 0)))
         return out
 
-    def use_unit(self, i, pool=None):
+    def use_unit(self, i, pool=None, colored=False):
         pool = self.pool if pool is None else pool
         u = pool[i]; u[5] = True
         if u[4] is not None:
+            src = u[4]
+            if isinstance(src, Perm) and src.k.pain and not src.tapped and (colored or not src.k.pain_col) and pool is self.pool:
+                self.lose_life(src.k.pain, "mana")
             u[4].tapped = True
             if u[4].k.sac_mana and u[4] in self.perms:
                 self.leave(u[4], "is sacrificed for mana", quiet=True, sac=True)
@@ -1912,7 +1951,7 @@ class Game:
         if sel is None:
             return self.pay_conv(k, gen, pips, commit) if self.convs else False
         if commit:
-            for i in sel: self.use_unit(i)
+            for n, i in enumerate(sel): self.use_unit(i, colored=n < len(pips))
         return True
 
     def pay_conv(self, k, gen, pips, commit):
@@ -1963,7 +2002,9 @@ class Game:
             gen, pips = (k.gen, k.pips) if g["gen"] is None else (g["gen"], g["pips"])
             return [(max(0, gen - red) + tax, pips)]
         xm = 2 if k.x else 0                          # X spells wait for X >= 2
-        opts = [(max(0, k.gen - red) + tax + xm, k.pips)]
+        if k.addlife and self.life - k.addlife < LIFE_FLOOR: return []
+        base = k.pips if not k.ppips or self.life - k.addlife - k.life >= LIFE_FLOOR else k.pips + k.ppips   # Phyrexian: life above the floor, else mana
+        opts = [(max(0, k.gen - red) + tax + xm, base)]
         for f, (ag, ap, _, _) in st.alts:
             if spell_ok(k, f): opts.append((max(0, ag - red) + tax, ap))
         if any(spell_ok(k, f) and (zone == "hand" or (not hand_only and zone == "cmd")) for f, hand_only in st.free):
@@ -1987,6 +2028,8 @@ class Game:
         for gen, pips in self.options(k, zone):
             if self.pay(k, gen, pips):
                 if zone == "gy": self.gy_extra_pay(k)
+                if k.ppips and pips is k.pips: self.lose_life(k.life, "phyrexian")   # the life option (see options)
+                self.lose_life(k.addlife, "spell")
                 x = 0
                 if k.x:
                     rest = [x_[0] for x_ in self.cands(k) if not x_[2]]
@@ -2068,10 +2111,12 @@ class Game:
         if r[0] == "slow": return len(self.lands) < 2
         if r[0] == "check": return not (self.any_lands() or any(p.k.land_types & r[1] for p in self.lands))
         if r[0] == "reveal": return not any(c.is_land and c.land_types & r[1] for c in self.hand)
+        if r[0] == "shock": return self.life - r[1] < LIFE_FLOOR      # pay for untapped while above the floor
         return True
 
     def land_enters(self, k, force_tapped=False):
         p = Perm(k, tapped=force_tapped or self.etapped(k))
+        if k.etap and k.etap[0] == "shock" and not p.tapped: self.lose_life(k.etap[1], "shockland")
         self.lands.append(p)
         if k.statics: self._st = None
         if self.pool is not None and not p.tapped: self.add_units(p); self.eager_convs()
@@ -2084,7 +2129,8 @@ class Game:
         if k.fetch:
             filt, tapped = k.fetch
             targets = [c for c in self.lib if land_ok(c, filt)]
-            if targets:
+            if targets and self.life - k.fetch_life > 0:
+                if k.fetch_life: self.lose_life(k.fetch_life, "fetchland")
                 if self.pool is not None:
                     for u in self.pool:
                         if u[4] is p: u[5] = True
@@ -2249,7 +2295,7 @@ class Game:
         if not self.pay(None, ab["gen"], ab["pips"]):
             for u in held: u[5] = False
             return False
-        self.life -= ab.get("life", 0)
+        self.lose_life(ab.get("life", 0), "ability")
         if ab["tap"]:
             p.tapped = True
             for u in self.pool:
@@ -2366,6 +2412,13 @@ class Game:
             ab = next((a for a in self.acts_of(q) if a["tap"] and any(e[0] == "face" for e in a["fx"])), None)
             if ab: r += (ab["gen"] + len(ab["pips"])) * turns
         return r
+
+    def lose_life(self, n, why):
+        """Life the deck costs itself (costs, pain, its own drains). At 0 you lose; the game ends there."""
+        if n <= 0: return
+        self.life -= n; self.life_paid[why] += n
+        if self.life <= 0 and not self.died and not self.won:
+            self.died = self.turn; self.note(f"  you die to your own life payments on T{self.turn} ({why})")
 
     def gain_life(self, n):
         """You gain n life: counted for 'if you gained life this turn', and 'whenever you gain life' triggers fire."""
@@ -2578,7 +2631,7 @@ class Game:
                 if ab.get("life") and self.life - ab["life"] < LIFE_FLOOR: continue
                 if eot and sum(1 for u in self.pool if not u[5]) - ab["gen"] - len(ab["pips"]) < self.reserve() + self.engine_reserve(self.turns_left): continue
                 if not self.pay(None, ab["gen"], ab["pips"]): continue
-                self.life -= ab.get("life", 0)
+                self.lose_life(ab.get("life", 0), "cycling")
                 self.hand.remove(card); self.gy.append(card); self.gain(-1, card.name)
                 self.note(f"  {ab['label']} {card.name}")
                 if ab["kind"] != "transmute": self.cycled += 1
@@ -2602,6 +2655,18 @@ class Game:
                 n = e[1] if isinstance(e[1], int) else max(size, OPP_HAND)
                 self.hand = []; self.draw(n)                       # count only the net gain
                 self.gain(max(0, n - size), name)
+            elif t == "bob":
+                if self.dry or not self.lib: continue
+                self.draw(1, name); self.lose_life(self.hand[-1].mv, "trigger")
+            elif t == "sylvan":
+                if self.dry or not self.lib: continue
+                n0 = len(self.hand); self.draw(2); self.drawn -= len(self.hand) - n0
+                new = sorted(self.hand[n0:], key=self.value)
+                keep = 1 if self.life - 4 >= LIFE_FLOOR else 0
+                back = new[:len(new) - keep]
+                for c in back: self.hand.remove(c)
+                self.lib += back                                               # the best of the rest ends on top
+                if keep: self.lose_life(4, "trigger"); self.gain(keep, name)
             elif t in ("scry", "surveil"):
                 n = self.val(e[1], p, x)
                 if self.dry or n <= 0: continue
@@ -2671,7 +2736,7 @@ class Game:
                     if dest == "bf": pick = max(cands, key=lambda c: (c.mv, c.power, self.value(c)))
                     else: pick = max(cands, key=self.value)
                     self.gy.remove(pick); self.recurred(name)
-                    if k.life_per_mv: self.life -= pick.mv
+                    if k.life_per_mv: self.lose_life(pick.mv, "spell")
                     if dest == "bf":
                         if pick.is_land: self.land_enters(pick)
                         elif pick.types & PERMANENT: self.enter(pick)
@@ -2753,13 +2818,13 @@ class Game:
                     tg = [self.ctx_opp if self.ctx_opp in self.alive() else self.focus()]
                 else: tg = self.alive()
                 for i in tg: self.damage_player(i, n, name)
-                if e[2] == "all": self.life -= n
+                if e[2] == "all": self.lose_life(n, "drain")
                 self.note(f"    {name}: {n} to {'each opponent' if len(tg) > 1 else f'opponent {tg[0] + 1}'}")
                 if dmg: self.dealt(p, n * (len(tg) + (e[2] == "all")))     # one damage event: lifelink, Spirit Loop
                 self.check_deaths("noncombat")
             elif t == "life":
                 if e[1] > 0: self.gain_life(e[1])
-                else: self.life += e[1]
+                else: self.lose_life(-e[1], "spell")
             elif t == "pump":
                 who = e[1]
                 if who == "self": qs = [p]
@@ -3589,7 +3654,7 @@ class Game:
                 (f"{i + 1}: dead T{o['dead']} ({o['how']})" if o["dead"] else f"{i + 1}: {o['life']} life"
                  + (f", {o['poison']} poison" if o["poison"] else "")
                  + "".join(f", {v} from {c}" for c, v in o["cmd"].items() if v)) for i, o in enumerate(self.opps)))
-            if self.won:                                   # the table is dead: the game ends; later turns repeat this one
+            if self.won or self.died:                      # the table (or you) is dead: the game ends; later turns repeat this one
                 for t2 in range(t + 1, turns + 1):
                     for m in rec: rec[m][t2].append(rec[m][t][-1])
                 break
@@ -3751,11 +3816,12 @@ class Sim:
         if g.hits:
             h, before = g.hits[0]
             rebuild = next((u - h for u in range(h + 1, turns + 1) if bt[u] >= before), -1)   # -1: not by the horizon
-        last = g.won or turns                     # a game that killed the table stops there: no dead turns after
+        last = g.won or g.died or turns                     # a game that killed the table stops there: no dead turns after
         deaths = sorted(o["dead"] for o in g.opps if o["dead"])
         g.final = {"cmd_out": rec["cmd_out"][turns][-1], "cmd_turns": sum(rec["cmd_out"][t][-1] for t in range(1, turns + 1)), "casts": g.casts, "spent": g.spent, "extra": g.extra,
                    "board": g.board_n(), "recur": g.recur, "dead": sum(1 for t in range(1, last + 1) if ct[t] == ct[t - 1]),
                    "dmg": g.dmg, "kills": len(deaths), "won": g.won or None, "killt": g.won or turns + 1, "deaths": deaths,
+                   "died": g.died or None, "life_paid": dict(g.life_paid), "life": g.life,
                    "how": [o["how"] for o in g.opps if o["dead"]],
                    "rebuild": rebuild, "dis": list(g.dis), "cleared": g.cleared, "resolved": g.casts - g.ctrd,
                    "first": {gi: g.first.get(gi) for gi in range(len(self.groups))}}
@@ -3856,6 +3922,12 @@ def summary(res, groups):
     out["trigger_sources"] = {f"{name} ({kind})": round(v / n, 2) for (name, kind), v in res["trigs"].most_common(12) if v / n >= 0.05}
     out["lost_in_combat"] = round(res["lost"], 3); out["attack_turns"] = round(res["atk_turns"], 2)
     out["extra_combats"] = round(res["xcombats"], 2)
+    paid = Counter()
+    for f in F: paid.update(f.get("life_paid") or {})
+    died = sorted(f["died"] for f in F if f.get("died"))
+    out["self_life"] = {"paid_avg": round(sum(paid.values()) / n, 2), "paid_by": {k: round(v / n, 2) for k, v in paid.most_common()},
+                        "died_share": round(len(died) / n, 4), "died_med": q(died, .5) if died else None,
+                        "end_p10": q(sorted(f.get("life", START_LIFE) for f in F), .1)}
     return out
 
 def print_report(label, sm, meta, groups, show_header=True):
@@ -3908,14 +3980,19 @@ def print_combat(label, sm, T):
     def trio(t, m): d = tt[t][m]; return f"{d['p10']}/{d['med']}/{d['p90']}"
     print(f"\n## {label}: combat and damage ({OPP_N} opponents at {START_LIFE} life; no blockers yet; opponents never attack; "
           f"cumulative, end of turn)")
-    print(f"{'turn':<5}{'attackers':<11}{'combat dmg':<13}{'all dmg':<13}{'top cmdr dmg':<14}{'poison':<9}{'opps dead':>10}{'your life':>11}")
+    print(f"{'turn':<5}{'attackers':<11}{'combat dmg':<13}{'all dmg':<13}{'top cmdr dmg':<14}{'poison':<9}{'opps dead':>10}{'your life':>13}")
     for t in range(1, T + 1):
         print(f"T{t:<4}{trio(t, 'atk'):<11}{trio(t, 'cdmg'):<13}{trio(t, 'dmg'):<13}{trio(t, 'cmdmax'):<14}{trio(t, 'poison'):<9}"
-              f"{tt[t]['kills']['mean']:>10.2f}{tt[t]['life']['med']:>11}")
+              f"{tt[t]['kills']['mean']:>10.2f}{trio(t, 'life'):>13}")
     kb = sm["kill_by_turn"]
     show = [t for t in range(3, T + 1)]
     for lab, name in (("first", "first opponent dead"), ("table", "all opponents dead")):
         print(f"{name}: " + " | ".join(f"<=T{t} {pct(kb[lab][t]).strip()}" for t in show))
+    sl = sm.get("self_life")
+    if sl and sl["paid_avg"]:
+        print(f"life you paid yourself (avg per game): {sl['paid_avg']:.2f} = " + " | ".join(f"{k} {v:.2f}" for k, v in sl["paid_by"].items())
+              + f"; life at the end P10 {sl['end_p10']}; floor {LIFE_FLOOR} for optional payments"
+              + (f"; you died to your own payments in {pct(sl['died_share']).strip()} of games (median T{sl['died_med']})" if sl["died_share"] else ""))
     tk = sm["table_kill"]
     print(f"table killed in {pct(tk['share']).strip()} of games by T{T}" +
           (f" (P10 T{tk['p10']} / median T{tk['med']} / P90 T{tk['p90']} of those)" if tk["med"] else "")

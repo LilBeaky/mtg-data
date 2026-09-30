@@ -628,6 +628,75 @@ def _():
     G.leave(tokens(G, "Food")[0], "is sacrificed", sac=True)
     return len(tokens(G, "Rat")) == 1 and FK["Ashnod's Altar"].status == "blank" and FK["Food Chain"].status == "blank"
 
+# ---- life you pay yourself (docs/GOLDFISH.md "Life")
+LNAMES = ["Kenrith, the Returned King", "Llanowar Wastes", "City of Brass", "Ancient Tomb", "Mana Confluence", "Horizon Canopy",
+          "Talisman of Dominance", "Polluted Delta", "Watery Grave", "Island", "Swamp", "Gitaxian Probe", "Dark Confidant",
+          "Sylvan Library", "Birthing Pod", "Snuff Out", "Night's Whisper", "Phyrexian Arena", "Wastes"]
+LRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(LNAMES)}
+LK = {n: g.compile_card(LRAW[n], g.ALL5) for n in LNAMES}
+_OV = g.load_overrides()
+for _n in LK:
+    if g.mtg.norm(_n) in _OV: g.apply_override(LK[_n], _OV[g.mtg.norm(_n)], g.ALL5)
+KEN = "Kenrith, the Returned King"
+
+def lgame(lands=(), perms=(), hand=(), lib=("Wastes",) * 10, life=40):
+    args = argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False)
+    sim = g.Sim([n for n in LNAMES if n != KEN], [KEN], args, [], LK, g.ALL5)
+    G = g.Game(sim, [LK[n] for n in hand], [LK[n] for n in lib], random.Random(1))
+    G.turn = 3; G.phase = 3; G.turns_left = g.OPP_N; G.life = life
+    G.lands = [g.Perm(LK[n]) for n in lands]; G.perms = [g.Perm(LK[n]) for n in perms]; G._st = None
+    return G
+
+@check("Pain reads: painland colored only, City of Brass / Ancient Tomb / Confluence / Horizon always, fetch 1, shock 2")
+def _():
+    k = LK
+    return (k["Llanowar Wastes"].pain, k["Llanowar Wastes"].pain_col) == (1, True) and (k["City of Brass"].pain, k["City of Brass"].pain_col) == (1, False) \
+        and k["City of Brass"].status != "blank" and not any("becomes tapped" in n for n in k["City of Brass"].notes) \
+        and k["Ancient Tomb"].pain == 2 and k["Mana Confluence"].pain == 1 and k["Horizon Canopy"].pain == 1 \
+        and (k["Talisman of Dominance"].pain, k["Talisman of Dominance"].pain_col) == (1, True) \
+        and k["Polluted Delta"].fetch_life == 1 and k["Watery Grave"].etap == ("shock", 2)
+@check("Painland: generic from {C} is free, a colored pip costs 1")
+def _():
+    G = lgame(lands=["Llanowar Wastes"]); G.build_pool(); G.pay(None, 1, [])
+    H = lgame(lands=["Llanowar Wastes"]); H.build_pool(); H.pay(None, 0, [frozenset("B")])
+    return G.life == 40 and H.life == 39 and H.life_paid["mana"] == 1
+@check("Painless sources are tapped before painful ones; Ancient Tomb costs 2 once per tap")
+def _():
+    G = lgame(lands=["City of Brass", "Island"]); G.build_pool(); G.pay(None, 1, [])
+    H = lgame(lands=["Ancient Tomb"]); H.build_pool(); H.pay(None, 2, [])
+    return G.life == 40 and H.life == 38
+@check("A painful source that would kill you is never tapped")
+def _():
+    G = lgame(lands=["City of Brass"], life=1); G.build_pool()
+    return not G.pay(None, 1, []) and G.life == 1
+@check("Shockland: pays 2 above the floor, enters tapped at it; fetch pays 1")
+def _():
+    G = lgame(); G.land_enters(LK["Watery Grave"]); H = lgame(life=21); H.land_enters(LK["Watery Grave"])
+    F = lgame(lib=("Island",) * 3); F.land_enters(LK["Polluted Delta"])
+    return G.life == 38 and not G.lands[0].tapped and H.life == 21 and H.lands[0].tapped and F.life == 39 and F.lands[0].k.name == "Island"
+@check("Phyrexian mana: 2 life above the floor, the colored pip at it")
+def _():
+    G = lgame(hand=["Gitaxian Probe"]); G.build_pool(); ok1 = G.try_cast(LK["Gitaxian Probe"], "hand")
+    H = lgame(hand=["Gitaxian Probe"], life=21); H.build_pool(); ok2 = not H.try_cast(LK["Gitaxian Probe"], "hand")
+    J = lgame(hand=["Gitaxian Probe"], lands=["Island"], life=21); J.build_pool(); ok3 = J.try_cast(LK["Gitaxian Probe"], "hand")
+    return ok1 and G.life == 38 and G.life_paid["phyrexian"] == 2 and ok2 and ok3 and J.life == 21
+@check("Birthing Pod's Phyrexian activation cost counts 2 life")
+def _(): return LK["Birthing Pod"].acts and LK["Birthing Pod"].acts[0]["life"] == 2 or LK["Birthing Pod"].status != "modeled"
+@check("Dark Confidant: draws the top card and loses its mana value (Arena, MV 3); Night's Whisper's \"and lose 2 life\" is read")
+def _():
+    G = lgame(perms=["Dark Confidant"], lib=("Wastes", "Phyrexian Arena")); G.fire("upkeep")
+    H = lgame(hand=["Night's Whisper"], lands=["Swamp", "Swamp"]); H.build_pool(); H.try_cast(LK["Night's Whisper"], "hand")
+    return G.life == 37 and G.hand[-1].name == "Phyrexian Arena" and H.life == 38
+@check("Sylvan Library: keeps one extra for 4 life above the floor, none at it")
+def _():
+    G = lgame(perms=["Sylvan Library"], lib=("Wastes",) * 5); G.fire("drawstep")
+    H = lgame(perms=["Sylvan Library"], lib=("Wastes",) * 5, life=23); H.fire("drawstep")
+    return G.life == 36 and len(G.hand) == 1 and len(G.lib) == 4 and H.life == 23 and len(H.hand) == 0 and len(H.lib) == 5
+@check("Dying to your own payments ends the game as a loss")
+def _():
+    G = lgame(perms=["Dark Confidant"], lib=("Wastes", "Phyrexian Arena"), life=3); G.fire("upkeep")
+    return G.died == 3 and G.life <= 0
+
 def main():
     fails = 0
     for name, fn in CHECKS:
