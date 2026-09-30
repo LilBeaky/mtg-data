@@ -1099,7 +1099,8 @@ PNAMES = ["Krenko, Mob Boss", "Goblin Instigator", "Goblin Warchief", "Mountain"
           "Mox Opal", "Sol Ring", "Everflowing Chalice", "Ophiomancer", "Gorehorn Raider", "Garruk's Uprising", "Valakut, the Molten Pinnacle",
           "Helm of the Host", "Kiki-Jiki, Mirror Breaker", "Skyclave Relic", "Second Harvest", "Smothering Tithe",
           "Oko, the Ringleader", "Dwynen's Elite", "Approach of the Second Sun", "Frantic Search", "Mana Vault",
-          "Sensei's Divining Top", "Orcish Bowmasters", "Reclamation Sage", "Guardian Project"]
+          "Sensei's Divining Top", "Orcish Bowmasters", "Reclamation Sage", "Guardian Project", "Caretaker's Talent",
+          "Wizard Class", "Reassembling Skeleton", "Springleaf Drum", "Blazemire Verge"]
 PRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(PNAMES)}
 g.CHOSEN_TYPE = g.chosen_type([PRAW["Krenko, Mob Boss"]], [PRAW[n] for n in ("Goblin Instigator", "Goblin Warchief", "Siege-Gang Commander")])
 PK = {n: g.compile_card(PRAW[n], g.ALL5) for n in PNAMES}
@@ -1231,6 +1232,23 @@ def _():
     G = pgame(); G.turn = 5; G.stax = [{"kind": "taxall", "start": 4, "until": 7, "on": True}]; G.enter(PK["Reclamation Sage"])
     H = pgame(perms=["Guardian Project"]); H.enter(PK["Grizzly Bears"]); H.enter(PK["Grizzly Bears"])
     return not G.stax[0]["on"] and len(H.hand) == 1
+
+@check("Classes (CR 716): Caretaker's Talent's +2/+2 only from level 3; Wizard Class draws 2 as it reaches level 2")
+def _():
+    G = pgame(perms=["Caretaker's Talent", "Grizzly Bears"]); ct = G.perms[0]; bears = G.perms[1]
+    G.make_tokens(PK["Krenko, Mob Boss"].acts[0]["fx"][0], 1); tok = [q for q in G.perms if q.k.token][0]
+    a = G.stats(tok)[:2]
+    G.do([("level", 2)], ct.k, ct); G.do([("level", 3)], ct.k, ct)
+    H = pgame(perms=["Wizard Class"]); H.do(H.perms[0].k.acts[0]["fx"], H.perms[0].k, H.perms[0])
+    return a == (1, 1) and ct.k.level == 3 and G.stats(tok)[:2] == (3, 3) and len(H.hand) == 2 and H.perms[0].k.level == 2
+@check("Reassembling Skeleton comes back from the graveyard with spare mana; Springleaf Drum taps another creature; a Verge's R needs a Swamp or Mountain")
+def _():
+    G = pgame(lands=["Swamp"] * 2); G.gy = [PK["Reassembling Skeleton"]]; G.build_pool(); G.activations()
+    H = pgame(perms=["Springleaf Drum", "Grizzly Bears"]); H.build_pool(); ok = H.pay(None, 0, [frozenset("G")])
+    I = pgame(lands=["Island"]); I.lands.append(g.Perm(PK["Blazemire Verge"])); I._st = None; I.build_pool()
+    J = pgame(lands=["Swamp"]); J.lands.append(g.Perm(PK["Blazemire Verge"])); J._st = None; J.build_pool()
+    red = lambda X: any("R" in u[0] for u in X.pool if u[4] is X.lands[1])
+    return any(q.k.name == "Reassembling Skeleton" for q in G.perms) and ok and H.perms[1].tapped and not red(I) and red(J)
 
 def main():
     fails = 0

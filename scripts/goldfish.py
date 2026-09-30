@@ -1113,6 +1113,7 @@ def pv(v, sign=False):
         return ("-" if v[1] < 0 else "+" if sign else "") + f"{abs(v[1])} per " + " ".join(v[2])
     if isinstance(v, tuple) and v[0] == "power": return "greatest power" + (f" (non-{v[1]})" if len(v) > 1 else "")
     if isinstance(v, tuple) and v[0] == "power_o": return "greatest power among others"
+    if isinstance(v, tuple) and v[0] == "pcount": return "per " + perm_desc(v[1])
     if isinstance(v, tuple): return {"pow": "its power", "objpow": "that creature's power"}.get(v[0], "per " + " ".join(v))
     return str(v)
 
@@ -1176,6 +1177,7 @@ def fx_str(e):
     if t == "untap_n_lands": return f"untap {e[1]} lands"
     if t == "kill_perm": return "remove an " + "/".join(sorted(e[1])) + " stax piece"
     if t == "self_top": return "put ~ on top of the library"
+    if t == "level": return f"level {e[1]}"
     if t == "amass": return f"amass {pv(e[1])}"
     if t == "copy_token":
         src = {"self": "~", "obj": "that creature", "attach": "the equipped/enchanted creature"}.get(e[2]) or \
@@ -1274,6 +1276,9 @@ class Card:
         self.cond_units = []     # mana abilities with 'Activate only if you control ...': [(units, count key, n)]
         self.chapters = {}       # Saga: chapter number -> effects (CR 714); final chapter = max key
         self.granted_ch = set()  # chapters that grant the Saga an ability (Urza's Saga), read as its own
+        self.levels = {}         # Class: level -> (generic, pips, the Card at that level, level-up effects); self.level: this Card's
+        self.level = 1
+        self.gy_acts = []        # 'Return ~ from your graveyard to the battlefield/hand' abilities (Reassembling Skeleton)
         self.kicker = None       # (generic, pips, multikicker?): paid at cast when affordable (Tear Asunder, Everflowing Chalice)
         self.imprint = False     # Chrome Mox: exiles a nonartifact, nonland card from hand; taps for its colors
         self.mox_diamond = False # Mox Diamond: enters only by discarding a land card
@@ -1948,6 +1953,12 @@ def parse_line(k, L, anyc, abil):
     if aw and aw.group(1).lower() in ABILITY_WORDS: L = L[aw.end():]   # 'Metalcraft — {T}: Add ...': a label (CR 207.2c), not Boast/Exhaust
     lo = L.lower()
     m = RX_MANA.match(L)
+    tm_ = re.match(r"^(\{t\}, )?tap an untapped (creature|artifact|legendary creature) you control: add ([^.]+)\.\s*$", L.strip(), re.I)
+    if tm_:                                               # Springleaf Drum, Relic of Legends: another permanent taps for it
+        units, approx = parse_prod(tm_.group(3), anyc)
+        if units and not approx:
+            f = perm_filt("another", tm_.group(2))
+            k.sac_outlets.append((f, [(u, NOC, None, False) for u in units], bool(tm_.group(1)), "tap")); return True
     if m and k.imprint and re.match(r"one mana of any of the exiled card's colors", m.group("prod") or "", re.I):
         return True                                       # Chrome Mox: units per permanent (Perm.imp)
     if m:
@@ -1957,7 +1968,7 @@ def parse_line(k, L, anyc, abil):
             units, approx = parse_prod(m.group("prod"), anyc)
             restr, co = restriction(m.group("rest"))
             if not units or approx or g or p or restr == "unknown" or re.search(r"activate only", m.group("rest").lower()): return False
-            k.sac_outlets.append((fod, [(NOC, u, restr, co) if restr else (u, NOC, None, co) for u in units], tap))
+            k.sac_outlets.append((fod, [(NOC, u, restr, co) if restr else (u, NOC, None, co) for u in units], tap, "sac"))
             return True
         if m.group("vivid"): k.vivid = True; return True
         units, approx = parse_prod(m.group("prod"), anyc)
@@ -1969,6 +1980,9 @@ def parse_line(k, L, anyc, abil):
             pm = re.fullmatch(r"creatures? with power (\d+) or greater", cm.group(2).strip())
             w = cm.group(2).strip()
             key = ("power",) if pm else clean_dyn(w if w.endswith("you control") else w + " you control")
+            if not key and cm.group(1) in ("a", "an"):       # Blazemire Verge: 'a Swamp or a Mountain'
+                f = perm_filt("a", re.sub(r"\b(?:a|an)\b", "", w))
+                key = ("pcount", f) if f else None
             if not key or approx or g or p: return False
             k.cond_units.append(([(u, NOC, restr, co) if not restr else (NOC, u, restr, co) for u in units], key,
                                  int(pm.group(1)) if pm else num(cm.group(1))))
@@ -2030,6 +2044,11 @@ def parse_line(k, L, anyc, abil):
     if re.fullmatch(r"whenever ~ becomes tapped, it deals \d+ damage to you\.?", lo2): return True   # pain (read_life_costs)
     if re.fullmatch(r"if you would draw a card while your library has no cards in it, you win the game instead\.?", lo2):
         k.labman = True; return True
+    m = re.match(r"^((?:\{[^}]+\})+): return ~ from your graveyard to (the battlefield( tapped)?|your hand)\.?$", lo)
+    if m:                                                 # Reassembling Skeleton: activated from the graveyard
+        g_, p_, x_, l_ = parse_cost(m.group(1))
+        if x_ or l_: return False
+        k.gy_acts.append((g_, p_, "bf" if "battlefield" in m.group(2) else "hand", bool(m.group(3)))); return True
     if k.requires == "gy" and "return enchanted creature card to the battlefield" in lo:
         return True                                       # Animate Dead: the recursion is read from its enchant line
     if re.fullmatch(r"~ is the chosen type in addition to its other types\.?", lo2):
@@ -2137,6 +2156,44 @@ def parse_modal(k, item, anyc, abil):
         del k.trig[n0:]; del k.etb[e0:]
     return parse_trigger(k, lo)
 
+def compile_class(c, anyc, text):
+    """CR 716: a Class's level blocks. Level N's Card reads the base lines plus every block up to N; 'When this Class becomes
+    level N, ...' fires as it levels. The base Card gets a sorcery-speed 'level up' act for level 2, and so on."""
+    blocks, cur = {1: []}, 1
+    for L in text.split("\n"):
+        lm = re.fullmatch(r"((?:\{[^}]+\})+): level (\d+)", L.strip().lower())
+        if lm: cur = int(lm.group(2)); blocks[cur] = [("cost", lm.group(1))]; continue
+        blocks[cur].append(L)
+    cards, ups = {}, {}
+    for lv in sorted(blocks):
+        lines = [L for n in sorted(blocks) if n <= lv for L in blocks[n] if not isinstance(L, tuple)]
+        keep = []
+        for L in lines:
+            um = re.match(r"^when (?:this class|~) becomes level (\d+), (.+)$", L.strip(), re.I)
+            if um:
+                if int(um.group(1)) == lv: ups[lv] = um.group(2)
+                continue
+            keep.append(L)
+        cards[lv] = compile_card(dict(c, oracle_text="\n".join(keep), _class_level=lv), anyc)
+    for lv, kk in cards.items():
+        kk.level = lv
+        for n in sorted(blocks):
+            if n > 1:
+                g_, p_, _, _ = parse_cost(blocks[n][0][1])
+                fx = parse_fx(ups[n])[0] if n in ups else []
+                kk.levels[n] = (g_, p_, cards[n], fx)
+        if lv + 1 in blocks:
+            g_, p_, _, _ = parse_cost(blocks[lv + 1][0][1])
+            kk.acts.append({"tap": False, "gen": g_, "pips": p_, "sac": False, "rm": None, "fx": [("level", lv + 1)], "life": 0,
+                            "combat": False, "sorcery": True, "fodder": None})
+    top = cards[max(cards)]                               # the status and notes cover every level's lines
+    cards[1].status, cards[1].notes = top.status, list(dict.fromkeys(top.notes))
+    unread = [f"When ~ becomes level {n}, {t}" for n, t in sorted(ups.items()) if not cards[1].levels.get(n, (0, 0, 0, []))[3]]
+    if unread:                                           # a level-up effect that didn't read: the card is partial
+        cards[1].notes += ["unmodeled: " + u[:72] for u in unread]
+        if cards[1].status == "modeled": cards[1].status = "partial"
+    return cards[1]
+
 def compile_card(c, anyc):
     faces = c.get("card_faces") or []
     face = dict(faces[0]) if faces and c.get("layout") != "normal" else c
@@ -2168,6 +2225,8 @@ def compile_card(c, anyc):
                     c["name"].split(" of ")[0] if "Legendary" in (face.get("type_line") or c.get("type_line", "")) and "," not in c["name"]
                     and " " in c["name"].split(" of ")[0] else ""])   # two words at least: never a bare 'Lord'/'Master'    # "Thrakkus the Butcher" -> "Thrakkus"
     text = chosen_text(text)
+    if "Class" in k.subtypes and "_class_level" not in c and re.search(r"(?m)^(?:\{[^}]+\})+: Level \d+$", text):
+        return compile_class(c, anyc, text)
     k.raw = c
     k.life_per_mv = bool(re.search(r"lose life equal to (?:its|that card's) mana value", text.lower()))
     read_life_costs(k, text.lower())
@@ -2263,7 +2322,7 @@ def compile_card(c, anyc):
     for st in [s for s in k.statics if s[0] == "aura_mana"]:
         u, _ = parse_prod(st[1], anyc)
         k.units += [(x, NOC, None, False) for x in (u or [anyc])]
-    if k.is_land and not k.units and not k.fetch and c.get("produced_mana"):
+    if k.is_land and not k.units and not k.fetch and not k.cond_units and c.get("produced_mana"):
         k.units = [(frozenset(c["produced_mana"]) & (anyc | CLESS) or CLESS, NOC, None, False)]
         k.notes.append("mana read from produced_mana")
     if len(faces) > 1 and c.get("layout") == "modal_dfc" and "Land" in (faces[1].get("type_line") or "") and not k.is_land:
@@ -2725,7 +2784,10 @@ class Game:
             units = k.units * reps
             if k.imprint: units = [(p.imp, NOC, None, False)] if p.imp else []
             for cu, key, n in k.cond_units:                  # the bigger ability when its condition holds (Mox Opal, Fanatic)
-                if len(cu) > len(units) and self.val(key, p, 0) >= n: units = cu
+                if self.val(key, p, 0) < n: continue
+                if len(cu) > len(units): units = cu
+                elif len(cu) == len(units):                  # a same-size alternative adds its colors (Blazemire Verge: B, or R)
+                    units = [(a[0] | b[0], a[1] | b[1], a[2] or b[2], a[3] and b[3]) for a, b in zip(units, cu)]
             for u in units: pool.append([u[0], u[1], u[2], u[3], p, False])
             if k.vivid:
                 for col in self.perm_colors(): pool.append([frozenset(col), NOC, None, False, p, False])
@@ -2764,13 +2826,15 @@ class Game:
         if self.pool is None: return
         outs = [q for q in self.perms + self.lands if q.k.sac_outlets and (outlet is None or q is outlet)]
         for o in outs:
-            for fod, units, taps in o.k.sac_outlets:
+            for fod, units, taps, how in o.k.sac_outlets:
                 if taps and (o.tapped or not self.usable(o) and not o.k.is_land): continue
                 for q in ([fodder] if fodder is not None else self.perms):
-                    if q is o or q not in self.perms or not self.pmatch(fod, q, o) or self.fodder_cost(q) >= self.FODDER_MAX: continue
+                    if q is o or q not in self.perms or not self.pmatch(fod, q, o): continue
+                    if how == "sac" and self.fodder_cost(q) >= self.FODDER_MAX: continue
+                    if how == "tap" and (q.tapped or any(u[4] is q for u in self.pool if not u[5])): continue   # not a mana source already
                     grp = (id(o), id(fod), id(q))
                     if any(len(u) > 6 and u[6][1] == grp for u in self.pool): continue
-                    for u in units: self.pool.append([u[0], u[1], u[2], u[3], o if taps else None, False, (q, grp, o)])
+                    for u in units: self.pool.append([u[0], u[1], u[2], u[3], o if taps else None, False, (q, grp, o, how)])
 
     def untap_units(self, p):
         """'{T}: Untap target land' (Arbor Elf, Voyaging Satyr): p taps to make the best matching land's mana again."""
@@ -2813,13 +2877,14 @@ class Game:
         pool = self.pool if pool is None else pool
         u = pool[i]; u[5] = True
         if len(u) > 6 and pool is self.pool:                 # fodder mana: the whole group is produced, the fodder goes
-            q, grp, o = u[6]
+            q, grp, o, how = u[6]
             for v in pool:
                 if len(v) > 6 and v[6][1] != grp and (v[6][0] is q or (u[4] is not None and v[6][2] is o)): v[5] = True
                 if u[4] is not None and v[4] is o and len(v) <= 6: v[5] = True                  # the outlet's own {T} mana
             for v in pool:
-                if len(v) > 6 and v[6][1] == grp: v[6] = (None, grp, o)                       # siblings stay, already made
-            if q is not None and q in self.perms:
+                if len(v) > 6 and v[6][1] == grp: v[6] = (None, grp, o, how)                  # siblings stay, already made
+            if q is not None and q in self.perms and how == "tap": q.tapped = True               # Springleaf Drum: it taps instead
+            elif q is not None and q in self.perms:
                 self.note(f"    {o.k.name}: sacrifice {q.k.name} for mana"); self.leave(q, "is sacrificed for mana", quiet=True, sac=True)
         elif u[4] is not None and u[4].k.sac_outlets and pool is self.pool:
             for v in pool:
@@ -3180,6 +3245,13 @@ class Game:
                     used[key] += 1; did = True
             if not did or not self.alive(): break
         if instant: return
+        for c in [c for c in self.gy if c.gy_acts]:            # Reassembling Skeleton: back from the graveyard with spare mana
+            for g_, p_, dest, tapped in c.gy_acts:
+                if c in self.gy and self.pay(None, g_, p_):
+                    self.gy.remove(c); self.recurred(c.name + " (graveyard ability)")
+                    if dest == "hand": self.hand.append(c); self.gain(1, c.name)
+                    else: self.enter(c, tapped=tapped)
+                    break
         for p in list(self.perms):
             k = p.k
             if k.pw and p in self.perms:
@@ -3205,6 +3277,7 @@ class Game:
         old = bool(kinds & self.CARD_FLOW) or ("ctr" in kinds and "draw" in kinds) or ("prolif" in kinds and prolif_useful) \
             or any(e[0] == "recur" and any(self.sim.tmatch(e[1], c) for c in self.gy) for e in fx)
         if instant: ok = face or life
+        elif "level" in kinds: ok = True                      # a Class levels up whenever the mana is there (sorcery speed)
         else: ok = old or face or life or "token" in kinds or ("copy_token" in kinds and self.copy_worth(fx, p)) \
             or ("kill_perm" in kinds and any(self.live(s_) and s_["on"] and PERSIST[s_["kind"]] in e[1] for e in flat(fx) if e[0] == "kill_perm"
                                                for s_ in self.stax)) or ("kill_blk" in kinds and not ab["sac"] and self.blk_target_exists(fx)) \
@@ -3513,6 +3586,7 @@ class Game:
         if key == "atkpow": return sum(max(0, self.stats(q)[0]) for q in self.attackers if q in self.perms)
         if key == "opps": return len(self.alive())
         if key == "converge": return self.converge
+        if key == "pcount": return sum(1 for q in self.perms + self.lands if self.pmatch(v[1], q, None))
         if key == "kicks": return self.kicked if self.casting is not None and (p is None or (isinstance(p, Perm) and p.k is self.casting)) else 0
         if key == "life": return self.life
         if key == "pow": return self.stats(p)[0] if isinstance(p, Perm) and p.k.types & {"Creature"} else 0
@@ -4002,6 +4076,11 @@ class Game:
                     q = self.enter(tk)
                     if q is not None and fate: self.eot.append((q, fate))
                 self.note(f"    {name}: {n} token cop{'y' if n == 1 else 'ies'} of {src.k.name}")
+            elif t == "level":                                 # a Class gains its next level (the Card switches; level-up fx fire)
+                if isinstance(p, Perm) and p in self.perms and p.k.level == e[1] - 1 and e[1] in p.k.levels:
+                    nk = p.k.levels[e[1]][2]; fx_up = p.k.levels[e[1]][3]
+                    p.k = nk; self._st = None; self.note(f"    {name} is level {e[1]}")
+                    if fx_up: self.do(fx_up, nk, p, x)
             elif t == "cascade":                                # exile until a nonland card with lesser MV; cast it free
                 if self.dry: continue
                 for _ in range(e[2]):
@@ -5864,16 +5943,20 @@ def explain(cache, names, commanders):
             if k.fetch: bits.append("fetch" + (" (tapped)" if k.fetch[1] else ""))
             if k.bounce: bits.append("bounce")
             if k.convs: bits.append(f"filter {k.convs[0][0]}->{len(k.convs[0][1])}")
-            for fod, su, tp in k.sac_outlets:
-                bits.append(f"sac outlet: {'T, ' if tp else ''}sacrifice {perm_desc(fod)} -> " + "+".join("".join(sorted(u[0] | u[1])) or "-" for u in su))
+            for fod, su, tp, how in k.sac_outlets:
+                bits.append(f"{'sac outlet' if how == 'sac' else 'mana'}: {'T, ' if tp else ''}{'sacrifice' if how == 'sac' else 'tap'} {perm_desc(fod)} -> "
+                            + "+".join("".join(sorted(u[0] | u[1])) or "-" for u in su))
+            for cu, key, n in k.cond_units:
+                bits.append("mana " + "+".join("".join(sorted(u[0] | u[1])) or "-" for u in cu) + f" if {n}+ {pv(key)}")
         else:
             counts[k.status] += 1
             bits = []
             if k.units: bits.append("mana " + "+".join("".join(sorted(u[0] | u[1])) or "-" for u in k.units)
                                     + (" (restricted)" if any(u[2] for u in k.units) else "")
                                     + (" (colored only)" if any(u[3] for u in k.units) else ""))
-            for fod, su, tp in k.sac_outlets:
-                bits.append(f"sac outlet: {'T, ' if tp else ''}sacrifice {perm_desc(fod)} -> " + "+".join("".join(sorted(u[0] | u[1])) or "-" for u in su))
+            for fod, su, tp, how in k.sac_outlets:
+                bits.append(f"{'sac outlet' if how == 'sac' else 'mana'}: {'T, ' if tp else ''}{'sacrifice' if how == 'sac' else 'tap'} {perm_desc(fod)} -> "
+                            + "+".join("".join(sorted(u[0] | u[1])) or "-" for u in su))
             if k.imprint: bits.append("imprint: mana of the exiled card's colors")
             if k.mox_diamond: bits.append("enters by discarding a land")
             for cu, key, n in k.cond_units:
@@ -5885,6 +5968,8 @@ def explain(cache, names, commanders):
         if k.etb: bits.append("ETB " + ", ".join(fx_str(e) for e in k.etb) + (" (sacrificed)" if k.sac_etb else ""))
         if k.spell: bits.append(", ".join(fx_str(e) for e in k.spell))
         if k.castfx: bits.append("when cast: " + ", ".join(fx_str(e) for e in k.castfx))
+        if k.levels: bits.append("class: " + ", ".join(f"level {n} for {g_ + len(p_)}" for n, (g_, p_, _, _) in sorted(k.levels.items())))
+        if k.gy_acts: bits.append("from the graveyard: " + "; ".join(f"pay {g_ + len(p_)}: return to {d}" + (" tapped" if t_ else "") for g_, p_, d, t_ in k.gy_acts))
         if k.kicker: bits.append(("multikicker " if k.kicker[2] else "kicker ") + str(k.kicker[0] + len(k.kicker[1])))
         if k.chapters: bits.append("saga " + "; ".join(f"{ROMAN[c - 1]}: " + (", ".join(fx_str(e) for e in fx) or ("(ability)" if c in k.granted_ch else "(unread)"))
                                                        for c, fx in sorted(k.chapters.items())) + f" (sacrificed after {ROMAN[max(k.chapters) - 1]})")
