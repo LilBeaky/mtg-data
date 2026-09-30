@@ -1030,9 +1030,9 @@ def _():
 @check("Keywords aren't silently read: Brain Freeze notes storm; Kenrith's Transformation's 'Enchanted creature' line is unmodeled")
 def _():
     return any("storm" in n for n in XK["Brain Freeze"].notes) and XK["Kenrith's Transformation"].status == "partial"
-@check("Leftover detector: Frantic Search's untap and Stargaze's dig are unread parts; Swords' 'its controller gains' isn't")
+@check("Leftover detector: Stargaze's dig is an unread part; Swords' 'its controller gains' isn't; Frantic Search's untap is read now")
 def _():
-    return XK["Frantic Search"].status == "partial" and XK["Stargaze"].status == "partial" and XK["Swords to Plowshares"].status == "held" \
+    return XK["Frantic Search"].status == "modeled" and XK["Stargaze"].status == "partial" and XK["Swords to Plowshares"].status == "held" \
         and not any(n.startswith("unread part") for n in XK["Swords to Plowshares"].notes)
 @check("Gray Merchant: devotion to black counts its own pips and Liliana's Specter's (4); you gain the 12 life lost")
 def _():
@@ -1098,7 +1098,8 @@ PNAMES = ["Krenko, Mob Boss", "Goblin Instigator", "Goblin Warchief", "Mountain"
           "Windreader Sphinx", "Serra Angel", "Craw Wurm", "Trespasser's Curse", "History of Benalia", "Urza's Saga",
           "Mox Opal", "Sol Ring", "Everflowing Chalice", "Ophiomancer", "Gorehorn Raider", "Garruk's Uprising", "Valakut, the Molten Pinnacle",
           "Helm of the Host", "Kiki-Jiki, Mirror Breaker", "Skyclave Relic", "Second Harvest", "Smothering Tithe",
-          "Oko, the Ringleader", "Dwynen's Elite", "Approach of the Second Sun"]
+          "Oko, the Ringleader", "Dwynen's Elite", "Approach of the Second Sun", "Frantic Search", "Mana Vault",
+          "Sensei's Divining Top", "Orcish Bowmasters", "Reclamation Sage", "Guardian Project"]
 PRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(PNAMES)}
 g.CHOSEN_TYPE = g.chosen_type([PRAW["Krenko, Mob Boss"]], [PRAW[n] for n in ("Goblin Instigator", "Goblin Warchief", "Siege-Gang Commander")])
 PK = {n: g.compile_card(PRAW[n], g.ALL5) for n in PNAMES}
@@ -1216,6 +1217,20 @@ def _():
     G = pgame(perms=["Grizzly Bears"]); G.make_tokens(PK["Krenko, Mob Boss"].acts[0]["fx"][0], 2); G.do(PK["Second Harvest"].spell, PK["Second Harvest"])
     H = pgame(); H.enter(PK["Dwynen's Elite"]); I = pgame(perms=["Llanowar Elves"]); I.enter(PK["Dwynen's Elite"])
     return sum(1 for q in G.perms if q.k.token) == 4 and sum(1 for q in H.perms if q.k.token) == 0 and sum(1 for q in I.perms if q.k.token) == 1
+
+@check("Frantic Search untaps 3 lands; Mana Vault pings only while tapped; Top goes back on top; Bowmasters amasses a 1/1 Army")
+def _():
+    G = pgame(lands=["Island"] * 3); G.build_pool(); G.pay(None, 3, []); G.do(PK["Frantic Search"].spell, PK["Frantic Search"])
+    H = pgame(perms=["Mana Vault"]); H.perms[0].tapped = True; H.fire("drawstep"); I = pgame(perms=["Mana Vault"]); I.fire("drawstep")
+    J = pgame(perms=["Sensei's Divining Top"]); J.do(PK["Sensei's Divining Top"].acts[1]["fx"], PK["Sensei's Divining Top"], J.perms[0])
+    K_ = pgame(); K_.enter(PK["Orcish Bowmasters"]); arm = [q for q in K_.perms if "Army" in q.k.subtypes]
+    return sum(1 for q in G.lands if not q.tapped) == 3 and H.life == 39 and I.life == 40 and J.lib[-1].name == "Sensei's Divining Top" \
+        and not J.perms and len(arm) == 1 and K_.stats(arm[0])[:2] == (1, 1)
+@check("Reclamation Sage's ETB removes a live artifact tax piece; Guardian Project draws only for a new name")
+def _():
+    G = pgame(); G.turn = 5; G.stax = [{"kind": "taxall", "start": 4, "until": 7, "on": True}]; G.enter(PK["Reclamation Sage"])
+    H = pgame(perms=["Guardian Project"]); H.enter(PK["Grizzly Bears"]); H.enter(PK["Grizzly Bears"])
+    return not G.stax[0]["on"] and len(H.hand) == 1
 
 def main():
     fails = 0

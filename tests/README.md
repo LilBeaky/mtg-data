@@ -31,6 +31,10 @@ Adding an edge case: add the card to `test_deck.txt` (keep the total at 100 with
 
 `goldfish_units.py` builds exact board states and asserts numbers (Nyxbloom on a Forest = 3 mana; Goreclaw takes exactly 2 off a 4-power creature; an X=2 Nature's Rhythm can't find a 7-drop; tokens never reach the graveyard). No shuffles, no RNG, no pilot choices, so a failure there is a mechanics bug, not noise. Run against the pre-2026-09-29 goldfish.py it fails 26 of 31. Add a check whenever a mechanic is added or a parse bug is fixed.
 
+## Goldfish runtime sweep
+
+`goldfish_sweep.py` compiles every Commander-legal card and runs its parsed effects once in a small live game (it enters or resolves, each trigger, activated and loyalty ability fires, then an upkeep, main phase, end step and combat). It checks no numbers, only that no card's reading crashes the simulator; a parser change that emits an effect the sim can't execute fails here with the card's name. ~35s; smoke.py runs it.
+
 ## Goldfish combat fixture
 
 `goldfish_combat_deck.txt` (Najeela, one card per combat mechanic) pins the combat work of 2026-09-29 through `--explain`, a run, a trace and a `--variant`:

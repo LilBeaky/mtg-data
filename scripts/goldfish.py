@@ -809,7 +809,14 @@ FX = [
                 0, frozenset(), False)),
     (re.compile(r"\badd (?:that much \{(\w)\}|an amount of \{(\w)\} equal to (?:the |that )?(?:amount of )?damage)"),
      lambda m: ("mana_dmg", frozenset((m.group(1) or m.group(2)).upper()))),   # Mark of Sakiko: the damage dealt
-    (re.compile(r"\buntap (?:all|each) lands you control"), lambda m: ("untap_lands",)),     # Bear Umbra, Nature's Will, Sword of Feast and Famine
+    (re.compile(r"\buntap (?:all|each) lands you control"), lambda m: ("untap_lands",)),
+    (re.compile(r"\buntap (?:up to )?(one|two|three|four|five|\d+) (?:target )?lands"), lambda m: ("untap_n_lands", num(m.group(1)))),   # Frantic Search
+    (re.compile(r"\b(?:destroy|exile) (?:up to one )?target (?P<what>artifact or enchantment|enchantment or artifact|artifact|enchantment"
+                r"|artifact, enchantment, or planeswalker|noncreature permanent)(?: an opponent controls| you don't control)?(?![a-z])"),
+     lambda m: ("kill_perm", frozenset(t for t in ("artifact", "enchantment") if t in m.group("what") or "noncreature" in m.group("what")))),
+    (re.compile(r"\b(?:~|it) deals (\d+) damage to you\b"), lambda m: ("life", -int(m.group(1)))),                        # Mana Vault
+    (re.compile(r"\bput ~ on top of (?:its owner's|your) library"), lambda m: ("self_top",)),                               # Sensei's Divining Top
+    (re.compile(r"\bamass (?P<sub>[a-z]+) (?P<n>\d+|x)"), lambda m: ("amass", _xn(m), as_subtype(m.group("sub")) or "Zombie") if _xn(m) else None),   # Orcish Bowmasters     # Bear Umbra, Nature's Will, Sword of Feast and Famine
     (re.compile(r"\badd ((?:\{[^}]+\})+|(?:two|three|four|five|six|seven|eight|nine|ten) \{[^}]+\}|one mana of any color|\w+ mana (?:of any one color|in any combination of colors))"), _fx_mana),
     (re.compile(r"\bproliferate(?:,? then proliferate again| twice)?"),
      lambda m: ("prolif", 2 if ("twice" in m.group(0) or "again" in m.group(0)) else 1)),
@@ -877,6 +884,9 @@ def parse_cond(c):
     c = c.strip().lower()
     if c == "you gained life this turn": return "gained"
     if re.fullmatch(r"(?:~|it|this spell|he|she|they|this creature) was kicked", c): return ("kicked",)
+    if c in ("~ is tapped", "~ is untapped"): return ("self_tapped",) if c.endswith(" tapped") else ("self_untapped",)
+    if re.fullmatch(r"it doesn't have the same name as another creature you control or a creature card in your graveyard", c):
+        return ("unique_name",)                        # Guardian Project
     if c in ("it's your turn", "it is your turn"): return ("your_turn",)
     if c in ("it's your main phase", "it's your precombat main phase", "it's not your turn"): return ("main",) if "main" in c else ("not_your_turn",)
     if re.fullmatch(r"you cast (?:it|~)|(?:it|~|he|she|they) was cast|(?:it|~) was cast from your hand|you cast it from your hand", c):
@@ -919,6 +929,8 @@ def cond_str(c):
     if k == "life": return f"if you have {c[1]}+ life"
     if k == "cast_self": return "if it was cast"
     if k == "kicked": return "if kicked"
+    if k in ("self_tapped", "self_untapped"): return "if ~ is " + k[5:]
+    if k == "unique_name": return "if its name is new"
     if k in ("your_turn", "not_your_turn", "main"): return {"your_turn": "on your turn", "not_your_turn": "on an opponent's turn", "main": "in your main phase"}[k]
     if k == "hand_le": return f"if {c[1]} or fewer cards in hand"
     if k == "hand_ge": return f"if {c[1]}+ cards in hand"
@@ -1161,6 +1173,10 @@ def fx_str(e):
     if t == "unblock": return f"{ {'self': '~', 'obj': 'that creature'}.get(e[1], 'target creature') } can't be blocked EOT"
     if t == "reveal_lands": return f"reveal {e[1]}, lands onto the battlefield tapped"
     if t == "bounce_self": return "return ~ to hand"
+    if t == "untap_n_lands": return f"untap {e[1]} lands"
+    if t == "kill_perm": return "remove an " + "/".join(sorted(e[1])) + " stax piece"
+    if t == "self_top": return "put ~ on top of the library"
+    if t == "amass": return f"amass {pv(e[1])}"
     if t == "copy_token":
         src = {"self": "~", "obj": "that creature", "attach": "the equipped/enchanted creature"}.get(e[2]) or \
             ("each " if e[2] == "each" else "your best ") + perm_desc(e[3])
@@ -1625,6 +1641,7 @@ def combat_trigger(k, lo):
     """Attack, combat damage, beginning of combat and dies triggers -> k.trig. None = not one of these.
     Events: attack_self / attack (a creature you control attacks; filter) / attack_any (you attack, once per combat) /
     cdmg_self / cdmg (filter) / cdmg_any (once per player dealt damage) / combat_begin / dies_self / dies (filter)."""
+    if re.search(r"^whenever (?:a|an|another) [^,]+ enters or attacks,", lo): return None     # Kindred Discovery: the enter reader takes both
     once = bool(re.search(r"for the first time each turn|if it's the first combat phase of the turn|this ability triggers only once each turn", lo))
     lo = re.sub(r" for the first time each turn|,? if it's the first combat phase of the turn", "", lo)
     def add(ev, f, fxt):
@@ -1639,7 +1656,7 @@ def combat_trigger(k, lo):
     if m: return add("attack_att", None, m.group(1))
     m = re.match(r"^whenever (?:equipped|enchanted) creature deals combat damage to (?:a player|an opponent),\s*(.+)$", lo)
     if m: return add("cdmg_att", None, m.group(1))
-    m = re.match(r"^whenever ~ attacks(?: or blocks)?(?: alone)?,\s*(.+)$", lo) or \
+    m = re.match(r"^whenever ~ attacks(?: or blocks| or becomes the target of a spell(?: or ability)?(?: an opponent controls)?)?(?: alone)?,\s*(.+)$", lo) or \
         re.match(r"^whenever ~ and at least \w+ other creatures? attack,\s*(.+)$", lo)
     if m: return add("attack_self", None, m.group(1))
     m = re.match(r"^whenever ~ deals combat damage to (?:a player|an opponent)(?: or (?:a )?(?:planeswalker|battle))?,\s*(.+)$", lo) or \
@@ -1694,6 +1711,12 @@ def combat_trigger(k, lo):
 def parse_trigger(k, lo):
     """'when ~ enters, ...' / 'whenever you cast ...' / 'at the beginning of ...' -> k fields.
     Trigger tuple: (event, filter, effects, once per turn, tax, also on opponents' turns)."""
+    m = re.match(r"^when ~ enters and whenever ([^,]+?),\s*(.+)$", lo)
+    if m:                                               # Orcish Bowmasters: the enter half; the other half only if it reads
+        fx, _ = parse_fx(m.group(2)); k.etb += fx
+        if fx and not parse_trigger(k, f"whenever {m.group(1)}, {m.group(2)}") and _CTX.get("left") is not None:
+            _CTX["left"].append("whenever " + m.group(1)[:70])            # the line is partial
+        return bool(fx)
     m = re.match(r"^when(?:ever)? ~ enters(?: the battlefield)?( or attacks| or dies| or is put into a graveyard from the battlefield)?,\s*(.+)$", lo)
     if m:
         fx, _ = parse_fx(m.group(2)); k.etb += fx
@@ -1754,7 +1777,7 @@ def parse_trigger(k, lo):
             f = f or parse_filter("")
             f["targets"] = "self" if m.group("tg") == "~" else "modified" if "modified" in m.group("tg") else "creature"
         k.trig.append(("cast", f, fx, "first" in (m.group(1) or ""), tax, False)); return bool(fx)
-    m = re.match(r"^when(?:ever)? (?P<self>~ or )?(a|an|another|one or more) (?P<subj>.+?) enters?(?: the battlefield)?(?: under your control)?(?: this turn)?,\s*(?P<fx>.+)$", lo)
+    m = re.match(r"^when(?:ever)? (?P<self>~ or )?(a|an|another|one or more) (?P<subj>.+?) enters?(?: the battlefield)?(?P<oratk> or attacks)?(?: under your control)?(?: this turn)?,\s*(?P<fx>.+)$", lo)
     if m:
         subj = m.group("subj")
         if re.match(r"lands? an opponent controls$", subj):               # ~opp: each opponent drops a land a turn
@@ -1772,7 +1795,9 @@ def parse_trigger(k, lo):
         fx, tax = parse_fx(re.sub(r"\s*this ability triggers only once each turn\.?", "", m.group("fx")))
         if f["type"] == "Land":
             k.trig.append(("landfall", None, fx, once, tax, False)); return bool(fx)
-        k.trig.append(("etb", f, fx, once, tax, False)); return bool(fx)
+        k.trig.append(("etb", f, fx, once, tax, False))
+        if m.group("oratk") and fx: k.trig.append(("attack", f, fx, once, tax, False))     # Kindred Discovery: 'enters or attacks'
+        return bool(fx)
     m = re.match(r"^when you cycle ~,\s*(?:you may )?(.+)$", lo)
     if m:
         fx, _ = parse_fx(m.group(1)); k.cycle_fx += fx; return bool(fx)
@@ -3180,7 +3205,9 @@ class Game:
         old = bool(kinds & self.CARD_FLOW) or ("ctr" in kinds and "draw" in kinds) or ("prolif" in kinds and prolif_useful) \
             or any(e[0] == "recur" and any(self.sim.tmatch(e[1], c) for c in self.gy) for e in fx)
         if instant: ok = face or life
-        else: ok = old or face or life or "token" in kinds or ("copy_token" in kinds and self.copy_worth(fx, p)) or ("kill_blk" in kinds and not ab["sac"] and self.blk_target_exists(fx)) \
+        else: ok = old or face or life or "token" in kinds or ("copy_token" in kinds and self.copy_worth(fx, p)) \
+            or ("kill_perm" in kinds and any(self.live(s_) and s_["on"] and PERSIST[s_["kind"]] in e[1] for e in flat(fx) if e[0] == "kill_perm"
+                                               for s_ in self.stax)) or ("kill_blk" in kinds and not ab["sac"] and self.blk_target_exists(fx)) \
             or (not ab["sac"] and any((e[0] == "ctr_on" and e[2] == "+1/+1") or (e[0] == "ctr" and e[1] == "+1/+1") for e in fx)
                 and any(self.is_creature(q) for q in self.perms))           # Steel Overseer, Ozolith: grow the team each turn
         if not ok: return False
@@ -3899,6 +3926,25 @@ class Game:
                 if self.pool is not None and n > 0:
                     self.pool += [[e[1] & (self.sim.anyc | CLESS) or e[1], NOC, None, False, None, False] for _ in range(n)]
                     self.note(f"    {name} adds {n} mana")
+            elif t == "untap_n_lands":                         # Frantic Search: the lands that made the most mana first
+                for q in sorted((q for q in self.lands if q.tapped), key=lambda q: -len(q.k.units))[:e[1]]:
+                    q.tapped = False
+                    if self.pool is not None: self.add_units(q)
+            elif t == "kill_perm":                             # artifact/enchantment removal: a live tax or lock piece of that type
+                for s_ in self.stax:
+                    if self.live(s_) and s_["on"] and PERSIST[s_["kind"]] in e[1]:
+                        s_["on"] = False; self.cleared += 1; self.note(f"    {name} removes the {DIS_NAMES[s_['kind']]} piece"); break
+            elif t == "self_top":                              # Sensei's Divining Top: back on top of the library
+                if isinstance(p, Perm) and p in self.perms:
+                    self.leave(p, "goes on top of the library", "top", quiet=True)
+            elif t == "amass":                                 # CR 701.44: counters on your Army, or a 0/0 Army first
+                n = self.num(e[1], p, x)
+                arm = next((q for q in self.perms if "Army" in q.k.subtypes), None)
+                if arm is None and n > 0:
+                    ak = self.sim.token_card(("token", 1, 0, (e[2], "Army"), "", "creature", 0, frozenset(), False))
+                    ak.tough_known = False                       # a 0/0 Army lives until its counters land
+                    arm = self.enter(ak)
+                if isinstance(arm, Perm) and n > 0: self.add_ctr(arm, "+1/+1", n)
             elif t == "untap_lands":
                 for q in self.lands:
                     if q.tapped:
@@ -4107,6 +4153,11 @@ class Game:
         if k == "gy_ge":
             want = {"creature": "Creature", "land": "Land"}.get(c[2])
             return sum(1 for x in self.gy if not want or want in x.types or (c[2].startswith("instant") and x.types & {"Instant", "Sorcery"})) >= c[1]
+        if k == "self_tapped": return isinstance(p, Perm) and p.tapped
+        if k == "self_untapped": return isinstance(p, Perm) and not p.tapped
+        if k == "unique_name":
+            o = self.trig_obj
+            return isinstance(o, Perm) and not any(q is not o and q.k.name == o.k.name for q in self.perms) and not any(c.name == o.k.name for c in self.gy)
         if k == "your_turn": return not self.opp_turn
         if k == "not_your_turn": return self.opp_turn
         if k == "main": return not self.opp_turn and not self.combat_on
@@ -5006,6 +5057,7 @@ class Game:
                 if u[4] is p: u[5] = True
         if p.k in self.sim.commanders: self.cmd.append(p.k)
         elif p.k.token: pass
+        elif dest == "top": self.lib.append(p.k)
         else: {"gy": self.gy, "exile": self.exile, "hand": self.hand}[dest].append(p.k)
         if not quiet: self.note(f"    {p.k.name} {why}")
         on_it = [q for q in self.perms if q.att is p]            # Equipment / Auras it wore: their 'equipped creature dies'
