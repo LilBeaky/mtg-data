@@ -184,7 +184,9 @@ CNAMES = ["Najeela, the Blade-Blossom", "Forest", "Mountain", "Grizzly Bears", "
           "Exsanguinate", "Llanowar Elves", "Professional Face-Breaker", "Invisible Stalker", "Craterhoof Behemoth",
           "Goblin Rabblemaster", "Ophidian", "Intangible Virtue", "Monastery Swiftspear", "Opt", "Relentless Assault",
           "Aurelia, the Warleader", "Karlach, Fury of Avernus", "Moraug, Fury of Akoum", "Hellrider", "Plains", "Island", "Swamp",
-          "Castle Garenbrig", "Encroaching Dragonstorm", "Lathliss, Dragon Queen", "Biorhythm", "Jeska's Will", "Animist's Awakening"]
+          "Castle Garenbrig", "Encroaching Dragonstorm", "Lathliss, Dragon Queen", "Biorhythm", "Jeska's Will", "Animist's Awakening",
+          "Questing Beast", "Ichorclaw Myr", "Samurai of the Pale Curtain", "Neheb, the Eternal", "Wolverine Pack", "Artful Dodge",
+          "Falter", "Suq'Ata Lancer", "Swords to Plowshares", "Frenzied Goblin"]
 CRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(CNAMES)}
 CK = {n: g.compile_card(CRAW[n], g.ALL5) for n in CNAMES}
 
@@ -267,10 +269,15 @@ def _():
     G = cgame(perms=["Serra Angel", "Grizzly Bears"])
     for o in G.opps: o["board"] = [blocker(3, 3)]
     G.combat(); return G.dmg == 4
-@check("blocks: first strike kills the blocker first (Baneslayer vs a 5/5); the attacker survives")
+@check("blocks: nobody blocks a first striker that kills first (Baneslayer vs a 5/5 flyer: 5 through)")
 def _():
     G = cgame(perms=["Baneslayer Angel"])
     for o in G.opps: o["board"] = [blocker(5, 5, "flying")]
+    G.combat(); return G.dmg == 5 and sum(len(o["board"]) for o in G.opps) == 3
+@check("blocks: facing lethal it chumps anyway; first strike kills the blocker and Baneslayer lives")
+def _():
+    G = cgame(perms=["Baneslayer Angel"])
+    for o in G.opps: o["life"] = 5; o["board"] = [blocker(5, 5, "flying")]
     G.combat()
     return G.perms and G.perms[0].k.name == "Baneslayer Angel" and sum(len(o["board"]) for o in G.opps) == 2 and G.dmg == 0
 @check("blocks: a lethal attack draws a chump; trample carries the excess (Contaminator 4 over a 1/1 = 3)")
@@ -325,6 +332,111 @@ def _():
     return not G.perms[0].tapped and G.lands[0].tapped
 @check("subtype list has no rule-text words ('Creatures', 'The')")
 def _(): return not ({"Creatures", "The", "Artifacts"} & g.SUBTYPES)
+
+# ---- opposing boards: --blockers, blocks, denial
+def board(G, *bl, seats=(0, 1, 2)):
+    for i in seats: G.opps[i]["board"] = [dict(x, kw=set(x["kw"])) for x in bl]
+def deny(G, code, seat=0): G.opps[seat]["deny"].append({"code": code, "until": None})
+
+@check("--blockers parses creatures, seats, copies, ranges and denial; bad tokens are refused")
+def _():
+    sp = g.parse_blockers("2/2 flying@3x2; 1:prop@4-6; each:fog@5; 1/4 first_strike reach@2")
+    bad = 0
+    for tok in ("2/2 banana@3", "fog@0", "3/3@5-4", "4:2/2@3"):
+        try: g.parse_blockers(tok)
+        except ValueError: bad += 1
+    return len(sp) == 5 and sp[0] == sp[1] == (3, None, None, {"p": 2, "t": 2, "kw": frozenset({"flying"})}) \
+        and sp[2] == (4, 6, [0], {"deny": "prop"}) and sp[3] == (5, None, None, {"deny": "fog"}) \
+        and sp[4][3]["kw"] == {"first strike", "reach"} and bad == 4
+@check("arrival and expiry: a 2/2@2-3 reaches every board for T2 and leaves before T4; a seat-2 fog only there")
+def _():
+    G = cgame(); G.bspec = g.parse_blockers("2/2@2-3; 2:fog@2"); G.arrive(2)
+    a = all(len(o["board"]) == 1 for o in G.opps) and [len(o["deny"]) for o in G.opps] == [0, 1, 0]
+    G.expire(3); b = all(len(o["board"]) == 1 for o in G.opps); G.expire(4)
+    return a and b and not any(o["board"] for o in G.opps)
+@check("gang block: two 2/3 flyers kill Serra Angel and lose one (a trade)")
+def _():
+    G = cgame(perms=["Serra Angel"]); board(G, blocker(2, 3, "flying"), blocker(2, 3, "flying")); G.combat()
+    return not G.perms and G.lost == 1 and G.bstat["trade"] == 1 and sorted(len(o["board"]) for o in G.opps) == [1, 2, 2]
+@check("the commander isn't sent into a blocker that kills it; Bears trade with a 2/2")
+def _():
+    G = cgame(); p = G.enter(CK["Najeela, the Blade-Blossom"]); p.sick = False; board(G, blocker(2, 2)); G.combat()
+    H = cgame(perms=["Grizzly Bears"]); board(H, blocker(2, 2)); H.combat()
+    return G.dmg == 0 and G.bstat["held_back"] == 1 and H.bstat["trade"] == 1 and not H.perms
+@check("bushido: Samurai (2/2, bushido 1) trades with a 3/3 instead of dying to it")
+def _():
+    G = cgame(perms=["Samurai of the Pale Curtain"]); board(G, blocker(3, 3)); G.combat()
+    return not G.perms and G.bstat["trade"] == 1
+@check("rampage: Wolverine Pack gang-blocked by two 2/2s grows to 4/6, kills both and lives")
+def _():
+    G = cgame(perms=["Wolverine Pack"]); board(G, blocker(2, 2), blocker(2, 2), seats=(0,))
+    G.opps[1]["life"] = G.opps[2]["life"] = 40; G.opps[0]["life"] = 39; G.combat()
+    return G.perms and not G.opps[0]["board"] and G.bstat["blk_killed"] == 2
+@check("flanking: a chump 1/1 dies before damage; the Lancer stays blocked (no damage)")
+def _():
+    G = cgame(perms=["Suq'Ata Lancer"]); board(G, blocker(1, 1))
+    for o in G.opps: o["life"] = 2
+    G.combat(); return G.dmg == 0 and G.bstat["blk_killed"] == 1 and G.perms
+@check("afflict: Neheb walled by a 5/7 still makes that player lose 3")
+def _():
+    G = cgame(perms=["Neheb, the Eternal"]); board(G, blocker(5, 7)); G.combat()
+    return sorted(lives(G)) == [37, 40, 40] and G.bstat["stalled"] == 1
+@check("becomes-blocked trigger: Ichorclaw Myr gets +2/+2")
+def _():
+    G = cgame(perms=["Ichorclaw Myr"]); p = G.perms[0]; G.attackers = {p: 0}
+    G.block_triggers({p: [blocker(2, 2)]}); return G.stats(p)[:2] == (3, 3)
+@check("partial evasion: Questing Beast can't be blocked by power 2 or less")
+def _():
+    G = cgame(perms=["Questing Beast"]); p = G.perms[0]; kws = G.stats(p)[2]
+    return not G.can_block(blocker(2, 5), kws, 4, p) and G.can_block(blocker(3, 3), kws, 4, p)
+@check("Falter: ground creatures can't block, flyers still can; Artful Dodge makes Bears unblockable")
+def _():
+    G = cgame(perms=["Grizzly Bears"]); p = G.perms[0]; G.do(CK["Falter"].spell, CK["Falter"])
+    a = not G.can_block(blocker(3, 3), set(), 2, p) and G.can_block(blocker(1, 1, "flying"), set(), 2, p)
+    H = cgame(perms=["Grizzly Bears"]); q = H.perms[0]; H.do(CK["Artful Dodge"].spell, CK["Artful Dodge"])
+    return a and "unblockable" in H.stats(q)[2]
+@check("fog: the opponent being attacked fogs; no damage, the fog is spent")
+def _():
+    G = cgame(perms=["Grizzly Bears"]); deny(G, "fog"); G.combat()
+    return G.dmg == 0 and G.bstat["fog"] == 1 and not G.opps[0]["deny"]
+@check("Settle the Wreckage: two attackers are exiled, you fetch two tapped basics")
+def _():
+    G = cgame(perms=["Grizzly Bears", "Serra Angel"])
+    for i in (1, 2): G.opps[i]["life"] = 40
+    G.opps[0]["life"] = 10; deny(G, "settle"); G.combat()
+    return not G.perms and G.bstat["settled"] == 2 and len(G.lands) == 2 and all(l.tapped for l in G.lands) and G.dmg == 0
+@check("attack tax: with no mana Bears go around Propaganda; with 2 lands they pay and hit its owner")
+def _():
+    G = cgame(perms=["Grizzly Bears"]); deny(G, "prop"); G.build_pool(); G.combat()
+    H = cgame(perms=["Grizzly Bears"], lands=["Forest", "Forest"]); deny(H, "prop"); H.build_pool(); H.combat()
+    return G.opps[0]["life"] == 40 and G.dmg == 2 and H.opps[0]["life"] == 38 and H.bstat["prop_paid"] == 2
+@check("Silent Arbiter (on a board) lets one attacker through (Serra, not Bears); Moat keeps Bears home")
+def _():
+    G = cgame(perms=["Serra Angel", "Grizzly Bears"])
+    G.opps[0]["board"] = [{"name": "Silent Arbiter", "p": 1, "t": 5, "kw": {"artifact"}, "mv": 4, "deny": "arb"}]; G.combat()
+    H = cgame(perms=["Serra Angel", "Grizzly Bears"]); deny(H, "moat"); H.combat()
+    return G.dmg == 4 and G.bstat["deny_stop"] == 1 and H.dmg == 4 and H.bstat["deny_stop"] == 1
+@check("Ensnaring Bridge: Bears stay home with an empty hand, attack holding two cards")
+def _():
+    G = cgame(perms=["Grizzly Bears"]); deny(G, "bridge"); G.combat()
+    H = cgame(perms=["Grizzly Bears"], hand=["Opt", "Opt"]); deny(H, "bridge"); H.combat()
+    return G.dmg == 0 and H.dmg == 2
+@check("Maze of Ith untaps the attacker: no damage, Serra untapped")
+def _():
+    G = cgame(perms=["Serra Angel"]); deny(G, "maze"); G.combat()
+    return G.dmg == 0 and not G.perms[0].tapped and G.bstat["mazed"] == 1
+@check("an opponent who dies takes its board; a wipe event clears boards but not indestructible blockers")
+def _():
+    G = cgame(perms=["Serra Angel"]); board(G, blocker(1, 5)); G.opps[0]["life"] = 4; G.opps[1]["life"] = G.opps[2]["life"] = 40
+    G.combat(); a = G.opps[0]["dead"] and not G.opps[0]["board"]
+    H = cgame(); board(H, blocker(2, 2), blocker(3, 3, "indestructible")); H.disrupt({"kind": "wipe"})
+    return a and all(len(o["board"]) == 1 and "indestructible" in o["board"][0]["kw"] for o in H.opps)
+@check("clear path: Swords on the only blocker between Serra and a kill")
+def _():
+    G = cgame(perms=["Serra Angel"], lands=["Plains"], hand=["Swords to Plowshares"])
+    G.opps[0]["life"] = 4; G.opps[0]["board"] = [blocker(2, 2, "flying")]
+    G.build_pool(); G.clear_path(); G.combat()
+    return G.opps[0]["dead"] and G.bstat["removed_blk"] == 1 and CK["Swords to Plowshares"] in G.gy
 
 # ---- additional combat phases
 def turn_combat(G):

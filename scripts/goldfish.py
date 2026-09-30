@@ -6,7 +6,7 @@ Plays a decklist alone thousands of times with a greedy pilot and reports how it
 develops turn by turn: lands, mana and colors, commander timing, when tracked
 cards get cast, card flow (extra cards, hand size, cards stranded by color,
 and which cards produced the card advantage), and combat: attacks into three
-opponents at 40 life (no blockers yet, and they never attack), damage, poison,
+opponents at 40 life (blockers and combat denial from --blockers; they never attack), damage, poison,
 commander damage per opponent, triggers of every kind, and the turn the table
 dies (which ends the game). Full docs: USE_INSTRUCTIONS.md §6, docs/GOLDFISH.md.
 
@@ -46,7 +46,7 @@ Card behavior is compiled from Oracle text once per card. data/goldfish_override
 replaces the parse for the cards it names. --explain marks each card modeled / partial /
 blank; a blank is still cast (it costs its mana) but does nothing.
 """
-import argparse, json, os, random, re, sys
+import argparse, itertools, json, os, random, re, sys
 from collections import Counter
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mtg
@@ -79,16 +79,22 @@ START_LIFE, LIFE_FLOOR = 40, 20
 FLOOR_BY_BRACKET = {4: 10}   # optional life payments stop here; set from the deck's bracket at run time (default 20)
 # Combat (docs/GOLDFISH.md "Combat"). Three opponents at START_LIFE. An opponent dies at 0 life, POISON_KILL
 # poison, or CMD_KILL combat damage from one commander; killing all of them ends the game. Opponents never attack.
-# Their boards (blockers) are empty until the blocker gradient exists; blocks already resolve if a board is set.
+# Their boards come from --blockers (a fixed spec; the blocker gradient will feed the same channel): creatures that
+# block, and combat denial (DENY) that stops, taxes or blanks attacks. With no spec every board is empty.
 OPP_N, POISON_KILL, CMD_KILL = 3, 10, 21
 XCOMBAT_CAP = 5          # additional combat phases per turn (stops Port Razer-style loops)
+DENY = {"fog": "fog", "settle": "Settle the Wreckage", "prop": "attack tax (Propaganda)", "arb": "Silent Arbiter",
+        "bridge": "Ensnaring Bridge", "moat": "Moat", "maze": "Maze of Ith"}
+DENY_TYPE = {"prop": "enchantment", "bridge": "artifact", "moat": "enchantment", "arb": "creature"}   # what held removal must hit
+BLOCKER_KW = ("flying", "reach", "deathtouch", "first strike", "double strike", "indestructible", "lifelink", "infect",
+              "wither", "flanking", "horsemanship", "shadow", "white", "blue", "black", "red", "green", "artifact", "wall")
 COMBAT_KW = ("flying", "reach", "trample", "vigilance", "haste", "lifelink", "deathtouch", "menace", "first strike",
              "double strike", "indestructible", "defender", "infect", "wither", "shadow", "horsemanship", "fear",
              "intimidate", "skulk", "flanking", "prowess", "exalted", "battle cry", "myriad", "melee", "dethrone",
              "training", "mentor", "living weapon", "unblockable", "hexproof", "shroud")
 COMBAT_KWN = ("toxic", "poisonous", "annihilator", "bushido", "rampage", "afflict")
 # trigger events -> the kinds the report counts them under
-TRIG_KIND = {"cast": "cast", "etb": "enter", "landfall": "enter", "upkeep": "timed", "end": "timed", "drawstep": "timed",
+TRIG_KIND = {"blocked_self": "combat", "blocked": "combat", "cast": "cast", "etb": "enter", "landfall": "enter", "upkeep": "timed", "end": "timed", "drawstep": "timed",
              "combat_begin": "timed", "attack": "combat", "attack_self": "combat", "attack_any": "combat", "cdmg": "combat",
              "cdmg_self": "combat", "cdmg_any": "combat", "attack_att": "combat", "cdmg_att": "combat", "unblocked_self": "combat", "dies": "dies", "dies_self": "dies", "opp_cast": "~opp",
              "opp_draw": "~opp", "opp_second": "~opp", "opp_land": "~opp", "cycle": "other", "prolif": "other",
@@ -109,6 +115,7 @@ DIS_NAMES = {"cmd": "commander removal", "removal": "spot removal", "wipe": "cre
              "nuke+gy": "nonland exile + graveyard exile", "rift": "mass bounce", "gy": "graveyard exile",
              "ld": "land destruction", "tax": "noncreature tax", "taxall": "spell tax", "lock": "command zone/graveyard lock",
              "counterK": "held counter (commander/key)"}
+DIS_NAMES.update(DENY)
 # event codes (ladder file and --disruption) -> (kind, min MV for counters)
 DIS_CODES = {"cmd": ("cmd", 0), "rem": ("removal", 0), "removal": ("removal", 0), "rem+": ("removal+", 0),
              "wipe": ("wipe", 0), "nuke": ("nuke", 0), "nuke+gy": ("nuke+gy", 0), "rift": ("rift", 0), "gy": ("gy", 0),
@@ -116,7 +123,7 @@ DIS_CODES = {"cmd": ("cmd", 0), "rem": ("removal", 0), "removal": ("removal", 0)
              "ctr2": ("counter", 2), "ctr3": ("counter", 3), "ctr4": ("counter", 4), "ctrK": ("counterK", 0)}
 PERSIST = {"tax": "creature", "taxall": "artifact", "lock": "creature"}   # stax effects -> the permanent type behind them
 ANSWERS = {"counter": {"cmd", "removal", "removal+", "wipe", "nuke", "nuke+gy", "rift", "tax", "taxall", "lock",
-                       "counter", "counterK"},
+                       "counter", "counterK", "fog", "settle", "prop", "arb", "bridge", "moat"},
            "protect": {"cmd", "removal", "removal+", "wipe", "nuke", "nuke+gy", "rift"},
            "redirect": {"cmd", "removal", "removal+"}}   # the pilot won't pay life below the floor (a goldfish still has a table to survive)
 GRADIENTS_FILE = os.path.join(mtg.DATA_DIR, "goldfish_gradients.json")
@@ -130,6 +137,59 @@ def parse_event(tok, slot=None):
     kind, mv = DIS_CODES[code]
     return int(t), {"kind": kind, "mv": mv, "backup": backup, "code": code + ("!" if backup else ""), "slot": slot}
 GY_KW = ("flashback", "jump-start", "retrace", "escape", "unearth", "harmonize")
+
+def parse_blockers(spec):
+    """--blockers 'SPEC' -> [(turn, until, seats, item)]. Tokens split by ';'. A creature: [SEAT:]P/T[ keyword...]@T[-U][xN]
+    (SEAT 1-3 or 'each'; default each opponent). Denial: [SEAT:]CODE@T[-U], CODE in DENY (default seat 1).
+    @T: on that opponent's battlefield for your turn-T combat (it arrives on their turn before); -U: gone after your
+    turn U; xN: N copies. Keywords: BLOCKER_KW (two-word ones with a space or '_'). Raises ValueError on a bad token."""
+    out = []
+    for tok in re.split(r"[;,]", spec or ""):
+        tok = tok.strip().lower()
+        if not tok: continue
+        m = re.fullmatch(r"(?:(each|[1-3])\s*:)?\s*(?P<body>.+?)\s*@(?P<t>\d+)(?:-(?P<u>\d+))?(?:x(?P<n>\d+))?", tok)
+        if not m or int(m.group("t")) < 1: raise ValueError(tok)
+        t, u, n = int(m.group("t")), int(m.group("u")) if m.group("u") else None, int(m.group("n") or 1)
+        if (u is not None and u < t) or n < 1: raise ValueError(tok)
+        body, seat = m.group("body"), m.group(1)
+        seats = None if seat in (None, "each") else [int(seat) - 1]
+        if body in DENY:
+            if seat is None: seats = [0]
+            item = {"deny": body}
+        else:
+            bm = re.fullmatch(r"(\d+)/(\d+)((?:\s+[a-z_]+)*)", body)
+            if not bm: raise ValueError(tok)
+            words, kws, i = bm.group(3).replace("_", " ").split(), set(), 0
+            while i < len(words):
+                two = " ".join(words[i:i + 2])
+                if two in BLOCKER_KW: kws.add(two); i += 2
+                elif words[i] in BLOCKER_KW: kws.add(words[i]); i += 1
+                else: raise ValueError(tok)
+            item = {"p": int(bm.group(1)), "t": int(bm.group(2)), "kw": frozenset(kws)}
+        out += [(t, u, seats, item)] * n
+    return out
+
+EVADE_TXT = {"pow_le": "unblockable by power {0} or less", "pow_ge": "unblockable by power {0} or more", "gt_pow": "unblockable by greater power",
+             "max1": "blocked by one at most", "color": "unblockable by {0}", "min": "blocked by {0}+ only", "only": "blocked by {0} only"}
+
+def evade_rule(how, what):
+    """'~ can't be blocked by creatures with power 2 or less' -> ('pow_le', 2); None if unread."""
+    what = what.strip()
+    if how == "by":
+        m = re.fullmatch(r"creatures with power (\d+) or (less|greater)", what)
+        if m: return ("pow_le" if m.group(2) == "less" else "pow_ge", int(m.group(1)))
+        if what == "creatures with greater power": return ("gt_pow",)
+        if what == "more than one creature": return ("max1",)
+        m = re.fullmatch(r"(white|blue|black|red|green|artifact) creatures", what)
+        if m: return ("color", m.group(1))
+        if what == "walls": return ("color", "wall")
+        if what == "creatures with flying": return ("color", "flying")
+    else:
+        m = re.fullmatch(r"(two|three|four) or more creatures", what)
+        if m: return ("min", num(m.group(1)))
+        m = re.fullmatch(r"(white|blue|black|red|green|artifact) creatures|(walls)|creatures with (flying)", what)
+        if m: return ("only", "wall" if m.group(2) else m.group(1) or m.group(3))
+    return None
 
 def num(s, default=1):
     s = (s or "").strip().lower()
@@ -530,6 +590,12 @@ FX = [
     (re.compile(r"untap (?:all|each) (?:other )?(creatures? you control|creatures? that attacked this turn|attacking creatures)"),
      lambda m: ("untap_cr", "attacked" if "attacked" in m.group(1) else "attacking" if "attacking" in m.group(1) else "all")),
     (re.compile(r"there(?: is|'s) an additional combat phase"), lambda m: ("extra_combat",)),
+    (re.compile(r"(?P<who>(?:each |all )?creatures your opponents control|(?:all )?creatures(?P<ground> without flying)?|"
+                r"(?:up to (?P<n>one|two) )?target creatures?(?: an opponent controls| defending player controls| your opponents control)?)"
+                r" can't block this turn"),
+     lambda m: ("noblock", "ground" if m.group("ground") else "all" if "target" not in m.group("who") else num(m.group("n") or "one"))),
+    (re.compile(r"(?P<who>~|it|that creature|(?:up to one )?target creature(?: you control)?) can't be blocked this turn"),
+     lambda m: ("unblock", {"~": "self", "it": "obj", "that creature": "obj"}.get(m.group("who"), "target"))),
     (re.compile(r"exile the top (\w+) cards? of your library\. (?:until end of turn, )?you may play (?:them|those cards)(?: this turn)?"),
      lambda m: ("draw", num(m.group(1)))),              # impulse draw, read as drawing them (~approx)
     (re.compile(r"reveal the top (\w+) cards? of your library\. put all land cards from among them onto the battlefield( tapped)?"),
@@ -635,6 +701,9 @@ def fx_str(e):
         pt = f" {pv(dp, True)}/{pv(dt, True)}" if (dp or dt) else ""
         return f"pump {who}{pt}" + (" " + ",".join(sorted(kws)) if kws else "") + " EOT"
     if t == "extra_combat": return "additional combat"
+    if t == "noblock": return {"all": "opponents' creatures can't block EOT", "ground": "creatures without flying can't block EOT"}.get(
+        e[1], f"{e[1]} opposing blocker(s) can't block EOT")
+    if t == "unblock": return f"{ {'self': '~', 'obj': 'that creature'}.get(e[1], 'target creature') } can't be blocked EOT"
     if t == "reveal_lands": return f"reveal {e[1]}, lands onto the battlefield tapped"
     if t == "bounce_self": return "return ~ to hand"
     if t == "free_top": return f"free cast of the next nonland card (MV <= {e[1]})"
@@ -707,6 +776,7 @@ class Card:
         self.tough = 0           # printed toughness (0 for * or none)
         self.kw = set()          # combat keywords it has (flying, trample, double strike...; 'unblockable')
         self.kwn = {}            # numbered keywords: toxic 2, annihilator 2, exalted (instances)...
+        self.evade = []          # partial unblockability rules (evade_rule): 'can't be blocked by creatures with power 2 or less'
         self.dyn_pt = None       # ('both' | 'power', dyn key): */* read at use time (Tarmogoyf-style counts)
         self.pt_unread = False   # a * power/toughness the parser couldn't read (counted as 0, never attacks)
         self.attach = None       # equipment/aura bonus to the creature it's on: (power, toughness, keywords)
@@ -797,8 +867,11 @@ def combat_static(k, lo):
         if key: k.dyn_pt = ("both" if "toughness" in m.group(0) else "power", key); return True
         return None
     if re.fullmatch(r"~ can't be blocked\.?", lo): k.kw.add("unblockable"); return True
-    if re.match(r"^~ can't be blocked (?:by|except)", lo):
-        k.kw.add("evasion~"); k.notes.append("partial unblockability read as evasion (no blockers yet)"); return True
+    m = re.match(r"^~ can't be blocked (by|except by) (.+?)\.?$", lo)
+    if m:
+        r = evade_rule("by" if m.group(1) == "by" else "except", m.group(2))
+        if r: k.evade.append(r); return True
+        k.kw.add("evasion~"); k.notes.append("partial unblockability not read (blocks it as normal)"); return True
     if re.fullmatch(r"~ can't block\.?", lo): k.kw.add("cant_block"); return True
     if re.fullmatch(r"~ can't attack(?: or block)?\.?", lo): k.kw.add("defender"); return True
     if re.fullmatch(r"~ attacks each (?:combat|turn) if able\.?", lo): k.kw.add("must_attack"); return True
@@ -997,7 +1070,7 @@ STATIC_RX = [
      lambda m, lo: ("reduce_dyn", parse_filter(m.group(1)),
                     ("artifacts",) if m.group(2) == "artifacts" else ("sub", as_subtype(m.group(2)) or m.group(2).capitalize()))),
     (r"^no more than (one|two|three) creatures? can attack each combat", lambda m, lo: ("attack_limit", num(m.group(1)))),   # Silent Arbiter
-    (r"^no more than (?:one|two|three) creatures? can block each combat", lambda m, lo: ("neutral_block",)),                 # no blockers yet
+    (r"^no more than (?:one|two|three) creatures? can block each combat", lambda m, lo: ("neutral_block",)),                 # opponents never attack
     (r"^(other )?creatures have base power and toughness (\d+)/(\d+)", lambda m, lo: ("base_pt", int(m.group(2)), int(m.group(3)), bool(m.group(1)))),
     (r"you may play (an|two|three) additional lands? on each of your turns", lambda m, lo: ("extra_land", num(m.group(1)))),
     (r"if you would proliferate, proliferate twice instead", lambda m, lo: ("prolif_x2",)),
@@ -1058,6 +1131,12 @@ def combat_trigger(k, lo):
         return add("cdmg", f, m.group("fx"))
     m = re.match(r"^whenever ~ attacks and isn't blocked,\s*(.+)$", lo)
     if m: return add("unblocked_self", None, m.group(1))
+    m = re.match(r"^whenever ~ becomes blocked(?: by a creature)?,\s*(.+)$", lo)
+    if m: return add("blocked_self", None, m.group(1))
+    m = re.match(r"^whenever (?P<a>a|an|another) (?P<subj>[^,]+?) becomes blocked,\s*(?P<fx>.+)$", lo)
+    if m:
+        f = perm_filt(m.group("a"), m.group("subj"))
+        return add("blocked", f, m.group("fx")) if f else False
     m = re.match(r"^whenever (?P<a>a|an|another) (?P<subj>[^,]+?) attacks(?P<alone> alone)?,\s*(?P<fx>.+)$", lo)
     if m:
         f = perm_filt(m.group("a"), m.group("subj"))
@@ -1512,7 +1591,7 @@ def compile_card(c, anyc):
         if "battle cry" in k.kw: k.trig.append(("attack_self", None, [("pump", "others_attacking", 1, 0, frozenset())], False, False, False))
     if star and not k.dyn_pt and "Creature" in k.types:
         k.pt_unread = True; k.notes.append("* power/toughness not read (counted 0)")
-    if k.types & {"Instant", "Sorcery"} and any(e[0] in ("pump", "pump_team", "extra_combat", "biorhythm") for e in k.spell) \
+    if k.types & {"Instant", "Sorcery"} and any(e[0] in ("pump", "pump_team", "extra_combat", "biorhythm", "noblock", "unblock") for e in k.spell) \
             or any(e[0] == "pump_team" for e in k.etb):
         k.alpha = True
     if k.types & {"Instant", "Sorcery"}:
@@ -1804,9 +1883,14 @@ class Game:
         self.stax = []                          # live tax/lock effects: {"kind", "start", "until", "on"}
         self.hits = []; self.cleared = 0        # (turn, board before) for each hit that removed permanents
         self.ctrd = 0                           # your spells countered (still counted in casts/spent)
-        # opponents: life, poison, combat damage per commander, turn they died (0 = alive), how, blockers (empty for now)
-        self.opps = [{"life": START_LIFE, "poison": 0, "cmd": Counter(), "dead": 0, "how": None, "board": []}
+        # opponents: life, poison, combat damage per commander, turn they died (0 = alive), how, their creatures (blocker
+        # dicts) and combat denial ({"code", "until"}); boards come from --blockers (Sim.board_spec)
+        self.opps = [{"life": START_LIFE, "poison": 0, "cmd": Counter(), "dead": 0, "how": None, "board": [], "deny": []}
                      for _ in range(OPP_N)]
+        self.bspec = sim.board_spec
+        self.bstat = Counter()                  # blocks, trades, denial: the report's blockers lines
+        self.noblock = False; self.mazed = set()   # 'creatures your opponents control can't block this turn'; Maze of Ith's target
+        self.prop_paid = self.taxed_out = 0     # attack tax planned this combat; attackers it priced out
         self.won = 0                            # turn the last opponent died
         self.dmg = 0; self.cdmg = 0             # life lost by opponents (all sources / combat)
         self.dsrc = Counter(); self.trigs = Counter()   # damage by source; trigger fires by (source, kind)
@@ -2853,6 +2937,17 @@ class Game:
                     if isinstance(q, Perm) and q in self.perms and self.is_creature(q):
                         q.pp += self.amt(e[2], p); q.pt += self.amt(e[3], p)
                         if e[4]: q.tkw = (q.tkw or set()) | set(e[4])
+            elif t == "noblock":
+                if self.dry: continue
+                if e[1] in ("all", "ground"): self.noblock = e[1]; self.note(f"    {'opponents' if e[1] == 'all' else 'non-flying'} creatures can't block this turn")
+                else:
+                    i = self.ctx_opp if (self.combat_on and self.ctx_opp is not None) else self.focus()
+                    if i is not None:
+                        for b in sorted((b for b in self.opps[i]["board"] if not b.get("nob")), key=lambda b: -(b["p"] + b["t"]))[:e[1]]:
+                            b["nob"] = True; self.note(f"    opponent {i + 1}'s {b['name']} can't block this turn")
+            elif t == "unblock":
+                q = p if e[1] == "self" else self.ctx_obj if e[1] == "obj" else self.best_attacker()
+                if isinstance(q, Perm) and q in self.perms: q.tkw = (q.tkw or set()) | {"unblockable"}
             elif t == "pump_team":
                 _, dp, dt, kws, f, other, atk = e
                 dp, dt = self.amt(dp, p), self.amt(dt, p)
@@ -2985,9 +3080,9 @@ class Game:
             if ev != event or (each_only and not each): continue
             if event in ("cast", "opp_cast") and filt and not spell_ok(obj, filt): continue
             if event == "cast" and filt and filt.get("targets") and not self.targets_mine(obj, filt["targets"], p): continue
-            if event in ("etb", "attack", "cdmg", "dies", "sac"):
+            if event in ("etb", "attack", "cdmg", "dies", "sac", "blocked"):
                 if not self.pmatch(filt, obj, p) or (filt.get("alone") and len(self.attackers) != 1): continue
-            elif event in ("attack_self", "cdmg_self", "dies_self", "unblocked_self", "gy_self", "leave_self", "dmg_self"):
+            elif event in ("attack_self", "cdmg_self", "dies_self", "unblocked_self", "blocked_self", "gy_self", "leave_self", "dmg_self"):
                 if obj is not p: continue
             elif event in ("attack_att", "cdmg_att", "dmg_att"):
                 if p.att is not obj: continue
@@ -3085,6 +3180,7 @@ class Game:
                 else why if o["life"] <= 0 else None
             if how:
                 o["dead"], o["how"] = self.turn, how
+                o["board"], o["deny"] = [], []                 # a player who leaves takes their permanents
                 self.note(f"    opponent {i + 1} dies ({how})")
         if not self.alive() and not self.won:
             self.won = self.turn; self.note(f"  all opponents dead on T{self.turn}: game over")
@@ -3109,25 +3205,97 @@ class Game:
         return any(t[0] == "attack_self" for t in p.k.trig) or any(
             t[0] in ("attack", "attack_any") for q in self.perms for t in q.k.trig)
 
-    def can_block(self, b, kws, pw):
-        if b.get("dead") or b.get("tapped") or "cant_block" in b["kw"] or "unblockable" in kws: return False
+    def can_block(self, b, kws, pw, p=None):
+        """Blocker dict b can block an attacker with these keywords and power (p: the attacker, for its colors and
+        partial evasion)."""
+        if b.get("dead") or b.get("tapped") or b.get("nob") or "unblockable" in kws: return False
         bk = b["kw"]
+        if self.noblock == "all" or (self.noblock == "ground" and "flying" not in bk): return False
         if "flying" in kws and not bk & {"flying", "reach"}: return False
         if "shadow" in kws and "shadow" not in bk: return False
         if "horsemanship" in kws and "horsemanship" not in bk: return False
         if "fear" in kws and not bk & {"artifact", "black"}: return False
-        if "intimidate" in kws and not bk & {"artifact", "shares_color"}: return False
+        if "intimidate" in kws and "artifact" not in bk and not (p is not None and {COLOR_WORDS[c] for c in bk if c in COLOR_WORDS} & set(p.k.colors)):
+            return False
         if "skulk" in kws and b["p"] > pw: return False
+        for r in (p.k.evade if p is not None else ()):
+            if (r[0] == "pow_le" and b["p"] <= r[1]) or (r[0] == "pow_ge" and b["p"] >= r[1]) or (r[0] == "gt_pow" and b["p"] > pw) \
+                    or (r[0] == "color" and r[1] in bk) or (r[0] == "only" and r[1] not in bk):
+                return False
         return True
 
-    def bad_attack(self, p, pw, tg, kws, i):
-        """Opponent i has a blocker that kills p and survives it (never true while opponents have no boards)."""
-        for b in self.opps[i]["board"]:
-            if not self.can_block(b, kws, pw) or ("menace" in kws and len(self.opps[i]["board"]) < 2): continue
-            kills = (b["p"] >= tg or "deathtouch" in b["kw"]) and "indestructible" not in kws
-            lives = (b["t"] > pw and "deathtouch" not in kws) or "indestructible" in b["kw"]
-            if kills and lives: return True
-        return False
+    @staticmethod
+    def hit(pw, kws): return max(0, pw) * (2 if "double strike" in kws else 1)
+
+    def group(self, p, kws):
+        """(fewest, most) blockers p can be blocked by: menace 2, 'except by three or more' 3, 'by more than one' 1."""
+        need = max(2 if "menace" in kws else 1, max((r[1] for r in p.k.evade if r[0] == "min"), default=1)) if p is not None else 1
+        return need, (1 if p is not None and any(r[0] == "max1" for r in p.k.evade) else 99)
+
+    @staticmethod
+    def duel(b, pw, tg, kws):
+        """Blocker b alone against an attacker -> (b kills it, b survives). First/double strike, deathtouch,
+        indestructible, flanking (-1/-1 on a blocker without it) and infect/wither blockers are read."""
+        bk, bp, bt = b["kw"], b["p"], b["t"]
+        if "flanking" in kws and "flanking" not in bk: bp, bt = bp - 1, bt - 1
+        if bt <= 0: return False, False
+        a_fs, b_fs = bool(kws & {"first strike", "double strike"}), bool(bk & {"first strike", "double strike"})
+        a_one = pw > 0 and (pw >= bt or "deathtouch" in kws) and "indestructible" not in bk
+        a_all = a_one or ("double strike" in kws and pw > 0 and 2 * pw >= bt and "indestructible" not in bk)
+        b_one = bp > 0 and (bp >= tg or "deathtouch" in bk) and "indestructible" not in kws
+        b_all = b_one or ("double strike" in bk and bp > 0 and 2 * bp >= tg and "indestructible" not in kws)
+        if a_fs and not b_fs and a_one: return False, False        # it dies before it strikes
+        if b_fs and not a_fs and b_one: return True, True          # the attacker dies first
+        return b_all, not a_all
+
+    def gang(self, can, pw, tg, kws, need):
+        """`need` (2+) blockers that stop the attacker without a bad trade: together they kill it losing at most one, or
+        none of them dies. The attacker assigns lethal damage in order (1 with deathtouch). None if there's no such set."""
+        best = None
+        for combo in itertools.combinations(sorted(can, key=lambda b: (-b["p"], -b["t"]))[:6], need):
+            kill = "indestructible" not in kws and (sum(max(0, b["p"]) for b in combo) >= tg
+                                                    or any("deathtouch" in b["kw"] and b["p"] > 0 for b in combo))
+            rem, lost = self.hit(pw, kws), 0
+            for b in sorted(combo, key=lambda b: b["t"]):
+                d = 1 if "deathtouch" in kws else b["t"]
+                if "indestructible" not in b["kw"] and 0 < d <= rem: rem -= d; lost += 1
+            if (kill and lost <= 1) or lost == 0:
+                key = (kill, -lost, -sum(b.get("mv", 0) for b in combo))
+                if best is None or key > best[0]: best = (key, list(combo))
+        return best[1] if best else None
+
+    def bad_block(self, p, bl):
+        """A predicted block is bad for you: p dies and takes no blocker with it; your commander (unless indestructible)
+        isn't traded away at all."""
+        pw, tg, kws = self.stats(p)
+        bu = p.k.kwn.get("bushido", 0) + p.k.kwn.get("rampage", 0) * max(0, len(bl) - 1)
+        pw, tg = pw + bu, tg + bu
+        cmd = p.k in self.sim.commanders and "indestructible" not in kws
+        if len(bl) == 1:
+            kills, lives = self.duel(bl[0], pw, tg, kws)
+            return kills and (lives or cmd)
+        kill = "indestructible" not in kws and (sum(max(0, b["p"]) for b in bl) >= tg or any("deathtouch" in b["kw"] and b["p"] > 0 for b in bl))
+        if not kill: return False
+        if cmd: return True
+        rem = self.hit(pw, kws)
+        for b in sorted(bl, key=lambda b: b["t"]):
+            d = 1 if "deathtouch" in kws else b["t"]
+            if "indestructible" not in b["kw"] and 0 < d <= rem: return False     # it takes one with it: a trade
+        return True
+
+    def through(self, i, ready, board, drop=None, unblock=None):
+        """Damage `ready` attackers ((perm, power, toughness, keywords)) get through if all of them go at opponent i and it
+        blocks to survive: each blocker, toughest first, takes the biggest attacker it can; trample carries the excess.
+        drop: a blocker to leave out (your removal on it); unblock: an attacker made unblockable."""
+        atk = sorted(ready, key=lambda a: -self.hit(a[1], a[3]))
+        blocked, total = set(), 0
+        for b in sorted((b for b in board if b is not drop and not b.get("dead") and not b.get("tapped")), key=lambda b: -b["t"]):
+            for a in atk:
+                if id(a) in blocked or a[0] is unblock or not self.can_block(b, a[3], a[1], a[0]) or self.group(a[0], a[3])[0] > 1: continue
+                blocked.add(id(a))
+                if "trample" in a[3]: total += max(0, self.hit(a[1], a[3]) - b["t"])
+                break
+        return total + sum(self.hit(a[1], a[3]) for a in atk if id(a) not in blocked)
 
     def wants_attack(self, p, pw, kws):
         if "must_attack" in kws: return True
@@ -3142,15 +3310,36 @@ class Game:
         return pw > 0 or self.attack_payoff(p)
 
     def assign(self, atk):
-        """Defending player per attacker: an opponent this attacker finishes off, else the one closest to dying.
-        No blockers means focus fire; a player already dead on paper isn't hit again while another is alive."""
+        """Defending player per attacker: an opponent this attacker finishes off, else the one closest to dying (focus
+        fire; a player already dead on paper isn't hit again while another is alive). Against boards, the pilot reads
+        the defenders' own block policy (plan_blocks) on the whole attack: an attacker that would be blocked badly
+        there (bad_block) is sent at another opponent, or held back when every opponent would. Blockers run out: a
+        wide attack gets its extra attackers through. Attack tax is paid from the mana left after main phase 1."""
+        banned = {a[0]: set() for a in atk}
+        boards = any(self.opps[i]["board"] for i in self.alive())
+        for _ in range(12):
+            out = self.targets(atk, banned)
+            if not boards: return out
+            changed = False
+            for i in set(out.values()):
+                pb = self.plan_blocks(i, [p for p in out if out[p] == i])
+                for p, bl in pb.items():
+                    if self.bad_block(p, bl): banned[p].add(i); changed = True
+            if not changed: break
+        self.bstat["held_back"] += sum(1 for a in atk if a[0] not in out and banned[a[0]] >= set(self.alive()))
+        return out
+
+    def targets(self, atk, banned):
         plan = {i: [o["life"], o["poison"], dict(o["cmd"])] for i, o in enumerate(self.opps) if not o["dead"]}
         def dead(s): return s[0] <= 0 or s[1] >= POISON_KILL or any(v >= CMD_KILL for v in s[2].values())
-        boards = any(self.opps[i]["board"] for i in plan)
-        out = {}
+        tax = {i: 2 * sum(1 for d in self.opps[i]["deny"] if d["code"] == "prop") for i in plan}   # Propaganda: {2} per attacker
+        budget = sum(1 for u in self.pool if not u[5]) if (self.pool is not None and any(tax.values())) else 0
+        out = {}; self.prop_paid = 0; self.taxed_out = 0
         for p, pw, tg, kws in sorted(atk, key=lambda a: (-a[1], a[0].k.name)):
-            ok = [i for i in plan if not self.bad_attack(p, pw, tg, kws, i)] if boards else list(plan)
+            ok = [i for i in plan if i not in banned[p]]
             if not ok: continue
+            if not [i for i in ok if tax[i] <= budget]: self.taxed_out += 1; continue
+            ok = [i for i in ok if tax[i] <= budget]
             live = [i for i in ok if not dead(plan[i])] or ok
             n = max(0, pw) * (2 if "double strike" in kws else 1)
             cm = p.k.name if p.k in self.sim.commanders else None
@@ -3165,7 +3354,7 @@ class Game:
             if not inf: s[0] -= n
             s[1] += pois
             if cm: s[2][cm] = s[2].get(cm, 0) + n
-            out[p] = tgt
+            out[p] = tgt; budget -= tax[tgt]; self.prop_paid += tax[tgt]
         return out
 
     def combat(self):
@@ -3174,16 +3363,31 @@ class Game:
         steps, lifelink, poison, commander damage, combat damage triggers, deaths."""
         self.combat_done = True
         if not self.alive() or self.dry: return
+        self.mazed = set()
         self.fire("combat_begin")
         cands = []
         for p in list(self.perms):
             if not self.can_attack(p): continue
             pw, tg, kws = self.stats(p)
             if self.wants_attack(p, pw, kws): cands.append((p, pw, tg, kws))
+        n0 = len(cands)
+        if self.denial("moat"): cands = [c for c in cands if "flying" in c[3]]                 # Moat: flyers only
+        if self.denial("bridge"): cands = [c for c in cands if c[1] <= len(self.hand)]        # Ensnaring Bridge
         lim = self.st.attack_limit
+        if self.arbiter(): lim = min(lim or 99, 1)
         if lim and len(cands) > lim:                     # Silent Arbiter: send the hardest hitters
             cands = sorted(cands, key=lambda c: (-max(0, c[1]) * (2 if "double strike" in c[3] else 1), c[0].k.name))[:lim]
+        if len(cands) < n0 and (self.denial("moat") or self.denial("bridge") or self.arbiter()):
+            self.bstat["deny_stop"] += n0 - len(cands); self.note(f"  denial keeps {n0 - len(cands)} attacker(s) home")
         plan = self.assign(cands) if cands else {}
+        self.bstat["deny_stop"] += self.taxed_out; self.taxed_out = 0
+        if plan and self.prop_paid:
+            if self.pay(None, self.prop_paid, []):
+                self.spent += self.prop_paid; self.bstat["prop_paid"] += self.prop_paid
+                self.note(f"  pays {self.prop_paid} for the attack tax")
+            else:                                        # couldn't pay after all: those attackers stay home
+                taxed = {i for i in self.alive() if any(d["code"] == "prop" for d in self.opps[i]["deny"])}
+                for p in [p for p, i in plan.items() if i in taxed]: del plan[p]; self.bstat["deny_stop"] += 1
         if not plan: return
         self.attackers = dict(plan); self.combat_on = True; self.atk_turns += 0 if self.attacked else 1; self.attacked |= set(plan)
         for p in plan:
@@ -3209,50 +3413,141 @@ class Game:
         self.fire("attack_any", list(plan), opp=self.focus())
         for p, i in list(plan.items()):
             self.fire("attack_self", p, opp=i); self.fire("attack", p, opp=i); self.fire("attack_att", p, opp=i)
-        if not self.alive():                             # the attack triggers finished the table
+        if not self.alive() or self.tricks():            # the attack triggers finished the table / a fog or Settle
             self.atk_n = max(self.atk_n, len(self.attackers)); self.combat_on = False; self.attackers = {}; return
+        self.maze()
         blocks = self.declare_blocks()
+        self.block_triggers(blocks)
         for p, i in list(self.attackers.items()):
-            if p not in blocks and p in self.perms: self.fire_one(p, "unblocked_self", p, opp=i)
+            if p not in blocks and p in self.perms and p not in self.mazed: self.fire_one(p, "unblocked_self", p, opp=i)
         fighters = [self.stats(p)[2] for p in self.attackers if p in self.perms] + [b["kw"] for bl in blocks.values() for b in bl]
-        if any(k_ & {"first strike", "double strike"} for k_ in fighters): self.damage_step(blocks, True)
+        if any(k_ & {"first strike", "double strike"} for k_ in fighters) and self.alive(): self.damage_step(blocks, True)
         if self.alive(): self.damage_step(blocks, False)
+        for p, bl in blocks.items():                     # how each block went
+            a_dead, b_dead = p not in self.perms, sum(1 for b in bl if b.get("dead"))
+            self.bstat["blocked"] += 1
+            self.bstat["trade" if a_dead and b_dead else "bounced" if a_dead else "chump" if b_dead == len(bl) else "stalled"] += 1
         if self.alive(): self.combat_acts()
         self.atk_n = max(self.atk_n, len(self.attackers))
         self.combat_on = False; self.attackers = {}
 
+    def denial(self, code):
+        """Live combat denial of this kind: [(seat, entry)] for living opponents."""
+        return [(i, d) for i in self.alive() for d in self.opps[i]["deny"] if d["code"] == code]
+
+    def arbiter(self):
+        return any(b.get("deny") == "arb" and not b.get("dead") for i in self.alive() for b in self.opps[i]["board"])
+
+    def tricks(self):
+        """A defending opponent uses a held fog (the first attack at it from its turn on) or Settle the Wreckage (when
+        two or more creatures or a lethal attack come at it). Your held counters can answer. True if combat is over."""
+        at = {}
+        for p, i in self.attackers.items():
+            if p in self.perms: at.setdefault(i, []).append(p)
+        for i in sorted(at):
+            o = self.opps[i]
+            for d in [d for d in o["deny"] if d["code"] in ("fog", "settle")]:
+                inc = sum(self.hit(*self.stats(p)[::2]) for p in at[i])
+                if d["code"] == "settle" and len(at[i]) < 2 and inc < o["life"]: continue
+                o["deny"].remove(d)
+                self.note(f"  opponent {i + 1} casts {DENY[d['code']]}")
+                if self.try_answer({"kind": d["code"], "backup": False}, self.pool): self.bstat["deny_countered"] += 1; continue
+                if d["code"] == "fog":
+                    self.bstat["fog"] += 1
+                    self.bstat["stopped"] += sum(self.hit(*self.stats(p)[::2]) for p in self.attackers if p in self.perms)
+                    return True
+                n = 0
+                for p in list(self.attackers):
+                    if p in self.perms: self.leave(p, "is exiled (Settle the Wreckage)", "exile"); n += 1
+                self.bstat["settle"] += 1; self.bstat["settled"] += n
+                for _ in range(n):                       # you search for that many basic lands, tapped
+                    b = next((c for c in self.lib if c.is_land and c.basic), None)
+                    if b is None: break
+                    self.lib.remove(b); self.land_enters(b, force_tapped=True)
+                self.rng.shuffle(self.lib)
+                return True
+        return False
+
+    def maze(self):
+        """Maze of Ith (once per round): its controller untaps your biggest attacker coming at them (else the biggest
+        overall); no combat damage is dealt to or by it."""
+        self.mazed = set()
+        for i, d in self.denial("maze"):
+            if d.get("used") == self.turn: continue
+            live = [p for p in self.attackers if p in self.perms and p not in self.mazed]
+            if not live: break
+            mine = [p for p in live if self.attackers[p] == i] or live
+            v = max(mine, key=lambda p: (self.hit(*self.stats(p)[::2]), p.k.name))
+            self.mazed.add(v); v.tapped = False; d["used"] = self.turn
+            self.bstat["mazed"] += 1; self.bstat["stopped"] += self.hit(*self.stats(v)[::2])
+            self.note(f"    opponent {i + 1}'s Maze of Ith untaps {v.k.name}: no combat damage to or from it")
+
+    def plan_blocks(self, i, attackers):
+        """How opponent i blocks these attackers (deterministic; the pilot reads it too) from its untapped board. Per
+        attacker, biggest first: one blocker that kills it and/or survives it; else a gang block (two that kill it
+        losing at most one, or that both survive); else, only when the attack would kill that player, the cheapest
+        chump(s). Menace needs two blockers ('except by three or more' three); 'can't be blocked by more than one
+        creature' takes one. -> {attacker: [blocker dicts]}"""
+        o, blocks = self.opps[i], {}
+        board = [b for b in o["board"] if not b.get("dead") and not b.get("tapped")]
+        if not board: return blocks
+        mine = sorted((p for p in attackers if p in self.perms and p not in self.mazed), key=lambda p: (-self.stats(p)[0], p.k.name))
+        incoming = sum(self.hit(*self.stats(p)[::2]) for p in mine)
+        for p in mine:
+            pw, tg, kws = self.stats(p)
+            need, most = self.group(p, kws)
+            can = [b for b in board if self.can_block(b, kws, pw, p)]
+            if len(can) < need: continue
+            bu = p.k.kwn.get("bushido", 0)                 # the defender sees the bushido bonus coming
+            duels = {id(b): self.duel(b, pw + bu, tg + bu, kws) for b in can}
+            def score(b):
+                k_, l_ = duels[id(b)]
+                return (5 if k_ else 0) + (8 if l_ else 0) - 0.25 * b.get("mv", 0)
+            can.sort(key=score, reverse=True)
+            cmd_lethal = p.k in self.sim.commanders and o["cmd"][p.k.name] + self.hit(pw, kws) >= CMD_KILL
+            lethal = incoming >= o["life"] or cmd_lethal or ("infect" in kws and o["poison"] + self.hit(pw, kws) >= POISON_KILL)
+            chosen = [can[0]] if need == 1 and any(duels[id(can[0])]) else None
+            if chosen is None and most >= 2 and len(can) >= max(need, 2):
+                chosen = self.gang(can, pw + bu, tg + bu, kws, max(need, 2))
+            if chosen is None and lethal:
+                chosen = sorted(can, key=lambda b: (b.get("mv", 0), b["p"] + b["t"]))[:need]
+            if not chosen: continue
+            blocks[p] = chosen
+            for b in chosen: board.remove(b)
+            dealt = self.hit(pw, kws)
+            incoming -= dealt if "trample" not in kws else min(dealt, sum(b["t"] for b in chosen))
+        return blocks
+
     def declare_blocks(self):
-        """Each defending opponent blocks from its board (opponents have no boards until the blocker gradient).
-        Per attacker, biggest first: the blocker that kills it and/or survives it; a chump only when the attack would
-        kill that player. Menace takes two blockers. -> {attacker: [blocker dicts]}"""
         blocks = {}
         for i in self.alive():
-            o = self.opps[i]
-            board = [b for b in o["board"] if not b.get("dead") and not b.get("tapped")]
-            if not board: continue
-            mine = sorted((p for p, d in self.attackers.items() if d == i and p in self.perms), key=lambda p: -self.stats(p)[0])
-            incoming = sum(max(0, self.stats(p)[0]) * (2 if "double strike" in self.stats(p)[2] else 1) for p in mine)
-            for p in mine:
-                pw, tg, kws = self.stats(p)
-                can = [b for b in board if self.can_block(b, kws, pw)]
-                if not can: continue
-                def score(b):
-                    kills = (b["p"] >= tg or "deathtouch" in b["kw"]) and "indestructible" not in kws
-                    lives = (b["t"] > pw and "deathtouch" not in kws) or "indestructible" in b["kw"]
-                    return (5 if kills else 0) + (8 if lives else 0) - 0.25 * b.get("mv", 0), kills, lives
-                can.sort(key=lambda b: score(b)[0], reverse=True)
-                _, kills, lives = score(can[0])
-                cmd_lethal = p.k in self.sim.commanders and o["cmd"][p.k.name] + pw >= CMD_KILL
-                lethal = incoming >= o["life"] or cmd_lethal or ("infect" in kws and o["poison"] + pw >= POISON_KILL)
-                if not (kills or lives or lethal): continue
-                chosen = can[:2] if "menace" in kws else can[:1]
-                if len(chosen) < (2 if "menace" in kws else 1): continue
-                blocks[p] = chosen
-                for b in chosen: board.remove(b)
-                incoming -= max(0, pw) if "trample" not in kws else min(max(0, pw), sum(b["t"] for b in chosen))
+            blocks.update(self.plan_blocks(i, [p for p, d in self.attackers.items() if d == i]))
         for p, bl in blocks.items():
             self.note(f"    {p.k.name} is blocked by " + ", ".join(f"{b.get('name', 'a creature')} {b['p']}/{b['t']}" for b in bl))
         return blocks
+
+    def kill_blocker(self, b, why=""):
+        b["dead"] = True; self.bstat["blk_killed"] += 1
+        for o in self.opps:
+            if b in o["board"]: o["board"].remove(b)
+        if why: self.note(f"    {b.get('name', 'a blocker')} dies ({why})")
+
+    def block_triggers(self, blocks):
+        """Once blockers are declared: bushido, rampage, flanking, afflict and 'whenever ~ becomes blocked'."""
+        for p, bl in blocks.items():
+            if p not in self.perms: continue
+            i, k = self.attackers[p], p.k
+            n = k.kwn.get("bushido", 0) + k.kwn.get("rampage", 0) * max(0, len(bl) - 1)
+            if n: p.pp += n; p.pt += n; self.count_trig(k.name, "combat")
+            if "flanking" in self.stats(p)[2]:
+                for b in bl:
+                    if "flanking" in b["kw"] or b.get("dead"): continue
+                    b.setdefault("orig", (b["p"], b["t"])); b["p"] -= 1; b["t"] -= 1
+                    if b["t"] <= 0: self.kill_blocker(b, "flanking")
+            if k.kwn.get("afflict"):
+                self.damage_player(i, k.kwn["afflict"], k.name); self.count_trig(k.name, "combat")
+            self.fire_one(p, "blocked_self", p, opp=i); self.fire("blocked", p, opp=i)
+        if blocks: self.check_deaths("noncombat")
 
     def damage_step(self, blocks, first):
         """One combat damage step (first: first and double strikers only; else everyone without first strike, plus
@@ -3263,13 +3558,16 @@ class Game:
         mult, dealt_by, kws_of = self.st.dmg_mult, Counter(), {}   # doublers apply after assignment; keywords as dealt
         def strikes(kws): return bool(kws & {"first strike", "double strike"}) if first else ("first strike" not in kws or "double strike" in kws)
         for p, i in list(self.attackers.items()):
-            if p not in self.perms or self.opps[i]["dead"]: continue     # its player left the game: removed from combat
+            if p not in self.perms or self.opps[i]["dead"] or p in self.mazed: continue   # left the game / Maze of Ith
             pw, tg, kws = self.stats(p)
             bl = blocks.get(p)
             if bl is not None:
                 for b in bl:
                     if not b.get("dead") and strikes(b["kw"]) and b["p"] > 0:
-                        p.dmg += 10**6 if "deathtouch" in b["kw"] else b["p"]
+                        if "deathtouch" in b["kw"]: p.dmg += 10**6
+                        elif b["kw"] & {"infect", "wither"}: self.add_ctr(p, "-1/-1", b["p"])
+                        else: p.dmg += b["p"]
+                        if "lifelink" in b["kw"]: self.opps[i]["life"] += b["p"]
             if not strikes(kws) or pw <= 0: continue
             kws_of[p] = kws
             if bl is None:
@@ -3278,7 +3576,7 @@ class Game:
                     hits += [(j, p, pw * mult, kws, True) for j in self.alive() if j != i]
                 continue
             live = [b for b in bl if not b.get("dead")]
-            if not live and "trample" not in kws: continue
+            if not live and "trample" not in kws: self.bstat["stopped"] += pw * mult; continue
             rem = pw
             for b in live:
                 need = 1 if "deathtouch" in kws else max(0, b["t"] - b.get("dmg", 0))
@@ -3286,16 +3584,15 @@ class Game:
                 b["dmg"] = b.get("dmg", 0) + d * mult; rem -= d; dealt_by[p] += d * mult
                 if "deathtouch" in kws and d > 0: b["dt"] = True
             if rem > 0 and "trample" in kws: hits.append((i, p, rem * mult, kws, False))
+            self.bstat["stopped"] += (pw - (rem if "trample" in kws else 0)) * mult
         for bl in blocks.values():                    # blockers die
             for b in bl:
                 if not b.get("dead") and (b.get("dmg", 0) >= b["t"] or b.get("dt")) and "indestructible" not in b["kw"]:
-                    b["dead"] = True
-                    for o in self.opps:
-                        if b in o["board"]: o["board"].remove(b)
+                    self.kill_blocker(b)
         for p in list(self.attackers):                # your creatures die
             if p in self.perms:
                 pw, tg, kws = self.stats(p)
-                if p.dmg and p.dmg >= tg and "indestructible" not in kws:
+                if (tg <= 0 or (p.dmg and p.dmg >= tg)) and "indestructible" not in kws:
                     self.lost += 1; self.leave(p, "dies in combat")
         for i, p, n, kws, copy in hits:               # players are dealt damage (simultaneous)
             cm = p.k.name if (p.k in self.sim.commanders and not copy) else None
@@ -3362,7 +3659,9 @@ class Game:
         if "Creature" in k.types and k.haste: ready.append((None, k.power, k.tough, set(k.kw)))
         if not ready: return False
         mult = lambda kws: 2 if "double strike" in kws else 1
-        base = sum(max(0, pw) * mult(kws) for _, pw, _, kws in ready)
+        f = self.focus()
+        board = self.opps[f]["board"] if f is not None else []
+        base = self.through(f, ready, board) if board else sum(max(0, pw) * mult(kws) for _, pw, _, kws in ready)
         n_cr = sum(1 for p in self.perms if self.is_creature(p)) + ("Creature" in k.types)
         def amount(v):
             if isinstance(v, int): return v
@@ -3375,11 +3674,16 @@ class Game:
             elif e[0] == "biorhythm":
                 al = self.alive(); after = self.opp_creatures() * len(al)
                 return bool(ready) and base >= after + len(al) - 1 and sum(self.opps[i]["life"] for i in al) > after
+            elif e[0] == "noblock" and board:               # what the blockers were stopping
+                bonus += self.through(f, ready, [b for b in board if e[1] == "ground" and "flying" in b["kw"]]) - base if e[1] in ("all", "ground") else \
+                    max((self.through(f, ready, board, drop=b) - base for b in board), default=0) * e[1]
+            elif e[0] == "unblock" and board:
+                bonus += max((self.through(f, ready, board, unblock=a[0]) - base for a in ready if a[0] is not None), default=0)
             elif e[0] == "extra_combat":                          # attack again: all of it with an untap, else vigilance only
                 bonus += base if any(x[0] == "untap_cr" for x in k.spell + k.etb) else \
                     sum(max(0, pw) * mult(kws) for _, pw, _, kws in ready if "vigilance" in kws)
         if bonus <= 0: return False
-        lowest = min(self.opps[i]["life"] for i in self.alive())
+        lowest = self.opps[f]["life"] if board else min(self.opps[i]["life"] for i in self.alive())
         return base < lowest <= base + bonus or bonus >= 2 * k.mv + 2
 
     # ---- turn structure
@@ -3402,12 +3706,89 @@ class Game:
             if self.rng.random() < OPP_SECOND:
                 self.fire("opp_cast", OPP_CREATURE if self.rng.random() < OPP_CREATURE_SHARE else OPP_SPELL)
                 self.fire("opp_second")
+            if self.bspec: self.arrive(self.turn + 1, i)       # their creatures and denial for your next combat
             if self.has_engine() and self.alive():
                 self.note(f"  opponent {i + 1}'s turn ({sum(1 for u in self.pool if not u[5])} mana open)")
                 self.activations(instant=True)
             self.fire("end", each_only=True)
             self.pool = None
         self.open_pool = []; self.turns_left = 0
+
+    def arrive(self, t, i=None):
+        """--blockers: what opponent i (every opponent if None) gets for your turn-t combat: creatures onto its board,
+        denial into play. Propaganda, Silent Arbiter, Bridge and Moat are cast on their turn, so a held counter with
+        mana left open can stop them; fog and Settle are held for your combat (answered there)."""
+        for t0, u, seats, it in self.bspec:
+            if t0 != t: continue
+            for j in (seats if seats is not None else range(OPP_N)):
+                if (i is not None and j != i) or self.opps[j]["dead"]: continue
+                o, code = self.opps[j], it.get("deny")
+                if code in DENY_TYPE and self.pool is not None:
+                    self.note(f"  opponent {j + 1} casts {DENY[code]}")
+                    if self.try_answer({"kind": code, "backup": False}, self.pool): self.bstat["deny_countered"] += 1; continue
+                if code == "arb":
+                    o["board"].append({"name": "Silent Arbiter", "p": 1, "t": 5, "kw": frozenset({"artifact"}), "mv": 4, "deny": "arb", "until": u})
+                elif code:
+                    o["deny"].append({"code": code, "until": u})
+                else:
+                    o["board"].append({"name": f"{it['p']}/{it['t']}" + "".join(" " + w for w in sorted(it["kw"])), "p": it["p"],
+                                       "t": it["t"], "kw": it["kw"], "mv": max(1, (it["p"] + it["t"]) // 2), "until": u})
+                self.note(f"  opponent {j + 1} gets {DENY[code] if code else o['board'][-1]['name']}" + (f" (through T{u})" if u else ""))
+
+    def expire(self, t):
+        """Start of your turn t: --blockers entries past their last turn leave."""
+        for o in self.opps:
+            o["board"] = [b for b in o["board"] if not (b.get("until") and b["until"] < t)]
+            o["deny"] = [d for d in o["deny"] if not (d.get("until") and d["until"] < t)]
+
+    def ready_attackers(self):
+        out = []
+        for p in self.perms:
+            if not self.can_attack(p): continue
+            pw, tg, kws = self.stats(p)
+            if self.wants_attack(p, pw, kws): out.append((p, pw, tg, kws))
+        return out
+
+    def cast_removal(self, want, what):
+        """Cast the cheapest held removal that can hit a `want` permanent (creature / artifact / enchantment)."""
+        for c in sorted((c for c in dict.fromkeys(self.hand) if want in c.kill), key=lambda c: (c.mv, c.name)):
+            opts = self.options(c, "hand")
+            if not opts or not self.pay(c, *opts[0]): continue
+            g_, p_ = opts[0]
+            self.hand.remove(c); self.gy.append(c); self.casts += 1; self.spent += g_ + len(p_)
+            self.note(f"  {c.name} removes {what}")
+            return c
+        return None
+
+    def clear_path(self):
+        """Before combat, held removal (the kind that clears stax) goes at what stops your attack: a Silent Arbiter,
+        Moat or Ensnaring Bridge holding attackers home, attack tax on the opponent you're killing, or the one blocker
+        (not indestructible) between your attack and killing an opponent."""
+        for _ in range(3):
+            ready = self.ready_attackers()
+            if not ready or not any(c.kill for c in self.hand): return
+            targets = []
+            if len(ready) > 1:
+                targets += [("arb", i, b) for i in self.alive() for b in self.opps[i]["board"] if b.get("deny") == "arb"]
+            if any("flying" not in a[3] for a in ready): targets += [("moat", i, d) for i, d in self.denial("moat")]
+            if any(a[1] > len(self.hand) for a in ready): targets += [("bridge", i, d) for i, d in self.denial("bridge")]
+            f = self.focus()
+            targets += [("prop", i, d) for i, d in self.denial("prop") if i == f]
+            for i in self.alive():
+                o = self.opps[i]
+                if not o["board"] or self.through(i, ready, o["board"]) >= o["life"]: continue
+                b = next((b for b in sorted(o["board"], key=lambda b: (-(b["p"] + b["t"]), b["name"]))
+                          if "indestructible" not in b["kw"] and self.through(i, ready, o["board"], drop=b) >= o["life"]), None)
+                if b: targets.append(("blk", i, b))
+            for kind, i, x in targets:
+                what = f"opponent {i + 1}'s " + (DENY[kind] if kind != "blk" else x["name"])
+                if not self.cast_removal(DENY_TYPE.get(kind, "creature"), what): continue
+                if kind in ("arb", "blk"): x["dead"] = True; self.opps[i]["board"].remove(x)
+                else: self.opps[i]["deny"].remove(x)
+                self.bstat["removed_blk" if kind == "blk" else "removed_deny"] += 1
+                break
+            else:
+                return
 
     def answer_cost(self, c):
         """Mana an answer needs right now (0 if it's free with a commander out)."""
@@ -3484,7 +3865,8 @@ class Game:
         elif kind in PERSIST: targets = [True]
         elif kind == "nuke+gy": targets = list(self.perms) + list(self.gy)
         else: targets = list(self.perms)                                     # nuke, rift
-        if not targets: self.dis.append((kind, "no target")); return
+        if not targets:
+            self.dis.append((kind, "no target")); self.wipe_opps(kind); return
         if kind in ("cmd", "removal", "removal+"):                           # targeted: hexproof / shroud can't be chosen
             open_ = [p for p in targets if not (self.is_creature(p) and self.stats(p)[2] & {"hexproof", "shroud"})]
             if not open_:
@@ -3493,6 +3875,7 @@ class Game:
             targets = open_
         self.note(f"  DISRUPTION: {DIS_NAMES[kind]}" + (" (backed up)" if ev.get("backup") else ""))
         ans = self.try_answer(ev, self.open_pool)
+        if ans != "counter": self.wipe_opps(kind)             # protection saves only your side
         if ans and not (kind == "nuke+gy" and ans == "protect"):
             self.dis.append((kind, "answered")); return
         self.dis.append((kind, "hit"))
@@ -3529,6 +3912,14 @@ class Game:
                     self.leave(p, "is exiled" if ex else "dies in the wipe", "exile" if ex else "gy")
             if ex: self.exile += self.gy; self.gy = []
         if self.board_n() < before: self.hits.append((self.turn, before))
+
+    def wipe_opps(self, kind):
+        """An opponent's wipe hits every board: their creatures die too (indestructible ones stay, except to Farewell),
+        and a nonland wipe takes Propaganda, Bridge and Moat. Mass bounce (rift) leaves the caster's board: not modeled."""
+        if kind not in ("wipe", "nuke", "nuke+gy"): return
+        for o in self.opps:
+            o["board"] = [b for b in o["board"] if "indestructible" in b["kw"] and kind != "nuke+gy"]
+            if kind != "wipe": o["deny"] = [d for d in o["deny"] if d["code"] not in DENY_TYPE]
 
     def protected(self, p):
         """p would survive a destroy effect: indestructible, or an Aura with umbra (totem) armor on it."""
@@ -3585,8 +3976,10 @@ class Game:
         sim = self.sim
         for k in [c for c in self.hand if c.leyline]:
             self.hand.remove(k); self.enter(k)
+        if self.bspec: self.arrive(1)                      # boards already there for your first combat
         for t in range(1, turns + 1):
             self.turn = t; self.phase += 1; self.tcast = (); self.gained = 0; self.turns_left = len(self.alive())
+            if self.bspec: self.expire(t)
             for p in self.lands: p.tapped = False
             for p in self.perms: p.tapped = False; p.sick = False
             self.drops = 1 + self.st.extra_land
@@ -3618,6 +4011,8 @@ class Game:
             self.note(f"  mana {pool_n} ({''.join(sorted(cols))}) at the start of main")
             self.cast_loop(activate=False)                          # main phase 1: cast everything (nothing to hide)
             self.equip_step()
+            if self.bspec and not self.dry: self.clear_path()
+            faced = sum(len(self.opps[i]["board"]) for i in self.alive())
             sig = lambda: (len(self.hand), len(self.gy), len(self.cmd), sum(1 for u in self.pool if not u[5]))
             before = sig()
             self.combat()
@@ -3644,8 +4039,11 @@ class Game:
                 if q in self.perms: self.leave(q, "is exiled (unearth)", "exile", quiet=True)
             self.unearthed = []
             for q in self.perms: q.pp = q.pt = q.dmg = 0; q.tkw = None          # cleanup: pumps wear off, damage heals
+            self.noblock = False
             for o in self.opps:
-                for b in o["board"]: b["dmg"] = 0; b.pop("dt", None)
+                for b in o["board"]:
+                    b["dmg"] = 0; b.pop("dt", None); b.pop("nob", None)
+                    if "orig" in b: b["p"], b["t"] = b.pop("orig")
             for e in evs:
                 if e["kind"] not in ("counter", "counterK") and not self.won: self.disrupt(e)
             if not self.st.no_max and len(self.hand) > 7:
@@ -3656,7 +4054,7 @@ class Game:
             rec["casts"][t].append(self.casts); rec["spent"][t].append(self.spent)
             rec["disc"][t].append(self.disc)
             rec["gy"][t].append(len(self.gy)); rec["recur"][t].append(self.recur); rec["cycled"][t].append(self.cycled)
-            rec["board"][t].append(self.board_n())
+            rec["board"][t].append(self.board_n()); rec["oppb"][t].append(faced)
             rec["cmd_out"][t].append(bool(sim.commanders) and all(any(p.k is c for p in self.perms) for c in sim.commanders))
             if not self.won: self.opponents()                  # the rest of the round; combat rows below include it
             self.open_pool = []
@@ -3681,7 +4079,7 @@ class Game:
 def blank_rec(turns):
     return {m: {t: [] for t in range(1, turns + 1)} for m in
             ("lands", "mana", "colors", "stranded", "hand", "extra", "casts", "spent", "disc", "cmd_out",
-             "gy", "recur", "cycled", "board", "dmg", "cdmg", "atk", "kills", "cmdmax", "poison", "life")}
+             "gy", "recur", "cycled", "board", "dmg", "cdmg", "atk", "kills", "cmdmax", "poison", "life", "oppb")}
 
 def load_ladder(bracket, horizon=0):
     """The bracket's ladder from data/goldfish_gradients.json, with per-rung, per-slot firing odds precomputed
@@ -3723,6 +4121,7 @@ class Sim:
         self.tm = {}; self.tokens = {}
         self.dis_rng = random.Random(0)
         self.persist = 3
+        self.board_spec = getattr(args, "board_spec", None) or []     # --blockers: [(turn, until, seats, item)]
         self.keys, self.packages = want or (set(), [])
         self.wanted = set(self.keys) | {c for parts in self.packages for part in parts for c in part}
         uniq = list(dict.fromkeys(self.deck + self.commanders))
@@ -3849,7 +4248,7 @@ class Sim:
         first = {gi: [] for gi in range(len(self.groups))}
         cmd_first = {c.name: [] for c in self.commanders}
         attr, kept, mull_n, rattr, tut = Counter(), Counter(), 0, Counter(), Counter()
-        dsrc, trigs, lost, atk_turns, xcombats = Counter(), Counter(), 0, 0, 0
+        dsrc, trigs, lost, atk_turns, xcombats, bst = Counter(), Counter(), 0, 0, 0, Counter()
         finals = []
         for i in range(trials):
             fixed = {self.kill_turn - 1: [parse_event(f"cmd@{self.kill_turn - 1}")[1]]} if self.kill_turn and self.kill_turn > 1 else None
@@ -3859,12 +4258,12 @@ class Sim:
             for gi in first: first[gi].append(g.first.get(gi))
             for c in cmd_first: cmd_first[c].append(g.cmd_first.get(c))
             attr.update(g.attr); rattr.update(g.rattr); tut.update(g.tut); dsrc.update(g.dsrc); trigs.update(g.trigs)
-            lost += g.lost; atk_turns += g.atk_turns; xcombats += g.xcombats
+            lost += g.lost; atk_turns += g.atk_turns; xcombats += g.xcombats; bst.update(g.bstat)
             finals.append(g.final)
         return {"rec": rec, "first": first, "cmd_first": cmd_first, "attr": attr, "kept": kept, "rattr": rattr, "tut": tut,
                 "mulliganed": mull_n / trials, "trials": trials, "turns": turns, "finals": finals,
                 "dsrc": dsrc, "trigs": trigs, "lost": lost / trials, "atk_turns": atk_turns / trials,
-                "xcombats": xcombats / trials}
+                "xcombats": xcombats / trials, "bstat": bst, "spec": bool(self.board_spec)}
 
     def run_disruption(self, trials, turns, seed, clean_finals, fixed=None):
         """Replay each game on the same shuffle with its sampled disruption; pair it with the clean game."""
@@ -3938,6 +4337,7 @@ def summary(res, groups):
     out["trigger_sources"] = {f"{name} ({kind})": round(v / n, 2) for (name, kind), v in res["trigs"].most_common(12) if v / n >= 0.05}
     out["lost_in_combat"] = round(res["lost"], 3); out["attack_turns"] = round(res["atk_turns"], 2)
     out["extra_combats"] = round(res["xcombats"], 2)
+    if res.get("spec"): out["blocks"] = {k: round(v / n, 3) for k, v in sorted(res["bstat"].items())}
     paid = Counter()
     for f in F: paid.update(f.get("life_paid") or {})
     died = sorted(f["died"] for f in F if f.get("died"))
@@ -3995,12 +4395,15 @@ def print_report(label, sm, meta, groups, show_header=True):
 def print_combat(label, sm, T):
     tt = sm["turns"]
     def trio(t, m): d = tt[t][m]; return f"{d['p10']}/{d['med']}/{d['p90']}"
-    print(f"\n## {label}: combat and damage ({OPP_N} opponents at {START_LIFE} life; no blockers yet; opponents never attack; "
-          f"cumulative, end of turn)")
-    print(f"{'turn':<5}{'attackers':<11}{'combat dmg':<13}{'all dmg':<13}{'top cmdr dmg':<14}{'poison':<9}{'opps dead':>10}{'your life':>13}")
+    bl = sm.get("blocks")
+    print(f"\n## {label}: combat and damage ({OPP_N} opponents at {START_LIFE} life; "
+          + (f"boards from --blockers: {sm.get('blockers_spec', '')}" if bl is not None else "no opposing creatures (--blockers not set)")
+          + "; opponents never attack; cumulative, end of turn)")
+    print(f"{'turn':<5}{'attackers':<11}{'combat dmg':<13}{'all dmg':<13}{'top cmdr dmg':<14}{'poison':<9}{'opps dead':>10}{'your life':>13}"
+          + (f"{'opp blockers':>14}" if bl is not None else ""))
     for t in range(1, T + 1):
         print(f"T{t:<4}{trio(t, 'atk'):<11}{trio(t, 'cdmg'):<13}{trio(t, 'dmg'):<13}{trio(t, 'cmdmax'):<14}{trio(t, 'poison'):<9}"
-              f"{tt[t]['kills']['mean']:>10.2f}{trio(t, 'life'):>13}")
+              f"{tt[t]['kills']['mean']:>10.2f}{trio(t, 'life'):>13}" + (f"{trio(t, 'oppb'):>14}" if bl is not None else ""))
     kb = sm["kill_by_turn"]
     show = [t for t in range(3, T + 1)]
     for lab, name in (("first", "first opponent dead"), ("table", "all opponents dead")):
@@ -4023,6 +4426,16 @@ def print_combat(label, sm, T):
         print("triggers fired (avg per game): " + " | ".join(f"{k} {v:.2f}" for k, v in sm["triggers_by_kind"].items()))
     if sm["trigger_sources"]:
         print("trigger sources (avg fires per game): " + " | ".join(f"{k} {v:.2f}" for k, v in sm["trigger_sources"].items()))
+    if bl is not None:
+        g_ = lambda k: bl.get(k, 0)
+        print(f"blocks (avg per game): attackers blocked {g_('blocked'):.2f} (chumped {g_('chump'):.2f}, traded {g_('trade'):.2f}, "
+              f"lost to the blocker {g_('bounced'):.2f}, stalled {g_('stalled'):.2f}) | held back from a bad block {g_('held_back'):.2f} | "
+              f"blockers killed {g_('blk_killed'):.2f} | combat damage stopped by blocks/fog/Maze {g_('stopped'):.1f} | "
+              f"your removal on a blocker {g_('removed_blk'):.2f}")
+        if any(g_(k) for k in ("fog", "settle", "deny_stop", "prop_paid", "mazed", "deny_countered", "removed_deny")):
+            print(f"denial (avg per game): fogs {g_('fog'):.2f} | Settles {g_('settle'):.2f} (your creatures exiled {g_('settled'):.2f}) | "
+                  f"attackers kept home by Moat/Bridge/Arbiter/attack tax {g_('deny_stop'):.2f} | attack tax paid {g_('prop_paid'):.2f} mana | "
+                  f"Maze {g_('mazed'):.2f} | countered {g_('deny_countered'):.2f} | your removal on denial {g_('removed_deny'):.2f}")
     print(f"attacked on {sm['attack_turns']:.1f} turns per game" + (f"; {sm['extra_combats']:.2f} additional combat phases per game"
           if sm['extra_combats'] else "") + f"; your creatures lost in combat {sm['lost_in_combat']:.2f} per game. "
           f"A game ends when all opponents are dead; its later turns repeat its final state.")
@@ -4263,7 +4676,7 @@ def explain(cache, names, commanders):
                 bits.append("reduce " + (" ".join(sorted(f["types"]) + sorted(f.get("sub") or ())) or "all") + " spells by 1 per " + " ".join(s[2]))
             elif s[0] == "equip_red": bits.append(f"equip costs {{{s[1]}}} less")
             elif s[0] == "attack_limit": bits.append(f"at most {s[1]} attacker(s) each combat (yours too)")
-            elif s[0] == "neutral_block": bits.append("block limit (no blockers yet)")
+            elif s[0] == "neutral_block": bits.append("block limit (opponents never attack)")
             elif s[0] == "base_pt": bits.append(("other " if s[3] else "") + f"creatures are base {s[1]}/{s[2]}")
             elif s[0] == "cr_mana": bits.append("creatures gain: {T}: add " + "+".join("".join(sorted(u[0])) for u in s[1]))
             elif s[0] == "mana_add": bits.append(f"mana +{s[2]} per tap ({s[1]}s)")
@@ -4307,7 +4720,7 @@ def explain(cache, names, commanders):
         if "Creature" in k.types and not k.is_land:                 # combat bits last, so the ability read leads the line
             pt = f"{k.power}/{k.tough}" if not k.dyn_pt else \
                 ("X/X" if k.dyn_pt[0] == "both" else f"X/{k.tough}") + " (X = " + " ".join(k.dyn_pt[1]) + ")"
-            kws = sorted(k.kw) + [f"{a} {b}" for a, b in sorted(k.kwn.items()) if a != "exalted"]
+            kws = sorted(k.kw) + [f"{a} {b}" for a, b in sorted(k.kwn.items()) if a != "exalted"] + [EVADE_TXT[r[0]].format(*r[1:]) for r in k.evade]
             bits.append(pt + (" " + ", ".join(kws) if kws else "") + (f" (a creature only at devotion {k.god[1]}+)" if k.god else ""))
         elif k.kw and not k.is_land: bits.append(", ".join(sorted(k.kw)))
         role = "land" if k.is_land else k.cat
@@ -4348,7 +4761,7 @@ def main():
     ap.add_argument("--bracket", type=int, default=0); ap.add_argument("--shuffles", type=int, default=0)
     ap.add_argument("--horizon", type=int, default=0); ap.add_argument("--ladder-max", action="store_true")
     ap.add_argument("--cast-interaction", action="store_true"); ap.add_argument("--no-mulligan", action="store_true")
-    ap.add_argument("--trace", type=int, default=0)
+    ap.add_argument("--trace", type=int, default=0); ap.add_argument("--blockers", default="")
     ap.add_argument("--explain", action="store_true"); ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
     if not os.path.exists(args.deck): sys.exit(f"deck file not found: {args.deck}")
@@ -4362,6 +4775,12 @@ def main():
             except ValueError:
                 sys.exit(f"--disruption {part!r}: use KIND@TURN with KIND one of {', '.join(DIS_CODES)} (add ! for backed up; "
                          "e.g. 'wipe@5;cmd@4;ctrK!@3'), 'ladder', 'sample' or 'off'")
+
+    try: args.board_spec = parse_blockers(args.blockers)
+    except ValueError as ex:
+        sys.exit(f"--blockers {str(ex)!r}: use [SEAT:]P/T[ keyword...]@T[-U][xN] for a creature (e.g. '2/2@3; 1/4 reach@4x2; "
+                 f"1:3/3 deathtouch@5') or [SEAT:]CODE@T[-U] with CODE one of {', '.join(DENY)} (e.g. 'prop@4; 2:fog@6'). "
+                 f"Keywords: {', '.join(BLOCKER_KW)}")
 
     entries = mtg.parse_deck(args.deck)
     if not entries: sys.exit(f"no cards found in {args.deck}")
@@ -4452,6 +4871,7 @@ def main():
             sm["ladder"] = ladder_summary(sim.run_ladder(lad, args.shuffles or lad["shuffles"], args.seed, args.ladder_max), lad)
         elif mode != "off":
             sm["disruption"] = disruption_summary(sim.run_disruption(args.trials, args.turns, args.seed, res["finals"], fixed), groups)
+        if args.blockers: sm["blockers_spec"] = args.blockers
         for t in sm["turns"]:
             sm["turns"][t]["hand"]["leq1"] = round(mean([1 if h <= 1 else 0 for h in res["rec"]["hand"][t]]), 4)
         results.append((label, sm))
@@ -4464,8 +4884,8 @@ def main():
             print_disruption(label, sm["disruption"], args.turns, args.disruption if fixed else None)
         if "ladder" in sm: print_ladder(label, sm["ladder"])
     if len(results) > 1: compare_table(results, groups, args.turns)
-    print("\nscope: plays alone by design (opponents are approximations, never decisions; they have no blockers yet and never attack). "
-          "not modeled: token copies, noncreature tokens other than Treasure/Clue/Food/Gold/named artifacts, opponents' creatures; "
+    print("\nscope: plays alone by design (opponents are approximations, never decisions; their creatures only block, from --blockers, "
+          "and they never attack). not modeled: token copies, noncreature tokens other than Treasure/Clue/Food/Gold/named artifacts; "
           "partial/blank cards are cast for their mana cost only. Treat numbers as a floor/ceiling sketch, not a prediction.")
 
 if __name__ == "__main__":

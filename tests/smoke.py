@@ -210,6 +210,21 @@ def checks():
         dict(name="goldfish combat variant", cmd=S("goldfish.py", COMBAT, "--trials", "100", "--disruption", "off",
                                                   "--variant", "No hero|Hero of Bladehold=>Grizzly Bears"),
              must=["table killed <=T8", "damage T8 P10/med/P90"]),
+        # ---- goldfish blockers (Sept 30 2026): --blockers boards, block keywords, denial
+        dict(name="goldfish blocker reads explain", cmd=S("goldfish.py", tmp_deck("blk", ["Najeela, the Blade-Blossom"],
+             "1 Questing Beast\n1 Ichorclaw Myr\n1 Samurai of the Pale Curtain\n1 Wolverine Pack\n1 Falter\n1 Artful Dodge\n"
+             "1 Frenzied Goblin\n1 Neheb, the Eternal\n1 Suq'Ata Lancer\n40 Forest"), "--explain"),
+             must=["unblockable by power 2 or less", "Ichorclaw Myr — on blocked_self: pump obj +2/+2 EOT", "2/2 bushido 1", "rampage 2",
+                   "creatures without flying can't block EOT", "target creature can't be blocked EOT", "1 opposing blocker(s) can't block EOT",
+                   "afflict 3", "flanking"]),
+        dict(name="goldfish blockers run", cmd=S("goldfish.py", COMBAT, "--trials", "150", "--disruption", "off",
+             "--blockers", "1/1@2; 2/2 flying@4; 3/3 deathtouch@6x2; 1:prop@4; 2:fog@5; 3:arb@5; each:maze@7; 1:settle@6; bridge@8; moat@8"),
+             must=["boards from --blockers", "opp blockers", "blocks (avg per game): attackers blocked", "denial (avg per game): fogs"],
+             must_not=["Traceback"]),
+        dict(name="goldfish blockers ladder", cmd=S("goldfish.py", COMBAT, "--trials", "100", "--shuffles", "5", "--blockers", "2/2@3x2; 2:fog@6"),
+             must=["disruption ladder, Bracket 3", "blocks (avg per game)"], must_not=["Traceback"]),
+        dict(name="goldfish blockers bad spec", cmd=S("goldfish.py", COMBAT, "--blockers", "2/2 banana@3"), expect_rc=1,
+             must=["--blockers '2/2 banana@3'"]),
         # ---- goldfish Food/sacrifice fixture (Sept 30 2026): Ragost's engine, sacrifice costs and triggers, type grants, doublers
         dict(name="goldfish food explain", cmd=S("goldfish.py", FOOD, "--explain"),
              must=["Ragost, Deft Gastronaut — on end +opp turns: if you gained life this turn: untap ~; act [T 1 sac Food]: each opponent loses 3; "
