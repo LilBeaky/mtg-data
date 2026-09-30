@@ -218,7 +218,7 @@ def checks():
                    "Overrun — pump team +3/+3 trample EOT; pump: cast before combat only",
                    "Impact Tremors — on etb(creature): each opponent loses 1", "Blood Artist — on dies(creature): an opponent loses 1, you gain 1 life",
                    "Warstorm Surge — on etb(creature): an opponent loses that creature's power", "Crusader of Odric — X/X (X = creatures)",
-                   "(a creature only at devotion 5+)", "Exsanguinate — each opponent loses X", "Rafiq of the Many — on attack(creature): pump obj double strike EOT",
+                   "(a creature only at devotion 5+)", "Exsanguinate — each opponent loses X", "Rafiq of the Many — on attack(creature attacking alone): pump obj double strike EOT",
                    "Najeela, the Blade-Blossom — on attack(Warrior ): token 1x Warrior 1/1 attacking", "held     other  Lightning Bolt",
                    "act [5]: untap attacking creatures, pump attackers haste,lifelink,trample EOT, additional combat",
                    "Relentless Assault — untap attacked creatures, additional combat", "Aurelia, the Warleader — on attack_self 1/turn: untap all creatures, additional combat",

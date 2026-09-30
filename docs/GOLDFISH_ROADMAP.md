@@ -36,7 +36,7 @@ Making those honest dropped the number to ~42%. Everything since is real reading
 
 **Every change passes three nets before it's pushed:**
 1. `goldfish_coverage.py diff HEAD --all`: read every changed reading. Group them with a scratch script by what changed, read the most-played first, and fix misreads before anything else.
-2. `tests/goldfish_units.py` (220 checks, deterministic board states) and `tests/goldfish_sweep.py`: every card's effects executed once in a live game, which fails on any exception. The sweep found crashes the fixtures never hit.
+2. `tests/goldfish_units.py` (220 checks, deterministic board states) and `tests/goldfish_sweep.py` (all 32,116 Commander-legal cards, ~30 s): every card's effects executed once in a live game, which fails on any exception. The sweep found crashes the fixtures never hit.
 3. `tests/smoke.py` (70 checks, ~2.5 min). Run it in a separate git worktree at the commit being pushed, so editing can continue. Read the result before pushing.
 
 ## Done
@@ -54,6 +54,12 @@ Making those honest dropped the number to ~42%. Everything since is real reading
   - Doublers and tribes: token doublers; trigger doublers (cause and source); "the chosen type" = the deck's tribe.
   - New structures: sagas (CR 714) incl. Urza's Saga; token copies; conditions (`parse_cond`); qualified trigger filters.
   - Individual cards: Black Market Connections, Harrow / Crop Rotation, Natural Order, Chaos Warp, Victimize, Animate Dead, Frantic Search, Mana Vault, Sensei's Top, amass, artifact/enchantment removal as stax answers, Krenko's tap-over-attack.
+- **Session 3, mechanics:**
+  - Classes (CR 716): each level is its own compiled card; level-up is a sorcery-speed act.
+  - "Return ~ from your graveyard" activations (Reassembling Skeleton).
+  - Tap-a-creature mana (Springleaf Drum) and "activate only if you control a Swamp or a Mountain" land mana (the Verges).
+  - Manlands: Mutavault, Restless lands, Celestial Colonnade, Den of the Bugbear.
+- **Session 3, correctness:** the Phase 3 audit below.
 
 ## Phase 3 audit (third session)
 
@@ -82,15 +88,30 @@ All fixed or made honest, with seven audit checks in `goldfish_units.py` that fa
 
 ## Next (by weight in `report`, re-rank each session)
 
-1. **"put N" (3.1%):** mostly "+1/+1 counter" riders on new trigger frames and "put a card from among them into your hand" digs. Also "put a creature card from your hand onto the battlefield" (Sneak Attack, Stoneforge Mystic: a `cheat` effect with the end-step list already built for copies).
-2. **"create N" (1.9%):** Treasures on odd triggers, Curse of Opulence (~opp), Caretaker's Talent (level-up classes).
-3. **"~ deals" / "it deals" (2.6%):** damage to any target with counted amounts, pingers.
-4. **"target creature gets" / pumps on activated abilities (1.8%):** Kessig Wolf Run and friends in `combat_acts`.
-5. **Conditions still unread (3.2%: "if you", "if N", "if ~"):** the land conditions (Field of the Dead), "as long as" statics (Anger), counts of cards drawn, spells cast this turn.
+Cluster shares from `report` after the audit (share of weighted unmodeled lines).
+
+1. **"put N" (3.2%):** mostly "+1/+1 counter" riders on new trigger frames and "put a card from among them into your hand" digs. Also "put a creature card from your hand onto the battlefield" (Sneak Attack, Stoneforge Mystic: a `cheat` effect with the end-step list already built for copies).
+2. **"create N" (2.0%):** Treasures on odd triggers, Curse of Opulence (~opp).
+3. **"~ deals" (1.9%):** damage to any target with counted amounts, pingers.
+4. **"target creature gets" / pumps on activated abilities (1.7%):** Kessig Wolf Run and friends in `combat_acts`.
+5. **Conditions still unread (4.0%: "if you" 1.7, "if N" 1.5, "if ~" 0.8) and "as long as" statics (1.4%):** the land conditions (Field of the Dead), Anger, counts of cards drawn, spells cast this turn.
 6. **Auras on your creatures ("enchanted creature", 1.2%).**
 7. **Clones (Phyrexian Metamorph, Spark Double):** enter as a copy; `copy_card` exists.
 8. **Unread conditions worth reading next:** adamant (three mana of one color spent), delirium (card types in the graveyard), revolt, "for each other creature" (count minus ~), "1 plus the number of", "twice the number of", snow permanents.
 9. **Re-run the sampled audit** with a new seed after each cluster pass.
+
+## Known misreads still open
+
+These readings are wrong or approximate, and the parser knows it only where the card says partial:
+- **Crowded Crypt:** decayed tokens are read as normal tokens. They can block and attack every turn, which is an overcount.
+- **Maralen of the Mornsong, Mornsong Aria, Gibbering Descent:** "each player's draw step/upkeep, that player ..." is read as opponent-only. On your own turn it's you. These cards are partial.
+- **Graveyard Shovel, Cellar Door:** "If it's a creature card, you ..." applies unconditionally. `COND_OWN` skips "it's a", so reveal checks aren't read. These cards are partial.
+- **Horrifying Revelation:** "target player ... then mills a card" is read as your own mill.
+- **Search for Glory:** the tutor filter drops "a legendary card", so it finds fewer cards than it should. That's an undercount.
+- **"for each X on the battlefield"** (Shepherd of Rot, Timberwatch Elf, Fruition) counts only your own permanents. Opponents' boards are unknown, so it undercounts.
+- **Copies with "except it has flying"** don't add the keyword. That's an undercount.
+- **Polymorph, Blessed Reincarnation:** "The player puts that card onto the battlefield" is flagged unread although it's the opponent's. The card is wrongly partial, which is harmless.
+- **Unsampled:** the audit was 40 cards. 4/40 gives a 95% interval of roughly 3–24% for the misread rate among `modeled` cards. The family sweep after it removed the biggest known sources, but the true rate is unmeasured until the next sample.
 
 ## Working conventions
 
