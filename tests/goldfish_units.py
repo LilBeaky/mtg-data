@@ -965,7 +965,7 @@ XNAMES = ["Formidable Speaker", "Birthing Pod", "Eldritch Evolution", "Grizzly B
           "Kenrith's Transformation", "Tear Asunder", "Aegis Sculptor", "Frantic Search", "Swords to Plowshares",
           "Gray Merchant of Asphodel", "Mox Opal", "Sol Ring", "Soulstinger", "Etched Oracle", "Glen Elendra Guardian",
           "Thought Scour", "Riveteers Overlook", "Mask of Memory", "Sign in Blood", "Pippin's Bravery", "Stargaze",
-          "Culling Ritual", "Everflowing Chalice", "Tezzeret, Master of the Bridge", "Exotic Disease", "Storm the Citadel",
+          "Culling Ritual", "Everflowing Chalice", "Brain Freeze", "Tezzeret, Master of the Bridge", "Exotic Disease", "Storm the Citadel",
           "Casting of Bones", "Liliana's Specter", "Cabal Coffers", "Elvish Archdruid", "Llanowar Elves", "Enigmatic Incarnation",
           "Krenko, Mob Boss", "Brightstone Ritual", "Relic of Sauron", "Return of the Wildspeaker", "Goblin Instigator",
           "Earthshaker Dreadmaw", "Orcish Lumberjack", "Kozilek, the Great Distortion"]
@@ -1027,9 +1027,9 @@ def _():
     G = xgame(hand=["Bloodbraid Elf"], lands=["Forest", "Mountain", "Forest", "Mountain"], lib=["Hill Giant", "Centaur Courser", "Forest", "Craw Wurm"])
     G.build_pool(); G.try_cast(k, "hand")
     return sorted(p.k.name for p in G.perms) == ["Bloodbraid Elf", "Centaur Courser"] and len(G.lib) == 3
-@check("Keywords aren't silently read: Tear Asunder notes kicker; Kenrith's Transformation's 'Enchanted creature' line is unmodeled")
+@check("Keywords aren't silently read: Brain Freeze notes storm; Kenrith's Transformation's 'Enchanted creature' line is unmodeled")
 def _():
-    return any("kicker" in n for n in XK["Tear Asunder"].notes) and XK["Kenrith's Transformation"].status == "partial"
+    return any("storm" in n for n in XK["Brain Freeze"].notes) and XK["Kenrith's Transformation"].status == "partial"
 @check("Leftover detector: Frantic Search's untap and Stargaze's dig are unread parts; Swords' 'its controller gains' isn't")
 def _():
     return XK["Frantic Search"].status == "partial" and XK["Stargaze"].status == "partial" and XK["Swords to Plowshares"].status == "held" \
@@ -1096,9 +1096,9 @@ PNAMES = ["Krenko, Mob Boss", "Goblin Instigator", "Goblin Warchief", "Mountain"
           "Mox Diamond", "Black Market Connections", "Harrow", "Chaos Warp", "Morbid Opportunist", "Grizzly Bears",
           "Lightning Bolt", "Mulldrifter", "Sol Ring", "Siege-Gang Commander", "Llanowar Elves", "Welcoming Vampire",
           "Windreader Sphinx", "Serra Angel", "Craw Wurm", "Trespasser's Curse", "History of Benalia", "Urza's Saga",
-          "Mox Opal", "Sol Ring", "Ophiomancer", "Gorehorn Raider", "Garruk's Uprising", "Valakut, the Molten Pinnacle",
+          "Mox Opal", "Sol Ring", "Everflowing Chalice", "Ophiomancer", "Gorehorn Raider", "Garruk's Uprising", "Valakut, the Molten Pinnacle",
           "Helm of the Host", "Kiki-Jiki, Mirror Breaker", "Skyclave Relic", "Second Harvest", "Smothering Tithe",
-          "Oko, the Ringleader", "Dwynen's Elite"]
+          "Oko, the Ringleader", "Dwynen's Elite", "Approach of the Second Sun"]
 PRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(PNAMES)}
 g.CHOSEN_TYPE = g.chosen_type([PRAW["Krenko, Mob Boss"]], [PRAW[n] for n in ("Goblin Instigator", "Goblin Warchief", "Siege-Gang Commander")])
 PK = {n: g.compile_card(PRAW[n], g.ALL5) for n in PNAMES}
@@ -1198,11 +1198,19 @@ def _():
     return len(G.hand) == 2 and sum(1 for p in G.perms if p.k.token) == 1 and ok and tok is not None and tok.k.haste \
         and len(H.hand) == 2 and tok not in H.perms
 
-@check("An unreadable 'If' drops its effect (Skyclave Relic's kicked copies; Oko's 'Otherwise' goes with it); the tax clause stays (Smothering Tithe)")
+@check("An unreadable 'If' drops its effect (Approach of the Second Sun never wins; Oko's 'Otherwise' goes with it); the tax clause stays (Smothering Tithe)")
 def _():
     oko = [fx for c_, fx in PK["Oko, the Ringleader"].pw if c_ == 1][0]
-    return not any(e[0] == "copy_token" for e in g.all_fx(PK["Skyclave Relic"])) and PK["Skyclave Relic"].status == "partial" \
+    return not any(e[0] == "win" for e in g.all_fx(PK["Approach of the Second Sun"])) and PK["Approach of the Second Sun"].status != "modeled" \
         and oko == [("draw", 2)] and PK["Smothering Tithe"].trig and PK["Smothering Tithe"].status == "modeled"
+@check("Kicker: paid when the pool covers it (Skyclave Relic makes its copies only kicked); multikicker counts (Everflowing Chalice x2 at 4 mana)")
+def _():
+    G = pgame(hand=["Skyclave Relic"], lands=["Mountain"] * 3); G.build_pool(); G.try_cast(PK["Skyclave Relic"], "hand")
+    H = pgame(hand=["Skyclave Relic"], lands=["Mountain"] * 6); H.build_pool(); H.try_cast(PK["Skyclave Relic"], "hand")
+    I = pgame(hand=["Everflowing Chalice"], lands=["Mountain"] * 4); I.build_pool(); I.try_cast(PK["Everflowing Chalice"], "hand")
+    ch = [q for q in I.perms if q.k.name == "Everflowing Chalice"]
+    return sum(1 for q in G.perms if "Skyclave" in q.k.name) == 1 and sum(1 for q in H.perms if "Skyclave" in q.k.name) == 3 \
+        and ch and ch[0].ctr.get("charge") == 2
 @check("Second Harvest copies each token; Dwynen's Elite needs another Elf; 'if you cast it' is false for a creature put onto the battlefield")
 def _():
     G = pgame(perms=["Grizzly Bears"]); G.make_tokens(PK["Krenko, Mob Boss"].acts[0]["fx"][0], 2); G.do(PK["Second Harvest"].spell, PK["Second Harvest"])

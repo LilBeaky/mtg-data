@@ -165,6 +165,8 @@ def checks():
         dict(name="goldfish json", cmd=S("goldfish.py", nofake, "--trials", "50", "--disruption", "off", "--json"), must=['"kill": 0']),
         # ---- goldfish mechanics fixture (Sept 29 2026 parser work) + deterministic unit checks
         dict(name="goldfish units", cmd=["tests/goldfish_units.py"], must=["units: all"]),
+        # ---- runtime crash net: every card's parsed effects executed once in a live game
+        dict(name="goldfish sweep: every card's effects run", cmd=["tests/goldfish_sweep.py"], must=[" 0 errors"]),
         # ---- goldfish coverage (parser over the whole Commander pool): a parse change must never crash a card
         dict(name="goldfish coverage: every legal card compiles", cmd=S("goldfish_coverage.py", "report", "--top", "3"),
              must=[" 0 compile errors", "fully read (modeled + held + vacuum + override), weighted:"]),
@@ -220,7 +222,7 @@ def checks():
                    "Najeela, the Blade-Blossom — on attack(Warrior ): token 1x Warrior 1/1 attacking", "held     other  Lightning Bolt",
                    "act [5]: untap attacking creatures, pump attackers haste,lifelink,trample EOT, additional combat",
                    "Relentless Assault — untap attacked creatures, additional combat", "Aurelia, the Warleader — on attack_self 1/turn: untap all creatures, additional combat",
-                   "Moraug, Fury of Akoum — on landfall: additional combat, untap all creatures"],
+                   "Moraug, Fury of Akoum — on landfall: in your main phase: additional combat, untap all creatures"],
              must_not=["Crusader of Odric's power", "Creatures creature"]),
         dict(name="goldfish combat run", cmd=S("goldfish.py", COMBAT, "--trials", "200", "--turns", "10", "--shuffles", "10"),
              must=["combat and damage", "all opponents dead:", "additional combat phases per game", "damage by source", "triggers fired (avg per game)",

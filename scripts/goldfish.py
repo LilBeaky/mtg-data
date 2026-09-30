@@ -370,6 +370,7 @@ def dyn_key(what):
     w = what.lower()
     if re.search(RX_DOMAIN, w): return ("domain",)
     if re.search(r"colors? of mana spent to cast (?:it|~|this spell)", w): return ("converge",)
+    if re.search(r"^times? (?:it|~) was kicked", w): return ("kicks",)                     # multikicker (Everflowing Chalice)
     m = re.match(r"^your devotion to (white|blue|black|red|green)(?: and (white|blue|black|red|green))?$", w.strip())
     if m: return ("devotion",) + tuple(COLOR_WORDS[c] for c in m.groups() if c)          # Gray Merchant
     for rx, key in ATTACHED_DYN:
@@ -656,6 +657,7 @@ def _fx_pump(m):
         dp, dt = ("per", dp, key), ("per", dt, key)
     kws = _kw_in(body)
     if dp is None or dt is None or not (pm or kws): return None
+    if who in ("obj", "target") and ((isinstance(dp, int) and dp < 0) or (isinstance(dt, int) and dt < 0)): return None   # a debuff: removal
     return ("pump", who, dp, dt, kws)
 
 def _fx_ctr_on(m):
@@ -874,6 +876,9 @@ def parse_cond(c):
     'you have N or more life'; cards in hand; 'you attacked (with N or more creatures) this turn'; graveyard counts."""
     c = c.strip().lower()
     if c == "you gained life this turn": return "gained"
+    if re.fullmatch(r"(?:~|it|this spell|he|she|they|this creature) was kicked", c): return ("kicked",)
+    if c in ("it's your turn", "it is your turn"): return ("your_turn",)
+    if c in ("it's your main phase", "it's your precombat main phase", "it's not your turn"): return ("main",) if "main" in c else ("not_your_turn",)
     if re.fullmatch(r"you cast (?:it|~)|(?:it|~|he|she|they) was cast|(?:it|~) was cast from your hand|you cast it from your hand", c):
         return ("cast_self",)                           # Rocco, Light-Paws: an ETB that needs the permanent to have been cast
     m = re.fullmatch(r"you control another (.+)", c)
@@ -913,6 +918,8 @@ def cond_str(c):
     k = c[0]
     if k == "life": return f"if you have {c[1]}+ life"
     if k == "cast_self": return "if it was cast"
+    if k == "kicked": return "if kicked"
+    if k in ("your_turn", "not_your_turn", "main"): return {"your_turn": "on your turn", "not_your_turn": "on an opponent's turn", "main": "in your main phase"}[k]
     if k == "hand_le": return f"if {c[1]} or fewer cards in hand"
     if k == "hand_ge": return f"if {c[1]}+ cards in hand"
     if k == "attacked": return "if you attacked" + (f" with {c[1]}+" if c[1] > 1 else "")
@@ -954,6 +961,11 @@ def parse_fx(s):
     _CTX["quotes"] = quotes
     qi = iter(range(len(quotes)))
     s0 = re.sub(r'"[^"]*"', lambda m: f"@q{next(qi)}@", s.strip())
+    km = re.search(r"(?:^|(?<=\. ))if (?:~|this spell|it) was kicked, ([^.]*?)\s*instead\.?", s0, re.I)
+    if km:                                        # Tear Asunder: the kicked effect replaces the base one
+        base, t1 = parse_fx(s0[:km.start()] + s0[km.end():])
+        kick, t2 = parse_fx(km.group(1))
+        if base and kick: return [("cond", ("not", ("kicked",)), base), ("cond", ("kicked",), kick)], t1 or t2
     s0 = re.sub(r"[^.]*\binstead\b[^.]*\.?", "", s0, flags=re.I).strip()
     s = s0.lower()
     if len(s) != len(s0): s0 = s
@@ -992,7 +1004,7 @@ def parse_fx(s):
     COND_OWN = (r"(?:then )?if (?!you do\b|it's an? |it is an? |x is greater than or equal to the number of cards in your library"
                 r"|(?:the|that) player doesn't|they don't)")   # reveal checks, Thassa's Oracle, the tax clause (Smothering Tithe)
     if any(re.match(COND_OWN + r"[^,]+, ", x, re.I) for x in parts):
-        conds, keep, last = [], [], None               # 'If COND, EFFECT' sentences (Garruk's Uprising, Skyclave Relic's kicker)
+        conds, keep, last, first = [], [], None, []    # 'If COND, EFFECT' sentences (Garruk's Uprising, Skyclave Relic's kicker)
         for x in parts:
             om = re.match(r"otherwise,? (?P<rest>.+)$", x, re.I)
             if om and last is not None:                  # Oko: the 'Otherwise' goes with its 'If' (negated, or dropped with it)
@@ -1006,11 +1018,11 @@ def parse_fx(s):
             cond = parse_cond(cm.group("c")); last = cond or False           # False: an unread 'If' (its 'Otherwise' drops too)
             if cond:
                 inner, _ = parse_fx(x[cm.start("rest"):])
-                if inner: conds.append(("cond", cond, inner))
+                if inner: (first if not keep else conds).append(("cond", cond, inner))   # text order: a leading 'If' first
             elif _CTX.get("left") is not None and not LEFT_OPP.search(x.lower()) and LEFT_VERB.search(x[cm.start("rest"):].lower()):
                 _CTX["left"].append(x.strip()[:90])      # an unread condition: its effect is dropped, and the line is partial
         fx, t2 = parse_fx(" ".join(keep)) if keep else ([], False)
-        return fx + conds, tax or t2
+        return first + fx + conds, tax or t2
     out, masked = [], s
     for rx, fn in FX:
         for mm in rx.finditer(masked):
@@ -1246,6 +1258,7 @@ class Card:
         self.cond_units = []     # mana abilities with 'Activate only if you control ...': [(units, count key, n)]
         self.chapters = {}       # Saga: chapter number -> effects (CR 714); final chapter = max key
         self.granted_ch = set()  # chapters that grant the Saga an ability (Urza's Saga), read as its own
+        self.kicker = None       # (generic, pips, multikicker?): paid at cast when affordable (Tear Asunder, Everflowing Chalice)
         self.imprint = False     # Chrome Mox: exiles a nonartifact, nonland card from hand; taps for its colors
         self.mox_diamond = False # Mox Diamond: enters only by discarding a land card
         self.sac_outlets = []    # 'Sacrifice a creature: Add {C}{C}' (Ashnod's Altar): [(fodder filter, units, taps?)]
@@ -2179,6 +2192,10 @@ def compile_card(c, anyc):
             if r is True: done += 1
             elif r is False: missed += 1; k.notes.append("unmodeled: " + L[:72])
             continue
+        km = re.fullmatch(r"(multi)?kicker ((?:\{[^}]+\})+)", L.lower().strip().rstrip("."))
+        if km:                                            # CR 702.33: an optional additional cost, paid when affordable
+            g_, p_, x_, l_ = parse_cost(km.group(2))
+            if not x_ and not l_: k.kicker = (g_, p_, bool(km.group(1))); done += 1; continue
         if re.fullmatch(r"~ doesn't untap during your untap step\.?", L.lower()):
             k.no_untap = True; done += 1; continue
         if re.fullmatch(r"if you control a commander, you may cast ~ without paying its mana cost\.?", L.lower()):
@@ -2611,6 +2628,8 @@ class Game:
         self.pending_untap = []; self.attacked = set()   # untaps waiting for the next combat; creatures that attacked this turn
         self.eot = []                           # (Perm, "sacrifice"/"exile"): leaves at the next end step (Kiki-Jiki copies, Sneak Attack)
         self.casting = None                     # the card resolving from a cast (an ETB's 'if you cast it')
+        self.opp_turn = False                   # an opponent's turn is being played (opponents())
+        self.kicked = 0                         # times the spell being cast was kicked
         self.trig_obj = None; self.last_paid = 0 # the object a firing trigger is about; mana paid for the last spell cast
         self.paid_cols = []; self.converge = 0  # colors of the units that paid for the spell being cast (converge, sunburst)
         self.log = None
@@ -2882,6 +2901,11 @@ class Game:
                 if zone == "gy": self.gy_extra_pay(k)
                 if k.ppips and pips is k.pips: self.lose_life(k.life, "phyrexian")   # the life option (see options)
                 self.lose_life(k.addlife, "spell")
+                self.kicked = 0
+                if k.kicker:                                  # kicker / multikicker: while the pool pays for it (before X)
+                    kg, kp, multi = k.kicker
+                    while self.kicked < (5 if multi else 1) and self.pay(k, kg, kp): self.kicked += 1
+                    if self.kicked: self.note(f"    {k.name}: kicked" + (f" x{self.kicked}" if multi else ""))
                 if k.addsac:
                     for q in self.addsac_pick(k) or []:
                         self.note(f"    {k.name}: sacrifice {q.k.name}")
@@ -2896,7 +2920,7 @@ class Game:
                     for i in rest: self.use_unit(i)
                     x = len(rest) + 2
                 self.converge = colors_spent(self.paid_cols)
-                paid = gen + len(pips) + x - (2 if k.x else 0)
+                paid = gen + len(pips) + x - (2 if k.x else 0) + (self.kicked * (k.kicker[0] + len(k.kicker[1])) if k.kicker else 0)
                 if not self.countered(k, zone, paid): self.resolve(k, zone, paid, x)
                 return True
         return False
@@ -2918,9 +2942,11 @@ class Game:
         if k.types & PERMANENT:
             self.casting = k
             try: self.enter(k, from_hand=(zone == "hand"), x=x)
-            finally: self.casting = None
+            finally: self.casting = None; self.kicked = 0
         else:
-            self.do(k.spell, k, None, x)
+            self.casting = k
+            try: self.do(k.spell, k, None, x)
+            finally: self.casting = None; self.kicked = 0
             if zone == "gy" and k.gycast["exile_after"]: self.exile.append(k)
             else: (self.rebound if k.rebound and zone == "hand" else self.gy).append(k)
 
@@ -3418,6 +3444,11 @@ class Game:
                 for _ in range(n): self.fire("draw_card")
             finally: self.draw_depth -= 1
 
+    def num(self, v, p, x):
+        """val() as a non-negative int (an unreadable amount is 0)."""
+        n = self.val(v, p, x)
+        return n if isinstance(n, int) and n > 0 else 0
+
     def val(self, v, p, x):
         if isinstance(v, int): return v
         if v == "X": return x
@@ -3455,6 +3486,7 @@ class Game:
         if key == "atkpow": return sum(max(0, self.stats(q)[0]) for q in self.attackers if q in self.perms)
         if key == "opps": return len(self.alive())
         if key == "converge": return self.converge
+        if key == "kicks": return self.kicked if self.casting is not None and (p is None or (isinstance(p, Perm) and p.k is self.casting)) else 0
         if key == "life": return self.life
         if key == "pow": return self.stats(p)[0] if isinstance(p, Perm) and p.k.types & {"Creature"} else 0
         if key == "objpow": return self.stats(self.ctx_obj)[0] if isinstance(self.ctx_obj, Perm) else 0
@@ -3621,11 +3653,11 @@ class Game:
                     self.hand.append(self.lib.pop()); self.gain(1, name)
             elif t == "arrange":                           # look at the top N, put them back in any order: best on top
                 if self.dry: continue
-                top = [self.lib.pop() for _ in range(min(e[1], len(self.lib)))]
+                top = [self.lib.pop() for _ in range(min(self.num(e[1], p, x), len(self.lib)))]
                 self.lib += sorted(top, key=self.value)
             elif t == "look_f":                            # dig for a matching card; the rest go to the bottom
                 if self.dry or tutor_unread(e[2]): continue
-                top = [self.lib.pop() for _ in range(min(e[1], len(self.lib)))]
+                top = [self.lib.pop() for _ in range(min(self.num(e[1], p, x), len(self.lib)))]
                 ok = [c for c in top if self.sim.tmatch(e[2], c)]
                 if ok:
                     pick = max(ok, key=lambda c: self.tutor_value(c, e[3], self.have())); top.remove(pick)
@@ -3643,7 +3675,7 @@ class Game:
                 self.lib += sorted((c for c in top if self.value(c) >= 40), key=self.value)
             elif t == "look":
                 if self.dry: continue
-                top = sorted((self.lib.pop() for _ in range(min(e[1], len(self.lib)))), key=self.value, reverse=True)
+                top = sorted((self.lib.pop() for _ in range(min(self.num(e[1], p, x), len(self.lib)))), key=self.value, reverse=True)
                 self.hand += top[:e[2]]; self.gain(len(top[:e[2]]), name); self.lib[0:0] = top[e[2]:]
             elif t == "land_search":
                 _, count, filt, dest = e
@@ -3731,7 +3763,7 @@ class Game:
                 if k in self.gy: self.gy.remove(k); self.hand.append(k); self.note(f"    {name} returns to hand")
             elif t == "dig_gy":
                 if self.dry: continue
-                top = [self.lib.pop() for _ in range(min(e[1], len(self.lib)))]
+                top = [self.lib.pop() for _ in range(min(self.num(e[1], p, x), len(self.lib)))]
                 ok = [c for c in top if self.sim.tmatch(e[2], c)]
                 if ok:
                     pick = max(ok, key=lambda c: self.tutor_value(c, "hand", self.have()))
@@ -3777,7 +3809,7 @@ class Game:
                     if q.ctr:
                         for kind, n in list(q.ctr.items()): self.add_ctr(q, kind, n)
             elif t == "free_cast":
-                opts = [c for c in dict.fromkeys(self.hand) if not c.is_land and not c.hold and c.mv <= e[1]
+                opts = [c for c in dict.fromkeys(self.hand) if not c.is_land and not c.hold and c.mv <= self.num(e[1], p, x)
                         and not (c.requires and not self.has(c.requires, c))]
                 if opts: self.resolve(min(opts, key=lambda c: self.sim.prio(c, "hand")), "hand", 0)
             elif t == "ifdo":                                    # 'you may COST. If you do, EFFECT'
@@ -3908,10 +3940,11 @@ class Game:
                         if q is not None and fate: self.eot.append((q, fate))
                     self.note(f"    {name}: copies of {len(srcs)} permanent(s)"); continue
                 if who == "self": src = p
-                elif who == "obj": src = self.ctx_obj
-                if who == "obj" and not isinstance(src, Perm) and k.types & {"Instant", "Sorcery"}:     # Twinflame: your best creature
-                    cr = [q for q in self.perms if self.is_creature(q)]
-                    src = max(cr, key=lambda q: (bool(q.k.etb), q.k.mv, self.stats(q)[0])) if cr else None
+                elif who == "obj":
+                    src = self.ctx_obj
+                    if not isinstance(src, Perm) and k.types & {"Instant", "Sorcery"}:     # Twinflame: your best creature
+                        cr = [q for q in self.perms if self.is_creature(q)]
+                        src = max(cr, key=lambda q: (bool(q.k.etb), q.k.mv, self.stats(q)[0])) if cr else None
                 elif who == "attach": src = p.att if isinstance(p, Perm) else None
                 else:
                     cands = [q for q in self.perms if self.pmatch(f, q, p)]
@@ -3942,7 +3975,7 @@ class Game:
                     c = self.lib.pop()
                     if c.is_land: self.exile.append(c); continue
                     self.hand.append(c)
-                    if c.mv <= e[1] and not (c.requires and not self.has(c.requires, c)):
+                    if c.mv <= self.num(e[1], p, x) and not (c.requires and not self.has(c.requires, c)):
                         self.note(f"    {name} casts {c.name} free"); self.resolve(c, "hand", 0)
                     else: self.gain(1, name)
                     break
@@ -4074,6 +4107,11 @@ class Game:
         if k == "gy_ge":
             want = {"creature": "Creature", "land": "Land"}.get(c[2])
             return sum(1 for x in self.gy if not want or want in x.types or (c[2].startswith("instant") and x.types & {"Instant", "Sorcery"})) >= c[1]
+        if k == "your_turn": return not self.opp_turn
+        if k == "not_your_turn": return self.opp_turn
+        if k == "main": return not self.opp_turn and not self.combat_on
+        if k == "kicked":                            # only the cast spell itself (its token copies weren't kicked)
+            return self.kicked > 0 and self.casting is not None and (p is None or (isinstance(p, Perm) and p.k is self.casting))
         if k == "cast_self":                         # the permanent (or the trigger's object: Light-Paws' Aura) resolved from a cast
             o = self.trig_obj
             return self.casting is not None and any(isinstance(q, Perm) and q.k is self.casting for q in (p, o))
@@ -4781,7 +4819,7 @@ class Game:
         for j, i in enumerate(seats):
             if self.opps[i]["dead"]: continue                   # killed earlier this round: no turn
             if not self.alive(): break
-            self.phase += 1; self.gained = 0
+            self.phase += 1; self.gained = 0; self.opp_turn = True
             self.turns_left = sum(1 for s in seats[j + 1:] if not self.opps[s]["dead"])
             self.pool, self.convs = self.open_pool, []
             self.fire("upkeep", each_only=True)
@@ -4799,7 +4837,7 @@ class Game:
                 self.activations(instant=True)
             self.fire("end", each_only=True)
             self.pool = None
-        self.open_pool = []; self.turns_left = 0
+        self.open_pool = []; self.turns_left = 0; self.opp_turn = False
 
     def arrive(self, t, i=None):
         """--blockers: what opponent i (every opponent if None) gets for your turn-t combat: creatures onto its board,
@@ -5795,6 +5833,7 @@ def explain(cache, names, commanders):
         if k.etb: bits.append("ETB " + ", ".join(fx_str(e) for e in k.etb) + (" (sacrificed)" if k.sac_etb else ""))
         if k.spell: bits.append(", ".join(fx_str(e) for e in k.spell))
         if k.castfx: bits.append("when cast: " + ", ".join(fx_str(e) for e in k.castfx))
+        if k.kicker: bits.append(("multikicker " if k.kicker[2] else "kicker ") + str(k.kicker[0] + len(k.kicker[1])))
         if k.chapters: bits.append("saga " + "; ".join(f"{ROMAN[c - 1]}: " + (", ".join(fx_str(e) for e in fx) or ("(ability)" if c in k.granted_ch else "(unread)"))
                                                        for c, fx in sorted(k.chapters.items())) + f" (sacrificed after {ROMAN[max(k.chapters) - 1]})")
         for ev, f, fx, once, tax, each in k.trig:
