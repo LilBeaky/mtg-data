@@ -1096,7 +1096,7 @@ PNAMES = ["Krenko, Mob Boss", "Goblin Instigator", "Goblin Warchief", "Mountain"
           "Mox Diamond", "Black Market Connections", "Harrow", "Chaos Warp", "Morbid Opportunist", "Grizzly Bears",
           "Lightning Bolt", "Mulldrifter", "Sol Ring", "Siege-Gang Commander", "Llanowar Elves", "Welcoming Vampire",
           "Windreader Sphinx", "Serra Angel", "Craw Wurm", "Trespasser's Curse", "History of Benalia", "Urza's Saga",
-          "Mox Opal", "Sol Ring"]
+          "Mox Opal", "Sol Ring", "Ophiomancer", "Gorehorn Raider", "Garruk's Uprising", "Valakut, the Molten Pinnacle"]
 PRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(PNAMES)}
 g.CHOSEN_TYPE = g.chosen_type([PRAW["Krenko, Mob Boss"]], [PRAW[n] for n in ("Goblin Instigator", "Goblin Warchief", "Siege-Gang Commander")])
 PK = {n: g.compile_card(PRAW[n], g.ALL5) for n in PNAMES}
@@ -1171,6 +1171,16 @@ def _():
     G = pgame(lib=["Mountain", "Sol Ring", "Mountain"]); G.land_enters(PK["Urza's Saga"])
     p = G.lands[0]; G.add_lore(p, 1); G.add_lore(p, 1)
     return PK["Urza's Saga"].units and any(q.k.name == "Sol Ring" for q in G.perms) and not G.lands and PK["Urza's Saga"] in G.gy
+
+@check("Intervening 'if' read: Ophiomancer only without a Snake; raid only after attacking; Garruk's Uprising needs power 4; Valakut counts 'other'")
+def _():
+    G = pgame(perms=["Ophiomancer"]); G.fire("upkeep"); G.fire("upkeep")
+    a = sum(1 for q in G.perms if "Snake" in q.k.subtypes)
+    H = pgame(); H.enter(PK["Gorehorn Raider"]); b = [o["life"] for o in H.opps]
+    I = pgame(perms=["Grizzly Bears"]); I.attacked.add(I.perms[0]); I.enter(PK["Gorehorn Raider"]); c = sum(o["life"] for o in I.opps)
+    J = pgame(perms=["Grizzly Bears"]); J.enter(PK["Garruk's Uprising"]); K_ = pgame(perms=["Craw Wurm"]); K_.enter(PK["Garruk's Uprising"])
+    v = [t for t in PK["Valakut, the Molten Pinnacle"].trig if t[0] == "etb"][0][2][0][1]
+    return a == 1 and b == [40] * 3 and c == 118 and len(J.hand) == 0 and len(K_.hand) == 1 and v[0] == "pcount" and v[2] == 6
 
 def main():
     fails = 0

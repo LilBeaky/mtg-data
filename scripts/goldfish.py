@@ -820,6 +820,57 @@ FX = [
      _fx_pump_team),
 ]
 
+NUMW = r"a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|\d+"
+WORDNUM_X = {"eleven": 11, "twelve": 12, "twenty": 20}
+
+def _n(w):
+    return WORDNUM_X.get(w) or num(w)
+
+def parse_cond(c):
+    """An intervening 'if' the sim can check -> a cond key for Game.cond_ok, or None (the trigger stays unread).
+    'you control three or more artifacts' / 'a creature with power 4 or greater' / 'no Snakes' / 'N or fewer';
+    'you have N or more life'; cards in hand; 'you attacked (with N or more creatures) this turn'; graveyard counts."""
+    c = c.strip().lower()
+    if c == "you gained life this turn": return "gained"
+    m = re.fullmatch(r"you have (\d+) or more life", c)
+    if m: return ("life", int(m.group(1)))
+    m = re.fullmatch(r"you have at least (\d+) life more than your starting life total", c)
+    if m: return ("life", START_LIFE + int(m.group(1)))
+    m = re.fullmatch(r"you have (no|one or fewer|two or fewer|\d+ or fewer) cards in (?:your )?hand", c)
+    if m: return ("hand_le", 0 if m.group(1) == "no" else _n(m.group(1).split()[0]))
+    m = re.fullmatch(r"you have (" + NUMW + r") or more cards in (?:your )?hand", c)
+    if m: return ("hand_ge", _n(m.group(1)))
+    m = re.fullmatch(r"you attacked (?:with (" + NUMW + r") or more creatures )?this turn", c)
+    if m: return ("attacked", _n(m.group(1)) if m.group(1) else 1)
+    m = re.fullmatch(r"(?:there are )?(" + NUMW + r") or more (creature |land |instant and/or sorcery |)cards (?:are )?in your graveyard", c)
+    if m: return ("gy_ge", _n(m.group(1)), m.group(2).strip())
+    m = re.fullmatch(r"you control (no|(" + NUMW + r")(?: or (more|fewer))?|at least (" + NUMW + r")) (other )?(.+)", c)
+    if m:
+        what, other = m.group(6), 1 if m.group(5) else 0      # Valakut: 'five other Mountains' is six with the new one
+        if re.search(r"\bdifferent\b|\bgreatest\b|\bnamed\b|\bchosen\b|\bbasic land types?\b", what): return None
+        f = perm_filt("a", re.sub(r"\bthat\b.*$", "", what)) if not re.search(r"\bthat\b", what) else None
+        if not f: return None
+        if m.group(1) == "no": return ("pcount_le", f, 0)
+        n = _n(m.group(2) or m.group(4))
+        if not isinstance(n, int): return None
+        if m.group(3) == "fewer": return ("pcount_le", f, n + other)
+        if m.group(2) and not m.group(3) and m.group(2) not in ("a", "an"): return None     # 'exactly N' reads
+        return ("pcount", f, n + other)
+    return None
+
+def cond_str(c):
+    if c == "opp_lands": return "if an opponent has more lands ~opp"
+    if c == "gained": return "if you gained life this turn"
+    k = c[0]
+    if k == "life": return f"if you have {c[1]}+ life"
+    if k == "hand_le": return f"if {c[1]} or fewer cards in hand"
+    if k == "hand_ge": return f"if {c[1]}+ cards in hand"
+    if k == "attacked": return "if you attacked" + (f" with {c[1]}+" if c[1] > 1 else "")
+    if k == "gy_ge": return f"if {c[1]}+ {c[2] + ' ' if c[2] else ''}cards in your graveyard"
+    if k == "pcount": return f"if you control {c[2]}+ {perm_desc(c[1])}"
+    if k == "pcount_le": return f"if you control {'no' if c[2] == 0 else str(c[2]) + ' or fewer'} {perm_desc(c[1])}"
+    return f"if {c}"
+
 def _ifdo_cost(cost):
     """The cost sentence before 'If you do,' -> a cost the sim pays ('discard', n, filter) / ('sac_self',) / ('sac', fodder)
     / ('life', n); 'free' when it's an effect read on its own (draw, mill, reveal); None when unread (the effect is dropped)."""
@@ -856,6 +907,12 @@ def parse_fx(s):
         inner, t2 = parse_fx(s0[m.start(1):])
         return ([("cond", "opp_lands", inner)] if inner else []), tax or t2
     if re.match(r"(?:you may )?if (?:an|each) opponent (?:controls|has) more\b", s): return [], tax
+    m = re.match(r"(?:then )?if (?P<c>[^,]+), (?P<rest>.+)$", s)
+    if m and not re.match(r"(?:then )?if you do\b", s):
+        cond = parse_cond(m.group("c"))
+        if cond:                                   # Garruk's Uprising: 'if you control a creature with power 4 or greater, draw'
+            inner, t2 = parse_fx(s0[m.start("rest"):])
+            return ([("cond", cond, inner)] if inner else []), tax or t2
     m = re.search(r"you may pay ((?:\{[^}]+\})+)\. if you do,? (.+)", s)
     if m:
         g, p, _, _ = parse_cost(m.group(1))
@@ -986,10 +1043,7 @@ def fx_str(e):
     if t == "mill": return f"mill {pv(e[1])}" + (" (yourself only with a graveyard payoff)" if len(e) > 2 else "")
     if t == "lose": return f"you lose {pv(e[1])} life"
     if t == "cond":
-        c = e[1]
-        head = "if an opponent has more lands ~opp" if c == "opp_lands" else "if you gained life this turn" if c == "gained" \
-            else f"if you have {c[1]}+ life" if isinstance(c, tuple) and c[0] == "life" else f"if {c}"
-        return head + ": " + ", ".join(fx_str(x) for x in e[2])
+        return cond_str(e[1]) + ": " + ", ".join(fx_str(x) for x in e[2])
     if t == "arrange": return f"arrange top {e[1]}"
     if t == "peek": return "take the top card if " + " ".join(sorted(e[1]["sub"]) + sorted(x.lower() for x in e[1]["types"]))
     if t == "look_f":
@@ -1482,8 +1536,11 @@ def combat_trigger(k, lo):
     once = bool(re.search(r"for the first time each turn|if it's the first combat phase of the turn|this ability triggers only once each turn", lo))
     lo = re.sub(r" for the first time each turn|,? if it's the first combat phase of the turn", "", lo)
     def add(ev, f, fxt):
-        if re.match(r"if\b", fxt): k.notes.append("conditional combat trigger (intervening 'if') not modeled"); return False
-        fx, tax = parse_fx(fxt)
+        cm = re.match(r"if ([^,]+),\s*(.+)$", fxt)
+        cond = parse_cond(cm.group(1)) if cm else None
+        if re.match(r"if\b", fxt) and not cond: k.notes.append("conditional combat trigger (intervening 'if') not modeled"); return False
+        fx, tax = parse_fx(cm.group(2) if cond else fxt)
+        if fx and cond: fx = [("cond", cond, fx)]
         if fx: k.trig.append((ev, f, fx, once, tax, False))
         return bool(fx)
     m = re.match(r"^whenever (?:equipped|enchanted) creature attacks,\s*(.+)$", lo)
@@ -1585,12 +1642,11 @@ def parse_trigger(k, lo):
     m = re.match(r"^at the beginning of (your|each|each player's) (upkeep|end step|draw step|(?:first|precombat) main phase)[^,]*,\s*(.+)$", lo)
     if m:
         body, cond = m.group(3), None
-        cm = re.match(r"if you gained life this turn,\s*(.+)$", body) or re.match(r"if you have (\d+) or more life,\s*(.+)$", body)
-        if cm:                                         # Ragost's untap, Test of Endurance: read intervening 'if's
-            cond = ("life", int(cm.group(1))) if cm.lastindex == 2 else "gained"
-            body = cm.group(cm.lastindex)
-        elif re.match(r"if (?!an opponent controls more lands)", body):
-            k.notes.append("conditional trigger (intervening 'if') not modeled"); return False
+        cm = re.match(r"if ([^,]+),\s*(.+)$", body)
+        if cm and not body.startswith("if an opponent controls more lands"):   # intervening 'if' (Ragost, Inventors' Fair)
+            cond = parse_cond(cm.group(1))
+            if not cond: k.notes.append("conditional trigger (intervening 'if') not modeled"); return False
+            body = cm.group(2)
         fx, tax = parse_fx(body)
         if cond and re.fullmatch(r"you win the game\.?", body.strip()): fx = [("win",)]     # Test of Endurance, Felidar Sovereign
         if fx and cond: fx = [("cond", cond, fx)]
@@ -1642,8 +1698,9 @@ def parse_trigger(k, lo):
         fx, tax = parse_fx(m.group(3)); f = parse_filter(m.group(2)) if m.group(2).strip() else None
         if fx: k.trig.append(("opp_cast", f, fx, "first" in m.group(1), tax, False))
         return bool(fx)
-    def gated(body):                                       # intervening 'if': left unmodeled, like the other trigger frames
-        if re.match(r"if ", body): k.notes.append("conditional trigger (intervening 'if') not modeled"); return True
+    def gated(body):                                       # an intervening 'if' parse_cond can't read stays unmodeled
+        cm = re.match(r"if ([^,]+),", body)
+        if cm and not parse_cond(cm.group(1)): k.notes.append("conditional trigger (intervening 'if') not modeled"); return True
         return False
     m = re.match(r"^whenever an opponent draws a card,\s*(.+)$", lo)
     if m:
@@ -3883,10 +3940,22 @@ class Game:
         return True
 
     def cond_ok(self, c):
-        """A trigger condition: 'if an opponent controls more lands' (~opp), 'if you gained life this turn', 'if you have N or more life'."""
+        """A condition (parse_cond): opponent lands (~opp), life gained, life, hand size, attacks, graveyard, permanents you control."""
         if c == "opp_lands": return self.opp_lands() > len(self.lands)
         if c == "gained": return self.gained > 0
-        return isinstance(c, tuple) and c[0] == "life" and self.life >= c[1]
+        if not isinstance(c, tuple): return False
+        k = c[0]
+        if k == "life": return self.life >= c[1]
+        if k == "hand_le": return len(self.hand) <= c[1]
+        if k == "hand_ge": return len(self.hand) >= c[1]
+        if k == "attacked": return len(self.attacked) >= c[1]
+        if k == "gy_ge":
+            want = {"creature": "Creature", "land": "Land"}.get(c[2])
+            return sum(1 for x in self.gy if not want or want in x.types or (c[2].startswith("instant") and x.types & {"Instant", "Sorcery"})) >= c[1]
+        if k in ("pcount", "pcount_le"):
+            n = sum(1 for q in self.perms + self.lands if self.pmatch(c[1], q, None))
+            return n >= c[2] if k == "pcount" else n <= c[2]
+        return False
 
     def count_trig(self, name, kind):
         if not self.dry: self.trigs[(name, kind)] += 1
