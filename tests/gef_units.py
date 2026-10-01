@@ -157,10 +157,10 @@ def _():
     return s[0][0] == "tutor" and s[0][1].types == {"artifact", "enchantment"} and s[0][2] == "top" and s[1] == ("land_search", 2, (True, frozenset()), "split") \
         and s[2] == ("land_search", 1, (False, frozenset({"island", "swamp"})), "bf_t") and s[3][0] == "recur" and s[3][2] == "bf" \
         and s[4] == ("wheel", 7, False) and s[5] == ("putback", 2, False)
-@check("effects: a tutor of the library and/or graveyard, or to a position in the library, is refused")
+@check("effects: a tutor of the library and/or graveyard, or to a position below the top in the hand, is refused")
 def _():
     return refused(C("Opt", SP({"do": "tutor", "filter": {"any": True}, "to": "hand", "from": ["library", "graveyard"]}))) and \
-        refused(C("Opt", SP({"do": "tutor", "filter": {"any": True}, "to": "library_top", "position": 3})))
+        refused(C("Opt", SP({"do": "tutor", "filter": {"any": True}, "to": "hand", "position": 3})))
 @check("effects: mana (ritual, X in any combination of attackers' power), extra land, free cast up to mana value 5, free_top")
 def _():
     r = C("Dark Ritual", SP({"do": "mana", "produce": {"units": ["B", "B", "B"]}})).spell == [("mana", [frozenset("B")] * 3)]
@@ -352,6 +352,14 @@ def _():
     G.perms = [g.Perm(rl), g.Perm(nd)]; G._st = None
     G.tcast = (opt, opt); h0 = len(G.hand); G.do(ds.castfx + ds.spell, ds, None, 0)
     return ds.castfx == [("storm",)] and len(G.hand) - h0 == 2 and G.st.skip_draw and not G.try_cast(opt, "hand")
+
+@check("step 3: Nth from the top, greatest toughness, ~'s toughness, spells cast this turn, exactly N cards in hand")
+def _():
+    k = C("Opt", SP({"do": "tutor", "filter": {"any": True}, "to": "library_top", "position": 3},
+                    {"do": "draw", "n": {"count": "greatest_toughness", "filter": {"types": ["creature"], "controller": "you"}}},
+                    {"do": "gain_life", "n": {"count": "spells_cast_this_turn"}},
+                    {"do": "if", "cond": {"if": "hand_exactly", "n": 13}, "then": [{"do": "win_game"}]}))
+    return k.spell[0][2] == "top3" and k.spell[1] == ("draw", ("tough_max",)) and k.spell[2] == ("life", ("tcast_n",))         and k.spell[3] == ("cond", ("hand_eq", 13), [("win",)])
 
 @check("status: unexpressible out_of_scope is never a miss; format_gap is; a refused ability leaves the rest read")
 def _():

@@ -3789,6 +3789,9 @@ class Game:
         if key == "atkpow": return sum(max(0, self.stats(q)[0]) for q in self.attackers if q in self.perms)
         if key == "opps": return len(self.alive())
         if key == "flips_won": return self.ctx_won
+        if key == "tough_max": return max((self.stats(q)[1] for q in self.perms if self.is_creature(q)), default=0)
+        if key == "tgh": return self.stats(p)[1] if isinstance(p, Perm) and p in self.perms else 0
+        if key == "tcast_n": return len(self.tcast)
         if key == "num_chosen": return self.ctx_num
         if key == "converge": return self.converge
         if key == "pcount": return sum(1 for q in self.perms + self.lands if self.pmatch(v[1], q, None))
@@ -3837,7 +3840,7 @@ class Game:
             return 75 if short else 5
         v = self.value(c) + self.want_bonus(c, have)
         if c in have: v -= 30                           # a second copy of something already in hand or play
-        if dest in ("hand", "top", "exile"):
+        if dest in ("hand", "top", "exile") or dest.startswith("top"):
             reach = len(self.lands) + sum(1 for p in self.perms if p.k.units) + 1
             if c.mv > reach + 1: v -= 15                # can't cast it soon
         return v
@@ -4019,6 +4022,7 @@ class Game:
                     if not self.dry: self.tut[c.name] += 1
                     self.note(f"    {name} finds {c.name} -> {dest}")
                     if dest == "top": self.lib.append(c)
+                    elif dest.startswith("top"): self.lib.insert(max(0, len(self.lib) - int(dest[3:]) + 1), c)   # 'topN': Nth from the top
                     elif dest in ("bf", "bf_t"):
                         if c.is_land: self.land_enters(c, force_tapped=dest == "bf_t")
                         elif c.types & PERMANENT: self.enter(c)
@@ -4478,6 +4482,7 @@ class Game:
         if k == "your_turn": return not self.opp_turn
         if k == "cmdr_out": return any(q.k in self.sim.commanders for q in self.perms)   # 'if you control a commander' (GEF)
         if k == "amt": n = self.val(c[1], p, 0); return isinstance(n, int) and n >= c[2]
+        if k == "hand_eq": return len(self.hand) == c[1]
         if k == "not_your_turn": return self.opp_turn
         if k == "main": return not self.opp_turn and not self.combat_on
         if k == "kicked":                            # only the cast spell itself (its token copies weren't kicked)

@@ -218,6 +218,10 @@ def count_key(a):
         if not re.fullmatch(r"[WUBRG]{1,2}", cols): refuse("devotion colors")
         return ("devotion",) + tuple(cols)
     if c == "coin_flips_won": return ("flips_won",)
+    if c == "toughness_of_self" and not f: return ("tgh",)
+    if c == "spells_cast_this_turn" and not cf: return ("tcast_n",)
+    if c == "greatest_toughness" and (not f or {k: v for k, v in f.items() if k != "controller" or v != "you"} in ({}, {"types": ["creature"]})):
+        return ("tough_max",)
     if c == "number_chosen": return ("num_chosen",)
     simple = {"domain": ("domain",), "converge": ("converge",), "times_kicked": ("kicks",), "opponents": ("opps",),
               "your_life_total": ("life",), "power_of_self": ("pow",), "power_of_that": ("objpow",),
@@ -276,7 +280,7 @@ def effect(e, ctx):
         refuse("look form")
     if d == "tutor":
         if set(e.get("from", ["library"])) != {"library"}: refuse("tutor from " + "/".join(e["from"]))
-        if "position" in e: refuse("library position")
+        if "position" in e and e.get("to") != "library_top": refuse("library position")
         n = e.get("n", 1)
         if not isinstance(n, int): refuse("tutor count")
         ls = land_search(e["filter"])
@@ -285,6 +289,7 @@ def effect(e, ctx):
             if ls and sp == [("battlefield_tapped", 1), ("hand", 1)]: return [("land_search", 2, ls, "split")]
             refuse("split tutor")
         dest = zone(e["to"])
+        if e.get("position", 1) > 1: dest = f"top{e['position']}"
         if ls and dest != "graveyard": return [("land_search", n, ls, dest)]
         return [("tutor", target(e["filter"]), dest, n)]
     if d == "recur":
@@ -514,6 +519,7 @@ def cond(c):
     if k == "kicked" and c.get("min", 1) == 1: return ("kicked",)
     if k == "opponent_more_lands": return "opp_lands"
     if k == "you_control_commander": return ("cmdr_out",)
+    if k == "hand_exactly": return ("hand_eq", c["n"])
     if k == "amount_at_least": return ("amt", amount(c["amount"], allow_x=False), c["n"])
     if k == "graveyard_at_least" and not c.get("card_types"):
         f = c.get("filter") or {}

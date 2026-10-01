@@ -75,11 +75,14 @@
  "Edgar, King of Figaro": "GEF-MORE: the first flips each turn win (engine coin_rule, T3 step 3); the parser leaves the Two-Headed Coin unread.",
  "Tavern Scoundrel": "GEF-MORE: two Treasures per won flip and the flip activation (engine flips, T3 step 3); the parser leaves it blank.",
  "Zndrsplt, Eye of Wisdom": "GEF-MORE: flip until you lose at combat, draw per won flip (engine flips, T3 step 3); the parser leaves it blank.",
- "Okaun, Eye of Chaos": "GEF-MORE + ENGINE: the combat flips read; doubling its P/T per won flip needs a toughness count the engine lacks (refused).",
+ "Okaun, Eye of Chaos": "GEF-MORE: combat flips and doubling its P/T per won flip (engine flips and toughness count, T3 step 3); the parser leaves it blank.",
  "Planar Chaos": "GEF-MORE + ENGINE: the upkeep flip (sacrifice on a loss) reads; 'each player flips for each spell, countering on a loss' is refused (cast by each player).",
  "Solitary Confinement": "GEF-MORE + ENGINE: the upkeep 'sacrifice unless you discard' reads; skip_step isn't in the engine (refused) and the rest is out of scope. The parser leaves the card blank.",
  "Dragonstorm": "GEF-MORE: storm copies the spell per earlier spell this turn (engine storm, T3 step 3); the parser leaves storm unread.",
  "Rule of Law": "GEF-MORE: your own one-spell-a-turn limit binds the pilot (engine spell_limit, T3 step 3); the parser leaves it unread (t2_misreads).",
  "Deafening Silence": "GEF-MORE: your own one-noncreature-spell-a-turn limit binds the pilot (engine spell_limit, T3 step 3); the parser leaves it unread (t2_misreads).",
- "Necrodominance": "GEF-MORE + ENGINE: skipping your draw step reads (engine skip_draw, T3 step 3); the pay-any-life draw (a chosen amount), hand size five and graveyard-to-exile are refused, so the card is partial. The parser leaves it blank."
+ "Necrodominance": "GEF-MORE + ENGINE: skipping your draw step reads (engine skip_draw, T3 step 3); the pay-any-life draw (a chosen amount), hand size five and graveyard-to-exile are refused, so the card is partial. The parser leaves it blank.",
+ "Aetherflux Reservoir": "GEF-MORE: life per spell cast this turn reads (engine count tcast_n, T3 step 3); the parser leaves that line unread.",
+ "Long-Term Plans": "GEF-MORE: the card goes third from the top (engine tutor 'top3', T3 step 3); the parser leaves it unread (t2_misreads).",
+ "Triskaidekaphile": "GEF-MORE: the win with exactly thirteen cards in hand reads (engine cond hand_eq, T3 step 3); the parser leaves it unread."
 }
