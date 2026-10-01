@@ -345,9 +345,11 @@ def effect(e, ctx):
         if f.get("controller") not in (None, "you"): refuse("pump_team controller")
         other, atk = bool(f.pop("another", False)), bool(f.pop("attacking", False))
         f.pop("controller", None)
-        if f.get("power"): refuse("pump_team power filter")       # the engine checks printed power, not current
+        pw = f.pop("power", None)
+        if pw and set(pw) != {"min"}: refuse("pump_team power range")
         if not f.get("types"): f["types"] = ["creature"]
         sf = spell_filter({k: v for k, v in f.items()})
+        if pw: sf["pow_now"] = pw["min"]                              # current power (engine), not printed
         return [("pump_team", pump_amt(e.get("power", 0)), pump_amt(e.get("toughness", 0)), keywords(e.get("keywords")), sf, other, atk)]
     if d == "damage":
         to = e["to"]
@@ -377,6 +379,7 @@ def effect(e, ctx):
     if d == "bounce_self": return [("bounce_self",)]
     if d == "self_to_library":
         if e["where"] == "top" and "position" not in e: return [("self_top",)]
+        if e["where"] == "shuffle" and ctx.kind == "spell": return [("self_shuffle",)]   # the spell goes to the library, not the graveyard
         refuse("self_to_library form")
     if d == "extra_combat":
         if e.get("n", 1) != 1: refuse("extra_combat count")
@@ -393,6 +396,12 @@ def effect(e, ctx):
                     and t0 == [{"do": "recur", "filter": {"any": True}, "n": 1, "to": "hand", "from": "exile"}]:
                 return [("free_top", inner["n"] - 1)]
         refuse("reveal_until form")
+    if d == "put_from_hand":
+        f = e["filter"]
+        n = e.get("n", 1)
+        if e.get("until") not in (None, "permanent") or not (n == "any" or isinstance(n, int)) or set(f) - {"types", "subtypes", "non_types"}:
+            refuse("put_from_hand form")
+        return [("put_hand", spell_filter(f), n)]                    # 'symmetric' (Show and Tell): opponents put nothing in a goldfish
     if d == "flip_coins":
         n = 1 if e.get("until_lose") else amount(e.get("n", 1))
         return [("flip", n, effects(e.get("on_win"), ctx), effects(e.get("on_lose"), ctx), bool(e.get("until_lose")))]
@@ -573,7 +582,7 @@ ctx_types = [set()]                                       # the compiling card's
 def event(ev):
     """GEF Event -> (engine event, filter); 'etb_self' / 'cast_self' mean the ability goes on k.etb / k.castfx."""
     on, subj = ev["on"], ev.get("subject")
-    extra = set(ev) - {"on", "subject", "whose", "who", "one_or_more", "spell"}
+    extra = set(ev) - {"on", "subject", "whose", "who", "one_or_more", "spell", "first_each_turn"}
     if extra: refuse("event " + ", ".join(sorted(extra)))
     if on in EVENTS:
         if on in ("upkeep", "end_step", "draw_step", "precombat_main", "combat_begin") and ev.get("whose") != "your": refuse(f"{on} whose {ev.get('whose')}")
@@ -613,7 +622,7 @@ def event(ev):
 def cost(c, ctx, mana_ok=True):
     """GEF Cost -> an acts dict's cost fields."""
     out = {"tap": bool(c.get("tap")), "gen": 0, "pips": [], "sac": False, "rm": None, "life": 0, "fodder": None}
-    extra = set(c) - {"mana", "tap", "sacrifice", "remove_counters", "pay_life"}
+    extra = set(c) - {"mana", "tap", "sacrifice", "remove_counters", "pay_life", "tap_untapped"}
     if extra: refuse("cost " + ", ".join(sorted(extra)))
     if c.get("mana"):
         gen, pips, x, life = g.parse_cost(c["mana"])
@@ -629,6 +638,10 @@ def cost(c, ctx, mana_ok=True):
     if c.get("pay_life"):
         if not isinstance(c["pay_life"], int): refuse("pay_life amount")
         out["life"] += c["pay_life"]
+    if c.get("tap_untapped"):                             # 'Tap an untapped Wizard you control'
+        tu_ = c["tap_untapped"]
+        if not isinstance(tu_.get("n"), int): refuse("tap_untapped count")
+        out["tapcr"] = (perm_filter(dict(tu_.get("filter") or {}, types=(tu_.get("filter") or {}).get("types") or ["creature"])), tu_["n"])
     return out
 
 COMBAT_KW = set(g.COMBAT_KW)
@@ -698,7 +711,8 @@ def fodder(f):
     pf = perm_filter(dict(f, controller=None) if f.get("controller") == "you" else f)
     return {"any": pf["any"] if "any" in pf else [pf], "n": 1}
 
-RESTRICT = [(r"^(?:spend this mana only to cast )?creature spells?(?: only)?\.?$", "creature"),
+RESTRICT = [(r"^spend this mana only to cast creature spells or activate abilities of creature sources\.?$", "creature_src"),
+            (r"^(?:spend this mana only to cast )?creature spells?(?: only)?\.?$", "creature"),
             (r"^spend this mana only to cast (?:a )?legendary spells?\.?$", "legendary"),
             (r"^spend this mana only to cast (?:an )?(?:instant or sorcery|instant and/or sorcery) spells?\.?$", "instsorc"),
             (r"^spend this mana only to cast (?:an )?artifact spells?\.?$", "artifact")]
@@ -706,6 +720,10 @@ RESTRICT = [(r"^(?:spend this mana only to cast )?creature spells?(?: only)?\.?$
 def restriction(r):
     for rx, key in RESTRICT:
         if re.match(rx, (r or "").strip().lower()): return key
+    m = re.match(r"^spend this mana only to cast (?:a |an )?([a-z]+) spells?(?: or (?:a |an )?([a-z]+) spells?)?\.?$", (r or "").strip().lower())
+    if m:                                                 # 'only to cast a Dragon spell or an Omen spell': subtypes
+        subs = [g.as_subtype(w) for w in m.groups() if w]
+        if all(subs) and not any(w.capitalize() in g.TYPES for w in m.groups() if w): return ("sub", frozenset(subs))
     refuse("mana restriction")
 
 def mana_ability(a, ctx):
@@ -770,6 +788,8 @@ def static(a, ctx):
         kws = keywords(s.get("keywords"))
         if p_ or t_ or kws: k.attach = (p_, t_, kws)
         return "read"
+    if st == "cost_reduction" and s.get("applies_to") == "cycling" and isinstance(s["amount"], int) and not s.get("spells"):
+        k.statics.append(("cycle_red", s["amount"])); return "read"
     if st == "cost_reduction":
         if s.get("applies_to", "spells") != "spells" or not isinstance(s["amount"], int): refuse("cost reduction form")
         f = spell_filter(s.get("spells")) or g.parse_filter("")
@@ -913,7 +933,7 @@ def ability(a, ctx):
             k.etb += out
         elif ev == "cast_self": k.castfx += out
         elif ev == "cycle_self": k.cycle_fx += out              # 'when you cycle ~': a cycling rider, as the parser reads it
-        else: k.trig.append((ev, filt, out, bool(a.get("once_per_turn")), tax, False))
+        else: k.trig.append((ev, filt, out, bool(a.get("once_per_turn") or a["event"].get("first_each_turn")), tax, False))
         return "read"
     if kind == "activated":
         if a.get("from_zone", "battlefield") != "battlefield": refuse("activated from " + a["from_zone"])

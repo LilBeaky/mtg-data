@@ -189,9 +189,10 @@ def _():
     s = k.spell
     return s[0] == ("ctr", "+1/+1", 2) and s[1] == ("prolif", 1) and s[2] == ("pump", "target", 3, 3, frozenset()) and s[3] == ("pump", "obj", 0, 0, frozenset({"haste"})) \
         and s[4][0] == "pump_team" and s[4][5] is True and s[5] == ("kill_blk", "minus", 1, 1, NOF, False, False)
-@check("effects: a team pump by power is refused (the engine checks printed power)")
+@check("effects: a team pump by power checks current power (pow_now), not printed power")
 def _():
-    return refused(C("Opt", SP({"do": "pump_team", "filter": {"types": ["creature"], "power": {"min": 4}}, "power": 1, "toughness": 1, "duration": "end_of_turn"})))
+    k = C("Opt", SP({"do": "pump_team", "filter": {"types": ["creature"], "power": {"min": 4}}, "power": 1, "toughness": 1, "duration": "end_of_turn"}))
+    return k.spell[0][4].get("pow_now") == 4 and "pow_min" not in k.spell[0][4]
 @check("effects: damage and life (each / one opponent, you, life costs as ('life', -n)), win, ~ back to hand / on top")
 def _():
     k = C("Opt", SP({"do": "damage", "n": 2, "to": "each_opponent"}, {"do": "lose_life", "n": 3, "who": "target_player"},
@@ -257,10 +258,10 @@ def _():
     evs = [t[0] for t in k.trig]
     return k.etb == [("draw", 1)] and evs == ["landfall", "etb", "dies_self", "dies_att", "attack_self", "attack_any", "cdmg_any", "cast", "upkeep", "end"] \
         and k.trig[1][1]["another"] and k.trig[7][1]["non"] == {"Creature"}
-@check("events: an opponent's turn phase, or a 'first spell each turn' trigger, is refused")
+@check("events: an opponent's turn phase is refused; 'the first spell each turn' is once per turn")
 def _():
     return refused(C("Grizzly Bears", TR({"on": "upkeep", "whose": "each"}, {"do": "draw", "n": 1}))) and \
-        refused(C("Grizzly Bears", TR({"on": "cast", "who": "you", "first_each_turn": True}, {"do": "draw", "n": 1})))
+        C("Grizzly Bears", TR({"on": "cast", "who": "you", "first_each_turn": True}, {"do": "draw", "n": 1})).trig[0][3] is True
 @check("triggers: intervening if, once per turn, an opponent's tax (Rhystic Study, Smothering Tithe)")
 def _():
     k = C("Grizzly Bears", TR({"on": "end_step", "whose": "your"}, {"do": "draw", "n": 1}, **{"if": {"if": "hand_at_most", "n": 1}}),
@@ -373,6 +374,25 @@ def _():
     G.perms = [g.Perm(mull)]; G._st = None
     G.do(sl.trig[0][2], sl, None, 0); gone = not G.perms and G.flicker_back == [mull]
     return sl.trig[0][0] == "cycle" and gw.answer == "protect" and gw.hold and gone
+
+@check("step 3: subtype / creature-source mana restrictions, put from hand, self-shuffle, cycling reduction, tap-a-Wizard cost")
+def _():
+    import argparse, random
+    ma = C("Maelstrom of the Spirit Dragon", A("mana", cost=TAP, produce={"units": ["any"], "restrict": "Spend this mana only to cast a Dragon spell or an Omen spell."}))
+    gw = C("Gwenna, Eyes of Gaea", A("mana", cost=TAP, produce={"units": ["any"], "amount": 2, "any_combination": True,
+           "restrict": "Spend this mana only to cast creature spells or activate abilities of creature sources."}))
+    st = C("Show and Tell", SP({"do": "put_from_hand", "filter": {"types": ["artifact", "creature", "enchantment", "land"]}, "n": 1, "symmetric": True}))
+    gz = C("Green Sun's Zenith", SP({"do": "self_to_library", "where": "shuffle"}))
+    fl = C("Fluctuator", S({"static": "cost_reduction", "amount": 2, "applies_to": "cycling"}))
+    az = C("Azami, Lady of Scrolls", A("activated", cost={"tap_untapped": {"n": 1, "filter": {"subtypes": ["Wizard"], "controller": "you"}}}, effects=[{"do": "draw", "n": 1}]))
+    shapes = ma.units[0][2] == ("sub", frozenset({"Dragon", "Omen"})) and gw.units[0][2] == "creature_src" and st.spell[0][0] == "put_hand" \
+        and gz.spell == [("self_shuffle",)] and fl.statics == [("cycle_red", 2)] and az.acts[0]["tapcr"][1] == 1
+    forest = g.compile_card(IDX["forest"], g.ALL5); bears = g.compile_card(IDX["grizzly bears"], g.ALL5)
+    sim = g.Sim(["Forest"], [], argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False), [], {"Forest": forest}, g.ALL5)
+    G = g.Game(sim, [], [forest] * 30, random.Random(1)); G.turn, G.phase, G.turns_left, G.cmd = 3, 3, 3, []
+    G.perms = []; G._st = None; G.hand = [bears, forest]
+    G.do(st.spell, st, None, 0)
+    return shapes and any(q.k is bears for q in G.perms) and G.hand == [forest] and g.restr_ok(("sub", frozenset({"Dragon"})), bears, None) is False
 
 @check("status: unexpressible out_of_scope is never a miss; format_gap is; a refused ability leaves the rest read")
 def _():

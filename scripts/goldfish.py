@@ -350,6 +350,8 @@ def land_ok(k, f):
 def restr_ok(r, k, sim):
     if r is None: return True
     if k is None: return False                      # restricted mana can't pay ability costs here
+    if isinstance(r, tuple) and r[0] == "sub": return bool(k.subtypes & r[1])          # GEF: 'only to cast a Dragon or Omen spell'
+    if r == "creature_src": return "Creature" in k.types                               # GEF: creature spells / creature sources' abilities
     if r == "creature": return "Creature" in k.types
     if r == "legendary": return k.legendary
     if r == "multi": return len(k.colors) >= 2
@@ -2794,6 +2796,7 @@ class Statics:
         self.free = []; self.alts = []; self.reduce = []; self.extra_land = 0; self.prolif = 1
         self.coin_thumbs = 0; self.coin_first = False   # Krark's Thumb (flip two, keep one) / Edgar (first flips each turn win)
         self.spell_limit = []; self.skip_draw = False     # Rule of Law / Deafening Silence: (n, filter); skip your draw step
+        self.cycle_red = 0                                # Fluctuator: cycling costs {N} less
         self.plus = []; self.times = []; self.no_max = False; self.mana_mult = []; self.mana_add = []
         self.reduce_dyn = []    # (filter, dyn key): affinity-style reducers granted to spells (Pearl-Ear)
         self.equip_red = 0      # equip costs {N} less (Strong Back ~approx: on the creature it enchants)
@@ -2832,6 +2835,7 @@ class Statics:
                 elif t == "extra_land": self.extra_land += s[1]
                 elif t == "spell_limit": self.spell_limit.append((s[1], s[2]))
                 elif t == "skip_draw": self.skip_draw = True
+                elif t == "cycle_red": self.cycle_red += s[1]
                 elif t == "coin_rule":
                     if s[1] == "flip_two_ignore_one": self.coin_thumbs += 1
                     else: self.coin_first = True
@@ -3061,7 +3065,7 @@ class Game:
         sa, anyc, sim, out = self.st.spend_any, self.sim.anyc, self.sim, []
         for i, u in enumerate(pool):
             if u[5]: continue
-            eff = u[0] | u[1] if (u[1] and restr_ok(u[2], k, sim)) else u[0]
+            eff = u[0] | u[1] if (u[1] and restr_ok(u[2], k if k is not None or u[2] != "creature_src" else getattr(self, "pay_src", None), sim)) else u[0]
             if not eff: continue
             if sa: eff = eff | anyc
             src = u[4]                       # tap would-be attackers last (lands and rocks first); painful sources after painless
@@ -3239,6 +3243,7 @@ class Game:
             try: self.do(k.spell, k, None, x)
             finally: self.casting = None; self.kicked = 0
             if zone == "gy" and k.gycast["exile_after"]: self.exile.append(k)
+            elif getattr(self, "shuffle_self", False): self.shuffle_self = False; self.lib.append(k); self.rng.shuffle(self.lib)
             else: (self.rebound if k.rebound and zone == "hand" else self.gy).append(k)
 
     def enter(self, k, from_hand=False, x=0, tapped=False):
@@ -3506,11 +3511,21 @@ class Game:
         if ab.get("fodder"):
             picks = self.pick_fodder(ab["fodder"], p, fx)
             if not picks: return False
-        held = [u for u in self.pool if not u[5] and u[4] in picks]      # fodder's own mana isn't spent on the cost
+        tapped = []
+        if ab.get("tapcr"):                                # ('tap an untapped Wizard you control'): the least useful ones
+            f_, n_ = ab["tapcr"]
+            can = [q for q in self.perms if self.is_creature(q) and not q.tapped and q not in self.attackers and self.pmatch(f_, q, p)]
+            if len(can) < n_: return False
+            tapped = sorted(can, key=lambda q: (bool(q.k.units), self.stats(q)[0]))[:n_]
+        held = [u for u in self.pool if not u[5] and u[4] in picks + tapped]   # fodder's / tapped creatures' mana isn't spent on it
         for u in held: u[5] = True
-        if not self.pay(None, ab["gen"], ab["pips"]):
+        self.pay_src = k
+        try: paid_ok = self.pay(None, ab["gen"], ab["pips"])
+        finally: self.pay_src = None
+        if not paid_ok:
             for u in held: u[5] = False
             return False
+        for q in tapped: q.tapped = True
         self.lose_life(ab.get("life", 0), "ability")
         if ab["tap"]:
             p.tapped = True
@@ -3920,8 +3935,9 @@ class Game:
                         if not need_land and self.value(card) > (45 if payoff else 20): continue
                     elif self.value(card) > (45 if payoff else 20): continue
                 if ab.get("life") and self.life - ab["life"] < LIFE_FLOOR: continue
-                if eot and sum(1 for u in self.pool if not u[5]) - ab["gen"] - len(ab["pips"]) < self.reserve() + self.engine_reserve(self.turns_left): continue
-                if not self.pay(None, ab["gen"], ab["pips"]): continue
+                gen = max(0, ab["gen"] - (self.st.cycle_red if ab["kind"] in ("cycle", "typecycle") else 0))
+                if eot and sum(1 for u in self.pool if not u[5]) - gen - len(ab["pips"]) < self.reserve() + self.engine_reserve(self.turns_left): continue
+                if not self.pay(None, gen, ab["pips"]): continue
                 self.lose_life(ab.get("life", 0), "cycling")
                 self.hand.remove(card); self.gy.append(card); self.gain(-1, card.name)
                 self.note(f"  {ab['label']} {card.name}")
@@ -4227,6 +4243,7 @@ class Game:
                 dp, dt = self.amt(dp, p), self.amt(dt, p)
                 for q in self.perms:
                     if not self.is_creature(q) or (other and q is p) or (atk and q not in self.attackers) or not spell_ok(q.k, f): continue
+                    if f and f.get("pow_now") is not None and self.stats(q)[0] < f["pow_now"]: continue
                     q.pp += dp; q.pt += dt
                     if kws: q.tkw = (q.tkw or set()) | set(kws)
             elif t == "mana_dmg":                             # 'add that much {G}': the combat damage just dealt
@@ -4343,6 +4360,14 @@ class Game:
                 self.life = sum(1 for q in self.perms if self.is_creature(q))
                 self.note(f"    {name}: opponents to {self.opp_creatures()} life, you to {self.life}")
                 self.check_deaths("noncombat")
+            elif t == "put_hand":                                # ('put_hand', filter, n | 'any'): the best ones first
+                if self.dry: continue
+                cands = sorted((c for c in self.hand if (c.types & PERMANENT) and spell_ok(c, e[1])), key=lambda c: (-c.mv, -self.value(c)))
+                for c in cands[:None if e[2] == "any" else e[2]]:
+                    self.hand.remove(c); self.note(f"    {name} puts {c.name} onto the battlefield")
+                    if c.is_land: self.land_enters(c)
+                    else: self.enter(c)
+            elif t == "self_shuffle": self.shuffle_self = True
             elif t == "storm":                                   # a copy of the spell for each spell cast before it this turn
                 for _ in range(max(0, len(self.tcast) - 1)): self.do(k.spell, k, None, x)
             elif t == "flip":                                    # ('flip', n, win effects, lose effects, until you lose)
