@@ -250,6 +250,21 @@ OPP = ("each_opponent", "target_opponent", "an_opponent", "defending_player", "t
 
 def effects(fx, ctx):
     out = []
+    fx = list(fx or [])
+    for i in range(len(fx) - 1):                          # 'discard your hand, then draw that many': a same-size wheel
+        a_, b_ = fx[i], fx[i + 1]
+        if a_.get("do") == "discard" and a_.get("n") == "hand" and a_.get("who") in (None, "you") and b_.get("do") == "draw" \
+                and b_.get("n") == {"count": "that_much"} and b_.get("who") in (None, "you"):
+            fx[i:i + 2] = [{"do": "_wheel_size"}]; break
+    for i in range(len(fx) - 1):                          # 'create a token. That token gains haste until end of turn': a hasty token
+        a_, b_ = fx[i], fx[i + 1]                          # (haste only matters the turn it enters)
+        if a_.get("do") == "token" and b_.get("do") == "pump" and (b_.get("target") or {}).get("ref") in ("it", "that") \
+                and b_.get("keywords") == ["haste"] and not b_.get("power") and not b_.get("toughness") and b_.get("duration") == "end_of_turn":
+            tok = dict(a_["token"]); tok["keywords"] = list(tok.get("keywords", [])) + ["haste"]
+            if tok.get("preset") in ("servo", "thopter"):
+                tok = {"types": ["artifact", "creature"], "subtypes": [tok["preset"].capitalize()], "power": 1, "toughness": 1,
+                       "keywords": (["flying"] if tok["preset"] == "thopter" else []) + ["haste"]}
+            fx[i:i + 2] = [dict(a_, token=tok)]; break
     for i, e in enumerate(fx or []):
         nxt = (fx[i + 1] if i + 1 < len(fx) else {}) if e["do"] == "choose_number" else {}
         ctx.next_loss = sum(x["n"] for x in nxt.get("on_lose", []) if x["do"] in ("damage", "lose_life") and isinstance(x.get("n"), int)
@@ -261,6 +276,7 @@ def effects(fx, ctx):
 def effect(e, ctx):
     d = e["do"]
     who = e.get("who")
+    if d == "_wheel_size": return [("wheel", "size", False)]
     if d == "unexpressible":
         if e.get("scope") == "out_of_scope": return []
         refuse("unexpressible part: " + e.get("reason", "")[:60])
@@ -306,6 +322,8 @@ def effect(e, ctx):
         if ls and dest != "graveyard" and not gy: return [("land_search", n, ls, dest)]
         return [("tutor", target(e["filter"]), dest, n) + ((True,) if gy else ())]
     if d == "recur":
+        if e.get("filter") == {"same_name_as_self": True} and e.get("to") == "hand" and ctx.ev == "gy_self": return [("regrow_self",)]
+        if e.get("n") == "all": e = dict(e, n=99)                 # every matching card (the engine stops when none is left)
         if e.get("from", "your_graveyard") not in ("your_graveyard", "any_graveyard") or not isinstance(e.get("n", 1), int): refuse("recur form")
         return [("recur", target(e["filter"]), zone(e["to"], ("hand", "bf", "top")), e.get("n", 1))]
     if d == "wheel":
@@ -339,6 +357,8 @@ def effect(e, ctx):
     if d == "pump":
         if e["duration"] != "end_of_turn": refuse("pump duration " + e["duration"])
         tg = e["target"]
+        if tg["ref"] in ("it", "that") and ctx.ev in (None, "upkeep", "end", "drawstep", "main1", "combat_begin", "cast", "opp_cast", "opp_draw"):
+            refuse("pump of 'it' with no trigger object")                      # the engine's obj is the trigger's object
         who_ = {"self": "self", "that": "obj", "it": "obj", "equipped": "attach", "enchanted": "attach", "attached": "attach",
                 "attackers": "attackers"}.get(tg["ref"])
         if tg["ref"] == "target":
@@ -373,9 +393,10 @@ def effect(e, ctx):
         if to in ("each_opponent", "target_opponent", "target_player", "defending_player", "that_player"):
             return [("face", amount(e["n"]), "each" if to == "each_opponent" else "one", True)]
         if to == "you": return [("life", -e["n"])] if isinstance(e["n"], int) else [("lose", amount(e["n"]))]
+        if to == "each_player": return [("face", amount(e["n"]), "all", True)]
         if to == "any_target":
             ctx.burn = e["n"]
-            if ctx.kind == "spell": ctx.interaction = True
+            if ctx.kind == "spell" and isinstance(e["n"], int): ctx.interaction = True   # fixed burn is held (Lightning Bolt); counted damage isn't
             return [("face", amount(e["n"]), "one", True)]
         if to in ("target_creature", "target_creature_or_planeswalker") and isinstance(e["n"], int):
             ctx.interaction = True
@@ -390,6 +411,7 @@ def effect(e, ctx):
         refuse("lose_life who " + str(who))
     if d == "gain_life":
         if who not in (None, "you"): return []                    # an opponent gaining life is their business
+        if e["n"] == {"count": "that_much"} and ctx.ev in ("dmg_att", "dmg_self"): return [("life_dmg",)]   # the damage just dealt
         return [("life", amount(e["n"]))]
     if d == "win_game": return [("win",)]
     if d == "bounce_self": return [("bounce_self",)]
@@ -505,9 +527,12 @@ def keywords(kws):
 
 def token(e, ctx):
     t = e["token"]
-    if set(e) - {"do", "n", "token", "tapped"}: refuse("token " + ", ".join(sorted(set(e) - {"do", "n", "token", "tapped"})))
+    if set(e) - {"do", "n", "token", "tapped", "for_each_player"}: refuse("token " + ", ".join(sorted(set(e) - {"do", "n", "token", "tapped", "for_each_player"})))
     n = amount(e["n"])
     if t.get("preset") == "treasure": return ("treasure", n, bool(e.get("tapped")))
+    if t.get("preset") in ("servo", "thopter") and set(t) == {"preset"}:      # 1/1 colorless artifact creatures (Thopters fly)
+        return ("token", n, 1, (t["preset"].capitalize(),), "", "artifact creature", 1,
+                frozenset({"flying"}) if t["preset"] == "thopter" else frozenset(), bool(e.get("tapped")))
     if t.get("preset") in ("clue", "food") and set(t) == {"preset"}:
         base = g.CLUE_E if t["preset"] == "clue" else g.FOOD_E
         return base[:1] + (n,) + base[2:8] + (bool(e.get("tapped")),)
@@ -617,6 +642,7 @@ def event(ev):
     extra = set(ev) - {"on", "subject", "whose", "who", "one_or_more", "spell", "first_each_turn"}
     if extra: refuse("event " + ", ".join(sorted(extra)))
     if on in EVENTS:
+        if on in ("upkeep", "end_step") and ev.get("whose") == "each": return EVENTS[on] + "+each", None     # every player's
         if on in ("upkeep", "end_step", "draw_step", "precombat_main", "combat_begin") and ev.get("whose") != "your": refuse(f"{on} whose {ev.get('whose')}")
         if on in ("gain_life", "draw_card") and ev.get("who") not in (None, "you"): refuse(f"{on} who")
         if on == "cycle" and ev.get("who") not in (None, "you", "each_player"): refuse("cycle who")   # only you cycle in a goldfish
@@ -647,6 +673,7 @@ def event(ev):
         refuse(f"{on} subject")
     if on == "you_attack": return "attack_any", None
     if on == "sacrifice" and isinstance(subj, dict): return "sac", perm_filter(subj)
+    if on == "deals_damage" and subj in ("enchanted", "equipped"): return "dmg_att", None
     if on in ("becomes_blocked", "attacks_unblocked", "deals_damage", "leaves", "put_into_graveyard") and subj == "self":
         return {"becomes_blocked": "blocked_self", "attacks_unblocked": "unblocked_self", "deals_damage": "dmg_self",
                 "leaves": "leave_self", "put_into_graveyard": "gy_self"}[on], None
@@ -892,6 +919,9 @@ def static(a, ctx):
     if st == "skip_step":
         if s["what"] != "draw_step" or s.get("who", "you") != "you": refuse("skip " + s["what"])
         k.statics.append(("skip_draw",)); return "read"
+    if st == "damage_multiplier":
+        if not isinstance(s.get("factor"), int): refuse("damage multiplier form")
+        k.statics.append(("dmg_mult", s["factor"], False)); return "read"
     if st == "coin_flip_rule": k.statics.append(("coin_rule", s["rule"])); return "read"
     if st == "mana_multiplier":
         src = {"permanents you tap for mana": "permanent", "permanent": "permanent", "lands": "land", "land": "land"}.get(s.get("sources", ""))
@@ -913,6 +943,22 @@ def static(a, ctx):
             and {t.lower() for t in s["add_types"]} <= set(g.BASIC) and not s.get("abilities"):
         ctx.self_land_types |= {t.lower() for t in s["add_types"]}
         refuse("type grant to other lands")
+    if st == "type_grant" and s.get("filter") and not s.get("self") and not s.get("add_chosen_type"):
+        f = s["filter"]
+        if set(f) - {"types", "controller"} or f.get("controller") not in (None, "you") or not f.get("types"): refuse("type grant filter")
+        covered = frozenset(TYPE_CAP[t] for t in f["types"] if t in TYPE_CAP)
+        if len(covered) != len(f["types"]) or "Land" in covered: refuse("type grant filter")
+        add = s.get("add_types") or []
+        types = frozenset(TYPE_CAP[t.lower()] for t in add if t.lower() in TYPE_CAP)
+        subs = frozenset(t for t in add if t.lower() not in TYPE_CAP)
+        acts = []
+        for ab in s.get("abilities") or []:
+            if ab["kind"] != "activated" or ab.get("if") or ab.get("once_per_turn"): refuse("granted ability")
+            cst = cost(ab["cost"], ctx)
+            out = effects(ab["effects"], ctx)
+            if not out: refuse("granted ability with no engine effect")
+            acts.append(dict(cst, fx=out, combat=False, sorcery=bool(ab.get("sorcery_speed"))))
+        k.statics.append(("type_grant", covered, types, subs, acts)); return "read"
     if st == "type_grant":
         if s.get("self") and s.get("add_chosen_type") and not s.get("add_types") and not s.get("abilities"):
             if g.CHOSEN_TYPE: k.subtypes = k.subtypes | {g.CHOSEN_TYPE}
@@ -953,7 +999,7 @@ def ability(a, ctx):
         return "read"
     if kind == "triggered":
         ev, filt = event(a["event"])
-        ctx.ev = ctx_ev[0] = ev
+        ctx.ev = ctx_ev[0] = ev.replace("+each", "")
         tax = False
         fx = a["effects"]
         if ev in ("opp_cast", "opp_draw") and len(fx) == 1 and fx[0]["do"] == "unless_opponent_pays":
@@ -970,7 +1016,9 @@ def ability(a, ctx):
             k.etb += out
         elif ev == "cast_self": k.castfx += out
         elif ev == "cycle_self": k.cycle_fx += out              # 'when you cycle ~': a cycling rider, as the parser reads it
-        else: k.trig.append((ev, filt, out, bool(a.get("once_per_turn") or a["event"].get("first_each_turn")), tax, False))
+        else:
+            each = ev.endswith("+each")
+            k.trig.append((ev.replace("+each", ""), filt, out, bool(a.get("once_per_turn") or a["event"].get("first_each_turn")), tax, each))
         return "read"
     if kind == "activated":
         if a.get("from_zone", "battlefield") != "battlefield": refuse("activated from " + a["from_zone"])

@@ -1,0 +1,212 @@
+[
+ [
+  "Ragost, Deft Gastronaut",
+  "first",
+  "correct",
+  false,
+  "Food type grant with its quoted ability, sacrifice-a-Food burn, end-step untap if you gained life: all exact"
+ ],
+ [
+  "Academy Manufactor",
+  "first",
+  "correct",
+  true,
+  "one-of-each token replacement: no GEF construct (honest gap)"
+ ],
+ [
+  "Bender's Waterskin",
+  "first",
+  "correct",
+  true,
+  "untaps in other players' untap steps: no construct (honest gap); mana reads"
+ ],
+ [
+  "Fateful Showdown",
+  "first",
+  "correct",
+  false,
+  "damage = cards in hand, discard the hand, draw that many"
+ ],
+ [
+  "Humble Defector",
+  "first",
+  "correct",
+  true,
+  "draw two reads; the opponent gaining control is a gap (as Wishclaw)"
+ ],
+ [
+  "Ichor Wellspring",
+  "first",
+  "correct",
+  false,
+  "enters / put into a graveyard from the battlefield: two triggers on one line, exact"
+ ],
+ [
+  "Ishgard, the Holy See // Faith & Grief",
+  "first",
+  "correct",
+  false,
+  "faces: the land and the Omen's recursion of up to two artifacts/enchantments"
+ ],
+ [
+  "Lembas",
+  "first",
+  "correct",
+  false,
+  "scry then draw; Food sacrifice; shuffled back when it dies"
+ ],
+ [
+  "Mines of Moria",
+  "first",
+  "correct",
+  false,
+  "enters tapped unless you control a legendary creature; Treasure activation with the graveyard-exile cost"
+ ],
+ [
+  "Molten Psyche",
+  "first",
+  "correct",
+  true,
+  "shuffle-hand-and-draw and opponents' draw count: honest gaps"
+ ],
+ [
+  "Mycosynth Wellspring",
+  "first",
+  "correct",
+  false,
+  "optional basic land search on enters and on dying"
+ ],
+ [
+  "Needleverge Pathway // Pillarverge Pathway",
+  "first",
+  "correct",
+  false,
+  "faces, one mana ability each (the adapter refuses the back face: the engine can't choose a face)"
+ ],
+ [
+  "Prized Statue",
+  "first",
+  "correct",
+  false,
+  "a Treasure on enters and on dying"
+ ],
+ [
+  "Ratchet, Field Medic // Ratchet, Rescue Racer",
+  "first",
+  "correct",
+  true,
+  "More Than Meets the Eye, living metal and convert are gaps; lifelink reads"
+ ],
+ [
+  "Roadside Reliquary",
+  "first",
+  "correct",
+  false,
+  "two conditional draws on the sacrifice"
+ ],
+ [
+  "Scourge of the Nobilis",
+  "first",
+  "correct",
+  true,
+  "bonuses conditional on the enchanted creature's color: gaps"
+ ],
+ [
+  "Servo Schematic",
+  "first",
+  "correct",
+  false,
+  "a Servo on enters and on dying"
+ ],
+ [
+  "Spirit Loop",
+  "first",
+  "correct",
+  false,
+  "life per damage of the enchanted creature; returns to hand when it dies"
+ ],
+ [
+  "Stridehangar Automaton",
+  "first",
+  "correct",
+  true,
+  "Thopter anthem reads; the extra-Thopter replacement is a gap"
+ ],
+ [
+  "Test of Endurance",
+  "first",
+  "correct",
+  false,
+  "upkeep win at 50 life (intervening if)"
+ ],
+ [
+  "The Battle of Bywater",
+  "first",
+  "correct",
+  false,
+  "wipe of power 3 or greater, then a Food per creature you control"
+ ],
+ [
+  "The Underworld Cookbook",
+  "first",
+  "correct",
+  false,
+  "discard for a Food; sacrifice to regrow a creature"
+ ],
+ [
+  "Thopter Assembly",
+  "first",
+  "correct",
+  false,
+  "intervening 'no other Thopters': bounce and five Thopters"
+ ],
+ [
+  "Toggo, Goblin Weaponsmith",
+  "first",
+  "correct",
+  true,
+  "Rock token with equip reads; its granted damage ability is a gap"
+ ],
+ [
+  "Treasure Vault",
+  "first",
+  "correct",
+  false,
+  "{X}{X} sacrifice for X Treasures"
+ ],
+ [
+  "Wake the Past",
+  "first",
+  "correct",
+  true,
+  "returns all artifacts; haste for just those is a gap"
+ ],
+ [
+  "Well of Lost Dreams",
+  "first",
+  "correct",
+  true,
+  "pay X capped by life gained: gap"
+ ],
+ [
+  "Foundry Inspector",
+  "first",
+  "correct",
+  false,
+  "sampled agree: artifact cost reduction"
+ ],
+ [
+  "Goblin Welder",
+  "first",
+  "correct",
+  true,
+  "sampled agree: the simultaneous swap is a gap"
+ ],
+ [
+  "Colossus of the Blood Age",
+  "first",
+  "correct",
+  true,
+  "sampled agree: ETB drain reads; discard-any-number draw is a gap"
+ ]
+]

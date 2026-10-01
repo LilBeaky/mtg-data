@@ -1,0 +1,2124 @@
+[
+ {
+  "gef": "0.2",
+  "name": "Ragost, Deft Gastronaut",
+  "source": "llm",
+  "notes": "Line 1 is one type_grant carrying both the Food subtype and the granted gain-life ability, and the sacrificed Food in line 2 is matched by subtype.",
+  "abilities": [
+   {
+    "kind": "static",
+    "text": "Artifacts you control are Foods in addition to their other types and have \"{2}, {T}, Sacrifice this artifact: You gain 3 life.\"",
+    "effect": {
+     "static": "type_grant",
+     "filter": {
+      "types": [
+       "artifact"
+      ],
+      "controller": "you"
+     },
+     "add_types": [
+      "Food"
+     ],
+     "abilities": [
+      {
+       "kind": "activated",
+       "text": "{2}, {T}, Sacrifice this artifact: You gain 3 life.",
+       "cost": {
+        "mana": "{2}",
+        "tap": true,
+        "sacrifice": "self"
+       },
+       "effects": [
+        {
+         "do": "gain_life",
+         "n": 3
+        }
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "kind": "activated",
+    "text": "{1}, {T}, Sacrifice a Food: Ragost deals 3 damage to each opponent.",
+    "cost": {
+     "mana": "{1}",
+     "tap": true,
+     "sacrifice": {
+      "filter": {
+       "subtypes": [
+        "Food"
+       ]
+      },
+      "n": 1
+     }
+    },
+    "effects": [
+     {
+      "do": "damage",
+      "n": 3,
+      "to": "each_opponent",
+      "source": "self"
+     }
+    ]
+   },
+   {
+    "kind": "triggered",
+    "text": "At the beginning of each end step, if you gained life this turn, untap Ragost.",
+    "event": {
+     "on": "end_step",
+     "whose": "each"
+    },
+    "if": {
+     "if": "gained_life_this_turn"
+    },
+    "effects": [
+     {
+      "do": "untap",
+      "what": {
+       "ref": "self"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Academy Manufactor",
+  "source": "llm",
+  "notes": "A replacement effect that makes one of each of Clue, Food and Treasure; token_doubler only multiplies a count, so no construct says it.",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "If you would create a Clue, Food, or Treasure token, instead create one of each.",
+    "reason": "replaces creating one of those tokens with creating one each of Clue, Food and Treasure; token_doubler can only multiply the count of the same token",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Bender's Waterskin",
+  "source": "llm",
+  "notes": "The untap line only matters in other players' untap steps, which a clean goldfish doesn't have; it is marked format_gap because it changes my own permanent, so a reviewer may downgrade it to out_of_scope.",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "Untap this artifact during each other player's untap step.",
+    "reason": "untaps my permanent in other players' untap steps; no construct or event says an untap-step effect",
+    "scope": "format_gap"
+   },
+   {
+    "kind": "mana",
+    "text": "{T}: Add one mana of any color.",
+    "cost": {
+     "tap": true
+    },
+    "produce": {
+     "units": [
+      "any"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Caduceus, Staff of Hermes",
+  "source": "llm",
+  "notes": "Line 2 is split in two: the 30-life +5/+5 and indestructible are a static, and the granted 'prevent all damage that would be dealt to this creature' (no static construct) is a separate unexpressible carrying the same line.",
+  "abilities": [
+   {
+    "kind": "static",
+    "text": "Equipped creature has lifelink.",
+    "effect": {
+     "static": "attached_bonus",
+     "keywords": [
+      "lifelink"
+     ]
+    }
+   },
+   {
+    "kind": "static",
+    "text": "As long as you have 30 or more life, equipped creature gets +5/+5 and has indestructible and \"Prevent all damage that would be dealt to this creature.\"",
+    "if": {
+     "if": "life_at_least",
+     "n": 30
+    },
+    "effect": {
+     "static": "attached_bonus",
+     "power": 5,
+     "toughness": 5,
+     "keywords": [
+      "indestructible"
+     ]
+    }
+   },
+   {
+    "kind": "unexpressible",
+    "text": "As long as you have 30 or more life, equipped creature gets +5/+5 and has indestructible and \"Prevent all damage that would be dealt to this creature.\"",
+    "reason": "the granted ability 'Prevent all damage that would be dealt to this creature' (while at 30+ life) is a static damage prevention that no static construct says; the +5/+5 and indestructible are in the previous ability",
+    "scope": "format_gap"
+   },
+   {
+    "kind": "keyword",
+    "text": "Equip {W}{W}",
+    "keyword": "equip",
+    "cost": "{W}{W}"
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "City on Fire",
+  "source": "llm",
+  "notes": "damage_multiplier has no source filter, and 'a source you control' is the only kind of damage source that matters in a goldfish.",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Convoke",
+    "keyword": "convoke"
+   },
+   {
+    "kind": "static",
+    "text": "If a source you control would deal damage to a permanent or player, it deals triple that damage instead.",
+    "effect": {
+     "static": "damage_multiplier",
+     "factor": 3
+    }
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Cloud Key",
+  "source": "llm",
+  "notes": "choose_on_enter only chooses a creature type or a color, so choosing a card type and the discount that depends on it are both format gaps.",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "As this artifact enters, choose artifact, creature, enchantment, instant, or sorcery.",
+    "reason": "choose_on_enter can only choose a creature type or a color; choosing a card type has no construct",
+    "scope": "format_gap"
+   },
+   {
+    "kind": "unexpressible",
+    "text": "Spells you cast of the chosen type cost {1} less to cast.",
+    "reason": "the discount depends on the chosen card type, which can't be recorded (chosen_type means the chosen creature type or color), and listing all five types would widen it",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Colossus of the Blood Age",
+  "source": "llm",
+  "notes": "The dies trigger discards a number of cards of the pilot's choice and draws that many plus one; discard has no 'any number' amount and the draw depends on it, so only the trigger is expressed.",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "When this creature enters, it deals 3 damage to each opponent and you gain 3 life.",
+    "event": {
+     "on": "enters",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "damage",
+      "n": 3,
+      "to": "each_opponent",
+      "source": "self"
+     },
+     {
+      "do": "gain_life",
+      "n": 3
+     }
+    ]
+   },
+   {
+    "kind": "triggered",
+    "text": "When this creature dies, discard any number of cards, then draw that many cards plus one.",
+    "event": {
+     "on": "dies",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "unexpressible",
+      "text": "discard any number of cards, then draw that many cards plus one",
+      "reason": "discard has no 'any number of cards' amount (choose_number needs fixed integer bounds), and the draw depends on the number discarded",
+      "scope": "format_gap"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Curse of Opulence",
+  "source": "llm",
+  "notes": "No Event field says 'the enchanted player is attacked' (you_attack would widen it to attacks on any player), so the trigger is a format_gap, and the opponents' Gold tokens in the same line would be out_of_scope.",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Enchant player",
+    "keyword": "enchant",
+    "detail": "player"
+   },
+   {
+    "kind": "unexpressible",
+    "text": "Whenever enchanted player is attacked, create a Gold token. Each opponent attacking that player does the same.",
+    "reason": "the trigger is 'the enchanted player is attacked' and no event field can name the enchanted player as the one attacked; you_attack would widen it to attacks on any player",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Descent into Avernus",
+  "source": "llm",
+  "notes": "X is the number of descent counters after the two new ones are added, so the counters effect runs first.",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "At the beginning of your upkeep, put two descent counters on this enchantment. Then each player creates X Treasure tokens and this enchantment deals X damage to each player, where X is the number of descent counters on this enchantment.",
+    "event": {
+     "on": "upkeep",
+     "whose": "your"
+    },
+    "effects": [
+     {
+      "do": "counters",
+      "kind": "descent",
+      "n": 2,
+      "on": {
+       "ref": "self"
+      }
+     },
+     {
+      "do": "token",
+      "n": {
+       "count": "counters_on_self",
+       "kind": "descent"
+      },
+      "token": {
+       "preset": "treasure"
+      },
+      "for_each_player": true
+     },
+     {
+      "do": "damage",
+      "n": {
+       "count": "counters_on_self",
+       "kind": "descent"
+      },
+      "to": "each_player",
+      "source": "self"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Experimental Synthesizer",
+  "source": "llm",
+  "notes": "'Enters or leaves the battlefield' is written as two triggered abilities (one per event), each carrying the whole line, which is equivalent because a permanent can't enter and leave at once.",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "When this artifact enters or leaves the battlefield, exile the top card of your library. Until end of turn, you may play that card.",
+    "event": {
+     "on": "enters",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "impulse",
+      "n": 1,
+      "until": "end_of_turn"
+     }
+    ]
+   },
+   {
+    "kind": "triggered",
+    "text": "When this artifact enters or leaves the battlefield, exile the top card of your library. Until end of turn, you may play that card.",
+    "event": {
+     "on": "leaves",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "impulse",
+      "n": 1,
+      "until": "end_of_turn"
+     }
+    ]
+   },
+   {
+    "kind": "activated",
+    "text": "{2}{R}, Sacrifice this artifact: Create a 2/2 white Samurai creature token with vigilance. Activate only as a sorcery.",
+    "cost": {
+     "mana": "{2}{R}",
+     "sacrifice": "self"
+    },
+    "sorcery_speed": true,
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "types": [
+        "creature"
+       ],
+       "subtypes": [
+        "Samurai"
+       ],
+       "colors": [
+        "W"
+       ],
+       "power": 2,
+       "toughness": 2,
+       "keywords": [
+        "vigilance"
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Fateful Showdown",
+  "source": "llm",
+  "notes": "'That many cards' is written as that_much after discarding the whole hand, which is the same number the damage counted.",
+  "abilities": [
+   {
+    "kind": "spell",
+    "text": "Fateful Showdown deals damage to any target equal to the number of cards in your hand. Discard all the cards in your hand, then draw that many cards.",
+    "effects": [
+     {
+      "do": "damage",
+      "n": {
+       "count": "cards_in_hand"
+      },
+      "to": "any_target",
+      "source": "self"
+     },
+     {
+      "do": "discard",
+      "n": "hand"
+     },
+     {
+      "do": "draw",
+      "n": {
+       "count": "that_much"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Foundry Inspector",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "static",
+    "text": "Artifact spells you cast cost {1} less to cast.",
+    "effect": {
+     "static": "cost_reduction",
+     "spells": {
+      "types": [
+       "artifact"
+      ]
+     },
+     "amount": 1
+    }
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Furnace of Rath",
+  "source": "llm",
+  "notes": "damage_multiplier has no source filter, and 'a source' also covers opponents' sources, which never deal damage in a goldfish.",
+  "abilities": [
+   {
+    "kind": "static",
+    "text": "If a source would deal damage to a permanent or player, it deals double that damage to that permanent or player instead.",
+    "effect": {
+     "static": "damage_multiplier",
+     "factor": 2
+    }
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Goblin Welder",
+  "source": "llm",
+  "notes": "A simultaneous swap of a chosen artifact and a graveyard artifact tied to one player, needing both targets; a sacrifice then a recur in sequence could return the artifact just sacrificed, so it isn't said exactly.",
+  "abilities": [
+   {
+    "kind": "activated",
+    "text": "{T}: Choose target artifact a player controls and target artifact card in that player's graveyard. If both targets are still legal as this ability resolves, that player simultaneously sacrifices the artifact and returns the artifact card to the battlefield.",
+    "cost": {
+     "tap": true
+    },
+    "effects": [
+     {
+      "do": "unexpressible",
+      "text": "Choose target artifact a player controls and target artifact card in that player's graveyard. If both targets are still legal as this ability resolves, that player simultaneously sacrifices the artifact and returns the artifact card to the battlefield.",
+      "reason": "swaps a sacrificed artifact for a graveyard artifact simultaneously, with both targets tied to the same player and both required; sacrifice then recur in sequence is not the same",
+      "scope": "format_gap"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Hot Dog Cart",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "When this artifact enters, create a Food token.",
+    "event": {
+     "on": "enters",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "preset": "food"
+      }
+     }
+    ]
+   },
+   {
+    "kind": "mana",
+    "text": "{T}: Add one mana of any color.",
+    "cost": {
+     "tap": true
+    },
+    "produce": {
+     "units": [
+      "any"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Humble Defector",
+  "source": "llm",
+  "notes": "Giving the creature to an opponent has no construct (gain_control is the other direction), so only the draw is expressed and the creature is lost for the rest of the game.",
+  "abilities": [
+   {
+    "kind": "activated",
+    "text": "{T}: Draw two cards. Target opponent gains control of this creature. Activate only during your turn.",
+    "cost": {
+     "tap": true
+    },
+    "if": {
+     "if": "your_turn"
+    },
+    "effects": [
+     {
+      "do": "draw",
+      "n": 2
+     },
+     {
+      "do": "unexpressible",
+      "text": "Target opponent gains control of this creature.",
+      "reason": "hands my creature to an opponent; gain_control only takes control for me",
+      "scope": "format_gap"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Ichor Wellspring",
+  "source": "llm",
+  "notes": "'Enters or is put into a graveyard from the battlefield' is written as two triggered abilities (one per event), each carrying the whole line.",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "When this artifact enters or is put into a graveyard from the battlefield, draw a card.",
+    "event": {
+     "on": "enters",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "draw",
+      "n": 1
+     }
+    ]
+   },
+   {
+    "kind": "triggered",
+    "text": "When this artifact enters or is put into a graveyard from the battlefield, draw a card.",
+    "event": {
+     "on": "put_into_graveyard",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "draw",
+      "n": 1
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Illusionist's Bracers",
+  "source": "llm",
+  "notes": "Copying an activated ability, and the 'if it isn't a mana ability' condition, have no construct (copy_spell only copies spells).",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "Whenever an ability of equipped creature is activated, if it isn't a mana ability, copy that ability. You may choose new targets for the copy.",
+    "reason": "copies an activated ability of the equipped creature (not a spell) unless it is a mana ability; copy_spell has no ability copy and there is no 'not a mana ability' condition",
+    "scope": "format_gap"
+   },
+   {
+    "kind": "keyword",
+    "text": "Equip {3}",
+    "keyword": "equip",
+    "cost": "{3}"
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Illustrious Wanderglyph",
+  "source": "llm",
+  "notes": "Ascend isn't in the keyword list and no condition says 'you have the city's blessing' (controlling ten permanents isn't the same, because the blessing is permanent), so Ascend and the anthem are format gaps.",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "Ascend",
+    "reason": "ascend (the city's blessing) is not in the keyword list and no construct records the blessing",
+    "scope": "format_gap"
+   },
+   {
+    "kind": "unexpressible",
+    "text": "Other artifact creatures you control get +2/+2 as long as you have the city's blessing.",
+    "reason": "the anthem depends on having the city's blessing, a permanent game state no condition says; 'control ten or more permanents' would lose the permanence",
+    "scope": "format_gap"
+   },
+   {
+    "kind": "triggered",
+    "text": "At the beginning of each upkeep, create a 1/1 colorless Gnome artifact creature token.",
+    "event": {
+     "on": "upkeep",
+     "whose": "each"
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "types": [
+        "artifact",
+        "creature"
+       ],
+       "subtypes": [
+        "Gnome"
+       ],
+       "power": 1,
+       "toughness": 1
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Ishgard, the Holy See // Faith & Grief",
+  "source": "llm",
+  "notes": "Adventure land written as two faces; 'up to two' is recur n=2 (it returns as many as exist), and the exile-and-play-the-land clause is reminder text.",
+  "faces": [
+   {
+    "name": "Ishgard, the Holy See",
+    "abilities": [
+     {
+      "kind": "static",
+      "text": "This land enters tapped.",
+      "effect": {
+       "static": "enters_tapped"
+      }
+     },
+     {
+      "kind": "mana",
+      "text": "{T}: Add {W}.",
+      "cost": {
+       "tap": true
+      },
+      "produce": {
+       "units": [
+        "W"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Faith & Grief",
+    "abilities": [
+     {
+      "kind": "spell",
+      "text": "Return up to two target artifact and/or enchantment cards from your graveyard to your hand.",
+      "effects": [
+       {
+        "do": "recur",
+        "filter": {
+         "types": [
+          "artifact",
+          "enchantment"
+         ]
+        },
+        "n": 2,
+        "to": "hand",
+        "from": "your_graveyard"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Junk Diver",
+  "source": "llm",
+  "notes": "'Another' is written as not_name, which is exact in a singleton deck.",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Flying",
+    "keyword": "flying"
+   },
+   {
+    "kind": "triggered",
+    "text": "When this creature dies, return another target artifact card from your graveyard to your hand.",
+    "event": {
+     "on": "dies",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "recur",
+      "filter": {
+       "types": [
+        "artifact"
+       ],
+       "not_name": "Junk Diver"
+      },
+      "n": 1,
+      "to": "hand",
+      "from": "your_graveyard"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Lembas",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "When this artifact enters, scry 1, then draw a card.",
+    "event": {
+     "on": "enters",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "scry",
+      "n": 1
+     },
+     {
+      "do": "draw",
+      "n": 1
+     }
+    ]
+   },
+   {
+    "kind": "activated",
+    "text": "{2}, {T}, Sacrifice this artifact: You gain 3 life.",
+    "cost": {
+     "mana": "{2}",
+     "tap": true,
+     "sacrifice": "self"
+    },
+    "effects": [
+     {
+      "do": "gain_life",
+      "n": 3
+     }
+    ]
+   },
+   {
+    "kind": "triggered",
+    "text": "When this artifact is put into a graveyard from the battlefield, its owner shuffles it into their library.",
+    "event": {
+     "on": "put_into_graveyard",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "self_to_library",
+      "where": "shuffle"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Lifelink",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Enchant creature",
+    "keyword": "enchant",
+    "detail": "creature"
+   },
+   {
+    "kind": "static",
+    "text": "Enchanted creature has lifelink.",
+    "effect": {
+     "static": "attached_bonus",
+     "keywords": [
+      "lifelink"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Loyal Apprentice",
+  "source": "llm",
+  "notes": "'That token gains haste until end of turn' is a pump on ref 'it' (the token just created), which is my reading of that ref.",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Haste",
+    "keyword": "haste"
+   },
+   {
+    "kind": "triggered",
+    "text": "Lieutenant — At the beginning of combat on your turn, if you control your commander, create a 1/1 colorless Thopter artifact creature token with flying. That token gains haste until end of turn.",
+    "event": {
+     "on": "combat_begin",
+     "whose": "your"
+    },
+    "if": {
+     "if": "you_control_commander"
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "preset": "thopter"
+      }
+     },
+     {
+      "do": "pump",
+      "target": {
+       "ref": "it"
+      },
+      "keywords": [
+       "haste"
+      ],
+      "duration": "end_of_turn"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Magus of the Wheel",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "activated",
+    "text": "{1}{R}, {T}, Sacrifice this creature: Each player discards their hand, then draws seven cards.",
+    "cost": {
+     "mana": "{1}{R}",
+     "tap": true,
+     "sacrifice": "self"
+    },
+    "effects": [
+     {
+      "do": "wheel",
+      "n": 7,
+      "who": "each_player"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Mines of Moria",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "static",
+    "text": "Mines of Moria enters tapped unless you control a legendary creature.",
+    "effect": {
+     "static": "enters_tapped",
+     "unless": {
+      "if": "control",
+      "filter": {
+       "types": [
+        "creature"
+       ],
+       "supertypes": [
+        "legendary"
+       ],
+       "controller": "you"
+      }
+     }
+    }
+   },
+   {
+    "kind": "mana",
+    "text": "{T}: Add {R}.",
+    "cost": {
+     "tap": true
+    },
+    "produce": {
+     "units": [
+      "R"
+     ]
+    }
+   },
+   {
+    "kind": "activated",
+    "text": "{3}{R}, {T}, Exile three cards from your graveyard: Create two Treasure tokens.",
+    "cost": {
+     "mana": "{3}{R}",
+     "tap": true,
+     "exile_from_graveyard": {
+      "n": 3
+     }
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 2,
+      "token": {
+       "preset": "treasure"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Molten Psyche",
+  "source": "llm",
+  "notes": "Shuffling the hand into the library (not discarding it) has no construct, and the Metalcraft damage counts each opponent's draws, which no count says; the Metalcraft condition itself is expressed.",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "Each player shuffles the cards from their hand into their library, then draws that many cards.",
+    "reason": "shuffles each hand into its library (wheel discards the hand instead) and draws as many as were shuffled in; no construct says it",
+    "scope": "format_gap"
+   },
+   {
+    "kind": "spell",
+    "text": "Metalcraft — If you control three or more artifacts, Molten Psyche deals damage to each opponent equal to the number of cards that player has drawn this turn.",
+    "effects": [
+     {
+      "do": "if",
+      "cond": {
+       "if": "control",
+       "filter": {
+        "types": [
+         "artifact"
+        ],
+        "controller": "you"
+       },
+       "min": 3
+      },
+      "then": [
+       {
+        "do": "unexpressible",
+        "text": "Molten Psyche deals damage to each opponent equal to the number of cards that player has drawn this turn",
+        "reason": "the amount is the number of cards each opponent has drawn this turn, and cards_drawn_this_turn counts only mine",
+        "scope": "format_gap"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Monologue Tax",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "Whenever an opponent casts their second spell each turn, you create a Treasure token.",
+    "event": {
+     "on": "opponent_second_spell"
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "preset": "treasure"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Mycosynth Wellspring",
+  "source": "llm",
+  "notes": "'Enters or is put into a graveyard from the battlefield' is written as two triggered abilities (one per event), each carrying the whole line.",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "When this artifact enters or is put into a graveyard from the battlefield, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle.",
+    "event": {
+     "on": "enters",
+     "subject": "self"
+    },
+    "optional": true,
+    "effects": [
+     {
+      "do": "tutor",
+      "filter": {
+       "types": [
+        "land"
+       ],
+       "supertypes": [
+        "basic"
+       ]
+      },
+      "n": 1,
+      "to": "hand",
+      "reveal": true
+     }
+    ]
+   },
+   {
+    "kind": "triggered",
+    "text": "When this artifact enters or is put into a graveyard from the battlefield, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle.",
+    "event": {
+     "on": "put_into_graveyard",
+     "subject": "self"
+    },
+    "optional": true,
+    "effects": [
+     {
+      "do": "tutor",
+      "filter": {
+       "types": [
+        "land"
+       ],
+       "supertypes": [
+        "basic"
+       ]
+      },
+      "n": 1,
+      "to": "hand",
+      "reveal": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Myr Retriever",
+  "source": "llm",
+  "notes": "'Another' is written as not_name, which is exact in a singleton deck.",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "When this creature dies, return another target artifact card from your graveyard to your hand.",
+    "event": {
+     "on": "dies",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "recur",
+      "filter": {
+       "types": [
+        "artifact"
+       ],
+       "not_name": "Myr Retriever"
+      },
+      "n": 1,
+      "to": "hand",
+      "from": "your_graveyard"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Needleverge Pathway // Pillarverge Pathway",
+  "source": "llm",
+  "faces": [
+   {
+    "name": "Needleverge Pathway",
+    "abilities": [
+     {
+      "kind": "mana",
+      "text": "{T}: Add {R}.",
+      "cost": {
+       "tap": true
+      },
+      "produce": {
+       "units": [
+        "R"
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "name": "Pillarverge Pathway",
+    "abilities": [
+     {
+      "kind": "mana",
+      "text": "{T}: Add {W}.",
+      "cost": {
+       "tap": true
+      },
+      "produce": {
+       "units": [
+        "W"
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Neheb, the Eternal",
+  "source": "llm",
+  "notes": "No count says the life your opponents have lost this turn (damage_dealt_this_turn counts damage only, not Afflict or other life loss), so only the postcombat trigger is expressed.",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Afflict 3",
+    "keyword": "afflict",
+    "n": 3
+   },
+   {
+    "kind": "triggered",
+    "text": "At the beginning of each of your postcombat main phases, add {R} for each 1 life your opponents have lost this turn.",
+    "event": {
+     "on": "postcombat_main",
+     "whose": "your"
+    },
+    "effects": [
+     {
+      "do": "unexpressible",
+      "text": "add {R} for each 1 life your opponents have lost this turn",
+      "reason": "the amount is the life all opponents have lost this turn; no count says it (damage_dealt_this_turn is damage only)",
+      "scope": "format_gap"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Nuka-Cola Vending Machine",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "activated",
+    "text": "{1}, {T}: Create a Food token.",
+    "cost": {
+     "mana": "{1}",
+     "tap": true
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "preset": "food"
+      }
+     }
+    ]
+   },
+   {
+    "kind": "triggered",
+    "text": "Whenever you sacrifice a Food, create a tapped Treasure token.",
+    "event": {
+     "on": "sacrifice",
+     "who": "you",
+     "subject": {
+      "subtypes": [
+       "Food"
+      ],
+      "controller": "you"
+     }
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "preset": "treasure"
+      },
+      "tapped": true
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Ornithopter",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Flying",
+    "keyword": "flying"
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Piggy Bank",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "When this creature dies, create a Treasure token.",
+    "event": {
+     "on": "dies",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "preset": "treasure"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Prized Statue",
+  "source": "llm",
+  "notes": "The line has two trigger events, so it is two triggered abilities (enters; put into a graveyard from the battlefield) that share the line as text.",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "When this artifact enters or is put into a graveyard from the battlefield, create a Treasure token.",
+    "event": {
+     "on": "enters",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "preset": "treasure"
+      }
+     }
+    ]
+   },
+   {
+    "kind": "triggered",
+    "text": "When this artifact enters or is put into a graveyard from the battlefield, create a Treasure token.",
+    "event": {
+     "on": "put_into_graveyard",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "preset": "treasure"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Ratchet, Field Medic // Ratchet, Rescue Racer",
+  "source": "llm",
+  "notes": "More Than Meets the Eye and living metal are keywords outside the vocabulary and 'convert' has no effect construct, so those parts are format gaps (the front trigger's mana-value bound by the life gained this turn is a gap too).",
+  "faces": [
+   {
+    "name": "Ratchet, Field Medic",
+    "abilities": [
+     {
+      "kind": "unexpressible",
+      "text": "More Than Meets the Eye {1}{W}",
+      "reason": "keyword not in the vocabulary: lets you cast this card converted (as its back face) for {1}{W}",
+      "scope": "format_gap"
+     },
+     {
+      "kind": "keyword",
+      "text": "Lifelink",
+      "keyword": "lifelink"
+     },
+     {
+      "kind": "triggered",
+      "text": "Whenever you gain life, you may convert Ratchet. When you do, return target artifact card with mana value less than or equal to the amount of life you gained this turn from your graveyard to the battlefield tapped.",
+      "event": {
+       "on": "gain_life",
+       "who": "you"
+      },
+      "optional": true,
+      "effects": [
+       {
+        "do": "unexpressible",
+        "text": "convert Ratchet. When you do, return target artifact card with mana value less than or equal to the amount of life you gained this turn from your graveyard to the battlefield tapped",
+        "reason": "no effect converts (transforms) a permanent, and a mana_value filter can't be bounded by the life gained this turn",
+        "scope": "format_gap"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "name": "Ratchet, Rescue Racer",
+    "abilities": [
+     {
+      "kind": "unexpressible",
+      "text": "Living metal",
+      "reason": "keyword not in the vocabulary: during your turn this Vehicle is also a creature",
+      "scope": "format_gap"
+     },
+     {
+      "kind": "keyword",
+      "text": "Lifelink",
+      "keyword": "lifelink"
+     },
+     {
+      "kind": "triggered",
+      "text": "Whenever one or more nontoken artifacts you control are put into a graveyard from the battlefield, convert Ratchet. This ability triggers only once each turn.",
+      "event": {
+       "on": "put_into_graveyard",
+       "subject": {
+        "types": [
+         "artifact"
+        ],
+        "nontoken": true,
+        "controller": "you"
+       },
+       "one_or_more": true
+      },
+      "once_per_turn": true,
+      "effects": [
+       {
+        "do": "unexpressible",
+        "text": "convert Ratchet",
+        "reason": "no effect converts (transforms) a permanent",
+        "scope": "format_gap"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Roadside Reliquary",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "mana",
+    "text": "{T}: Add {C}.",
+    "cost": {
+     "tap": true
+    },
+    "produce": {
+     "units": [
+      "C"
+     ]
+    }
+   },
+   {
+    "kind": "activated",
+    "text": "{2}, {T}, Sacrifice this land: Draw a card if you control an artifact. Draw a card if you control an enchantment.",
+    "cost": {
+     "mana": "{2}",
+     "tap": true,
+     "sacrifice": "self"
+    },
+    "effects": [
+     {
+      "do": "if",
+      "cond": {
+       "if": "control",
+       "filter": {
+        "types": [
+         "artifact"
+        ],
+        "controller": "you"
+       }
+      },
+      "then": [
+       {
+        "do": "draw",
+        "n": 1
+       }
+      ]
+     },
+     {
+      "do": "if",
+      "cond": {
+       "if": "control",
+       "filter": {
+        "types": [
+         "enchantment"
+        ],
+        "controller": "you"
+       }
+      },
+      "then": [
+       {
+        "do": "draw",
+        "n": 1
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Scourge of the Nobilis",
+  "source": "llm",
+  "notes": "Both 'as long as enchanted creature is red/white' lines depend on the enchanted creature's color, which no condition or static filter can test, so they are format gaps.",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Enchant creature",
+    "keyword": "enchant",
+    "detail": "creature"
+   },
+   {
+    "kind": "unexpressible",
+    "text": "As long as enchanted creature is red, it gets +1/+1 and has \"{R/W}: This creature gets +1/+0 until end of turn.\"",
+    "reason": "the bonus and granted ability apply only while the enchanted creature is red; no condition can test the enchanted creature's color",
+    "scope": "format_gap"
+   },
+   {
+    "kind": "unexpressible",
+    "text": "As long as enchanted creature is white, it gets +1/+1 and has lifelink.",
+    "reason": "the bonus and lifelink apply only while the enchanted creature is white; no condition can test the enchanted creature's color",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Scrap Trawler",
+  "source": "llm",
+  "notes": "'Lesser mana value' compares with the artifact that triggered the ability, which a mana_value filter can't do (and the trigger has two events), so the whole line is a format gap.",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "Whenever this creature dies or another artifact you control is put into a graveyard from the battlefield, return to your hand target artifact card in your graveyard with lesser mana value.",
+    "reason": "returns an artifact card with lesser mana value than the artifact that triggered it, which a mana_value filter can't compare against; the trigger also has two events",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Seething Song",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "spell",
+    "text": "Add {R}{R}{R}{R}{R}.",
+    "effects": [
+     {
+      "do": "mana",
+      "produce": {
+       "units": [
+        "R",
+        "R",
+        "R",
+        "R",
+        "R"
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Servo Schematic",
+  "source": "llm",
+  "notes": "The line has two trigger events, so it is two triggered abilities (enters; put into a graveyard from the battlefield) that share the line as text.",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "When this artifact enters or is put into a graveyard from the battlefield, create a 1/1 colorless Servo artifact creature token.",
+    "event": {
+     "on": "enters",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "preset": "servo"
+      }
+     }
+    ]
+   },
+   {
+    "kind": "triggered",
+    "text": "When this artifact enters or is put into a graveyard from the battlefield, create a 1/1 colorless Servo artifact creature token.",
+    "event": {
+     "on": "put_into_graveyard",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "preset": "servo"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Sheltered by Ghosts",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Enchant creature you control",
+    "keyword": "enchant",
+    "detail": "creature you control"
+   },
+   {
+    "kind": "triggered",
+    "text": "When this Aura enters, exile target nonland permanent an opponent controls until this Aura leaves the battlefield.",
+    "event": {
+     "on": "enters",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "remove",
+      "how": "exile",
+      "target": {
+       "ref": "target",
+       "filter": {
+        "types": [
+         "permanent"
+        ],
+        "non_types": [
+         "land"
+        ],
+        "controller": "opponent"
+       }
+      },
+      "duration": "as_long_as_source"
+     }
+    ]
+   },
+   {
+    "kind": "static",
+    "text": "Enchanted creature gets +1/+0 and has lifelink and ward {2}.",
+    "effect": {
+     "static": "attached_bonus",
+     "power": 1,
+     "toughness": 0,
+     "keywords": [
+      "lifelink",
+      {
+       "keyword": "ward",
+       "detail": "{2}"
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Skrelv's Hive",
+  "source": "llm",
+  "notes": "Corrupted depends on an opponent's poison counters, which no condition says, so it is a format gap; the Mite's toxic 1 and can't-block ride on the token's own abilities.",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "At the beginning of your upkeep, you lose 1 life and create a 1/1 colorless Phyrexian Mite artifact creature token with toxic 1 and \"This token can't block.\"",
+    "event": {
+     "on": "upkeep",
+     "whose": "your"
+    },
+    "effects": [
+     {
+      "do": "lose_life",
+      "n": 1,
+      "who": "you"
+     },
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "types": [
+        "artifact",
+        "creature"
+       ],
+       "subtypes": [
+        "Phyrexian",
+        "Mite"
+       ],
+       "power": 1,
+       "toughness": 1,
+       "abilities": [
+        {
+         "kind": "keyword",
+         "text": "toxic 1",
+         "keyword": "toxic",
+         "n": 1
+        },
+        {
+         "kind": "static",
+         "text": "This token can't block.",
+         "effect": {
+          "static": "cant_block"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "kind": "unexpressible",
+    "text": "Corrupted — As long as an opponent has three or more poison counters, creatures you control with toxic have lifelink.",
+    "reason": "a static lifelink grant that depends on an opponent having three or more poison counters; no condition tests poison counters",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Spirit Loop",
+  "source": "llm",
+  "notes": "Returning this very card from the graveyard is recur with same_name_as_self, the closest way to name it.",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Enchant creature you control",
+    "keyword": "enchant",
+    "detail": "creature you control"
+   },
+   {
+    "kind": "triggered",
+    "text": "Whenever enchanted creature deals damage, you gain that much life.",
+    "event": {
+     "on": "deals_damage",
+     "subject": "enchanted"
+    },
+    "effects": [
+     {
+      "do": "gain_life",
+      "n": {
+       "count": "that_much"
+      },
+      "who": "you"
+     }
+    ]
+   },
+   {
+    "kind": "triggered",
+    "text": "When this Aura is put into a graveyard from the battlefield, return it to its owner's hand.",
+    "event": {
+     "on": "put_into_graveyard",
+     "subject": "self"
+    },
+    "effects": [
+     {
+      "do": "recur",
+      "filter": {
+       "same_name_as_self": true
+      },
+      "n": 1,
+      "to": "hand",
+      "from": "your_graveyard"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Stridehangar Automaton",
+  "source": "llm",
+  "notes": "The artifact-token replacement adds an extra Thopter, which token_doubler can't say, so it is a format gap.",
+  "abilities": [
+   {
+    "kind": "static",
+    "text": "Thopters you control get +1/+1.",
+    "effect": {
+     "static": "anthem",
+     "filter": {
+      "subtypes": [
+       "Thopter"
+      ],
+      "controller": "you"
+     },
+     "power": 1,
+     "toughness": 1
+    }
+   },
+   {
+    "kind": "unexpressible",
+    "text": "If one or more artifact tokens would be created under your control, those tokens plus an additional 1/1 colorless Thopter artifact creature token with flying are created instead.",
+    "reason": "a replacement effect that adds an extra Thopter whenever artifact tokens would be created; token_doubler only multiplies",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Test of Endurance",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "At the beginning of your upkeep, if you have 50 or more life, you win the game.",
+    "event": {
+     "on": "upkeep",
+     "whose": "your"
+    },
+    "if": {
+     "if": "life_at_least",
+     "n": 50
+    },
+    "effects": [
+     {
+      "do": "win_game"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "The Battle of Bywater",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "spell",
+    "text": "Destroy all creatures with power 3 or greater. Then create a Food token for each creature you control.",
+    "effects": [
+     {
+      "do": "wipe",
+      "how": "destroy",
+      "filter": {
+       "types": [
+        "creature"
+       ],
+       "power": {
+        "min": 3
+       }
+      }
+     },
+     {
+      "do": "token",
+      "n": {
+       "count": "permanents_you_control",
+       "filter": {
+        "types": [
+         "creature"
+        ]
+       }
+      },
+      "token": {
+       "preset": "food"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "The Underworld Cookbook",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "activated",
+    "text": "{T}, Discard a card: Create a Food token.",
+    "cost": {
+     "tap": true,
+     "discard": {
+      "n": 1
+     }
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "preset": "food"
+      }
+     }
+    ]
+   },
+   {
+    "kind": "activated",
+    "text": "{4}, {T}, Sacrifice this artifact: Return target creature card from your graveyard to your hand.",
+    "cost": {
+     "mana": "{4}",
+     "tap": true,
+     "sacrifice": "self"
+    },
+    "effects": [
+     {
+      "do": "recur",
+      "filter": {
+       "types": [
+        "creature"
+       ]
+      },
+      "n": 1,
+      "to": "hand",
+      "from": "your_graveyard"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Thopter Assembly",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "keyword",
+    "text": "Flying",
+    "keyword": "flying"
+   },
+   {
+    "kind": "triggered",
+    "text": "At the beginning of your upkeep, if you control no Thopters other than this creature, return this creature to its owner's hand and create five 1/1 colorless Thopter artifact creature tokens with flying.",
+    "event": {
+     "on": "upkeep",
+     "whose": "your"
+    },
+    "if": {
+     "if": "control",
+     "filter": {
+      "subtypes": [
+       "Thopter"
+      ],
+      "controller": "you",
+      "another": true
+     },
+     "max": 0
+    },
+    "effects": [
+     {
+      "do": "bounce_self"
+     },
+     {
+      "do": "token",
+      "n": 5,
+      "token": {
+       "preset": "thopter"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Toggo, Goblin Weaponsmith",
+  "source": "llm",
+  "notes": "The Rock token is translated except its granted ability, whose cost sacrifices the Equipment that grants it, which a Cost can't name; that part is a format gap among the effects.",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "Landfall — Whenever a land you control enters, create a colorless Equipment artifact token named Rock with \"Equipped creature has '{1}, {T}, Sacrifice Rock: This creature deals 2 damage to any target'\" and equip {1}.",
+    "event": {
+     "on": "enters",
+     "subject": {
+      "types": [
+       "land"
+      ],
+      "controller": "you"
+     }
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "name": "Rock",
+       "types": [
+        "artifact"
+       ],
+       "subtypes": [
+        "Equipment"
+       ],
+       "abilities": [
+        {
+         "kind": "keyword",
+         "text": "equip {1}",
+         "keyword": "equip",
+         "cost": "{1}"
+        }
+       ]
+      }
+     },
+     {
+      "do": "unexpressible",
+      "text": "Equipped creature has '{1}, {T}, Sacrifice Rock: This creature deals 2 damage to any target'",
+      "reason": "the granted ability sacrifices the Equipment that grants it, which a Cost can't name (sacrifice takes only self or a filter)",
+      "scope": "format_gap"
+     }
+    ]
+   },
+   {
+    "kind": "keyword",
+    "text": "Partner",
+    "keyword": "partner"
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Treasure Nabber",
+  "source": "llm",
+  "notes": "Triggers only when an opponent taps an artifact for mana, which a passive opponent never does, and 'until the end of your next turn' has no Duration value, so it is out of scope.",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "Whenever an opponent taps an artifact for mana, gain control of that artifact until the end of your next turn.",
+    "reason": "needs an opponent to tap an artifact for mana, which passive goldfish opponents never do; the 'until the end of your next turn' duration has no value either",
+    "scope": "out_of_scope"
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Treasure Vault",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "mana",
+    "text": "{T}: Add {C}.",
+    "cost": {
+     "tap": true
+    },
+    "produce": {
+     "units": [
+      "C"
+     ]
+    }
+   },
+   {
+    "kind": "activated",
+    "text": "{X}{X}, {T}, Sacrifice this land: Create X Treasure tokens.",
+    "cost": {
+     "mana": "{X}{X}",
+     "tap": true,
+     "sacrifice": "self"
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": "X",
+      "token": {
+       "preset": "treasure"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Visions of Phyrexia",
+  "source": "llm",
+  "notes": "The end-step line's intervening condition ('didn't play a card from exile this turn') has no Cond, so that line is a format gap.",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "At the beginning of your upkeep, exile the top card of your library. You may play that card this turn.",
+    "event": {
+     "on": "upkeep",
+     "whose": "your"
+    },
+    "effects": [
+     {
+      "do": "impulse",
+      "n": 1,
+      "until": "end_of_turn"
+     }
+    ]
+   },
+   {
+    "kind": "unexpressible",
+    "text": "At the beginning of your end step, if you didn't play a card from exile this turn, create a tapped Powerstone token.",
+    "reason": "the intervening condition 'you didn't play a card from exile this turn' has no Cond",
+    "scope": "format_gap"
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Wake the Past",
+  "source": "llm",
+  "notes": "Haste goes only to the artifacts just returned, which no construct can single out (entered_this_turn would also catch other artifacts), so that sentence is a format gap.",
+  "abilities": [
+   {
+    "kind": "spell",
+    "text": "Return all artifact cards from your graveyard to the battlefield. They gain haste until end of turn.",
+    "effects": [
+     {
+      "do": "recur",
+      "filter": {
+       "types": [
+        "artifact"
+       ]
+      },
+      "n": "all",
+      "to": "battlefield",
+      "from": "your_graveyard"
+     },
+     {
+      "do": "unexpressible",
+      "text": "They gain haste until end of turn.",
+      "reason": "haste goes only to the cards just returned; no construct names that set (entered_this_turn would also catch other artifacts)",
+      "scope": "format_gap"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Weapons Manufacturing",
+  "source": "llm",
+  "abilities": [
+   {
+    "kind": "triggered",
+    "text": "Whenever a nontoken artifact you control enters, create a colorless artifact token named Munitions with \"When this token leaves the battlefield, it deals 2 damage to any target.\"",
+    "event": {
+     "on": "enters",
+     "subject": {
+      "types": [
+       "artifact"
+      ],
+      "nontoken": true,
+      "controller": "you"
+     }
+    },
+    "effects": [
+     {
+      "do": "token",
+      "n": 1,
+      "token": {
+       "name": "Munitions",
+       "types": [
+        "artifact"
+       ],
+       "abilities": [
+        {
+         "kind": "triggered",
+         "text": "When this token leaves the battlefield, it deals 2 damage to any target.",
+         "event": {
+          "on": "leaves",
+          "subject": "self"
+         },
+         "effects": [
+          {
+           "do": "damage",
+           "n": 2,
+           "to": "any_target",
+           "source": "self"
+          }
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "gef": "0.2",
+  "name": "Well of Lost Dreams",
+  "source": "llm",
+  "notes": "X is capped by the life just gained, which a paid X can't be bounded by, so the line is a format gap.",
+  "abilities": [
+   {
+    "kind": "unexpressible",
+    "text": "Whenever you gain life, you may pay {X}, where X is less than or equal to the amount of life you gained. If you do, draw X cards.",
+    "reason": "the paid X is capped by the amount of life just gained, and no construct bounds a paid X by an amount",
+    "scope": "format_gap"
+   }
+  ]
+ }
+]

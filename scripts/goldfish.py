@@ -3969,7 +3969,7 @@ class Game:
                 if e[2]:
                     self.lib += self.hand + self.gy; self.gy = []; self.rng.shuffle(self.lib)
                 else: self.gy += self.hand
-                n = e[1] if isinstance(e[1], int) else max(size, OPP_HAND)
+                n = e[1] if isinstance(e[1], int) else size if e[1] == "size" else max(size, OPP_HAND)   # 'size': draw that many (GEF)
                 self.hand = []; self.draw(n)                       # count only the net gain
                 self.gain(max(0, n - size), name)
             elif t == "oracle":

@@ -183,13 +183,16 @@ def _():
 def _():
     k = C("Opt", SP({"do": "counters", "kind": "+1/+1", "n": 2, "on": {"ref": "self"}}, {"do": "proliferate"},
                     {"do": "pump", "target": {"ref": "target", "filter": {"types": ["creature"]}}, "power": 3, "toughness": 3, "duration": "end_of_turn"},
-                    {"do": "pump", "target": {"ref": "it"}, "keywords": ["haste"], "duration": "end_of_turn"},
                     {"do": "pump_team", "filter": {"types": ["creature"], "controller": "you", "another": True}, "power": 1, "toughness": 0,
                      "keywords": ["trample"], "duration": "end_of_turn"},
                     {"do": "pump", "target": {"ref": "target", "filter": {"types": ["creature"]}}, "power": -1, "toughness": -1, "duration": "end_of_turn"}))
     s = k.spell
-    return s[0] == ("ctr", "+1/+1", 2) and s[1] == ("prolif", 1) and s[2] == ("pump", "target", 3, 3, frozenset()) and s[3] == ("pump", "obj", 0, 0, frozenset({"haste"})) \
-        and s[4][0] == "pump_team" and s[4][5] is True and s[5] == ("kill_blk", "minus", 1, 1, NOF, False, False)
+    it = C("Dragon Tempest", TR({"on": "enters", "subject": {"types": ["creature"], "controller": "you"}},
+                               {"do": "pump", "target": {"ref": "it"}, "keywords": ["haste"], "duration": "end_of_turn"}))
+    nobj = C("Opt", TR({"on": "combat_begin", "whose": "your"}, {"do": "pump", "target": {"ref": "it"}, "keywords": ["haste"], "duration": "end_of_turn"}))
+    return s[0] == ("ctr", "+1/+1", 2) and s[1] == ("prolif", 1) and s[2] == ("pump", "target", 3, 3, frozenset()) \
+        and it.trig[0][2] == [("pump", "obj", 0, 0, frozenset({"haste"}))] and refused(nobj) \
+        and s[3][0] == "pump_team" and s[3][5] is True and s[4] == ("kill_blk", "minus", 1, 1, NOF, False, False)
 @check("effects: a team pump by power checks current power (pow_now), not printed power")
 def _():
     k = C("Opt", SP({"do": "pump_team", "filter": {"types": ["creature"], "power": {"min": 4}}, "power": 1, "toughness": 1, "duration": "end_of_turn"}))
@@ -259,9 +262,10 @@ def _():
     evs = [t[0] for t in k.trig]
     return k.etb == [("draw", 1)] and evs == ["landfall", "etb", "dies_self", "dies_att", "attack_self", "attack_any", "cdmg_any", "cast", "upkeep", "end"] \
         and k.trig[1][1]["another"] and k.trig[7][1]["non"] == {"Creature"}
-@check("events: an opponent's turn phase is refused; 'the first spell each turn' is once per turn")
+@check("events: opponents' phases are refused; each player's upkeep sets 'each'; 'the first spell each turn' is once per turn")
 def _():
-    return refused(C("Grizzly Bears", TR({"on": "upkeep", "whose": "each"}, {"do": "draw", "n": 1}))) and \
+    return refused(C("Grizzly Bears", TR({"on": "upkeep", "whose": "opponents"}, {"do": "draw", "n": 1}))) and \
+        C("Grizzly Bears", TR({"on": "upkeep", "whose": "each"}, {"do": "draw", "n": 1})).trig[0][5] is True and \
         C("Grizzly Bears", TR({"on": "cast", "who": "you", "first_each_turn": True}, {"do": "draw", "n": 1})).trig[0][3] is True
 @check("triggers: intervening if, once per turn, an opponent's tax (Rhystic Study, Smothering Tithe)")
 def _():
@@ -455,6 +459,21 @@ def _():
     G.do([("face", 5, "one", True)], kd, None, 0)             # 5 damage: the wheel draws 5 for 3
     G.do(kd.etb, kd, None, 0)
     return kd.etb[0][1] == ("amt_gt_hand", ("dmg_turn_max",)) and kept and len(G.hand) == 5
+
+@check("phase 4 (Ragost): type grant with a granted activation, damage multiplier, Servo/Thopter, hasty token, same-size wheel, Spirit Loop")
+def _():
+    rg = C("Ragost, Deft Gastronaut", S({"static": "type_grant", "filter": {"types": ["artifact"], "controller": "you"}, "add_types": ["Food"],
+           "abilities": [A("activated", cost={"mana": "{2}", "tap": True, "sacrifice": "self"}, effects=[{"do": "gain_life", "n": 3}])]}))
+    fu = C("Furnace of Rath", S({"static": "damage_multiplier", "factor": 2}))
+    la = C("Loyal Apprentice", TR({"on": "combat_begin", "whose": "your"}, {"do": "token", "n": 1, "token": {"preset": "thopter"}},
+           {"do": "pump", "target": {"ref": "it"}, "keywords": ["haste"], "duration": "end_of_turn"}))
+    fs = C("Fateful Showdown", SP({"do": "discard", "n": "hand"}, {"do": "draw", "n": {"count": "that_much"}}))
+    sl = C("Spirit Loop", TR({"on": "deals_damage", "subject": "enchanted"}, {"do": "gain_life", "n": {"count": "that_much"}, "who": "you"}),
+           TR({"on": "put_into_graveyard", "subject": "self"}, {"do": "recur", "filter": {"same_name_as_self": True}, "n": 1, "to": "hand", "from": "your_graveyard"}))
+    tg = rg.statics[0]
+    return tg[0] == "type_grant" and tg[1] == frozenset({"Artifact"}) and tg[3] == frozenset({"Food"}) and tg[4][0]["sac"] and tg[4][0]["fx"] == [("life", 3)] \
+        and fu.statics == [("dmg_mult", 2, False)] and la.trig[0][2][0][7] == frozenset({"flying", "haste"}) and len(la.trig[0][2]) == 1 \
+        and fs.spell == [("wheel", "size", False)] and sl.trig[0][0] == "dmg_att" and sl.trig[0][2] == [("life_dmg",)] and sl.trig[1][2] == [("regrow_self",)]
 
 @check("status: unexpressible out_of_scope is never a miss; format_gap is; a refused ability leaves the rest read")
 def _():
