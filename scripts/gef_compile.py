@@ -392,6 +392,8 @@ def effect(e, ctx):
         w = e["what"]
         if w == {"ref": "self"}: return [("untap_self",)]
         if w.get("ref") == "target" and isinstance(w.get("n"), int) and w.get("filter") == {"types": ["land"]}: return [("untap_n_lands", w["n"])]
+        if w.get("ref") == "target" and w.get("n", 1) == 1 and (w.get("filter") or {}).get("types") == ["creature"] \
+                and set(w.get("filter") or {}) <= {"types", "controller"}: return [("untap_cr", "one")]
         refuse("untap form")
     if d == "remove": return removal(e, ctx)
     if d == "counter_spell":
@@ -403,8 +405,10 @@ def effect(e, ctx):
         if e.get("one_sided"): refuse("one-sided wipe")
         return []                                                 # a symmetric wipe is held, never cast (as the parser reads it)
     if d == "if":
-        if e.get("else"): refuse("if/else")
-        return [("cond", cond(e["cond"]), effects(e["then"], ctx))]
+        c = cond(e["cond"])
+        out = [("cond", c, effects(e["then"], ctx))]
+        if e.get("else"): out.append(("cond", ("not", c), effects(e["else"], ctx)))
+        return out
     if d == "choose":
         compiled = []
         for m in e["modes"]:
@@ -492,6 +496,7 @@ def cond(c):
     if k == "main_phase": return ("main",)
     if k == "kicked" and c.get("min", 1) == 1: return ("kicked",)
     if k == "opponent_more_lands": return "opp_lands"
+    if k == "you_control_commander": return ("cmdr_out",)
     if k == "graveyard_at_least" and not c.get("card_types"):
         f = c.get("filter") or {}
         kind = {(): None, ("creature",): "creature", ("land",): "land", ("instant", "sorcery"): "instant"}.get(tuple(f.get("types", [])), 0)
@@ -868,12 +873,12 @@ def ability(a, ctx):
         return "read"
     if kind == "activated":
         if a.get("from_zone", "battlefield") != "battlefield": refuse("activated from " + a["from_zone"])
-        if a.get("if") or a.get("once_per_turn"): refuse("activation restriction")
+        if (a.get("if") and a["if"] != {"if": "your_turn"}) or a.get("once_per_turn"): refuse("activation restriction")
         if pain_mana(a, ctx): return "read"
         cst = cost(a["cost"], ctx)
         out = effects(a["effects"], ctx)
         if not out: refuse("activation with no engine effect")
-        k.acts.append(dict(cst, fx=out, combat=False, sorcery=bool(a.get("sorcery_speed"))))
+        k.acts.append(dict(cst, fx=out, combat=False, sorcery=bool(a.get("sorcery_speed")), your_turn=bool(a.get("if"))))
         return "read"
     if kind == "loyalty":
         if not isinstance(a["cost"], int): refuse("X loyalty cost")
@@ -987,7 +992,7 @@ def finish(k, ctx, done, missed, vac):
         k.ritual = bool(k.spell) and all(e[0] in ("mana", "mana_n") for e in k.spell)
         k.hold = ctx.spell_interaction and not k.ritual
     PROTECT = {"indestructible", "hexproof", "shroud"}
-    if not ctx.answer and any((e[0] == "pump_team" and set(e[3]) & PROTECT) or (e[0] == "pump" and set(e[4]) & PROTECT) for e in k.spell):
+    if not ctx.answer and any((e[0] == "pump_team" and set(e[3]) & PROTECT) or (e[0] == "pump" and set(e[4]) & PROTECT) for e in g.flat(k.spell)):
         ctx.answer = "protect"
     if ctx.answer and ("Instant" in k.types or "flash" in (k.raw.get("keywords") or []) or "Flash" in (k.raw.get("keywords") or [])):
         k.answer = ctx.answer

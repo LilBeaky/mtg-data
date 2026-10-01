@@ -3408,7 +3408,8 @@ class Game:
         for _ in range(4):
             did = False
             pairs = [(p, ab) for p in list(self.perms) + list(self.lands) for ab in self.acts_of(p)
-                     if not ab.get("combat") and not (instant and ab.get("sorcery"))]              # combat: combat_acts
+                     if not ab.get("combat") and not (instant and ab.get("sorcery"))              # combat: combat_acts
+                     and not (self.opp_turn and ab.get("your_turn"))]                             # 'activate only during your turn' 
             pairs.sort(key=lambda t: not (not t[1].get("fodder") and any(e[0] in ("token", "treasure") for e in t[1]["fx"])))
             for p, ab in pairs:                            # fodder makers (Nuka-Cola's Food) before what eats fodder
                 key = (id(p), id(ab))
@@ -4430,6 +4431,7 @@ class Game:
             o = self.trig_obj
             return isinstance(o, Perm) and not any(q is not o and q.k.name == o.k.name for q in self.perms) and not any(c.name == o.k.name for c in self.gy)
         if k == "your_turn": return not self.opp_turn
+        if k == "cmdr_out": return any(q.k in self.sim.commanders for q in self.perms)   # 'if you control a commander' (GEF)
         if k == "not_your_turn": return self.opp_turn
         if k == "main": return not self.opp_turn and not self.combat_on
         if k == "kicked":                            # only the cast spell itself (its token copies weren't kicked)
@@ -5046,6 +5048,10 @@ class Game:
 
     def untap_cr(self, scope):
         """Untap all your creatures / those that attacked this turn / the attacking ones."""
+        if scope == "one":                                     # 'untap target creature': your best tapped one
+            qs = sorted((q for q in self.perms if self.is_creature(q) and q.tapped), key=lambda q: -self.stats(q)[0])[:1]
+            for q in qs: q.tapped = False
+            return
         qs = [q for q in self.perms if self.is_creature(q)] if scope == "all" else \
             [q for q in self.attacked if q in self.perms] if scope == "attacked" else [q for q in self.attackers if q in self.perms]
         for q in qs: q.tapped = False

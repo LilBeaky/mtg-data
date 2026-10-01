@@ -225,7 +225,7 @@ def _():
     k = C("Opt", SP({"do": "untap", "what": {"ref": "self"}}, {"do": "untap", "what": {"ref": "target", "n": 3, "up_to": True, "filter": {"types": ["land"]}}},
                     {"do": "extra_combat", "n": 1, "untap": "attackers", "then_main": True}))
     return k.spell == [("untap_self",), ("untap_n_lands", 3), ("untap_cr", "attacked"), ("extra_combat",)]
-@check("effects: if (a condition the engine reads), may pay (mana / discard / sacrifice ~ / life), if/else refused")
+@check("effects: if (a condition the engine reads), may pay (mana / discard / sacrifice ~ / life), if/else reads both branches")
 def _():
     k = C("Opt", SP({"do": "if", "cond": {"if": "life_at_least", "n": 30}, "then": [{"do": "draw", "n": 1}]},
                     {"do": "may_pay", "cost": {"mana": "{4}"}, "then": [{"do": "untap", "what": {"ref": "self"}}]},
@@ -234,7 +234,7 @@ def _():
     e = C("Opt", SP({"do": "if", "cond": {"if": "your_turn"}, "then": [{"do": "draw", "n": 1}], "else": [{"do": "scry", "n": 1}]}))
     s = k.spell
     return s[0] == ("cond", ("life", 30), [("draw", 1)]) and s[1] == ("paid", 4, [], [("untap_self",)]) and s[2] == ("ifdo", ("discard", 1, None), [("draw", 2)], []) \
-        and s[3] == ("ifdo", ("sac_self",), [("draw", 1)], [("life", 1)]) and refused(e)
+        and s[3] == ("ifdo", ("sac_self",), [("draw", 1)], [("life", 1)]) and e.spell == [("cond", ("your_turn",), [("draw", 1)]), ("cond", ("not", ("your_turn",)), [("scry", 1)])]
 @check("effects: choose one -> the parser's best mode (MODE_RANK); 'one or more' in a trigger -> each mode optional")
 def _():
     one = C("Opt", SP({"do": "choose", "n": 1, "modes": [[{"do": "gain_life", "n": 3}], [{"do": "draw", "n": 1}]]}))
@@ -308,6 +308,13 @@ def _():
     h0 = len(G.hand); G.do(eph.spell, eph, None, 0); drew = len(G.hand) - h0
     G.hand = [forest]; G.do(gam.spell, gam, None, 0)
     return drew == 2 and any(q.k is mull for q in G.perms) and G.hand == [] and G.gy[-1] is forest
+
+@check("step 3: if/else (both branches, the second negated), 'you control a commander', untap one creature, your-turn-only activations")
+def _():
+    k = C("Opt", SP({"do": "if", "cond": {"if": "you_control_commander"}, "then": [{"do": "draw", "n": 2}], "else": [{"do": "draw", "n": 1}]},
+                    {"do": "untap", "what": {"ref": "target", "filter": {"types": ["creature"]}}}))
+    w = C("Wishclaw Talisman", A("activated", cost={"mana": "{1}", "tap": True}, effects=[{"do": "draw", "n": 1}], **{"if": {"if": "your_turn"}}))
+    return k.spell == [("cond", ("cmdr_out",), [("draw", 2)]), ("cond", ("not", ("cmdr_out",)), [("draw", 1)]), ("untap_cr", "one")]         and w.acts[0]["your_turn"]
 
 @check("status: unexpressible out_of_scope is never a miss; format_gap is; a refused ability leaves the rest read")
 def _():
