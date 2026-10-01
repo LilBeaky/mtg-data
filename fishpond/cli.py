@@ -138,7 +138,7 @@ def _report(meta, records, builds, as_json, run_dir):
         out = {"meta": meta, "builds": {}}
         for label, recs, deck in by:
             groups = rp.groups_for(meta.get("track"), meta.get("extra_track"), meta.get("key") or [], deck)
-            sm = sr.summary(mx.bundle(recs, meta["turns"], groups, [deck.forge.get(c, c) for c in deck.commanders]), groups)
+            sm = sr.summary(mx.bundle(recs, meta["turns"], groups, [deck.forge.get(c, c) for c in deck.commanders], produced=deck.produced, identity=deck.identity), groups)
             ex = mx.extras(recs, deck, meta["turns"])
             out["builds"][label] = {"summary": sm, "results": dict(ex["results"]), "routes": dict(ex["routes"]),
                                     "losses": dict(ex["losses"]), "tags": dict(ex["tags"]), "order": ex["order"],

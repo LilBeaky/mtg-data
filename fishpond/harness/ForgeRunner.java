@@ -209,8 +209,8 @@ public class ForgeRunner {
             for (Card c : hero.getCommanders()) tax += hero.getCommanderCast(c);
             b.append(", \"cmd_casts\": ").append(tax);
             b.append(", \"drawn\": ").append(hero.getNumDrawnThisTurn());
+            b.append(", \"lands\": ").append(hero.getLandsInPlay().size());
             if (when.equals("main")) {
-                b.append(", \"lands\": ").append(hero.getLandsInPlay().size());
                 int mana = 0;
                 try { mana = ComputerUtilMana.getAvailableManaEstimate(hero, false); } catch (Throwable t) { mana = -1; }
                 b.append(", \"mana\": ").append(mana);

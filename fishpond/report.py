@@ -104,7 +104,7 @@ def print_all(meta, builds, approx_notes=None):
     summaries = []
     for i, (label, records, hero) in enumerate(builds):
         groups = groups_for(meta.get("track"), meta.get("extra_track"), meta.get("key") or [], hero)
-        res = mx.bundle(records, T, groups, [hero.forge.get(c, c) for c in hero.commanders])
+        res = mx.bundle(records, T, groups, [hero.forge.get(c, c) for c in hero.commanders], produced=hero.produced, identity=hero.identity)
         ex = mx.extras(records, hero, T)
         sm = sr.summary(res, groups)
         if "hand" in res["rec"]:
@@ -118,8 +118,8 @@ def print_all(meta, builds, approx_notes=None):
             if ex["losses"]: print("losses by reason: " + " | ".join(f"{k} {v}" for k, v in ex["losses"].most_common()))
         pod = mode_of(records)
         sr.print_report(label, sm, T, groups, approx=set(approx_notes),
-                        dev_title="development (P10/median/P90 over games; your turns; start of your turn for lands/mana/cmdr out, "
-                                  "end of turn otherwise; ≈ = measured differently, see notes)",
+                        dev_title="development (P10/median/P90 over games; your turns; lands at end of turn, mana/colors/cmdr out "
+                                  "at the start of your main phase with this turn's land drop, the rest cumulative; ≈ = see notes)",
                         opp_n=3, start_life=40,
                         title=f"combat and damage (3 opponents at 40 life; {pod}; cumulative, end of your turn)",
                         tail=f"attacked on {res['atk_turns']:.1f} of your turns per game (T1-T{T}). Opponents dead counts every "

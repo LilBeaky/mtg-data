@@ -15,7 +15,8 @@ def _turn_value(g, t, key, cum=False, fill_last=True):
     return vals[-1] if vals else None
 
 APPROX_HARNESS = {
-    "mana": "mana = Forge's own AI estimate of the mana you could make at your main phase (ComputerUtilMana); unusual sources can be undercounted",
+    "mana": "mana = Forge's own AI estimate of the mana you could make at the start of your main phase (ComputerUtilMana) plus this turn's land drop; unusual sources can be undercounted",
+    "colors": "all colors = your untapped mana sources at the start of your main phase plus this turn's land drop can make every color of your commander's identity",
     "extra": "extra = cards drawn during your own turns beyond one a turn (draws on opponents' turns, tutors and other card advantage aren't counted)",
 }
 
@@ -27,7 +28,7 @@ def snap_at(g, t, kind):
         if s: return s
     return None
 
-def bundle(games, T, groups, commanders, opp_n=3):
+def bundle(games, T, groups, commanders, opp_n=3, produced=None, identity=""):
     """games: parsed records. groups: [(label, compiled regex)]. Returns the sim_report bundle."""
     n = len(games)
     snaps = n and all(g.get("snaps") for g in games)
@@ -58,8 +59,12 @@ def bundle(games, T, groups, commanders, opp_n=3):
                 m_, e_ = snap_at(g, tt, "main"), snap_at(g, tt, "end") or snap_at(g, tt, "main")
                 se = (g["snaps"].get(str(tt)) or {}).get("end")
                 if se and t <= last: extra += max(0, se.get("drawn", 0) - 1)
-                vals.update({"lands": m_["lands"] if m_ else 0, "mana": max(0, m_["mana"]) if m_ else 0,
-                             "colors": 1 if m_ and m_["colors"] else 0, "cmd_out": 1 if m_ and m_["cmd_out"] else 0,
+                drop = row.get("land_names") or []
+                cols = set((m_ or {}).get("producible") or "")
+                for ln in drop: cols |= set((produced or {}).get(ln, ""))
+                vals.update({"lands": e_["lands"] if e_ and "lands" in e_ else (m_["lands"] + len(drop) if m_ else len(drop)),
+                             "mana": (max(0, m_["mana"]) if m_ else 0) + min(1, len(drop)),
+                             "colors": 1 if set(identity or "") <= cols else 0, "cmd_out": 1 if m_ and m_["cmd_out"] else 0,
                              "extra": extra, "hand": e_["hand"] if e_ else 7, "gy": e_["gy"] if e_ else 0,
                              "life": e_["life"] if e_ else vals["life"]})
             for m in metrics: rec[m][t].append(vals[m])

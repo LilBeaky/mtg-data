@@ -27,6 +27,7 @@ class Deck:
         self.meta, self.not_found, self.not_forge, self.partial = {}, [], [], []
         self.flags = {}                            # Oracle name -> Forge AI flags ('All', 'Random')
         self.forge = {}                            # Oracle name -> name written in the .dck
+        self.produced = {}                         # name the log uses -> colors the card can make (Scryfall produced_mana)
         self.companion = []
         self.identity = ""                         # commanders' color identity, WUBRG order
         self.label = ""
@@ -78,6 +79,7 @@ def load(path, kind="hero", idx=None, commander=None):
         if not fn: d.not_forge.append(c["name"]); return None
         d.forge[c["name"]] = fn
         if flags: d.flags[c["name"]] = flags
+        if c.get("produced_mana"): d.produced[fn] = "".join(x for x in c["produced_mana"] if x in "WUBRG")
         return c["name"]
     ci = set()
     for n in cmd:

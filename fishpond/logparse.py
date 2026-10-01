@@ -22,7 +22,7 @@ RX_STACK = re.compile(rf"^Add To Stack: {P} (cast|triggered|activated) (.+?)(?: 
 RX_RESOLVE = re.compile(r"^Resolve Stack: (.+?)(?: \((\d+)\))?(?: - (.*))?$")
 RX_ACTIVATOR = re.compile(rf"\[Card: (.+?) \((\d+)\), Activator: {P}")
 RX_ZCHANGER = re.compile(r"\[Zone Changer: (.+?) \((\d+)\)\]")
-RX_DAMAGE = re.compile(r"^(?:Damage: )?(.+?) \((\d+)\) deals (\d+) (?:(\w+) )?\s*damage to (.+?)( \(as poison counters\))?\.$")
+RX_DAMAGE = re.compile(r"^(?:Damage: )?(.+?) \((\d+)\) deals (\d+) (?:([\w-]+) )?\s*damage to (.+?)( \(as poison counters\))?\.$")
 RX_LIFE = re.compile(rf"^Life: Life: {P} (-?\d+) > (-?\d+)$")
 RX_POISON = re.compile(rf"{P} receives (\d+) poison counters? from (.+?)$")
 RX_ATTACK = re.compile(rf"{P} assigned (.+) to attack (.+?)\.$")
@@ -106,7 +106,7 @@ def parse_game(lines, seats, hero=1):
     turns = {}                          # hero turn -> stats
     def T(t):
         if t not in turns:
-            turns[t] = {"lands": 0, "casts": [], "trig": 0, "act": 0, "dmg": 0, "cdmg": 0, "atk": 0, "life": None,
+            turns[t] = {"lands": 0, "land_names": [], "casts": [], "trig": 0, "act": 0, "dmg": 0, "cdmg": 0, "atk": 0, "life": None,
                         "poison": 0, "cmd": 0, "dead": 0, "cmd_out": None}
         return turns[t]
     def idx(): return H if active == hero else H + 1
@@ -117,6 +117,7 @@ def parse_game(lines, seats, hero=1):
     poison_by = Counter()               # (source seat, target seat) -> poison counters
     pending = {k: [] for k in seats}    # damage events awaiting their Life line: (amount, combat, src seat, src name)
     last_res = None                     # (name, seat) of the latest resolving object, for life loss without damage
+    stack = []                          # (seat, card) per 'Add To Stack', popped by 'Resolve Stack' (by name, else the top)
     kill = {}                           # seat -> (hero turn, route, killer seat, source) when life first hit 0
     last_seen = {k: 0 for k in seats}   # seat -> last hero-turn index the seat appears in the log
     first_cast, first_in, cast_n = {}, {}, Counter()
@@ -145,6 +146,7 @@ def parse_game(lines, seats, hero=1):
         if line.startswith("Stopping slow match"): stopped = True; continue
         m = RX_TURN.match(line)
         if m:
+            stack = []
             gturn, active = int(m.group(1)), int(m.group(2))
             if first is None: first = active
             if active == hero:
@@ -160,12 +162,13 @@ def parse_game(lines, seats, hero=1):
             k, name, cid = int(m.group(1)), m.group(2), int(m.group(3))
             owner_id[cid] = k
             if k == hero:
-                T(idx())["lands"] += 1
+                T(idx())["lands"] += 1; T(idx())["land_names"].append(name)
                 first_in.setdefault(name, idx())
             continue
         m = RX_STACK.match(line)
         if m:
             k, verb, name = int(m.group(1)), m.group(2), m.group(3)
+            stack.append((k, name))
             if seats[k].kind == "dummy": dummy_acts.append(f"{verb} {name}")
             if k == hero:
                 t = T(idx())
@@ -192,7 +195,12 @@ def parse_game(lines, seats, hero=1):
                     if name in hero_cmds:
                         cmd_res.append(idx()); cmd_out = True
                     break
-            last_res = (name, owner(name, int(m.group(2)) if m.group(2) else None))
+            j = next((j for j in range(len(stack) - 1, -1, -1) if stack[j][1] == name), len(stack) - 1)
+            if stack:
+                sk, sname = stack.pop(j)
+                last_res = (sname, sk)
+            else:
+                last_res = (name, owner(name, int(m.group(2)) if m.group(2) else None))
             continue
         m = RX_ZONE.match(line)
         if m:
