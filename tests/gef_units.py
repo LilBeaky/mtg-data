@@ -291,7 +291,7 @@ def _():
 def _():
     k = C("Opt", SP({"do": "flicker", "what": {"ref": "target", "filter": {"types": ["creature"], "controller": "you"}}, "returns": "immediately"},
                     {"do": "discard", "n": 1, "random": True}, {"do": "recur", "filter": {"types": ["artifact"]}, "n": 1, "to": "library_top"}))
-    return k.spell[0] == ("flicker", 1) and k.spell[1] == ("discard_rand", 1) and k.spell[2][2] == "top"
+    return k.spell[0] == ("flicker", 1, False, frozenset({"Creature"})) and k.spell[1] == ("discard_rand", 1) and k.spell[2][2] == "top"
 @check("step 3: the engine runs them (a flickered creature's enter trigger fires again; a random discard empties a 1-card hand)")
 def _():
     import argparse, random
@@ -360,6 +360,19 @@ def _():
                     {"do": "gain_life", "n": {"count": "spells_cast_this_turn"}},
                     {"do": "if", "cond": {"if": "hand_exactly", "n": 13}, "then": [{"do": "win_game"}]}))
     return k.spell[0][2] == "top3" and k.spell[1] == ("draw", ("tough_max",)) and k.spell[2] == ("life", ("tcast_n",))         and k.spell[3] == ("cond", ("hand_eq", 13), [("win",)])
+
+@check("step 3: flicker until the next end step (Astral Slide on any cycle, Ghostway held as protection), back at the end step")
+def _():
+    import argparse, random
+    sl = C("Astral Slide", TR({"on": "cycle", "who": "each_player"}, {"do": "flicker", "what": {"ref": "target", "filter": {"types": ["creature"]}}, "returns": "next_end_step"}))
+    gw = C("Ghostway", SP({"do": "flicker", "what": {"ref": "each", "filter": {"types": ["creature"], "controller": "you"}}, "returns": "next_end_step"}))
+    mull = gc.compile_gef(IDX[mtg.norm("Mulldrifter")], {"gef": "0.2", "name": "Mulldrifter", "abilities": [TR({"on": "enters", "subject": "self"}, {"do": "draw", "n": 2})]}, g.ALL5)
+    forest = g.compile_card(IDX["forest"], g.ALL5)
+    sim = g.Sim(["Forest"], [], argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False), [], {"Forest": forest}, g.ALL5)
+    G = g.Game(sim, [], [forest] * 30, random.Random(1)); G.turn, G.phase, G.turns_left, G.cmd = 3, 3, 3, []
+    G.perms = [g.Perm(mull)]; G._st = None
+    G.do(sl.trig[0][2], sl, None, 0); gone = not G.perms and G.flicker_back == [mull]
+    return sl.trig[0][0] == "cycle" and gw.answer == "protect" and gw.hold and gone
 
 @check("status: unexpressible out_of_scope is never a miss; format_gap is; a refused ability leaves the rest read")
 def _():

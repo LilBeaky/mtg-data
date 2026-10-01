@@ -405,11 +405,16 @@ def effect(e, ctx):
     if d == "sacrifice":
         if e["what"] == {"ref": "self"} and e.get("who", "you") == "you": return [("sac_self",)]
         refuse("sacrifice form")
-    if d == "flicker":
+    if d == "flicker":                                   # a target: the pilot flickers its own permanent (an opponent's is its choice too)
         w = e["what"]; f = w.get("filter") or {}
-        if e["returns"] != "immediately" or w.get("ref") != "target" or w.get("n", 1) != 1 or f.get("controller") != "you" \
-                or set(f) - {"types", "controller"} or f.get("types") not in (["creature"], None): refuse("flicker form")
-        return [("flicker", 1)]
+        types = f.get("types") or ["creature"]
+        if e["returns"] not in ("immediately", "next_end_step") or f.get("controller") not in ("you", None) \
+                or set(f) - {"types", "controller"} or set(types) - {"creature", "artifact"} or e.get("tapped"): refuse("flicker form")
+        if w.get("ref") == "target" and w.get("n", 1) == 1: n = 1
+        elif w.get("ref") == "each" and f.get("controller") == "you": n = "all"
+        else: refuse("flicker target")
+        if n == "all" and ctx.kind == "spell": ctx.answer = ctx.answer or "protect"; ctx.spell_interaction = True   # Ghostway: held as protection
+        return [("flicker", n, e["returns"] == "next_end_step", frozenset(TYPE_CAP[t] for t in types))]
     if d == "untap":
         w = e["what"]
         if w == {"ref": "self"}: return [("untap_self",)]
@@ -572,10 +577,12 @@ def event(ev):
     if extra: refuse("event " + ", ".join(sorted(extra)))
     if on in EVENTS:
         if on in ("upkeep", "end_step", "draw_step", "precombat_main", "combat_begin") and ev.get("whose") != "your": refuse(f"{on} whose {ev.get('whose')}")
-        if on in ("gain_life", "draw_card", "cycle") and ev.get("who") not in (None, "you"): refuse(f"{on} who")
+        if on in ("gain_life", "draw_card") and ev.get("who") not in (None, "you"): refuse(f"{on} who")
+        if on == "cycle" and ev.get("who") not in (None, "you", "each_player"): refuse("cycle who")   # only you cycle in a goldfish
         if on in ("coin_flip_won", "coin_flip") and ev.get("who") not in (None, "you", "each_player"): refuse(f"{on} who")
         return EVENTS[on], None
     if on == "cast_self": return "cast_self", None
+    if on == "cycle_self": return "cycle_self", None
     if on == "cast":
         if ev.get("who") not in (None, "you"): refuse("cast who")
         return "cast", spell_filter(ev.get("spell"))
@@ -905,6 +912,7 @@ def ability(a, ctx):
             if a.get("once_per_turn"): refuse("once-per-turn enter trigger")
             k.etb += out
         elif ev == "cast_self": k.castfx += out
+        elif ev == "cycle_self": k.cycle_fx += out              # 'when you cycle ~': a cycling rider, as the parser reads it
         else: k.trig.append((ev, filt, out, bool(a.get("once_per_turn")), tax, False))
         return "read"
     if kind == "activated":

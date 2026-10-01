@@ -16,7 +16,7 @@
  "Finale of Devastation": "ENGINE: a search of library and/or graveyard isn't mapped (the engine's tutor reads the library only); the parser searches the library only (PARSER-APPROX).",
  "Gamble": "PARSER-APPROX: the parser discards the worst card; GEF discards at random (discard_rand, T3 step 3).",
  "Gemstone Caverns": "FORMAT-GAP + ENGINE: the opening-hand line is a gap, and the mana split on a luck counter is a conditional mana ability the adapter refuses; the parser taps it for {C}.",
- "Ghostway": "ENGINE: flicker; the parser holds it as a protect answer.",
+ "Ghostway": "PARSER-APPROX vs GEF: both hold it as a protect answer; GEF also runs its flicker of all your creatures until the end step when cast (engine delayed flicker, T3 step 3).",
  "Gifts Ungiven": "FORMAT-GAP: an opponent picks which two you keep; the parser tutors all four (PARSER-APPROX).",
  "Grasp of Fate": "ENGINE: 'for each opponent, up to one target' (Target.for_each) isn't mapped; the parser's single exile was the T2 misread.",
  "Green Sun's Zenith": "ENGINE: shuffling the spell into its owner's library isn't mapped, so the spell is refused whole; the parser ignores the shuffle (PARSER-APPROX).",
@@ -84,5 +84,8 @@
  "Necrodominance": "GEF-MORE + ENGINE: skipping your draw step reads (engine skip_draw, T3 step 3); the pay-any-life draw (a chosen amount), hand size five and graveyard-to-exile are refused, so the card is partial. The parser leaves it blank.",
  "Aetherflux Reservoir": "GEF-MORE: life per spell cast this turn reads (engine count tcast_n, T3 step 3); the parser leaves that line unread.",
  "Long-Term Plans": "GEF-MORE: the card goes third from the top (engine tutor 'top3', T3 step 3); the parser leaves it unread (t2_misreads).",
- "Triskaidekaphile": "GEF-MORE: the win with exactly thirteen cards in hand reads (engine cond hand_eq, T3 step 3); the parser leaves it unread."
+ "Triskaidekaphile": "GEF-MORE: the win with exactly thirteen cards in hand reads (engine cond hand_eq, T3 step 3); the parser leaves it unread.",
+ "Astral Slide": "GEF-MORE: on each cycle, a creature is flickered until the next end step (engine delayed flicker, T3 step 3); the parser leaves it blank.",
+ "Astral Drift": "GEF-MORE: flicker until the next end step on your cycles and when cycling it from hand (a cycling rider) (engine delayed flicker, T3 step 3); the parser reads less.",
+ "Escape Protocol": "GEF-MORE: pay {1} on a cycle to flicker your artifact or creature (engine flicker, T3 step 3); the parser read it as stax removal before t2_misreads."
 }

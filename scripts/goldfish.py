@@ -2887,6 +2887,7 @@ class Game:
         self.pending_untap = []; self.attacked = set()   # untaps waiting for the next combat; creatures that attacked this turn
         self.animated = []                      # manlands animated this turn (a land again at cleanup)
         self.eot = []                           # (Perm, "sacrifice"/"exile"): leaves at the next end step (Kiki-Jiki copies, Sneak Attack)
+        self.flicker_back = []                  # cards flickered until the next end step (GEF flicker)
         self.casting = None                     # the card resolving from a cast (an ETB's 'if you cast it')
         self.opp_turn = False                   # an opponent's turn is being played (opponents())
         self.kicked = 0                         # times the spell being cast was kicked
@@ -2928,6 +2929,7 @@ class Game:
         g.hand, g.lib, g.gy, g.cmd, g.rebound = self.hand[:], self.lib[:], self.gy[:], self.cmd[:], self.rebound[:]
         g.exile, g.unearthed = self.exile[:], [mp[id(p)] for p in self.unearthed if id(p) in mp]
         g.eot = [(mp[id(p)], d) for p, d in self.eot if id(p) in mp]
+        g.flicker_back = list(getattr(self, "flicker_back", []))
         g.animated = [mp[id(p)] for p in self.animated if id(p) in mp]
         g.rattr = Counter(); g.tut = Counter(); g.life_paid = Counter()
         g.cmd_casts = Counter(self.cmd_casts); g.first = dict(self.first); g.cmd_first = dict(self.cmd_first)
@@ -4090,14 +4092,23 @@ class Game:
                 if self.dry: continue
                 for _ in range(min(self.val(e[1], p, x), len(self.hand))):
                     c = self.hand.pop(self.rng.randrange(len(self.hand))); self.gy.append(c); self.gain(-1, name)
-            elif t == "flicker":                                  # your creature with the best enter trigger leaves and comes back
+            elif t == "flicker":                                  # ('flicker', n | 'all', back at the end step?, types)
                 if self.dry: continue
-                cands = [q for q in self.perms if self.is_creature(q) and not q.k.token and q.k not in self.sim.commanders and q.k.etb]
-                for q in sorted(cands, key=lambda q: -q.k.mv)[:e[1]]:
+                types = e[3] if len(e) > 3 else frozenset({"Creature"})
+                if e[1] == "all":                                 # Ghostway: every one of them (tokens don't come back)
+                    picks = [q for q in self.perms if (self.is_creature(q) if types == {"Creature"} else q.k.types & types)]
+                else:                                             # your permanent with the best enter trigger
+                    cands = [q for q in self.perms if not q.k.token and q.k not in self.sim.commanders and q.k.etb
+                             and (self.is_creature(q) or q.k.types & (types - {"Creature"}))]
+                    picks = sorted(cands, key=lambda q: -q.k.mv)[:e[1]]
+                for q in picks:
                     base = getattr(q.k, "base", None) or q.k
                     self.leave(q, "is exiled", "exile", quiet=True)
+                    if q.k.token or base in self.sim.commanders: continue
                     if base in self.exile: self.exile.remove(base)
-                    self.note(f"    {name} flickers {base.name}"); self.enter(base)
+                    self.note(f"    {name} flickers {base.name}")
+                    if len(e) > 2 and e[2]: self.flicker_back.append(base)
+                    else: self.enter(base)
             elif t in ("putback", "discard"):
                 n = self.val(e[1], p, x)
                 if self.dry or not isinstance(n, int) or n <= 0: continue
@@ -5621,6 +5632,9 @@ class Game:
                 if q in self.perms: self.leave(q, f"is {'sacrificed' if fate == 'sacrifice' else 'exiled'} (end step)",
                                                "exile" if fate == "exile" else "gy", quiet=True, sac=fate == "sacrifice")
             self.eot = []
+            back, self.flicker_back = getattr(self, "flicker_back", []), []
+            for c in back:                                        # flickered 'until the next end step' (Astral Slide, Ghostway)
+                self.note(f"    {c.name} returns (end step)"); self.enter(c)
             for q in self.perms: q.pp = q.pt = q.dmg = 0; q.tkw = None          # cleanup: pumps wear off, damage heals
             self.noblock = False
             for o in self.opps:
