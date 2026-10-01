@@ -167,6 +167,12 @@ def checks():
         dict(name="goldfish units", cmd=["tests/goldfish_units.py"], must=["units: all"]),
         # ---- runtime crash net: every card's parsed effects executed once in a live game
         dict(name="goldfish sweep: every card's effects run", cmd=["tests/goldfish_sweep.py"], must=[" 0 errors"]),
+        # ---- GEF adapter (T3 step 2): units per construct, the sweep through the GEF path, parity with every diff explained
+        dict(name="gef units", cmd=["tests/gef_units.py"], must=["gef units: all"]),
+        dict(name="goldfish sweep, GEF path", cmd=["tests/goldfish_sweep.py", "--gef"], must=["GEF path", " 0 errors"]),
+        dict(name="gef parity: every diff explained", cmd=["tests/gef_parity.py"], must=["parity: "], must_not=["UNEXPLAINED"]),
+        dict(name="goldfish --gef", cmd=S("goldfish.py", "translation/decks/zur.txt", "--gef", "--trials", "30", "--disruption", "off"),
+             must=["Zur"]),
         # ---- goldfish coverage (parser over the whole Commander pool): a parse change must never crash a card
         dict(name="goldfish coverage: every legal card compiles", cmd=S("goldfish_coverage.py", "report", "--top", "3"),
              must=[" 0 compile errors", "fully read (modeled + held + vacuum + override), weighted:"]),

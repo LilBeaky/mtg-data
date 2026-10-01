@@ -143,7 +143,7 @@ engine work to reach 'expressed' [GEF 0.1, as in T2] (all): 47 cards blocked onl
     War Room                                 today land* -> land*; expressed land* -> land
     Yavimaya, Cradle of Growth               today land -> land*; expressed land -> land
 
-engine work to reach 'expressed' [GEF 0.2] (deck): 53 cards blocked only by missing engine features
+engine work to reach 'expressed' [GEF 0.2, validator tables] (deck): 53 cards blocked only by missing engine features
   +effect flicker                   unlocks  5 (cumulative 5)
   +effect untap                     unlocks  3 (cumulative 8)
   +conditional enters-tapped        unlocks  3 (cumulative 11)
@@ -161,7 +161,7 @@ engine work to reach 'expressed' [GEF 0.2] (deck): 53 cards blocked only by miss
   +static skip_step                 unlocks  1 (cumulative 31)
   ... 22 more cards need 27 further features
 
-engine work to reach 'expressed' [GEF 0.2] (all): 64 cards blocked only by missing engine features
+engine work to reach 'expressed' [GEF 0.2, validator tables] (all): 64 cards blocked only by missing engine features
   +effect untap                     unlocks  5 (cumulative 5)
   +conditional enters-tapped        unlocks  5 (cumulative 10)
   +effect flicker                   unlocks  5 (cumulative 15)
@@ -178,3 +178,73 @@ engine work to reach 'expressed' [GEF 0.2] (all): 64 cards blocked only by missi
   +effect extra_turn                unlocks  1 (cumulative 38)
   +static graveyard_replacement     unlocks  1 (cumulative 39)
   ... 25 more cards need 30 further features
+
+  adapter (T3 step 2): fully read today, measured by compiling: all 164, deck 86, pool 78
+  klauth.txt   73 | adapter 27 (37.0%) | validator tables 33 (45.2%)
+      Breaching Dragonstorm: validator partial, adapter modeled: 
+      Goreclaw, Terror of Qal Sisma: validator modeled, adapter partial: pump_team power filter
+      Green Sun's Zenith: validator modeled, adapter blank: self_to_library form
+      Kessig Wolf Run: validator land, adapter partial: X cost
+      Maelstrom of the Spirit Dragon: validator land, adapter partial: mana restriction
+      Nature's Rhythm: validator modeled, adapter partial: harmonize cost
+      Return of the Wildspeaker: validator modeled, adapter partial: spell filter non_subtypes
+      Shadow in the Warp: validator modeled, adapter partial: event first_each_turn
+  yusri.txt    69 | adapter 30 (43.5%) | validator tables 36 (52.2%)
+      Aetherflux Reservoir: validator modeled, adapter partial: count spells_cast_this_turn
+      Fury of the Horde: validator modeled, adapter partial: alternative cost
+      Gamble: validator modeled, adapter blank: discard form
+      Reality Shift: validator held, adapter blank: a face-down 2/2 from the top of a library) has no 
+      Simian Spirit Guide: validator modeled, adapter blank: activated from hand
+      Vivi Ornitier: validator modeled, adapter partial: activation restriction
+  zur.txt      68 | adapter 36 (52.9%) | validator tables 41 (60.3%)
+      Azami, Lady of Scrolls: validator modeled, adapter blank: cost tap_untapped
+      Feed the Swarm: validator modeled, adapter blank: count mana_value_of_that
+      Fluctuator: validator modeled, adapter blank: cost reduction form
+      Mage's Attendant: validator modeled, adapter blank: token with abilities
+      Patron Wizard: validator modeled, adapter blank: cost tap_untapped
+
+  engine/adapter work to reach 'expressed' [GEF 0.2, adapter refusals] (deck): 70 cards
+    +effect flicker                               unlocks  3 (cumulative 3)
+    +conditional enters-tapped                    unlocks  3 (cumulative 6)
+    +untap form                                   unlocks  2 (cumulative 8)
+    +keyword storm                                unlocks  2 (cumulative 10)
+    +mana restriction                             unlocks  2 (cumulative 12)
+    +if/else                                      unlocks  2 (cumulative 14)
+    +discard form                                 unlocks  2 (cumulative 16)
+    +event first_each_turn                        unlocks  2 (cumulative 18)
+    +zone library_top                             unlocks  2 (cumulative 20)
+    +static coin_flip_rule                        unlocks  2 (cumulative 22)
+    +activation restriction                       unlocks  2 (cumulative 24)
+    +cost tap_untapped                            unlocks  2 (cumulative 26)
+    +static spell_limit                           unlocks  2 (cumulative 28)
+    +effect flip_coins                            unlocks  1 (cumulative 29)
+    +event coin_flip_won                          unlocks  3 (cumulative 32)
+    +damage form                                  unlocks  1 (cumulative 33)
+    +keyword offering                             unlocks  1 (cumulative 34)
+    +keyword convoke                              unlocks  1 (cumulative 35)
+    +tutor from library/graveyard                 unlocks  1 (cumulative 36)
+    +pump_team power filter                       unlocks  1 (cumulative 37)
+    ... 33 more cards need 40 further items
+
+  engine/adapter work to reach 'expressed' [GEF 0.2, adapter refusals] (all): 80 cards
+    +conditional enters-tapped                    unlocks  5 (cumulative 5)
+    +effect flicker                               unlocks  3 (cumulative 8)
+    +if/else                                      unlocks  3 (cumulative 11)
+    +zone library_top                             unlocks  3 (cumulative 14)
+    +untap form                                   unlocks  2 (cumulative 16)
+    +keyword storm                                unlocks  2 (cumulative 18)
+    +mana restriction                             unlocks  2 (cumulative 20)
+    +discard form                                 unlocks  2 (cumulative 22)
+    +event first_each_turn                        unlocks  2 (cumulative 24)
+    +static coin_flip_rule                        unlocks  2 (cumulative 26)
+    +activation restriction                       unlocks  2 (cumulative 28)
+    +cost tap_untapped                            unlocks  2 (cumulative 30)
+    +static spell_limit                           unlocks  2 (cumulative 32)
+    +type grant to other lands                    unlocks  2 (cumulative 34)
+    +effect flip_coins                            unlocks  1 (cumulative 35)
+    +event coin_flip_won                          unlocks  3 (cumulative 38)
+    +damage form                                  unlocks  1 (cumulative 39)
+    +keyword offering                             unlocks  1 (cumulative 40)
+    +keyword convoke                              unlocks  1 (cumulative 41)
+    +tutor from library/graveyard                 unlocks  1 (cumulative 42)
+    ... 38 more cards need 45 further items

@@ -43,6 +43,11 @@ A separate track, not the Phase 0–3 parser work: have an LLM translate Oracle 
   - **Decision: partly.** Translate per deck as decks are built, after GEF 0.2 and a GEF-to-engine adapter; not the full pool (35–100× the prototype's cost, and the format still has gaps). T3 plan in `docs/TRANSLATION_T2.md`.
 - **T3 step 1, GEF 0.2 (fifth session, 2026-09-30):** free-text statics replaced by constructs, keywords an enum, `detail` only on silent keywords, the cheap T2 gaps, per-field validator support, prompt v2. 46 T2 cards re-translated: 44/46 right on the first pass, 46/46 after one retry. Real format gaps 69 → 57. Deck cards fully read *as expressed*: Klauth 69.9%, Yusri 81.2%, Zur 85.3% (T2: 64.4 / 66.7 / 75.0), 0 audit-wrong. *Today* is down on two decks (Klauth 34 → 33, Zur 44 → 41) because the validator stopped counting 11 lands and two 0.1 over-reads as executable. Details in the T3 section of `docs/TRANSLATION_T2.md`.
   - **Headline unchanged at 44.4%:** goldfish.py wasn't touched. The 20 `t2_misreads` cards are now pinned by unit checks.
+- **T3 step 2, the adapter (fifth session):** `scripts/gef_compile.py` plus `goldfish.py --gef` (override > GEF > parser), `data/gef/t2_cards.json`, `tests/gef_units.py` (37), `tests/gef_parity.py` with `tests/gef_parity_causes.json`, and `goldfish_sweep.py --gef`. All are in smoke.
+  - The sweep has 0 errors on both paths. All 63 parity differences are explained.
+  - Fully read today, measured by the adapter: Klauth 37.0%, Yusri 43.5%, Zur 52.9%. That's below the validator's estimate, because its tables were per construct. The cards are listed in the T3 section of `docs/TRANSLATION_T2.md`.
+  - `--gef` stays off by default until step 3 lifts those numbers past the parser's.
+  - Step 3 should follow `translation/t2_report.py`'s adapter ranking, not the plan's original order.
 
 ## The rules that govern everything
 
@@ -54,7 +59,7 @@ A separate track, not the Phase 0–3 parser work: have an LLM translate Oracle 
 **Every change passes three nets before it's pushed:**
 1. `goldfish_coverage.py diff HEAD --all`: read every changed reading. Group them with a scratch script by what changed, read the most-played first, and fix misreads before anything else.
 2. `tests/goldfish_units.py` (227 checks, deterministic board states) and `tests/goldfish_sweep.py` (all 32,116 Commander-legal cards, ~30 s): every card's effects executed once in a live game, which fails on any exception. The sweep found crashes the fixtures never hit.
-3. `tests/smoke.py` (70 checks, ~2.5 min). Run it in a separate git worktree at the commit being pushed, so editing can continue. Read the result before pushing.
+3. `tests/smoke.py` (74 checks, ~2.5 min). Run it in a separate git worktree at the commit being pushed, so editing can continue. Read the result before pushing.
 
 ## Done
 

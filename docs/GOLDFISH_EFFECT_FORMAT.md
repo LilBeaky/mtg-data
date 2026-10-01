@@ -197,7 +197,9 @@ This is how the format stays honest: text GEF can't say becomes an unread line, 
 
 `validate.py --status` derives the status twice:
 - **expressed:** as if the engine ran every GEF construct. This measures the format.
-- **today:** constructs goldfish.py doesn't execute yet count as unread. This is the number comparable with the regex parser's. The support tables are `ENGINE_EFFECTS`, `ENGINE_EVENTS`, `ENGINE_CONDS`, `ENGINE_STATICS` and `ENGINE_KEYWORDS` in `validate.py`, taken from docs/GOLDFISH.md.
+- **today (estimate):** constructs goldfish.py doesn't execute yet count as unread. The support tables are `ENGINE_EFFECTS`, `ENGINE_EVENTS`, `ENGINE_CONDS`, `ENGINE_STATICS` and `ENGINE_KEYWORDS` in `validate.py`, taken from docs/GOLDFISH.md.
+
+**The adapter is the truth for "today"** (T3 step 2). `scripts/gef_compile.py` compiles a validated translation into the engine's structures, and the status comes from what actually compiled. It's lower than the validator's estimate wherever a construct runs only in some shapes the tables can't see: an {X} cost, a mana restriction in other words than the few it maps, "tap an untapped Wizard", a random discard, a token with its own abilities. `translation/t2_report.py` prints both, card by card, and ranks the engine work by what the adapter refuses.
 
 | goldfish status | From GEF |
 |---|---|

@@ -154,3 +154,53 @@ The other 254 moved over mechanically: version bump, and `lab_man` renamed. The 
 - **Greedy engine ranking for step 3** (deck cards, 0.2): flicker 5, untap 3, conditional enters-tapped 3, recursion to the library top 3, storm 2, put-from-hand 2, coin-flip rule 2, spell limit 2, then coin flips (4 with the coin-flip-won event). The 0.2 constructs and the per-field rows (enters-tapped, library-top recursion) now show up in it. The plan's step-3 order should be re-ranked from this list.
 
 **Parser misreads.** The 20 `t2_misreads` cards are pinned by three unit checks in `tests/goldfish_units.py`, which fail with `t2_misreads` turned off. The parser headline is unchanged: goldfish.py wasn't touched.
+
+## T3 step 2: the GEF-to-engine adapter (session 5)
+
+`scripts/gef_compile.py` compiles a validated GEF translation into the same Card fields `compile_card` fills from Oracle text. `goldfish.py --gef` uses it for every card with a translation in `data/gef/` (now the 300 T2 cards in 0.2): override > GEF > parser.
+- **Exact or refused.** Each GEF ability maps to engine structures, or raises a refusal. A refused ability is unread, and the card says partial or blank with `gef refused: LINE (why)`. Nothing is approximated.
+- **One exception, and it errs the other way.** A conditional enters-tapped the engine can't check is compiled as always tapped and still counts as unread (the parser's `('always', 'conditional')`). Dropping a drawback would make the land better than it is.
+- **Metadata** (types, cost, P/T, colors) comes from the card data, via `compile_card` on the card with no rules text.
+
+**Exit check: passed, with the deck gap explained.**
+
+| | Result |
+|---|---|
+| Sweep, parser path / GEF path | 0 errors / 0 errors (32,116 cards; the 300 GEF cards through the adapter) |
+| Parity (`tests/gef_parity.py`, 300 cards) | 237 compile identically; 15 differ in structure but play the same games; 48 play differently. **All 63 differences have a recorded cause** (`tests/gef_parity_causes.json`); 0 unexplained. |
+| Unit checks per mapped construct (`tests/gef_units.py`) | 37, all passing |
+| Fully read today, Klauth / Yusri / Zur | **adapter 27 / 30 / 36** (37.0 / 43.5 / 52.9%) vs the validator's estimate 33 / 36 / 41 and T2's column 34 / 35 / 44 |
+
+**The parity differences, by kind.** Each cause leads with its main kind; many ENGINE and FORMAT-GAP causes also name the parser approximation on the other side.
+- **ENGINE (26).** GEF says it, the adapter or the engine can't run it yet. Examples:
+  - flicker;
+  - if/else on "you control a commander" (Akroma's, Jeska's and Klauth's Will);
+  - coin flips and choose-a-number (Yusri);
+  - delayed triggers;
+  - a library-and/or-graveyard search;
+  - a random discard;
+  - restricted mana that has to persist (Klauth);
+  - an {X} harmonize cost.
+- **FORMAT-GAP (18).** Gifts Ungiven, Thrakkus, Unnatural Growth, Teferi's Protection, Esper Sentinel's power-sized tax, Exotic Orchard, Fellwar Stone, Mox Amber, ...
+- **PARSER-APPROX (12).** The parser reads an approximation GEF refuses:
+  - Sakura-Tribe Elder's sacrifice as an ETB search;
+  - The One Ring's flat 1 life;
+  - Mossfire Valley and Skycloud Expanse's {1} filters as free mana;
+  - Cabal Coffers' extra unconditional {B};
+  - riot as haste;
+  - Pongify as a clean kill though they get a 3/3.
+- **GEF-MORE (6, plus part of Gwenna).** Sword of War and Peace's trigger, Become the Avalanche, Step Through's bounce, The Endstone's cast trigger, Witch's Clinic, Shamanic Revelation.
+- **EQUIVALENT (1).** Reanimate: an approximation note on the parser's Target, same games.
+
+**Why "today" is lower than T2's column.** The validator's support tables are per construct, so they called these executable:
+- 19 deck cards whose shape the engine can't run: an {X} cost (Kessig Wolf Run), mana restrictions in other words (Maelstrom), "tap an untapped Wizard" (Azami, Patron Wizard), a random discard (Gamble), hand-zone mana (Simian Spirit Guide), a token with abilities (Mage's Attendant), a non-Human team pump mode (Return of the Wildspeaker), a library shuffle (Green Sun's Zenith), and others listed by `t2_report.py`.
+- The adapter refuses them instead.
+
+So GEF on today's engine reads fewer of the deck cards than the parser (53%). That's because GEF won't make the parser's approximations, and the engine can't yet run what GEF says. That is step 3's job. The plan's prediction that the adapter alone would reach T2's "today" column was itself an estimate from the same optimistic tables.
+
+**Step 3 ranking** (`t2_report.py`, by adapter refusals; deck cards that reach "expressed" once these are in):
+- flicker 3, conditional enters-tapped 3;
+- untap one target 2, storm 2, mana restrictions 2, if/else 2, random discard 2, "first spell each turn" 2, the library top as a destination 2, the coin-flip rule 2, activation restrictions 2, tap-an-untapped-creature costs 2, spell limits 2;
+- then coin flips with the coin-flip-won event (4).
+
+Several of those are adapter work on constructs the engine already has, not new engine features. 70 deck cards are blocked only by refusals.

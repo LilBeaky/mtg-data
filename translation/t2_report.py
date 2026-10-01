@@ -14,7 +14,7 @@ Audit verdicts (one row per card, translation/prototype/audit_batchNN.json: name
                it declares or that is harmless-ish) | wrong (reads something the card doesn't do, or silently drops a
                material part while calling the card modeled/held/vacuum)
 """
-import glob, json, os, sys
+import glob, json, os, re, sys
 from collections import Counter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -206,7 +206,44 @@ def gef02():
              if full(rows[n]["gef_expressed"]) != full(st[n][1]) or full(rows[n]["gef_today"]) != full(st[n][0])]
     print(f"\n  fully-read changes 0.1 -> 0.2 ({len(moved)}; today, expressed):")
     for n, a, b, c, d in sorted(moved, key=lambda r: r[0]): print(f"    {n:40s} today {a} -> {b}; expressed {c} -> {d}")
-    engine_work(g2, " [GEF 0.2]")
+    engine_work(g2, " [GEF 0.2, validator tables]")
+    adapter(g2, st, src)
+
+def adapter(g2, st, src):
+    """T3 step 2: 'today' measured by the adapter (scripts/gef_compile.py), the engine's truth instead of the validator's
+    support tables; and the engine work ranked by what the adapter actually refuses."""
+    sys.path.insert(0, os.path.join(os.path.dirname(HERE), "scripts"))
+    import goldfish as g, gef_compile as gc
+    idx = mtg.index()
+    def land(n): return "Land" in idx[n.lower()].get("type_line", "").split("—")[0] and "//" not in n
+    ks = {n: gc.compile_gef(idx[n.lower()], x, g.ALL5) for n, x in g2.items()}
+    refused = {n: [re.sub(r"^unexpressible.*", "format gap", m.group(1)) for x in k.notes
+                   for m in [re.search(r"^gef refused(?: a mode of)?: .*\((.*)\)$", x, re.S)] if m] for n, k in ks.items()}
+    def afull(n): return not refused[n] if land(n) else ks[n].status in FULL
+    print("\n  adapter (T3 step 2): fully read today, measured by compiling: "
+          + ", ".join(f"{scope} {sum(afull(n) for n in g2 if scope == 'all' or src.get(n) == scope)}" for scope in ("all", "deck", "pool")))
+    for d, names in deck_names().items():
+        names = [n for n in names if n in g2]
+        a, v = sum(afull(n) for n in names), sum(full(st[n][0]) for n in names)
+        print(f"  {d:12s} {len(names)} | adapter {a} ({100 * a / len(names):.1f}%) | validator tables {v} ({100 * v / len(names):.1f}%)")
+        for n in names:
+            if afull(n) != full(st[n][0]):
+                print(f"      {n}: validator {st[n][0]}, adapter {ks[n].status}: {'; '.join(refused[n])[:110]}")
+    for scope in ("deck", "all"):
+        todo = {n: {r for r in refused[n] if r != "format gap" and r != "another face"} for n in g2
+                if (scope == "all" or src.get(n) == scope) and full(st[n][1]) and not afull(n)}
+        todo = {n: f for n, f in todo.items() if f}
+        print(f"\n  engine/adapter work to reach 'expressed' [GEF 0.2, adapter refusals] ({scope}): {len(todo)} cards")
+        done, step = 0, 0
+        while todo and step < 20:
+            cnt = Counter(f for fs in todo.values() for f in fs)
+            best = max(cnt, key=lambda f: (sum(1 for fs in todo.values() if fs <= {f}), cnt[f]))
+            for fs in todo.values(): fs.discard(best)
+            freed = [n for n, fs in todo.items() if not fs]
+            for n in freed: del todo[n]
+            done += len(freed); step += 1
+            print(f"    +{best[:44]:44s} unlocks {len(freed):2d} (cumulative {done})")
+        if todo: print(f"    ... {len(todo)} more cards need {len(Counter(f for fs in todo.values() for f in fs))} further items")
 
 if __name__ == "__main__":
     main()

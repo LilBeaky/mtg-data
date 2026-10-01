@@ -7,6 +7,7 @@ combat. It asserts nothing about numbers (goldfish_units.py does that); it only 
 simulator. A parser change that produces an effect the sim can't execute shows up here as a named card.
 
   python3 tests/goldfish_sweep.py          # prints "sweep: N cards, 0 errors" or the failing cards; exit 1 on errors
+  python3 tests/goldfish_sweep.py --gef    # the same, with cards that have a GEF translation (data/gef/) compiled from it
 """
 import argparse, os, random, sys, traceback
 from collections import Counter
@@ -22,13 +23,18 @@ BASE = ["Forest", "Island", "Swamp", "Mountain", "Plains", "Grizzly Bears", "Lla
 def main():
     idx = mtg.index()
     bk = {n: g.compile_card(idx[mtg.norm(n)], g.ALL5) for n in BASE}
+    gefs, gc = {}, None
+    if "--gef" in sys.argv:
+        import gef_compile as gc
+        gefs, _ = gc.load()
     args = argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False)
     seen, errs, ex, n = set(), Counter(), {}, 0
     for i, c in enumerate(mtg.cards()):
         if mtg.legal(c) != "legal" or c["name"] in seen: continue
         seen.add(c["name"]); n += 1
         try:
-            k = g.compile_card(c, g.ALL5)
+            gef = gefs.get(mtg.norm(c["name"]))
+            k = gc.compile_gef(c, gef, g.ALL5) if gef else g.compile_card(c, g.ALL5)
             cache = dict(bk); cache[c["name"]] = k
             sim = g.Sim([b for b in BASE if b != "Grizzly Bears"] + [c["name"]], ["Grizzly Bears"], args, [], cache, g.ALL5)
             G = g.Game(sim, [bk["Mulldrifter"], bk["Lightning Bolt"], bk["Forest"]], [bk[b] for b in BASE] * 3, random.Random(i))
@@ -50,7 +56,7 @@ def main():
             ex.setdefault(key, (c["name"], traceback.format_exc().splitlines()[-3:]))
     for key, cnt in errs.most_common():
         print(f"FAIL  {cnt} x {key}  e.g. {ex[key][0]}\n      " + "\n      ".join(ex[key][1]))
-    print(f"sweep: {n} cards, {sum(errs.values())} errors")
+    print(f"sweep{' (GEF path, ' + str(len(gefs)) + ' GEF cards)' if gefs else ''}: {n} cards, {sum(errs.values())} errors")
     sys.exit(1 if errs else 0)
 
 if __name__ == "__main__":

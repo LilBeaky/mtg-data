@@ -6328,6 +6328,9 @@ def main():
     ap.add_argument("--cast-interaction", action="store_true"); ap.add_argument("--no-mulligan", action="store_true")
     ap.add_argument("--trace", type=int, default=0); ap.add_argument("--blockers", default="")
     ap.add_argument("--explain", action="store_true"); ap.add_argument("--json", action="store_true")
+    ap.add_argument("--gef", action="store_true",
+                    help="read cards that have a GEF translation in data/gef/ through it (scripts/gef_compile.py); "
+                         "precedence: override > GEF > parser")
     args = ap.parse_args()
     if not os.path.exists(args.deck): sys.exit(f"deck file not found: {args.deck}")
     if args.trials < 1: sys.exit("--trials must be at least 1")
@@ -6383,10 +6386,16 @@ def main():
             sys.exit(f"--track {t!r}: bad pattern ({ex}). For an exact card, pass just the name.")
     cache = {}
     globals()["CHOSEN_TYPE"] = chosen_type([found[n] for n in raw_cmd], [found[n] for n in raw_lib])
+    gefs = {}
+    if args.gef:
+        import gef_compile
+        gefs, rejects = gef_compile.load()
+        for n_, e_ in rejects: print(f"GEF translation rejected, parser used: {n_} ({e_[:80]})", file=sys.stderr)
     for n, c in found.items():
         k = compile_card(c, anyc)
         ov = overrides.get(mtg.norm(c["name"]))
         if ov: apply_override(k, ov, anyc)
+        elif mtg.norm(c["name"]) in gefs: k = gef_compile.compile_gef(c, gefs[mtg.norm(c["name"])], anyc)
         k.groups = tuple(gi for gi, (_, rx) in enumerate(groups) if rx.search(c["name"]))
         cache[n] = k
     if args.explain:
@@ -6418,7 +6427,8 @@ def main():
             "vac_n": sum(1 for k in nonland if k.status == "vacuum"),
             "priorities": prio_txt, "disruption_mode": mode, "mode_note": mode_note,
             "model": f"{len(nonland)} nonland cards: {st['modeled']} modeled, {st['partial']} partial, {st['blank']} blank, "
-                     f"{st['vacuum']} vacuum, {st['held']} held as interaction; {sum(k.override for k in cache.values())} overrides"}
+                     f"{st['vacuum']} vacuum, {st['held']} held as interaction; {sum(k.override for k in cache.values())} overrides"
+                     + (f"; {sum(getattr(k, 'gef', False) for k in cache.values())} read from GEF (--gef)" if args.gef else "")}
     builds = [("base", raw_lib)]
     for label, pairs in variants:
         lib = list(raw_lib)
