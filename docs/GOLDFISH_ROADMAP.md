@@ -2,18 +2,21 @@
 
 For the assistant. Goal: goldfish.py reads as much of the Commander card pool as regex parsing reasonably allows, without reading anything *wrong*. Every number below is measured with `scripts/goldfish_coverage.py report` (weight = 1/√edhrec_rank, so staples count far more than draft chaff).
 
-## Where it stands (2026-09-30, third session, after the Phase 3 audit)
+## Where it stands (2026-09-30, fifth session, after the session-5 audit)
 
 | Status | Cards | Share | Popularity-weighted |
 |---|---|---|---|
-| modeled | 9,850 | 31.3% | 33.1% |
-| partial | 9,119 | 29.0% | 28.5% |
-| blank | 8,711 | 27.7% | 24.3% |
-| held | 2,888 | 9.2% | 10.1% |
-| vacuum | 413 | 1.3% | 1.2% |
-| land* | 441 | 1.4% | 2.7% |
+| modeled | 9,801 | 31.2% | 32.9% |
+| partial | 9,124 | 29.0% | 28.5% |
+| blank | 8,765 | 27.9% | 24.5% |
+| held | 2,882 | 9.2% | 10.1% |
+| vacuum | 409 | 1.3% | 1.2% |
+| land* | 443 | 1.4% | 2.7% |
 
-**Fully read (modeled + held + vacuum + override), weighted: 44.5%.** Classes and manlands added reads after the second-session rewrite of this file. The audit then took about 100 wrongly `modeled` cards out and added about 40 correct reads, so the number held steady while getting more accurate.
+**Fully read (modeled + held + vacuum + override), weighted: 44.3%.** The changes so far:
+- Third session: 44.5%. Classes and manlands added reads after the second-session rewrite of this file. The Phase 3 audit then took about 100 wrongly `modeled` cards out and added about 40 correct reads, so the number held steady while getting more accurate.
+- Fourth session: 44.4%, from `t2_misreads`.
+- Fifth session: 44.3%, from the session-5 audit's three families (below). 42 cards that claimed `modeled` now say partial or blank. Every dropped read either did nothing at runtime (an X that resolved to 0) or applied a cost reduction to every spell. No correct read was lost.
 
 ### The honesty reset (read this before comparing numbers)
 
@@ -50,7 +53,7 @@ A separate track, not the Phase 0–3 parser work: have an LLM translate Oracle 
 
 **Every change passes three nets before it's pushed:**
 1. `goldfish_coverage.py diff HEAD --all`: read every changed reading. Group them with a scratch script by what changed, read the most-played first, and fix misreads before anything else.
-2. `tests/goldfish_units.py` (224 checks, deterministic board states) and `tests/goldfish_sweep.py` (all 32,116 Commander-legal cards, ~30 s): every card's effects executed once in a live game, which fails on any exception. The sweep found crashes the fixtures never hit.
+2. `tests/goldfish_units.py` (227 checks, deterministic board states) and `tests/goldfish_sweep.py` (all 32,116 Commander-legal cards, ~30 s): every card's effects executed once in a live game, which fails on any exception. The sweep found crashes the fixtures never hit.
 3. `tests/smoke.py` (70 checks, ~2.5 min). Run it in a separate git worktree at the commit being pushed, so editing can continue. Read the result before pushing.
 
 ## Done
@@ -98,6 +101,28 @@ A separate track, not the Phase 0–3 parser work: have an LLM translate Oracle 
 
 All fixed or made honest, with seven audit checks in `goldfish_units.py` that fail on the old parser.
 
+## Session-5 sampled audit (fifth session)
+
+**Sample.** 40 `modeled` nonland cards, seed 11, 10 from each popularity quartile of the ranked `modeled` cards, leaving out the 300 cards T2 already audited.
+
+**Result: 3 misreads (7.5%, 95% CI about 2.6–20%), plus 3 declared or harmless approximations.**
+- **Uthros Psionicist:** "The second spell you cast each turn costs {2} less" was read as every spell costing {2} less.
+- **Profane Transfusion:** "Two target players exchange life totals" was dropped. The token's X (the difference between the life totals) was never read.
+- **Paragon of Modernity:** "If exactly three colors of mana were spent ..., put a +1/+1 counter on it instead" was dropped.
+- **Approximations:** Demanding Dragon (the opponent never chooses to sacrifice), Tempt with Immortality (opponents' acceptances assumed), Pyknite (the next-upkeep draw is taken at once).
+
+**Families, swept pool-wide** (`audit5_misreads` and the STATIC_RX loop in goldfish.py; three unit checks that fail on the old parser):
+- **A cost reduction whose spell filter `parse_filter` didn't understand** matched every spell. 10 cards, 7 of them claimed fully read: Eye of Ugin, Herald of Kozilek, Geyser Drake, Highspire Bell-Ringer, Vine Gecko, ... The line is now unread.
+- **A literal X with no value.** The engine passes X only to a spell and its ETB, and only a {X} mana cost sets it. Anywhere else, X resolved to 0 while the card claimed `modeled`:
+  - "where X is" counts the parser didn't read (Shark Typhoon's trigger, Miming Slime, Spoils of Blood, Seed Guardian);
+  - X in an activation or cycling cost (Oracle of Nectars, Cinder Elemental, Decree of Justice's cycling);
+  - X set by an additional cost (the Dreams cycle).
+
+  Those effects are dropped, and the card says `unread (audit): X has no value here`. 69 status changes in all (the three families together).
+- **"If N colors / N red mana were spent ..., ... instead"** (adamant-style upgrades): 9 cards claimed `modeled` with the upgrade unread. They're partial now. Held ones (Slaying Fire) stay held.
+
+**Not swept yet:** Insidious Dreams' tutor keeps an "~X cards" count in a nested target, which `_has_x` doesn't look into. `goldfish_coverage.py diff` now also works on Windows: it extracts with `tarfile` and uses a directory junction when symlinks need a privilege.
+
 **Standing lesson.** The 10% sample rate understates the risk of a *family*. When a sampled misread is found, grep for the construction across the pool and read the diff, don't just fix the one card. Repeat the sampled audit each session (new seed) and log the rate here.
 
 ## Next (by weight in `report`, re-rank each session)
@@ -131,7 +156,7 @@ These readings are wrong or approximate, and the parser knows it only where the 
   - Deafening Silence and Rule of Law are `vacuum`, but "each player can't" limits you too. Same family as Maralen above.
   - Ephemerate is `held` as interaction, and Escape Protocol's flicker is read as stax removal.
 - **Measured again:** T2 audited every one of 142 `modeled` cards in its 300. 6 were misreads, 4.2% (95% CI 2.0–8.9%). This is a different sample from Phase 3 (deck cards plus top staples, not strata), so it isn't a trend, but it is inside the earlier interval.
-- **Unsampled:** the audit was 40 cards. 4/40 gives a 95% interval of roughly 3–24% for the misread rate among `modeled` cards. The family sweep after it removed the biggest known sources, but the true rate is unmeasured until the next sample.
+- **Sampled rate so far:** Phase 3 found 4/40 (seed 7), T2 6/142 (deck cards plus staples), session 5 3/40 (seed 11, outside the T2 cards). Each sample found new families, so the sweeps aren't finished. Keep sampling each session with a new seed (seeds 7 and 11 are used).
 
 ## Working conventions
 

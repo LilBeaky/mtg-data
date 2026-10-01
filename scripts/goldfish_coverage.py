@@ -11,7 +11,7 @@
 Readings are the exact --explain lines, with goldfish_overrides.json applied (the working tree's overrides on both
 sides of a diff). Popularity weight = 1/sqrt(edhrec_rank); unranked cards weigh 0. See docs/GOLDFISH_ROADMAP.md.
 """
-import contextlib, io, math, os, re, subprocess, sys, tempfile
+import contextlib, io, math, os, re, subprocess, sys, tarfile, tempfile
 from collections import Counter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -109,13 +109,20 @@ def diff(ref, limit):
     with tempfile.TemporaryDirectory() as tmp:
         arch = subprocess.run(["git", "-C", ROOT, "archive", ref, "scripts"], capture_output=True)
         if arch.returncode: sys.exit(f"git archive {ref}: {arch.stderr.decode().strip()}")
-        subprocess.run(["tar", "-x", "-C", tmp], input=arch.stdout, check=True)
-        os.symlink(os.path.join(ROOT, "data"), os.path.join(tmp, "data"))
-        a, b = os.path.join(tmp, "old.tsv"), os.path.join(tmp, "new.tsv")
-        for scripts, out in ((os.path.join(tmp, "scripts"), a), (HERE, b)):
-            r = subprocess.run([sys.executable, os.path.abspath(__file__), "_dump", out, scripts], capture_output=True, text=True)
-            if r.returncode: sys.exit(f"dump failed ({scripts}):\n{r.stderr[-2000:]}")
-        old, new = read_dump(a), read_dump(b)
+        with tarfile.open(fileobj=io.BytesIO(arch.stdout)) as tf: tf.extractall(tmp)   # no external tar (Git Bash's reads C: as a host)
+        link, junction = os.path.join(tmp, "data"), False
+        try: os.symlink(os.path.join(ROOT, "data"), link)
+        except OSError:                                   # Windows without the symlink privilege: a directory junction
+            subprocess.run(["cmd", "/c", "mklink", "/J", link, os.path.join(ROOT, "data")], check=True, capture_output=True)
+            junction = True
+        try:
+            a, b = os.path.join(tmp, "old.tsv"), os.path.join(tmp, "new.tsv")
+            for scripts, out in ((os.path.join(tmp, "scripts"), a), (HERE, b)):
+                r = subprocess.run([sys.executable, os.path.abspath(__file__), "_dump", out, scripts], capture_output=True, text=True)
+                if r.returncode: sys.exit(f"dump failed ({scripts}):\n{r.stderr[-2000:]}")
+            old, new = read_dump(a), read_dump(b)
+        finally:
+            if junction: os.rmdir(link)                   # unlink the junction itself before the temp dir's cleanup walks it
     trans, changed = Counter(), []
     for n in sorted(set(old) | set(new)):
         o, w = old.get(n, ("absent", None, "")), new.get(n, ("absent", None, ""))

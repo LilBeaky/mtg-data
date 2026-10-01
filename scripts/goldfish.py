@@ -2133,6 +2133,9 @@ def parse_line(k, L, anyc, abil):
         if m:
             st = fn(m, lo)
             if st[0] == "unread": return False
+            # a spell filter with words parse_filter didn't know ('the second spell you cast each turn', 'colorless
+            # Eldrazi') matches every spell: unread, not a reduction for all (session-5 audit: Uthros Psionicist)
+            if st[0] in ("reduce", "reduce_dyn", "alt", "free") and isinstance(st[1], dict) and st[1].get("unknown"): return False
             k.statics.append(st); return True
     if combat_static(k, lo): return True
     lo2 = re.sub(r"^[a-z][\w' ]* — ", "", lo)
@@ -2502,7 +2505,41 @@ def compile_card(c, anyc):
     if k.status == "blank" and vac == missed: k.status = "vacuum"
     if k.hold: k.status = "held"
     t2_misreads(k, (c.get("oracle_text") or "").lower())
+    audit5_misreads(k, (c.get("oracle_text") or "").lower())
     return k
+
+# Families the session-5 sampled audit (seed 11) found, swept pool-wide (docs/GOLDFISH_ROADMAP.md).
+def flat_all(k):
+    """Every top-level effect the card runs, wherever it lives."""
+    yield from k.spell; yield from k.etb; yield from k.castfx
+    for t in k.trig: yield from t[2]
+    for a in k.acts + k.hand_acts: yield from a["fx"]
+    for _, f in k.pw: yield from f
+
+def _has_x(e): return any(v == "X" for v in e[1:] if isinstance(v, str))
+def _drop_x(fx): return [e for e in fx if not _has_x(e)]
+def audit5_misreads(k, lo):
+    hit = []
+    # A literal X is the cast's X: the engine passes it to the spell and its ETB only, and only a {X} mana cost gives it
+    # a value. Anywhere else X resolves as 0 (an X/X token dies, 'draw X' draws nothing) while the card said modeled:
+    # X was a count the parser didn't read (Profane Transfusion, Shark Typhoon's trigger) or an X in another cost.
+    n0 = len(list(flat_all(k)))
+    if not k.x: k.spell, k.etb, k.castfx = _drop_x(k.spell), _drop_x(k.etb), _drop_x(k.castfx)
+    k.trig = [t for t in (tuple(t[:2]) + (_drop_x(t[2]),) + tuple(t[3:]) for t in k.trig) if t[2]]
+    for a in k.acts + k.hand_acts: a["fx"] = _drop_x(a["fx"])
+    k.acts = [a for a in k.acts if a["fx"]]
+    k.hand_acts = [a for a in k.hand_acts if a["fx"]]
+    k.cycle_fx = _drop_x(k.cycle_fx)
+    k.pw = [(c, f) for c, f in ((c, _drop_x(f)) for c, f in k.pw) if f]
+    if len(list(flat_all(k))) < n0: hit.append("X has no value here (only a {X} mana cost gives the spell and its ETB one)")
+    # 'If N colors / three red mana were spent ..., ... instead' (adamant and friends): the upgrade is never read
+    if k.status == "modeled" and re.search(r"if [^.]*mana[^.]* (?:was|were) spent[^.]*instead", lo):
+        hit.append("a mana-spent 'instead' clause")
+    if hit:
+        read = k.spell or k.acts or k.trig or k.etb or k.statics or k.hand_acts or k.gy_acts or k.castfx or any(f for _, f in k.pw) \
+            or k.kw & (EVASIVE | {"trample", "haste", "vigilance", "lifelink", "deathtouch", "double strike", "first strike"})
+        k.status = "held" if k.hold else "partial" if read else "blank"
+        k.notes = list(k.notes or []) + ["unread (audit): " + m for m in hit]
 
 # Families the T2 audit (docs/TRANSLATION_T2.md) found read wrong while the card claimed to be fully read. Each one
 # either drops the wrong effect or corrects it, and the card says partial with the unread sentence.

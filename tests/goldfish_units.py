@@ -1354,6 +1354,26 @@ def _():
     return all(not TK[n].hold and not any(e[0] == "kill_perm" for t in TK[n].trig for e in t[2])
                for n in T2_MIS["blink your own creature"])
 
+# ---- Session-5 sampled audit (seed 11): three families, swept pool-wide
+A5NAMES = ["Uthros Psionicist", "Herald of Kozilek", "Profane Transfusion", "Shark Typhoon", "Oracle of Nectars",
+           "Decree of Justice", "Riptide Replicator", "Paragon of Modernity", "Spectacular Skywhale"]
+A5RAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(A5NAMES)}
+A5 = {n: g.compile_card(A5RAW[n], g.ALL5) for n in A5NAMES}
+
+@check("Audit 5: a cost reduction whose spell filter isn't understood is unread, not a reduction for every spell (Uthros Psionicist)")
+def _():
+    return all(not any(s[0] == "reduce" for s in A5[n].statics) and A5[n].status != "modeled" for n in ("Uthros Psionicist", "Herald of Kozilek"))
+@check("Audit 5: X with no value (no {X} mana cost, or outside the spell/ETB) is unread; a real {X} spell keeps its X")
+def _():
+    gone = all(not any(g._has_x(e) for e in g.flat_all(A5[n])) and A5[n].status in ("partial", "blank")
+               for n in ("Profane Transfusion", "Shark Typhoon", "Oracle of Nectars"))
+    dec = A5["Decree of Justice"]
+    keeps = any(e[0] == "token" and g._has_x(e) for e in dec.spell) and not any(g._has_x(e) for a in dec.hand_acts for e in a["fx"])
+    return gone and keeps and any(A5["Riptide Replicator"].ctr_enter or ())
+@check("Audit 5: 'if N colors of mana were spent ..., ... instead' keeps the card partial (Paragon of Modernity, Spectacular Skywhale)")
+def _():
+    return all(A5[n].status == "partial" and any("mana-spent" in x for x in A5[n].notes) for n in ("Paragon of Modernity", "Spectacular Skywhale"))
+
 def main():
     fails = 0
     for name, fn in CHECKS:
