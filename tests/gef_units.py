@@ -316,6 +316,30 @@ def _():
     w = C("Wishclaw Talisman", A("activated", cost={"mana": "{1}", "tap": True}, effects=[{"do": "draw", "n": 1}], **{"if": {"if": "your_turn"}}))
     return k.spell == [("cond", ("cmdr_out",), [("draw", 2)]), ("cond", ("not", ("cmdr_out",)), [("draw", 1)]), ("untap_cr", "one")]         and w.acts[0]["your_turn"]
 
+@check("step 3: coin flips (n, until lose, win/lose effects), Krark's Thumb, Edgar, won-flip triggers, Yusri's choose + free casting")
+def _():
+    import argparse, random
+    y = C("Yusri, Fortune's Flame", TR({"on": "attacks", "subject": "self"}, {"do": "choose_number", "min": 1, "max": 5},
+          {"do": "flip_coins", "n": {"count": "number_chosen"}, "on_win": [{"do": "draw", "n": 1}], "on_lose": [{"do": "damage", "n": 2, "to": "you"}]},
+          {"do": "if", "cond": {"if": "amount_at_least", "amount": {"count": "coin_flips_won"}, "n": 5},
+           "then": [{"do": "free_cast_permission", "from": "hand", "duration": "end_of_turn"}]}))
+    fx = y.trig[0][2]
+    ok = fx[0] == ("choose_num", 1, 5, 2) and fx[1][0] == "flip" and fx[1][1] == ("num_chosen",) and fx[2][1] == ("amt", ("flips_won",), 5)
+    thumb = C("Krark's Thumb", S({"static": "coin_flip_rule", "rule": "flip_two_ignore_one"}))
+    edgar = C("Edgar, King of Figaro", S({"static": "coin_flip_rule", "rule": "first_flips_each_turn_win"}))
+    scoun = C("Tavern Scoundrel", TR({"on": "coin_flip_won", "who": "you"}, {"do": "token", "n": 2, "token": {"preset": "treasure"}}))
+    forest = g.compile_card(IDX["forest"], g.ALL5)
+    def game(perms):
+        sim = g.Sim(["Forest"], [], argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False), [], {"Forest": forest}, g.ALL5)
+        G = g.Game(sim, [], [forest] * 40, random.Random(3)); G.turn, G.phase, G.turns_left, G.cmd = 3, 3, 3, []
+        G.perms = [g.Perm(q) for q in perms]; G._st = None; return G
+    G = game([edgar, scoun]); G.flip_coins(3, False, [], [], edgar, None, 0)
+    edgar_ok = G.ctx_won == 3 and sum(1 for q in G.perms if q.k.name.startswith("Treasure")) == 6
+    G = game([thumb]); wins = 0
+    for _ in range(400): G.flip_coins(1, False, [], [], thumb, None, 0); wins += G.ctx_won
+    G = game([]); G.life = 40; G.do(fx[:1], y, None, 0)
+    return ok and edgar_ok and 0.68 < wins / 400 < 0.82 and G.ctx_num == 5
+
 @check("status: unexpressible out_of_scope is never a miss; format_gap is; a refused ability leaves the rest read")
 def _():
     v = C("Counterbalance", A("unexpressible", reason="opponents' spells", scope="out_of_scope"))

@@ -62,7 +62,7 @@
  "Windfall": "ENGINE: each player discards their hand and draws the greatest discarded count (a gap count); the parser's wheel max approximates.",
  "Wishclaw Talisman": "ENGINE: the activation is restricted to your turn and the counters start at three (an opponent then gains control, unexpressible); the parser's t2_misreads reads one use.",
  "Witch's Clinic": "GEF-MORE: the lifelink-granting activation reads. Same games.",
- "Yusri, Fortune's Flame": "ENGINE: choose_number and coin flips; the parser reads a draw per attack (PARSER-APPROX).",
+ "Yusri, Fortune's Flame": "GEF-MORE: choose a number, flip that many coins (draw on a win, 2 damage on a loss), cast free this turn on 5 wins (engine flips, T3 step 3; choose_num is pilot policy); the parser reads a draw per attack (PARSER-APPROX).",
  "Canopy Vista": "PARSER-APPROX: the parser reads 'enters tapped unless you control two or more basic lands' as always tapped; GEF checks the count (etap 'count', T3 step 3).",
  "Cinder Glade": "PARSER-APPROX: the parser reads 'enters tapped unless you control two or more basic lands' as always tapped; GEF checks the count (etap 'count', T3 step 3).",
  "Prairie Stream": "PARSER-APPROX: the parser reads 'enters tapped unless you control two or more basic lands' as always tapped; GEF checks the count (etap 'count', T3 step 3).",
@@ -70,5 +70,12 @@
  "Sunken Hollow": "PARSER-APPROX: the parser reads 'enters tapped unless you control two or more basic lands' as always tapped; GEF checks the count (etap 'count', T3 step 3).",
  "Mystic Sanctuary": "PARSER-APPROX: the parser reads its enters-tapped as always and leaves the recursion to the top unread; GEF checks three other Islands and puts the spell on top (T3 step 3).",
  "Academy Ruins": "GEF-MORE: recursion to the top of the library reads (engine recur 'top', T3 step 3); the parser leaves it unread.",
- "Hall of Heliod's Generosity": "GEF-MORE: recursion to the top of the library reads (engine recur 'top', T3 step 3); the parser leaves it unread."
+ "Hall of Heliod's Generosity": "GEF-MORE: recursion to the top of the library reads (engine recur 'top', T3 step 3); the parser leaves it unread.",
+ "Krark's Thumb": "GEF-MORE: flip two, keep one (engine coin_rule, T3 step 3); the parser leaves it blank. Same games without flips in the probe.",
+ "Edgar, King of Figaro": "GEF-MORE: the first flips each turn win (engine coin_rule, T3 step 3); the parser leaves the Two-Headed Coin unread.",
+ "Tavern Scoundrel": "GEF-MORE: two Treasures per won flip and the flip activation (engine flips, T3 step 3); the parser leaves it blank.",
+ "Zndrsplt, Eye of Wisdom": "GEF-MORE: flip until you lose at combat, draw per won flip (engine flips, T3 step 3); the parser leaves it blank.",
+ "Okaun, Eye of Chaos": "GEF-MORE + ENGINE: the combat flips read; doubling its P/T per won flip needs a toughness count the engine lacks (refused).",
+ "Planar Chaos": "GEF-MORE + ENGINE: the upkeep flip (sacrifice on a loss) reads; 'each player flips for each spell, countering on a loss' is refused (cast by each player).",
+ "Solitary Confinement": "GEF-MORE + ENGINE: the upkeep 'sacrifice unless you discard' reads; skip_step isn't in the engine (refused) and the rest is out of scope. The parser leaves the card blank."
 }

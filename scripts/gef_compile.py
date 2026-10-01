@@ -217,6 +217,8 @@ def count_key(a):
         cols = a.get("colors") or ""
         if not re.fullmatch(r"[WUBRG]{1,2}", cols): refuse("devotion colors")
         return ("devotion",) + tuple(cols)
+    if c == "coin_flips_won": return ("flips_won",)
+    if c == "number_chosen": return ("num_chosen",)
     simple = {"domain": ("domain",), "converge": ("converge",), "times_kicked": ("kicks",), "opponents": ("opps",),
               "your_life_total": ("life",), "power_of_self": ("pow",), "power_of_that": ("objpow",),
               "cards_in_opponent_hand": ("opp_hand",)}
@@ -234,7 +236,10 @@ OPP = ("each_opponent", "target_opponent", "an_opponent", "defending_player", "t
 
 def effects(fx, ctx):
     out = []
-    for e in fx or []:
+    for i, e in enumerate(fx or []):
+        nxt = (fx[i + 1] if i + 1 < len(fx) else {}) if e["do"] == "choose_number" else {}
+        ctx.next_loss = sum(x["n"] for x in nxt.get("on_lose", []) if x["do"] in ("damage", "lose_life") and isinstance(x.get("n"), int)
+                            and (x.get("to") == "you" or x.get("who") == "you")) if nxt.get("do") == "flip_coins" else 0
         out += effect(e, ctx)
         ctx.last = e["do"]
     return out
@@ -383,6 +388,18 @@ def effect(e, ctx):
                     and t0 == [{"do": "recur", "filter": {"any": True}, "n": 1, "to": "hand", "from": "exile"}]:
                 return [("free_top", inner["n"] - 1)]
         refuse("reveal_until form")
+    if d == "flip_coins":
+        n = 1 if e.get("until_lose") else amount(e.get("n", 1))
+        return [("flip", n, effects(e.get("on_win"), ctx), effects(e.get("on_lose"), ctx), bool(e.get("until_lose")))]
+    if d == "choose_number":
+        loss = ctx.next_loss
+        return [("choose_num", e["min"], e["max"], loss)]
+    if d == "free_cast_permission":
+        if e["from"] != "hand" or e["duration"] != "end_of_turn": refuse("free cast permission form")
+        return [("free_eot", spell_filter(e.get("spells")) or g.parse_filter(""))]
+    if d == "sacrifice":
+        if e["what"] == {"ref": "self"} and e.get("who", "you") == "you": return [("sac_self",)]
+        refuse("sacrifice form")
     if d == "flicker":
         w = e["what"]; f = w.get("filter") or {}
         if e["returns"] != "immediately" or w.get("ref") != "target" or w.get("n", 1) != 1 or f.get("controller") != "you" \
@@ -497,6 +514,7 @@ def cond(c):
     if k == "kicked" and c.get("min", 1) == 1: return ("kicked",)
     if k == "opponent_more_lands": return "opp_lands"
     if k == "you_control_commander": return ("cmdr_out",)
+    if k == "amount_at_least": return ("amt", amount(c["amount"], allow_x=False), c["n"])
     if k == "graveyard_at_least" and not c.get("card_types"):
         f = c.get("filter") or {}
         kind = {(): None, ("creature",): "creature", ("land",): "land", ("instant", "sorcery"): "instant"}.get(tuple(f.get("types", [])), 0)
@@ -535,6 +553,7 @@ class Ctx:
         self.self_land_types = set()
 
 EVENTS = {"upkeep": "upkeep", "end_step": "end", "draw_step": "drawstep", "precombat_main": "main1", "combat_begin": "combat_begin",
+          "coin_flip_won": "coin_won", "coin_flip": "coin_flip",
           "gain_life": "gain", "draw_card": "draw_card", "cycle": "cycle", "proliferate": "prolif", "opponent_draws": "opp_draw",
           "opponent_second_spell": "opp_second", "opponent_landfall": "opp_land"}
 
@@ -548,6 +567,7 @@ def event(ev):
     if on in EVENTS:
         if on in ("upkeep", "end_step", "draw_step", "precombat_main", "combat_begin") and ev.get("whose") != "your": refuse(f"{on} whose {ev.get('whose')}")
         if on in ("gain_life", "draw_card", "cycle") and ev.get("who") not in (None, "you"): refuse(f"{on} who")
+        if on in ("coin_flip_won", "coin_flip") and ev.get("who") not in (None, "you", "each_player"): refuse(f"{on} who")
         return EVENTS[on], None
     if on == "cast_self": return "cast_self", None
     if on == "cast":
@@ -796,6 +816,7 @@ def static(a, ctx):
             key = count_key(pw)
             k.statics.append(("anthem", {"self": True}, ("per", 1, key), ("per", 0, key), frozenset(), False, False)); return "read"
         refuse("pt_equals form")
+    if st == "coin_flip_rule": k.statics.append(("coin_rule", s["rule"])); return "read"
     if st == "mana_multiplier":
         src = {"permanents you tap for mana": "permanent", "permanent": "permanent", "lands": "land", "land": "land"}.get(s.get("sources", ""))
         if not src or s.get("factor") not in (2, 3): refuse("mana multiplier form")

@@ -2792,6 +2792,7 @@ class Statics:
     def __init__(self, perms):
         self.lands_any = False; self.lands_any_n = 0; self.spend_any = False; self.all_colors = False
         self.free = []; self.alts = []; self.reduce = []; self.extra_land = 0; self.prolif = 1
+        self.coin_thumbs = 0; self.coin_first = False   # Krark's Thumb (flip two, keep one) / Edgar (first flips each turn win)
         self.plus = []; self.times = []; self.no_max = False; self.mana_mult = []; self.mana_add = []
         self.reduce_dyn = []    # (filter, dyn key): affinity-style reducers granted to spells (Pearl-Ear)
         self.equip_red = 0      # equip costs {N} less (Strong Back ~approx: on the creature it enchants)
@@ -2828,6 +2829,9 @@ class Statics:
                 elif t == "attack_limit": self.attack_limit = min(self.attack_limit or 99, s[1])
                 elif t == "base_pt": self.base_pt.append((p, s[1], s[2], s[3]))
                 elif t == "extra_land": self.extra_land += s[1]
+                elif t == "coin_rule":
+                    if s[1] == "flip_two_ignore_one": self.coin_thumbs += 1
+                    else: self.coin_first = True
                 elif t == "prolif_x2": self.prolif *= 2
                 elif t == "ctr_plus": self.plus.append((s[1], s[2]))
                 elif t == "ctr_times": self.times.append((s[1], s[2]))
@@ -2849,6 +2853,7 @@ class Game:
         self.turns_left = 0                     # opponent turns still to come this round (mana held for them: engine_reserve)
         self.ctx_gain = 0; self.gain_depth = 0  # the life a 'whenever you gain life' trigger is about; recursion guard
         self.pool = None; self.convs = []; self.dry = False; self._st = None
+        self.coin_turn = -1; self.ctx_won = 0; self.ctx_num = 0; self.temp_free = []    # coin flips; 'cast free this turn' (GEF)
         self.extra = 0; self.drawn = len(hand); self.casts = 0; self.spent = 0; self.disc = 0
         self.attr = Counter(); self.first = {}; self.cmd_first = {}; self.rebound = []
         self.exile, self.unearthed = [], []
@@ -2888,8 +2893,29 @@ class Game:
 
     @property
     def st(self):
-        if self._st is None: self._st = Statics(self.perms + self.lands)
+        if self._st is None:
+            self._st = Statics(self.perms + self.lands)
+            self._st.free += [(f, h) for t, f, h in getattr(self, "temp_free", []) if t == self.turn and not self.opp_turn]
         return self._st
+
+    def flip_coins(self, n, until_lose, win_fx, lose_fx, k, p, x):
+        """Flip coins (GEF flip_coins): each win/loss runs its effects; wins fire 'coin_won'. Krark's Thumb makes a flip
+        a win 1 - 0.5^(2^thumbs) of the time; Edgar wins every flip of the first flip event each turn."""
+        st = self.st
+        edgar = st.coin_first and self.coin_turn != self.turn
+        if st.coin_first: self.coin_turn = self.turn
+        won, flips = 0, 0
+        while flips < (20 if until_lose else n):
+            flips += 1
+            win = (edgar and (not until_lose or flips == 1)) or self.rng.random() < 1 - 0.5 ** (2 ** st.coin_thumbs)
+            self.fire("coin_flip")
+            if win:
+                won += 1; self.ctx_won = won; self.do(win_fx, k, p, x); self.fire("coin_won")
+            else:
+                self.do(lose_fx, k, p, x)
+                if until_lose: break
+        self.ctx_won = won
+        self.note(f"    {k.name}: {flips} coin flip(s), {won} won")
 
     def clone(self):
         g = Game.__new__(Game)
@@ -3758,6 +3784,8 @@ class Game:
             return sum(1 for q in self.attackers if q is not o and q in self.perms and q.k.subtypes & o.k.subtypes) if isinstance(o, Perm) else 0
         if key == "atkpow": return sum(max(0, self.stats(q)[0]) for q in self.attackers if q in self.perms)
         if key == "opps": return len(self.alive())
+        if key == "flips_won": return self.ctx_won
+        if key == "num_chosen": return self.ctx_num
         if key == "converge": return self.converge
         if key == "pcount": return sum(1 for q in self.perms + self.lands if self.pmatch(v[1], q, None))
         if key == "ctx_gain": return self.ctx_gain
@@ -4296,6 +4324,17 @@ class Game:
                 self.life = sum(1 for q in self.perms if self.is_creature(q))
                 self.note(f"    {name}: opponents to {self.opp_creatures()} life, you to {self.life}")
                 self.check_deaths("noncombat")
+            elif t == "flip":                                    # ('flip', n, win effects, lose effects, until you lose)
+                if self.dry: continue
+                self.flip_coins(self.num(e[1], p, x), e[4], e[2], e[3], k, p, x)
+            elif t == "choose_num":                              # ~pilot: the highest number keeping life 5 above the floor at e[3] a loss
+                n = e[2]
+                while n > e[1] and self.life - e[3] * n < LIFE_FLOOR + 5: n -= 1
+                self.ctx_num = n
+            elif t == "free_eot":                                # 'you may cast spells from your hand without paying this turn'
+                self.temp_free.append((self.turn, e[1], True)); self._st = None
+            elif t == "sac_self":
+                if isinstance(p, Perm) and p in self.perms: self.leave(p, "is sacrificed", sac=True)
             elif t == "extra_combat":
                 self.xcombat += 1; self.note("    an additional combat phase is coming")
             elif t == "untap_cr":
@@ -4432,6 +4471,7 @@ class Game:
             return isinstance(o, Perm) and not any(q is not o and q.k.name == o.k.name for q in self.perms) and not any(c.name == o.k.name for c in self.gy)
         if k == "your_turn": return not self.opp_turn
         if k == "cmdr_out": return any(q.k in self.sim.commanders for q in self.perms)   # 'if you control a commander' (GEF)
+        if k == "amt": n = self.val(c[1], p, 0); return isinstance(n, int) and n >= c[2]
         if k == "not_your_turn": return self.opp_turn
         if k == "main": return not self.opp_turn and not self.combat_on
         if k == "kicked":                            # only the cast spell itself (its token copies weren't kicked)
