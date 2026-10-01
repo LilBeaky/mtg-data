@@ -198,7 +198,7 @@ def amount(a, allow_x=True):
     if a.get("divide"):                                   # 'half ..., rounded up'
         if a.get("times") or a.get("round") not in ("up", "down"): refuse("divided amount")
         return ("div", count_key(a), a["divide"], a["round"] == "up")
-    if "player" in a and a["count"] != "cards_in_opponent_hand": refuse("count of another player")
+    if "player" in a and a["count"] not in ("cards_in_opponent_hand", "damage_dealt_this_turn"): refuse("count of another player")
     key = count_key(a)
     return ("per", a["times"], key) if a.get("times") else key
 
@@ -226,6 +226,7 @@ def count_key(a):
         return ("devotion",) + tuple(cols)
     if c == "coin_flips_won": return ("flips_won",)
     if c == "starting_life_total": return ("start_life",)
+    if c == "damage_dealt_this_turn" and a.get("player") in ("target_opponent", "an_opponent"): return ("dmg_turn_max",)   # the pilot targets the most-hit one
     if c == "that_much" and ctx_ev[0] in ("cdmg_self", "cdmg", "cdmg_any", "cdmg_att"): return ("ctx_dmg",)   # the combat damage dealt
     if c == "toughness_of_self" and not f: return ("tgh",)
     if c == "spells_cast_this_turn" and not cf: return ("tcast_n",)
@@ -267,6 +268,7 @@ def effect(e, ctx):
         if who in OPP + ("its_controller",): return []           # an opponent draws: nothing in a goldfish
         if who not in (None, "you"): refuse(f"draw who {who}")
         return [("draw", amount(e["n"]))]
+    if d == "discard" and e["n"] == "hand" and who in (None, "you") and not e.get("filter"): return [("discard", 99)]   # your whole hand
     if d == "discard":
         if who not in (None, "you") or e.get("filter") or not isinstance(e["n"], int): refuse("discard form")
         return [("discard_rand" if e.get("random") else "discard", e["n"])]
@@ -958,6 +960,8 @@ def ability(a, ctx):
             tax, fx = True, fx[0]["effects"]
         out = effects(fx, ctx)
         if a.get("if") and out: out = [("cond", cond(a["if"]), out)]
+        if a.get("optional") and len(out) == 2 and out[0] == ("discard", 99) and out[1][0] == "draw":
+            out = [("cond", ("amt_gt_hand", out[1][1]), out)]   # 'you may discard your hand and draw N': only when N beats the hand ~policy
         if not out:
             if ctx.interaction: return "read"            # removal aimed at opponents' permanents: held, nothing to run here
             refuse("trigger with no engine effect")

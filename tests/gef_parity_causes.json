@@ -96,5 +96,6 @@
  "Stormscale Scion": "GEF-MORE: storm on a permanent spell makes token copies (engine storm, T3 step 3); the parser leaves storm unread.",
  "Animist's Awakening": "GEF-MORE: spell mastery untaps the lands the reveal put onto the battlefield (engine untap_last_lands, T3 step 3); the parser leaves that line unread.",
  "Balefire Dragon": "GEF-MORE: its combat damage is dealt to each creature the damaged player controls (engine kill_blk 'that', toughness up to the damage, T3 step 3); the parser leaves it unread.",
- "Scourge of the Throne": "GEF-MORE: attacking the player with the most life the first time each turn untaps the attackers for another combat (engine cond def_most_life, T3 step 3); the parser leaves it unread."
+ "Scourge of the Throne": "GEF-MORE: attacking the player with the most life the first time each turn untaps the attackers for another combat (engine cond def_most_life, T3 step 3); the parser leaves it unread.",
+ "Knollspine Dragon": "GEF-MORE: discard your hand and draw the damage dealt to the most-hit opponent this turn (engine per-turn damage tracking, T3 step 3), taken only when it draws more than it discards (~pilot policy for the 'may'); the parser leaves it unread."
 }

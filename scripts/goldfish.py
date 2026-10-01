@@ -3814,6 +3814,8 @@ class Game:
         if key == "tcast_n": return len(self.tcast)
         if key == "start_life": return START_LIFE
         if key == "ctx_dmg": return self.ctx_dmg              # 'that much': the combat damage just dealt
+        if key == "dmg_turn_max":                             # the most damage dealt to one opponent this turn
+            return max((self.opps[i]["dmg_t"][1] for i in self.alive() if self.opps[i].get("dmg_t") and self.opps[i]["dmg_t"][0] == self.phase), default=0)
         if key == "div":                                       # ('div', key, d, round up?): 'half your starting life total, rounded up'
             n = self.val(v[1], p, x)
             return -(-n // v[2]) if v[3] else n // v[2]
@@ -4208,7 +4210,7 @@ class Game:
                 if e[2] == "one":
                     tg = [self.ctx_opp if self.ctx_opp in self.alive() else self.focus()]
                 else: tg = self.alive()
-                for i in tg: self.damage_player(i, n, name)
+                for i in tg: self.damage_player(i, n, name, loss=not dmg)
                 self.ctx_lost = n * len(tg)                      # 'you gain life equal to the life lost this way'
                 if e[2] == "all": self.lose_life(n, "drain")
                 self.note(f"    {name}: {n} to {'each opponent' if len(tg) > 1 else f'opponent {tg[0] + 1}'}")
@@ -4548,6 +4550,7 @@ class Game:
         if k == "amt": n = self.val(c[1], p, 0); return isinstance(n, int) and n >= c[2]
         if k == "hand_eq": return len(self.hand) == c[1]
         if k == "lib_empty": return not self.lib
+        if k == "amt_gt_hand": n = self.val(c[1], p, 0); return isinstance(n, int) and n > len(self.hand)   # ~pilot: a wheel worth taking
         if k == "def_most_life":                              # dethrone-style: attacking the player with the most life (or tied)
             i = self.ctx_opp
             return i is not None and i in self.alive() and self.opps[i]["life"] >= max(self.opps[j]["life"] for j in self.alive())
@@ -4678,11 +4681,14 @@ class Game:
         al = self.alive()
         return min(al, key=lambda i: (self.left(self.opps[i]), i)) if al else None
 
-    def damage_player(self, i, n, src, combat=False, infect=False, cmdr=None):
+    def damage_player(self, i, n, src, combat=False, infect=False, cmdr=None, loss=False):
         """Opponent i is dealt n damage (infect: as poison counters). Combat damage from a commander is tallied per
-        commander for the 21 rule."""
+        commander for the 21 rule. loss: life loss, not damage (drains, afflict); only damage counts as 'dealt this turn'."""
         o = self.opps[i]
         if o["dead"] or n <= 0: return
+        if not loss:                                          # damage dealt to this player this turn (GEF: Knollspine Dragon)
+            d = o.get("dmg_t")
+            o["dmg_t"] = (self.phase, (d[1] if d and d[0] == self.phase else 0) + n)
         if infect: o["poison"] += n
         else:
             o["life"] -= n; self.dmg += n
@@ -5094,7 +5100,7 @@ class Game:
                     b.setdefault("orig", (b["p"], b["t"])); b["p"] -= 1; b["t"] -= 1
                     if b["t"] <= 0: self.kill_blocker(b, "flanking")
             if k.kwn.get("afflict"):
-                self.damage_player(i, k.kwn["afflict"], k.name); self.count_trig(k.name, "combat")
+                self.damage_player(i, k.kwn["afflict"], k.name, loss=True); self.count_trig(k.name, "combat")
             self.fire_one(p, "blocked_self", p, opp=i); self.fire("blocked", p, opp=i)
         if blocks: self.check_deaths("noncombat")
 

@@ -441,6 +441,21 @@ def _():
     left1 = [b["name"] for b in G.opps[1]["board"] if not b.get("dead")]
     return shapes and left0 == ["6/6"] and left1 == ["1/1"]
 
+@check("step 3: damage dealt this turn (damage, not life loss) and Knollspine's wheel taken only when it draws more")
+def _():
+    import argparse, random
+    kd = C("Knollspine Dragon", TR({"on": "enters", "subject": "self"}, {"do": "discard", "n": "hand", "who": "you"},
+           {"do": "draw", "n": {"count": "damage_dealt_this_turn", "player": "target_opponent"}, "who": "you"}, optional=True))
+    forest = g.compile_card(IDX["forest"], g.ALL5)
+    sim = g.Sim(["Forest"], [], argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False), [], {"Forest": forest}, g.ALL5)
+    G = g.Game(sim, [], [forest] * 30, random.Random(1)); G.turn, G.phase, G.turns_left, G.cmd = 3, 3, 3, []
+    G.perms = []; G._st = None; G.hand = [forest] * 3
+    G.do([("face", 2, "one", False)], kd, None, 0)            # life loss: not damage
+    G.do(kd.etb, kd, None, 0); kept = len(G.hand) == 3
+    G.do([("face", 5, "one", True)], kd, None, 0)             # 5 damage: the wheel draws 5 for 3
+    G.do(kd.etb, kd, None, 0)
+    return kd.etb[0][1] == ("amt_gt_hand", ("dmg_turn_max",)) and kept and len(G.hand) == 5
+
 @check("status: unexpressible out_of_scope is never a miss; format_gap is; a refused ability leaves the rest read")
 def _():
     v = C("Counterbalance", A("unexpressible", reason="opponents' spells", scope="out_of_scope"))
