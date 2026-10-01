@@ -100,13 +100,14 @@ def _():
           S({"static": "doesnt_untap"}), S({"static": "enters_with_counters", "kind": "charge", "n": 3}))
     return cr[0] == "reduce" and cr[1]["sub"] == {"Dragon"} and cr[2] == 2 and ("extra_land", 1) in k.statics and ("no_max_hand",) in k.statics \
         and k.labman and k.no_untap and k.ctr_enter == ("charge", 3, False)
-@check("statics: enters tapped (always / pay 3 life / unless a Mountain); another condition is read as always tapped and unread")
+@check("statics: enters tapped (always / pay 3 life / unless a Mountain / unless two basics); another condition is read as always tapped and unread")
 def _():
     a = C("Mosswort Bridge", S({"static": "enters_tapped"})).etap == ("always",)
     b = C("Fell the Profane // Fell Mire", S({"static": "enters_tapped", "unless_pay": {"pay_life": 3}})).etap == ("shock", 3)
     c = C("Arena of Glory", S({"static": "enters_tapped", "unless": {"if": "control", "filter": {"subtypes": ["Mountain"]}}})).etap == ("check", frozenset({"mountain"}))
     d = C("Cinder Glade", S({"static": "enters_tapped", "unless": {"if": "control", "filter": {"types": ["land"], "supertypes": ["basic"]}, "min": 2}}))
-    return a and b and c and d.etap == ("always", "conditional") and refused(d)
+    e = C("Cinder Glade", S({"static": "enters_tapped", "unless": {"if": "life_at_least", "n": 30}}))
+    return a and b and c and d.etap == ("count", True, frozenset(), 2) and e.etap == ("always", "conditional") and refused(e)
 @check("statics: doublers (tokens, counters, triggers by cause and by source), +1 counters, mana multiplier, free casting")
 def _():
     k = C("Grizzly Bears", S({"static": "token_doubler", "factor": 2}), S({"static": "counter_doubler", "factor": 2}),
@@ -286,6 +287,28 @@ def _():
     return len(dd.addsac["any"]) == 2 and bs.spell == [("discard", 1), ("draw", 2)] and fg.free_cmdr
 
 # ---- status and refusal
+@check("step 3: flicker your creature (Ephemerate), random discard (Gamble), recursion to the library top")
+def _():
+    k = C("Opt", SP({"do": "flicker", "what": {"ref": "target", "filter": {"types": ["creature"], "controller": "you"}}, "returns": "immediately"},
+                    {"do": "discard", "n": 1, "random": True}, {"do": "recur", "filter": {"types": ["artifact"]}, "n": 1, "to": "library_top"}))
+    return k.spell[0] == ("flicker", 1) and k.spell[1] == ("discard_rand", 1) and k.spell[2][2] == "top"
+@check("step 3: the engine runs them (a flickered creature's enter trigger fires again; a random discard empties a 1-card hand)")
+def _():
+    import argparse, random
+    mull = gc.compile_gef(IDX[mtg.norm("Mulldrifter")], {"gef": "0.2", "name": "Mulldrifter", "abilities": [
+        TR({"on": "enters", "subject": "self"}, {"do": "draw", "n": 2})]}, g.ALL5)
+    eph = C("Ephemerate", SP({"do": "flicker", "what": {"ref": "target", "filter": {"types": ["creature"], "controller": "you"}}, "returns": "immediately"}))
+    gam = C("Opt", SP({"do": "discard", "n": 1, "random": True}))
+    forest = g.compile_card(IDX["forest"], g.ALL5)
+    sim = g.Sim(["Forest"], [], argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False),
+                [], {"Forest": forest}, g.ALL5)
+    G = g.Game(sim, [], [forest] * 20, random.Random(1))
+    G.turn, G.phase, G.turns_left, G.cmd = 3, 3, 3, []
+    G.perms = [g.Perm(mull)]; G._st = None
+    h0 = len(G.hand); G.do(eph.spell, eph, None, 0); drew = len(G.hand) - h0
+    G.hand = [forest]; G.do(gam.spell, gam, None, 0)
+    return drew == 2 and any(q.k is mull for q in G.perms) and G.hand == [] and G.gy[-1] is forest
+
 @check("status: unexpressible out_of_scope is never a miss; format_gap is; a refused ability leaves the rest read")
 def _():
     v = C("Counterbalance", A("unexpressible", reason="opponents' spells", scope="out_of_scope"))

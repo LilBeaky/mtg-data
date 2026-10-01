@@ -250,8 +250,8 @@ def effect(e, ctx):
         if who not in (None, "you"): refuse(f"draw who {who}")
         return [("draw", amount(e["n"]))]
     if d == "discard":
-        if who not in (None, "you") or e.get("random") or e.get("filter") or not isinstance(e["n"], int): refuse("discard form")
-        return [("discard", e["n"])]
+        if who not in (None, "you") or e.get("filter") or not isinstance(e["n"], int): refuse("discard form")
+        return [("discard_rand" if e.get("random") else "discard", e["n"])]
     if d == "mill":
         if who in OPP: return []                                  # an opponent's library: nothing in a goldfish
         if who == "target_player": return [("mill", amount(e["n"]), "target")]
@@ -284,7 +284,7 @@ def effect(e, ctx):
         return [("tutor", target(e["filter"]), dest, n)]
     if d == "recur":
         if e.get("from", "your_graveyard") not in ("your_graveyard", "any_graveyard") or not isinstance(e.get("n", 1), int): refuse("recur form")
-        return [("recur", target(e["filter"]), zone(e["to"], ("hand", "bf")), e.get("n", 1))]
+        return [("recur", target(e["filter"]), zone(e["to"], ("hand", "bf", "top")), e.get("n", 1))]
     if d == "wheel":
         if who not in (None, "you", "each_player") or not isinstance(e["n"], int): refuse("wheel form")
         return [("wheel", e["n"], bool(e.get("shuffle_graveyard")))]
@@ -383,6 +383,11 @@ def effect(e, ctx):
                     and t0 == [{"do": "recur", "filter": {"any": True}, "n": 1, "to": "hand", "from": "exile"}]:
                 return [("free_top", inner["n"] - 1)]
         refuse("reveal_until form")
+    if d == "flicker":
+        w = e["what"]; f = w.get("filter") or {}
+        if e["returns"] != "immediately" or w.get("ref") != "target" or w.get("n", 1) != 1 or f.get("controller") != "you" \
+                or set(f) - {"types", "controller"} or f.get("types") not in (["creature"], None): refuse("flicker form")
+        return [("flicker", 1)]
     if d == "untap":
         w = e["what"]
         if w == {"ref": "self"}: return [("untap_self",)]
@@ -737,6 +742,11 @@ def static(a, ctx):
             if u["if"] == "control" and u.get("min", 1) == 1 and "max" not in u and set(uf) <= {"subtypes", "controller", "types"} \
                     and uf.get("types", ["land"]) == ["land"] and subs and subs <= set(g.BASIC):
                 k.etap = ("check", frozenset(subs)); return "read"
+            n_ = u.get("min", 1)
+            if u["if"] == "control" and "max" not in u and set(uf) <= {"types", "supertypes", "subtypes", "controller", "another"} \
+                    and uf.get("types", ["land"]) == ["land"] and set(uf.get("supertypes", [])) <= {"basic"} and subs <= set(g.BASIC) \
+                    and (subs or uf.get("supertypes")):
+                k.etap = ("count", "basic" in uf.get("supertypes", []), frozenset(subs), n_); return "read"
             ctx.etap_fallback = True
             refuse("conditional enters-tapped")
         up = s.get("unless_pay")

@@ -3280,6 +3280,8 @@ class Game:
         if r[0] == "check": return not (self.any_lands() or any(p.k.land_types & r[1] for p in self.lands))
         if r[0] == "reveal": return not any(c.is_land and c.land_types & r[1] for c in self.hand)
         if r[0] == "shock": return self.life - r[1] < LIFE_FLOOR      # pay for untapped while above the floor
+        if r[0] == "count":                                       # ('count', basic only, land types, n): GEF's 'unless you control N ...'
+            return sum(1 for p in self.lands if (not r[1] or p.k.basic) and (not r[2] or p.k.land_types & r[2])) < r[3]
         return True
 
     def land_enters(self, k, force_tapped=False):
@@ -4017,6 +4019,7 @@ class Game:
                         if pick.is_land: self.land_enters(pick)
                         elif pick.types & PERMANENT: self.enter(pick)
                         else: self.gy.append(pick)
+                    elif dest == "top": self.lib.append(pick)
                     else: self.hand.append(pick); self.gain(1, name)
             elif t == "cond":
                 if self.cond_ok(e[1], p): self.do(e[2], k, p, x)
@@ -4046,6 +4049,18 @@ class Game:
                 if self.dry or not isinstance(n, int) or n <= 0: continue
                 if len(e) > 2 and not (self.gy_payoff() and len(self.lib) > n + 10): continue   # 'target player': an opponent
                 for _ in range(min(n, len(self.lib))): self.gy.append(self.lib.pop())
+            elif t == "discard_rand":
+                if self.dry: continue
+                for _ in range(min(self.val(e[1], p, x), len(self.hand))):
+                    c = self.hand.pop(self.rng.randrange(len(self.hand))); self.gy.append(c); self.gain(-1, name)
+            elif t == "flicker":                                  # your creature with the best enter trigger leaves and comes back
+                if self.dry: continue
+                cands = [q for q in self.perms if self.is_creature(q) and not q.k.token and q.k not in self.sim.commanders and q.k.etb]
+                for q in sorted(cands, key=lambda q: -q.k.mv)[:e[1]]:
+                    base = getattr(q.k, "base", None) or q.k
+                    self.leave(q, "is exiled", "exile", quiet=True)
+                    if base in self.exile: self.exile.remove(base)
+                    self.note(f"    {name} flickers {base.name}"); self.enter(base)
             elif t in ("putback", "discard"):
                 n = self.val(e[1], p, x)
                 if self.dry or not isinstance(n, int) or n <= 0: continue
