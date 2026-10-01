@@ -3813,6 +3813,7 @@ class Game:
         if key == "tgh": return self.stats(p)[1] if isinstance(p, Perm) and p in self.perms else 0
         if key == "tcast_n": return len(self.tcast)
         if key == "start_life": return START_LIFE
+        if key == "ctx_dmg": return self.ctx_dmg              # 'that much': the combat damage just dealt
         if key == "div":                                       # ('div', key, d, round up?): 'half your starting life total, rounded up'
             n = self.val(v[1], p, x)
             return -(-n // v[2]) if v[3] else n // v[2]
@@ -4234,7 +4235,9 @@ class Game:
                         q.pp += self.amt(e[2], p); q.pt += self.amt(e[3], p)
                         if e[4]: q.tkw = (q.tkw or set()) | set(e[4])
             elif t == "kill_blk":
-                if not self.dry: self.kill_blockers(e, name)
+                if not self.dry:
+                    if isinstance(e[3], tuple): e = e[:3] + (self.val(e[3], p, x),) + e[4:]
+                    self.kill_blockers(e, name)
             elif t == "noblock":
                 if self.dry: continue
                 if e[1] in ("all", "ground"): self.noblock = e[1]; self.note(f"    {'opponents' if e[1] == 'all' else 'non-flying'} creatures can't block this turn")
@@ -4299,11 +4302,18 @@ class Game:
                         pw, tg, _ = self.stats(q)
                         q.pp += max(0, pw)
                         if e[1]: q.pt += max(0, tg)
+            elif t == "untap_last_lands":
+                for q in getattr(self, "last_lands", []):
+                    if q in self.lands and q.tapped:
+                        q.tapped = False
+                        if self.pool is not None: self.add_units(q)
             elif t == "reveal_lands":
                 n = self.val(e[1], p, x)
                 if self.dry or not isinstance(n, int) or n <= 0: continue
                 top = [self.lib.pop() for _ in range(min(n, len(self.lib)))]
+                n_l = len(self.lands)
                 for c in [c for c in top if c.is_land]: self.land_enters(c, force_tapped=True)
+                self.last_lands = self.lands[n_l:]
                 self.lib[0:0] = [c for c in top if not c.is_land]
                 self.note(f"    {name} puts {sum(c.is_land for c in top)} land(s) onto the battlefield")
             elif t == "bounce_self":
@@ -4538,6 +4548,9 @@ class Game:
         if k == "amt": n = self.val(c[1], p, 0); return isinstance(n, int) and n >= c[2]
         if k == "hand_eq": return len(self.hand) == c[1]
         if k == "lib_empty": return not self.lib
+        if k == "def_most_life":                              # dethrone-style: attacking the player with the most life (or tied)
+            i = self.ctx_opp
+            return i is not None and i in self.alive() and self.opps[i]["life"] >= max(self.opps[j]["life"] for j in self.alive())
         if k == "not_your_turn": return self.opp_turn
         if k == "main": return not self.opp_turn and not self.combat_on
         if k == "kicked":                            # only the cast spell itself (its token copies weren't kicked)
@@ -4580,6 +4593,7 @@ class Game:
                 p.once.add((ev, self.phase))
             if tax and self.rng.random() < TAX_PAID: continue
             self.trig_obj = obj
+            if opp is not None: self.ctx_opp = opp               # the intervening 'if' may ask about the defending player
             if len(fx) == 1 and fx[0][0] == "cond" and fx[0][1] != "opp_lands" and not self.cond_ok(fx[0][1], p): continue   # intervening 'if'
             for _ in range(self.trig_reps(p, event, obj)):
                 self.count_trig(p.k.name, TRIG_KIND.get(event, "other"))
@@ -5375,6 +5389,12 @@ class Game:
     def kill_blockers(self, e, src):
         """Apply a kill_blk effect (ETB/trigger/activated/spell removal) to opponents' --blockers creatures."""
         if not any(self.opps[i]["board"] for i in self.alive()): return
+        if e[6] == "that":                                      # GEF: every creature the damaged player controls
+            i = self.ctx_opp
+            if i is None or i not in self.alive(): return
+            board = self.opps[i]["board"]
+            for b in [b for b in board if can_kill(e, b, board)]: self.remove_blocker(i, b, e, src)
+            return
         if e[1] == "edict" or e[6]:
             for i in (self.alive() if e[6] else [self.focus()]):
                 if i is None: continue

@@ -112,7 +112,7 @@ def spell_filter(f):
         if len(f) > 1: refuse("any with other fields")
         return None
     extra = set(f) - {"types", "non_types", "subtypes", "non_subtypes", "supertypes", "colors", "multicolored", "historic", "mana_value",
-                      "chosen_type", "power"}
+                      "chosen_type", "power", "nontoken"}
     if extra: refuse("spell filter " + ", ".join(sorted(extra)))
     out = {"types": set(), "non": set(), "legendary": False, "colors": set(f.get("colors", [])), "multi": bool(f.get("multicolored")),
            "historic": bool(f.get("historic")), "mv_max": None, "unknown": False, "sub": set(f.get("subtypes", []))}
@@ -128,6 +128,7 @@ def spell_filter(f):
     out["legendary"] = "legendary" in sup
     if f.get("chosen_type"): out["sub"] |= {g.CHOSEN_TYPE or "Chosen"}
     if f.get("non_subtypes"): out["nonsub"] = set(f["non_subtypes"])
+    if f.get("nontoken"): out["nontoken"] = True
     mv = f.get("mana_value")
     if mv:
         if set(mv) != {"max"} or not isinstance(mv["max"], int): refuse("spell mana value")
@@ -225,6 +226,7 @@ def count_key(a):
         return ("devotion",) + tuple(cols)
     if c == "coin_flips_won": return ("flips_won",)
     if c == "starting_life_total": return ("start_life",)
+    if c == "that_much" and ctx_ev[0] in ("cdmg_self", "cdmg", "cdmg_any", "cdmg_att"): return ("ctx_dmg",)   # the combat damage dealt
     if c == "toughness_of_self" and not f: return ("tgh",)
     if c == "spells_cast_this_turn" and not cf: return ("tcast_n",)
     if c == "greatest_toughness" and (not f or {k: v for k, v in f.items() if k != "controller" or v != "you"} in ({}, {"types": ["creature"]})):
@@ -278,7 +280,8 @@ def effect(e, ctx):
         if e.get("from", "library") != "library": refuse("look form")
         take, to, rest, f = e["take"], e["to"], e.get("rest"), e.get("filter")
         if not isinstance(e["n"], int) and not (take == "all" and f == {"types": ["land"]}): refuse("look count")
-        if take == "all" and f == {"types": ["land"]} and to == "battlefield_tapped" and rest == "bottom": return [("reveal_lands", amount(e["n"]))]
+        if take == "all" and f == {"types": ["land"]} and to == "battlefield_tapped" and rest == "bottom":
+            ctx.last_reveal = True; return [("reveal_lands", amount(e["n"]))]
         if take == 0 and rest == "top": return [("arrange", e["n"])]
         if not f and isinstance(take, int) and to == "hand" and rest in ("bottom", "graveyard", "shuffle", None): return [("look", e["n"], take)]
         if f and take == 1 and e["n"] == 1 and to == "hand" and rest == "top": return [("peek", spell_filter(f))]
@@ -361,6 +364,9 @@ def effect(e, ctx):
         return [("pump_team", pump_amt(e.get("power", 0), True), pump_amt(e.get("toughness", 0), True), keywords(e.get("keywords")), sf, other, atk)]
     if d == "damage":
         to = e["to"]
+        if to == "each_creature" and e.get("filter") == {"controller": "that_player"} and ctx.ev in ("cdmg_self", "cdmg", "cdmg_any", "cdmg_att"):
+            ctx.interaction = True
+            return [("kill_blk", "dmg", 99, amount(e["n"], allow_x=False), {"non": frozenset(), "need": frozenset(), "cmp": ()}, False, "that")]
         if e.get("divided") or e.get("filter"): refuse("damage form")
         if to in ("each_opponent", "target_opponent", "target_player", "defending_player", "that_player"):
             return [("face", amount(e["n"]), "each" if to == "each_opponent" else "one", True)]
@@ -442,6 +448,8 @@ def effect(e, ctx):
     if d == "untap":
         w = e["what"]
         if w == {"ref": "self"}: return [("untap_self",)]
+        if w == {"ref": "attackers"}: return [("untap_cr", "attacking")]
+        if w.get("ref") == "that" and (w.get("filter") or {}).get("types") == ["land"] and ctx.last_reveal: return [("untap_last_lands",)]
         if w.get("ref") == "target" and isinstance(w.get("n"), int) and w.get("filter") == {"types": ["land"]}: return [("untap_n_lands", w["n"])]
         if w.get("ref") == "target" and w.get("n", 1) == 1 and (w.get("filter") or {}).get("types") == ["creature"] \
                 and set(w.get("filter") or {}) <= {"types", "controller"}: return [("untap_cr", "one")]
@@ -487,6 +495,7 @@ def keywords(kws):
     out = set()
     for w in kws or []:
         if isinstance(w, dict): continue                      # protection from red...: nothing in a goldfish
+        if w == "riot": out.add("haste"); continue            # riot: the pilot always chooses haste ~policy (the parser's read)
         if w in SILENT and w not in g.COMBAT_KW: continue
         if w not in g.COMBAT_KW and w != "unblockable": refuse("keyword " + w)
         out.add(w)
@@ -550,6 +559,9 @@ def cond(c):
     if k == "you_control_commander": return ("cmdr_out",)
     if k == "hand_exactly": return ("hand_eq", c["n"])
     if k == "x_at_least": return ("x_ge", c["n"])
+    if k == "opponent_state" and re.fullmatch(r"(?:it is |it's )?attacking the player with the most life or tied for (?:the )?most life\.?",
+                                              c["text"].strip().lower()):
+        return ("def_most_life",)
     if k == "library_empty": return ("lib_empty",)
     if k == "amount_at_least": return ("amt", amount(c["amount"], allow_x=False), c["n"])
     if k == "graveyard_at_least" and not c.get("card_types"):
@@ -587,7 +599,7 @@ class Ctx:
         self.interaction = False; self.answer = None; self.kill = set(); self.burn = None
         self.abil = []           # mana abilities: (units, restriction, colored only, cost) as compile_card collects them
         self.last = None; self.kind = None; self.mode_misses = []; self.pre_spell = []; self.spell_interaction = False
-        self.self_land_types = set()
+        self.self_land_types = set(); self.ev = None; self.last_reveal = False
 
 EVENTS = {"upkeep": "upkeep", "end_step": "end", "draw_step": "drawstep", "precombat_main": "main1", "combat_begin": "combat_begin",
           "coin_flip_won": "coin_won", "coin_flip": "coin_flip", "play_land": "play_land",
@@ -595,6 +607,7 @@ EVENTS = {"upkeep": "upkeep", "end_step": "end", "draw_step": "drawstep", "preco
           "opponent_second_spell": "opp_second", "opponent_landfall": "opp_land"}
 
 ctx_types = [set()]                                       # the compiling card's types (event() reads them)
+ctx_ev = [None]                                           # the trigger event being compiled ('that much' after combat damage)
 
 def event(ev):
     """GEF Event -> (engine event, filter); 'etb_self' / 'cast_self' mean the ability goes on k.etb / k.castfx."""
@@ -673,6 +686,8 @@ def keyword_ability(a, ctx):
         if w == "exalted": k.kwn["exalted"] = k.kwn.get("exalted", 0) + 1
         if w == "haste": k.haste = True
         return "read"
+    if w == "riot":                                       # riot: the pilot always chooses haste ~policy
+        k.kw.add("haste"); k.haste = True; return "read"
     if w in NUMBERED:
         k.kwn[w] = k.kwn.get(w, 0) + int(a.get("n") or 1); return "read"
     if w == "equip":
@@ -839,7 +854,8 @@ def static(a, ctx):
         if f.get("types") == ["land"] and set(f) <= {"types", "controller"} and len(abs_) == 1 and abs_[0]["kind"] == "mana" \
                 and abs_[0]["cost"] == {"tap": True} and abs_[0]["produce"] == {"units": ["any"]}:
             k.statics.append(("lands_any",)); return "read"
-        if not all(x["kind"] == "keyword" and (x["keyword"] in COMBAT_KW or x["keyword"] in SILENT) for x in abs_): refuse("granted abilities")
+        if not all(x["kind"] == "keyword" and (x["keyword"] in COMBAT_KW or x["keyword"] in SILENT or x["keyword"] == "riot") for x in abs_):
+            refuse("granted abilities")
         kws = keywords([x["keyword"] for x in abs_ if x["keyword"] not in SILENT])
         if not kws: return "read"                        # shroud, hexproof, protection: nothing in a goldfish
         other, atk = bool(f.pop("another", False)), bool(f.pop("attacking", False))
@@ -935,6 +951,7 @@ def ability(a, ctx):
         return "read"
     if kind == "triggered":
         ev, filt = event(a["event"])
+        ctx.ev = ctx_ev[0] = ev
         tax = False
         fx = a["effects"]
         if ev in ("opp_cast", "opp_draw") and len(fx) == 1 and fx[0]["do"] == "unless_opponent_pays":

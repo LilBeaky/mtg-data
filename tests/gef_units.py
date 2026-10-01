@@ -414,6 +414,33 @@ def _():
     G.do(st.spell, st, None, 0)
     return shapes and life == 20 and big == 2 + 12 and G.extra_turns == 1
 
+@check("step 3: riot (haste, the pilot's pick), Balefire's damage to that player's creatures, the dethrone condition, Animist's untap")
+def _():
+    import argparse, random
+    rw = C("Rhythm of the Wild", S({"static": "grant_abilities", "filter": {"types": ["creature"], "nontoken": True, "controller": "you"},
+                                     "abilities": [A("keyword", keyword="riot")]}))
+    bd = C("Balefire Dragon", TR({"on": "combat_damage_to_player", "subject": "self"},
+           {"do": "damage", "n": {"count": "that_much"}, "to": "each_creature", "source": "self", "filter": {"controller": "that_player"}}))
+    sc = C("Scourge of the Throne", TR({"on": "attacks", "subject": "self", "first_each_turn": True}, {"do": "extra_combat", "n": 1},
+           **{"if": {"if": "opponent_state", "text": "it is attacking the player with the most life or tied for most life"}}))
+    aa = C("Animist's Awakening", SP({"do": "look", "n": "X", "take": "all", "filter": {"types": ["land"]}, "to": "battlefield_tapped", "rest": "bottom"}),
+           SP({"do": "if", "cond": {"if": "graveyard_at_least", "n": 2, "filter": {"types": ["instant", "sorcery"]}},
+               "then": [{"do": "untap", "what": {"ref": "that", "filter": {"types": ["land"]}}}]}))
+    shapes = rw.statics[0][4] == frozenset({"haste"}) and rw.statics[0][1].get("nontoken") and bd.trig[0][2][0][3] == ("ctx_dmg",) \
+        and bd.trig[0][2][0][6] == "that" and sc.trig[0][2][0][1] == ("def_most_life",) and sc.trig[0][3] is True \
+        and aa.spell[1] == ("cond", ("gy_ge", 2, "instant"), [("untap_last_lands",)])
+    forest = g.compile_card(IDX["forest"], g.ALL5)
+    sim = g.Sim(["Forest"], [], argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False), [], {"Forest": forest}, g.ALL5)
+    G = g.Game(sim, [], [forest] * 30, random.Random(1)); G.turn, G.phase, G.turns_left, G.cmd = 3, 3, 3, []
+    G.perms = []; G._st = None
+    G.opps[0]["board"] = [{"name": "2/2", "p": 2, "t": 2, "kw": set()}, {"name": "6/6", "p": 6, "t": 6, "kw": set()}]
+    G.opps[1]["board"] = [{"name": "1/1", "p": 1, "t": 1, "kw": set()}]
+    G.ctx_opp, G.ctx_dmg = 0, 4
+    G.do(bd.trig[0][2], bd, None, 0)
+    left0 = [b["name"] for b in G.opps[0]["board"] if not b.get("dead")]
+    left1 = [b["name"] for b in G.opps[1]["board"] if not b.get("dead")]
+    return shapes and left0 == ["6/6"] and left1 == ["1/1"]
+
 @check("status: unexpressible out_of_scope is never a miss; format_gap is; a refused ability leaves the rest read")
 def _():
     v = C("Counterbalance", A("unexpressible", reason="opponents' spells", scope="out_of_scope"))

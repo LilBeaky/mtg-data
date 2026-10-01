@@ -37,7 +37,6 @@
  "Reanimate": "EQUIVALENT: the parser's Target carries an approximation note ('only your own graveyard is modeled'); same search, same games.",
  "Reckless Handling": "ENGINE: random discard; the parser discards the worst card (PARSER-APPROX).",
  "Requisition Raid": "FORMAT-GAP: spree modes with their own costs; the parser holds both removal modes.",
- "Rhythm of the Wild": "PARSER-APPROX: the parser reads riot as haste; GEF grants riot, which the engine lacks (ENGINE).",
  "Sakura-Tribe Elder": "PARSER-APPROX: the parser reads 'sacrifice: search a basic land' as an ETB search; GEF compiles the sacrifice activation. Same games in the probe.",
  "Savage Ventmaw": "ENGINE: the attack mana persists through phases (a gap part), so the trigger is refused; the parser adds plain mana (PARSER-APPROX). Same games.",
  "Seize the Day": "PARSER-APPROX: the parser drops 'untap target creature' and reads the extra combat; GEF untaps your best tapped creature too (untap_cr 'one', T3 step 3).",
@@ -94,5 +93,8 @@
  "Show and Tell": "GEF-MORE: put your best permanent from hand onto the battlefield (engine put_hand, T3 step 3; the opponents' side is out of scope); the parser leaves it blank.",
  "Nexus of Fate": "GEF-MORE + ENGINE: the extra turn reads (engine extra turns, T3 step 3); shuffling it back into the library from anywhere is refused (graveyard_replacement). The parser leaves it blank.",
  "Stitch in Time": "GEF-MORE: flip a coin, win an extra turn (engine flips + extra turns, T3 step 3); the parser leaves it blank.",
- "Stormscale Scion": "GEF-MORE: storm on a permanent spell makes token copies (engine storm, T3 step 3); the parser leaves storm unread."
+ "Stormscale Scion": "GEF-MORE: storm on a permanent spell makes token copies (engine storm, T3 step 3); the parser leaves storm unread.",
+ "Animist's Awakening": "GEF-MORE: spell mastery untaps the lands the reveal put onto the battlefield (engine untap_last_lands, T3 step 3); the parser leaves that line unread.",
+ "Balefire Dragon": "GEF-MORE: its combat damage is dealt to each creature the damaged player controls (engine kill_blk 'that', toughness up to the damage, T3 step 3); the parser leaves it unread.",
+ "Scourge of the Throne": "GEF-MORE: attacking the player with the most life the first time each turn untaps the attackers for another combat (engine cond def_most_life, T3 step 3); the parser leaves it unread."
 }
