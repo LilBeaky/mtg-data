@@ -1,6 +1,6 @@
 # Launch Fishpond — intake form
 
-When the user says **"Launch Fishpond"**, reply with the form below (fenced, ready to copy), wait for it back, then: clone/setup, save the list with `python3 -m fishpond save LIST --name "NAME"` (re-save if it changed; write bracket/plan/key into its header), then (`python3 -m fishpond setup --jdk`), run `deck` on every list and report problems before running, give a time estimate (about 2-3 min per game per CPU with lookahead), run, and report per docs/FISHPOND.md "Reading the report". Blank fields take the default in brackets.
+When the user says **"Launch Fishpond"**, reply with the form below (fenced, ready to copy), wait for it back, then: clone/setup, save the list with `python3 -m fishpond save LIST --name "NAME"` (re-save if it changed; write bracket/plan/key into its header), then (`python3 -m fishpond setup --jdk`), run `deck` on every list and report problems before running, give a time estimate (about 2-3 min per game per CPU with lookahead), run, and report (on a 1-CPU sandbox, run 10 games per pod first and report; then `run --resume RUN_DIR --trials 10` to add more; if a session ends mid-run, `run --resume RUN_DIR` finishes it) per docs/FISHPOND.md "Reading the report". Blank fields take the default in brackets.
 
 ```
 FISHPOND RUN

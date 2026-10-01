@@ -139,7 +139,7 @@ def parse_game(lines, seats, hero=1):
     cmd_casts, cmd_res = [], []
     cmd_out = False
     dsrc, trig_src, act_src = Counter(), Counter(), Counter()
-    kept, mulls = {}, Counter()
+    kept, mulls, mull_to = {}, Counter(), {}      # Forge logs "kept a hand of 7" even after a mulligan; the size is in "mulliganed down to N"
     stack_casts = []                    # hero casts not yet resolved, in order: [hero turn, name]
     dummy_acts = []
     outcomes, result_ms, stopped, outcome_lines = {}, None, False, []
@@ -176,7 +176,7 @@ def parse_game(lines, seats, hero=1):
         m = RX_KEPT.match(line)
         if m: kept[int(m.group(1))] = int(m.group(2)); continue
         m = RX_MULL.search(line)
-        if m: mulls[int(m.group(1))] += 1; continue
+        if m: mulls[int(m.group(1))] += 1; mull_to[int(m.group(1))] = int(m.group(2)); continue
         m = RX_LAND.match(line)
         if m:
             k, name, cid = int(m.group(1)), m.group(2), int(m.group(3))
@@ -350,7 +350,7 @@ def parse_game(lines, seats, hero=1):
         "loss": ({"why": hero_death["why"], "route": hero_death["route"], "by": hero_death["by"], "src": hero_death["src"], "t": hero_death["t"],
                   "last_cast": hero_death["last_cast"]} if hero_death else None),
         "end_t": end_t, "hero_turns": H, "global_turns": gturn, "order": order, "first": first,
-        "kept": kept.get(hero), "mulligans": mulls.get(hero, 0), "kept_all": kept,
+        "kept": mull_to.get(hero, kept.get(hero)), "mulligans": mulls.get(hero, 0), "kept_all": kept,
         "deaths": deaths,
         "turns": [dict(turns[t], t=t) for t in sorted(turns)],
         "first_cast": first_cast, "first_in": first_in, "casts": dict(cast_n),

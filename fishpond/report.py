@@ -74,6 +74,11 @@ def print_header(meta, records, ex):
     if wt or lt:
         print("game length in your turns: " + (f"wins P10 T{sr.q(wt, .1)} / median T{sr.q(wt, .5)} / P90 T{sr.q(wt, .9)}" if wt else "no wins")
               + (f" | losses P10 T{sr.q(lt, .1)} / median T{sr.q(lt, .5)} / P90 T{sr.q(lt, .9)}" if lt else ""))
+    mg = [r_.get("mulligans", 0) for r_ in records]
+    if mg:
+        ks = Counter(r_.get("kept") or 7 for r_ in records)
+        print(f"mulligans: took at least one in {share(sum(1 for x in mg if x), n)} of games (the first is free in multiplayer, rule "
+              f"103.5c; Forge's own keep logic); kept " + ", ".join(f"{k}: {share(v, n)}" for k, v in sorted(ks.items(), reverse=True)))
     order = ex["order"]
     if order:
         print("turn order: " + " | ".join(f"{('1st', '2nd', '3rd', '4th')[o - 1]} {v[0]} games (won {share(v[1], v[0])})"

@@ -4,6 +4,8 @@
   python3 -m fishpond deck DECK [--opp SPEC]...    check a deck (and opponents) against Forge: unknown cards, AI flags
   python3 -m fishpond save DECK --name "Ians Zur Cycling"   store the list in decks/ (.txt source + Forge .dck)
   python3 -m fishpond run DECK [options]           play DECK in 4-player pods on Forge and report (goldfish's layout + more)
+  python3 -m fishpond run --resume RUN_DIR [--trials N]   finish a cut-off run (unfinished games replay from their seeds)
+                                                    and/or add N more games to it; results accumulate in the same run
   python3 -m fishpond report RUN_DIR [--reparse]   reprint a saved run's report (--reparse: parse its logs again)
   python3 -m fishpond show RUN_DIR GAME [--log]    one game's parsed record (and its Forge log) for hand audits
 
@@ -86,6 +88,9 @@ def cmd_save(args):
     print(f"saved decks/{stem}.txt and decks/{stem}.dck ({d.label}, {d.size} cards, bracket {d.bracket or '?'})")
 
 def cmd_run(args):
+    if args.resume: return cmd_resume(args)
+    if not args.deck: sys.exit("fishpond: run needs a deck file (or --resume RUN_DIR)")
+    args.trials = 20 if args.trials is None else args.trials
     if args.trials < 1: sys.exit("fishpond: --trials must be at least 1")
     if args.turns < 1: sys.exit("fishpond: --turns must be at least 1")
     forge.ensure(quiet=args.quiet)
@@ -118,19 +123,56 @@ def cmd_run(args):
     if not args.quiet:
         print(f"fishpond: {len(builds)} build(s) x {args.trials} games, {jobs} JVM(s), engine {engine}; saving to {run_dir}",
               file=sys.stderr)
+    meta = {"deck": _rel(args.deck) if os.path.exists(args.deck) else args.deck, "commander": hero.label,
+            "cards": hero.size, "trials": args.trials, "seed": args.seed, "turns": args.turns, "engine": engine, "cap": args.cap,
+            "timeout": args.timeout, "forge": forge.FORGE_VERSION, "jobs": jobs, "wall": 0, "clock": args.clock, "hero_ai": args.ai,
+            "opp_ai": opp_ai, "sim": args.sim if engine == "harness" else "off", "opp_sim": args.opp_sim if engine == "harness" else "off",
+            "track": hero.meta.get("track", []), "extra_track": args.track, "key": _keys(hero),
+            "variants": args.variant, "opp": _opp_specs(args), "fixed_pod": args.fixed_pod, "run_dir": _rel(run_dir),
+            "commander_opt": args.commander, "complete": False}
+    runner.save(run_dir, meta, [])                  # written first: a cut-off run can be reported on and resumed
     if engine == "harness":
+        if not args.quiet: print(f"fishpond: if this session ends early: python3 -m fishpond run --resume {_rel(run_dir)}", file=sys.stderr)
         records, wall = runner.run_harness(builds, pods, args.trials, args.seed, args.cap, args.timeout, jobs, run_dir, hero_ai=args.ai,
                                            opp_ai=opp_ai, quiet=args.quiet, hero_sim=args.sim, opp_sim=args.opp_sim, keys=_keys(hero))
     else:
         records, wall = runner.run_cli(builds, pods, args.trials, args.seed, args.clock, jobs, run_dir, hero_ai=args.ai,
                                        opp_ai=opp_ai, quiet=args.quiet)
-    meta = {"deck": os.path.relpath(args.deck, dk.REPO) if os.path.exists(args.deck) else args.deck, "commander": hero.label,
-            "cards": hero.size, "trials": args.trials, "seed": args.seed, "turns": args.turns, "engine": engine, "cap": args.cap,
-            "forge": forge.FORGE_VERSION, "jobs": jobs, "wall": wall, "clock": args.clock, "hero_ai": args.ai, "opp_ai": opp_ai,
-            "sim": args.sim if engine == "harness" else "off", "opp_sim": args.opp_sim if engine == "harness" else "off",
-            "track": hero.meta.get("track", []), "extra_track": args.track, "key": _keys(hero),
-            "variants": args.variant, "opp": _opp_specs(args), "fixed_pod": args.fixed_pod, "run_dir": _rel(run_dir),
-            "commander_opt": args.commander}
+    meta.update(wall=wall, complete=True)
+    runner.save(run_dir, meta, records)
+    _report(meta, records, builds, args.json, run_dir)
+
+def _pods_from_meta(meta, idx):
+    fixed, pool = dk.seat_plan(meta.get("opp") or [])
+    return runner.Pods(fixed, pool, meta.get("fixed_pod"), idx=idx)
+
+def cmd_resume(args):
+    """Finish a cut-off harness run (replaying unfinished games from their seeds) and/or add --trials more games to it."""
+    run_dir = args.resume
+    meta = json.load(open(os.path.join(run_dir, "meta.json"), encoding="utf-8"))
+    if meta.get("engine") != "harness": sys.exit("fishpond: --resume needs a harness run (the cli engine chains games and can't resume)")
+    plan = runner.load_plan(run_dir)
+    if plan is None: sys.exit(f"fishpond: {run_dir} has no plan.json (made before resume support); start a new run")
+    idx = forge.index()
+    builds, pods = _builds_from_meta(meta), _pods_from_meta(meta, idx)
+    records, missing = runner.collect(run_dir, plan, builds, pods, meta.get("hero_ai", "Default"), meta.get("opp_ai", ["Default"] * 3))
+    new = []
+    if args.trials:
+        first_game, first_id = max(e["game"] for e in plan) + 1, max(e["id"] for e in plan) + 1
+        new = runner.plan_harness(builds, pods, first_game, args.trials, meta["seed"], meta["cap"], meta.get("timeout", args.timeout), run_dir,
+                                  meta.get("hero_ai", "Default"), meta.get("opp_ai", ["Default"] * 3), meta.get("sim", "hybrid"),
+                                  meta.get("opp_sim", "hybrid"), meta.get("key") or [], first_id)
+        plan += new
+        runner.save_plan(run_dir, plan)
+    games_done = len({(r["build"], r["game"]) for r in records})
+    print(f"fishpond: {run_dir}: {games_done} game(s) finished, {len(missing)} unfinished to replay, {len(new)} new", file=sys.stderr)
+    todo = missing + new
+    import glob
+    session = f"s{len({os.path.basename(f).split('_')[1] for f in glob.glob(os.path.join(run_dir, 'logs', 'plan_*_*.tsv'))}) + 1}"
+    wall = runner.execute(todo, args.jobs or runner.default_jobs(), run_dir, session, args.quiet)
+    records, missing = runner.collect(run_dir, plan, builds, pods, meta.get("hero_ai", "Default"), meta.get("opp_ai", ["Default"] * 3))
+    meta.update(wall=meta.get("wall", 0) + wall, trials=len({e["game"] for e in plan}), complete=not missing,
+                jobs=args.jobs or runner.default_jobs())
     runner.save(run_dir, meta, records)
     _report(meta, records, builds, args.json, run_dir)
 
@@ -211,6 +253,13 @@ def cmd_report(args):
     meta, records = runner.load_run(args.run)
     if args.turns: meta["turns"] = args.turns
     builds = _builds_from_meta(meta)
+    plan = runner.load_plan(args.run)
+    if plan is not None and not meta.get("complete", True):
+        records, missing = runner.collect(args.run, plan, builds, _pods_from_meta(meta, forge.index()),
+                                          meta.get("hero_ai", "Default"), meta.get("opp_ai", ["Default"] * 3))
+        print(f"PARTIAL RUN: {len(plan) - len(missing)} of {len(plan)} planned games finished so far. Finish it with: "
+              f"python3 -m fishpond run --resume {args.run}\n")
+        if not records: return
     if args.reparse: reparse(args.run, meta, records, builds)
     _report(meta, records, builds, args.json, args.run)
 
@@ -247,8 +296,9 @@ def main(argv=None):
     d.add_argument("--commander")
     v = sub.add_parser("save"); v.add_argument("deck"); v.add_argument("--name", required=True); v.add_argument("--commander")
     r = sub.add_parser("run")
-    r.add_argument("deck")
-    r.add_argument("--trials", "--games", type=int, default=20); r.add_argument("--seed", type=int, default=1)
+    r.add_argument("deck", nargs="?")
+    r.add_argument("--resume", metavar="RUN_DIR", help="finish a cut-off harness run and/or add --trials more games to it")
+    r.add_argument("--trials", "--games", type=int, default=None); r.add_argument("--seed", type=int, default=1)
     r.add_argument("--turns", type=int, default=10); r.add_argument("--opp", action="append"); r.add_argument("--opp-set")
     r.add_argument("--fixed-pod", action="store_true"); r.add_argument("--ai", default="Default"); r.add_argument("--opp-ai")
     r.add_argument("--sim", choices=runner.SIM_MODES, default="hybrid"); r.add_argument("--opp-sim", choices=runner.SIM_MODES, default="hybrid")

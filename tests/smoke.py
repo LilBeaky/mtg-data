@@ -293,6 +293,9 @@ def fishpond_live():
                                                              "--cap", "3", "--turns", "3", "--jobs", "2", "--quiet", "--out", os.path.join(TMP, "fp")],
              must=["=== FISHPOND: Chulane, Teller of Tales", "vacuum: 3 dummies", "dummies: never cast or attacked", "## base: combat and damage"],
              must_not=["WARNING"]),
+        dict(name="fishpond resume (+1 game, live Forge)", cmd=["-m", "fishpond", "run", "--resume", os.path.join(TMP, "fp"), "--trials", "1",
+                                                                "--jobs", "1", "--quiet"],
+             must=["2 game(s) finished, 0 unfinished to replay, 1 new", "| 3 games |", "mulligans:"]),
     ]
 
 def run(c):

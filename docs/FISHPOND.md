@@ -10,6 +10,8 @@ python3 -m fishpond deck DECK [--opp SPEC]...          # check the list against 
 python3 -m fishpond run DECK [--trials 20] [--seed 1] [--turns 10] [--cap 20] [--opp SPEC]... [--opp-set FILE] [--fixed-pod]
     [--ai PROFILE] [--opp-ai A,B,C] [--sim off|hybrid|full] [--opp-sim off|hybrid|full] [--track "Label=REGEX"] [--variant "Label|Out=>In;Out=>In"] [--commander NAME]
     [--engine auto|harness|cli] [--jobs N] [--timeout S] [--clock S] [--out DIR] [--json]
+python3 -m fishpond run --resume RUN_DIR [--trials N] [--jobs N]   # finish a cut-off run and/or add N games to it
+python3 -m fishpond save LIST --name "Ians Zur Cycling"              # store a list in decks/ (.txt + Forge .dck)
 python3 -m fishpond report RUN_DIR [--reparse] [--turns N] [--json]
 python3 -m fishpond show RUN_DIR GAME [--build LABEL] [--log] [--phases]
 ```
@@ -52,7 +54,7 @@ Each game record says which mode every seat actually ran (checked on the live co
 
 ## Reading the report
 
-**Header.** Win rate with a 95% interval, losses, unfinished games and why; **wins by route** (combat, noncombat, commander damage, poison, alternate win: CARD); **losses by reason** with the killing seat (decked, life, poison, commander damage, an opponent's alternate win); for decking losses, the last spell the user's deck cast; game length in the user's turns for wins and losses; turn order (1st to 4th) with the win rate in each; pilot tags; the dummy check.
+**Header.** Lookahead mode (with pauses and crash replays), game time, win rate with a 95% interval, mulligans (the first is free in multiplayer; Forge's own keep logic), losses, unfinished games and why; **wins by route** (combat, noncombat, commander damage, poison, alternate win: CARD); **losses by reason** with the killing seat (decked, life, poison, commander damage, an opponent's alternate win); for decking losses, the last spell the user's deck cast; game length in the user's turns for wins and losses; turn order (1st to 4th) with the win rate in each; pilot tags; the dummy check.
 
 **Pilot tags** separate rules outcomes from pilot decisions. Always report them next to the win rate:
 - `self_decked`: drew from an empty library.
@@ -77,6 +79,14 @@ On the harness the card-flow table also has `discarded` (hand to graveyard, cycl
 ## Hand audits
 
 `show RUN_DIR GAME` prints a game's parsed record and per-turn summary (with snapshots on the harness); `--log` adds Forge's log for that game (`--phases` keeps phase and mana lines). Audit one game per new deck, especially games involving the key cards, before trusting the numbers. Suspected Forge bugs go in `docs/FORGE_ISSUES.md` (card, Forge version, log excerpt), never worked around silently.
+
+## Long runs: resume
+
+With lookahead a game costs 2-3 CPU-minutes, so a full read can outlast a session. Harness runs are resumable: the run folder gets `meta.json` and `plan.json` before the first game, each worker writes every game to its log the moment it ends, and results are always collected from all logs. If a session ends mid-run:
+- `report RUN_DIR` prints the finished games as a PARTIAL RUN with the resume command;
+- `run --resume RUN_DIR` replays the unfinished games from their seeds (identical games) and finalizes the run;
+- `run --resume RUN_DIR --trials N` also adds N new games (the next seeds, same pods and settings), so a big read can be built 10 games at a time.
+On a 1-CPU sandbox, plan reads in chunks: start with 10 games, report, then add more. Wall time counts the sessions that finished.
 
 ## Runs and game records
 

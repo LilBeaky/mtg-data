@@ -134,76 +134,114 @@ def harness_classes(quiet=False):
 
 SIM_MODES = ("off", "hybrid", "full")
 
-def run_harness(builds, pods, games, seed, cap, timeout, jobs, run_dir, hero_ai="Default", opp_ai=("Default",) * 3, quiet=False,
-                hero_sim="hybrid", opp_sim="hybrid", keys=()):
-    """Phase B: every game reseeded (game i uses seed*1000003+i, so any game replays alone and --jobs never changes
-    results), stopped at the end of your turn `cap` or when you've lost (real opponents left: played out to get the pod
-    result, up to 4*cap more turns), with snapshots at your main phase and cleanup."""
+def _dck_name(d, b=None):
+    """Stable .dck file name for a seat across sessions of one run (resume needs the same names)."""
+    import hashlib
+    if b is not None: return f"hero{b}_{d.tag}.dck"
+    if d.kind == "dummy": return "dummy.dck"
+    return f"opp_{d.tag}_{hashlib.sha1(os.path.abspath(d.path).encode()).hexdigest()[:6]}.dck"
+
+def plan_harness(builds, pods, first_game, games, seed, cap, timeout, run_dir, hero_ai="Default", opp_ai=("Default",) * 3,
+                 hero_sim="hybrid", opp_sim="hybrid", keys=(), first_id=0):
+    """Plan entries for games first_game..first_game+games-1 (every build per game, same seed and pod), writing their .dck files.
+    Entries are JSON-safe (opponents as [kind, path]) so plan.json can rebuild them for --resume."""
+    deck_dir = os.path.join(run_dir, "decks"); os.makedirs(deck_dir, exist_ok=True)
+    def dck(d, b=None):
+        fn = _dck_name(d, b)
+        fp = os.path.join(deck_dir, fn)
+        if not os.path.exists(fp):
+            with open(fp, "w", encoding="utf-8") as fh: fh.write(d.dck(d.tag))
+        return fn
+    plan = []
+    for i in range(first_game, first_game + games):
+        s = game_seed(seed, i)
+        opps = pods.seats(s)
+        of = [dck(d) for d in opps]
+        play_out = int(any(d.kind != "dummy" for d in opps))
+        for b, (label, hero) in enumerate(builds):
+            gid = first_id + len(plan)
+            sims = [hero_sim] + [opp_sim if d.kind != "dummy" else "off" for d in opps]     # a dummy has nothing to decide
+            kl = "|".join(hero.forge.get(k, k) for k in keys) or "-"
+            line = "\t".join(map(str, [gid, s, cap, timeout, hero.identity or "C", play_out, dck(hero, b), *of,
+                                        ",".join([hero_ai, *opp_ai]), ",".join(sims), kl]))
+            plan.append({"id": gid, "build": b, "label": label, "game": i, "seed": s,
+                         "opps": [[d.kind, os.path.abspath(d.path) if d.path else None] for d in opps], "line": line})
+    return plan
+
+def save_plan(run_dir, plan):
+    with open(os.path.join(run_dir, "plan.json"), "w", encoding="utf-8") as fh: json.dump(plan, fh)
+
+def load_plan(run_dir):
+    p = os.path.join(run_dir, "plan.json")
+    return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else None
+
+def execute(entries, jobs, run_dir, session, quiet=False):
+    """Run plan entries on `jobs` harness JVMs; each writes logs/worker_<session>_<j>.log, one game at a time (a cut-off
+    session keeps every finished game). Returns wall seconds."""
+    if not entries: return 0.0
     forge.ensure(quiet=quiet)
     classes = harness_classes(quiet)
     deck_dir = os.path.join(run_dir, "decks"); log_dir = os.path.join(run_dir, "logs")
-    os.makedirs(deck_dir, exist_ok=True); os.makedirs(log_dir, exist_ok=True)
-    files = {}
-    def dck_file(d, stem):
-        if id(d) not in files:
-            fn = f"{stem}.dck"
-            with open(os.path.join(deck_dir, fn), "w", encoding="utf-8") as fh: fh.write(d.dck(d.tag))
-            files[id(d)] = fn
-        return files[id(d)]
-    plan = []
-    for i in range(games):                          # builds interleaved per game: paired games land in the same worker
-        s = game_seed(seed, i)
-        opps = pods.seats(s)
-        of = [dck_file(d, f"opp{len(files)}_{d.tag}") for d in opps]
-        play_out = int(any(d.kind != "dummy" for d in opps))
-        for b, (label, hero) in enumerate(builds):
-            hf = dck_file(hero, f"hero{b}_{hero.tag}")
-            gid = len(plan)
-            sims = [hero_sim] + [opp_sim if d.kind != "dummy" else "off" for d in opps]     # a dummy has nothing to decide
-            kl = "|".join(hero.forge.get(k, k) for k in keys) or "-"
-            line = "\t".join(map(str, [gid, s, cap, timeout, hero.identity or "C", play_out, hf, *of, ",".join([hero_ai, *opp_ai]),
-                                        ",".join(sims), kl]))
-            plan.append({"id": gid, "build": b, "label": label, "game": i, "seed": s, "hero": hero, "opps": opps, "line": line})
-    jobs = max(1, min(jobs, len(plan)))
-    chunks = [plan[j::jobs] for j in range(jobs)] if len(builds) == 1 else \
-        [[p for k, p in enumerate(plan) if (k // len(builds)) % jobs == j] for j in range(jobs)]
-    procs = []
-    t0 = time.time()
+    os.makedirs(log_dir, exist_ok=True)
+    nb = len({e["build"] for e in entries})
+    jobs = max(1, min(jobs, len(entries)))
+    chunks = [[e for k, e in enumerate(entries) if (k // nb) % jobs == j] for j in range(jobs)]   # paired builds share a worker
+    procs, t0 = [], time.time()
     for j, chunk in enumerate(chunks):
-        pf = os.path.join(log_dir, f"plan_{j}.tsv")
-        with open(pf, "w", encoding="utf-8") as fh: fh.write("\n".join(p["line"] for p in chunk) + "\n")
-        lf = os.path.join(log_dir, f"worker_{j}.log")
+        pf = os.path.join(log_dir, f"plan_{session}_{j}.tsv")
+        with open(pf, "w", encoding="utf-8") as fh: fh.write("\n".join(e["line"] for e in chunk) + "\n")
+        lf = os.path.join(log_dir, f"worker_{session}_{j}.log")
         cmd = ["java", f"-Xmx{xmx_for(jobs)}m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
                "-cp", os.pathsep.join([forge.jar(), classes]), "ForgeRunner", os.path.join(deck_dir, ""), pf]
         fh = open(lf, "w", encoding="utf-8")
-        procs.append((subprocess.Popen(cmd, cwd=forge.home(), stdout=fh, stderr=subprocess.STDOUT), fh, lf, chunk))
+        procs.append((subprocess.Popen(cmd, cwd=forge.home(), stdout=fh, stderr=subprocess.STDOUT), fh, lf))
     last = -1
     while any(p.poll() is None for p, *_ in procs):
         time.sleep(3)
-        done = sum(open(lf, encoding="utf-8", errors="replace").read().count("\nGame Result:") for _, _, lf, _ in procs)
+        done = sum(open(lf, encoding="utf-8", errors="replace").read().count("\nGame Result:") for _, _, lf in procs)
         if not quiet and done != last:
-            print(f"fishpond: {done}/{len(plan)} games ({time.time() - t0:.0f}s)", file=sys.stderr, flush=True); last = done
-    for p, fh, lf, chunk in procs: fh.close()
-    by_id = {p["id"]: p for p in plan}
-    records = []
-    for _, _, lf, chunk in procs:
+            print(f"fishpond: {done}/{len(entries)} games this session ({time.time() - t0:.0f}s)", file=sys.stderr, flush=True); last = done
+    for p, fh, lf in procs: fh.close()
+    return time.time() - t0
+
+def collect(run_dir, plan, builds, pods, hero_ai="Default", opp_ai=("Default",) * 3):
+    """Every finished game of the run, from all worker logs (any session), matched to plan entries by game id.
+    Returns (records sorted by build and game, plan entries with no finished game)."""
+    import glob
+    by_id = {e["id"]: e for e in plan}
+    heroes = {label: d for label, d in builds}
+    done = {}
+    for lf in sorted(glob.glob(os.path.join(run_dir, "logs", "worker_*.log"))):
         for block in lp.split_games(open(lf, encoding="utf-8", errors="replace").read()):
             snaps, end = lp.harness_lines(block)
-            if not end or end.get("id") not in by_id:
-                print(f"fishpond: warning: a game in {lf} has no #FP-END line; skipped", file=sys.stderr); continue
-            p = by_id.pop(end["id"])
-            r = lp.parse_game([l for l in block if not l.startswith("#FP")], seat_objs(p["hero"], p["opps"]))
-            r.update({"v": 1, "engine": "harness", "forge": forge.FORGE_VERSION, "build": p["label"], "game": p["game"],
-                      "seed": p["seed"], "pod": pod_info(p["opps"], opp_ai), "hero_ai": hero_ai, "snaps": snaps, "stop": end.get("stop"),
+            if not end or end.get("id") not in by_id or end["id"] in done: continue
+            e = by_id[end["id"]]
+            opps = [pods.deck(k, p) for k, p in e["opps"]]
+            r = lp.parse_game([l for l in block if not l.startswith("#FP")], seat_objs(heroes[e["label"]], opps))
+            r.update({"v": 1, "engine": "harness", "forge": forge.FORGE_VERSION, "build": e["label"], "game": e["game"],
+                      "seed": e["seed"], "pod": pod_info(opps, opp_ai), "hero_ai": hero_ai, "snaps": snaps, "stop": end.get("stop"),
                       "end": end, "log": os.path.relpath(lf, run_dir), "log_id": end["id"], "tutors": end.get("tutors", []),
                       "sim": end.get("sim")})
             if end.get("stop") not in ("natural", "hero_lost") and r["result"] != "loss": r["result"], r["route"] = "draw", None
             r["stopped"] = end.get("stop") in ("timeout",)
-            records.append(r)
-    for p in by_id.values():
-        print(f"fishpond: warning: game {p['game']} ({p['label']}) produced no result", file=sys.stderr)
-    records.sort(key=lambda r: ([b for b, _ in builds].index(r["build"]), r["game"]))
-    return records, time.time() - t0
+            done[end["id"]] = r
+    labels = [b for b, _ in builds]
+    records = sorted(done.values(), key=lambda r: (labels.index(r["build"]), r["game"]))
+    missing = [e for e in plan if e["id"] not in done]
+    return records, missing
+
+def run_harness(builds, pods, games, seed, cap, timeout, jobs, run_dir, hero_ai="Default", opp_ai=("Default",) * 3, quiet=False,
+                hero_sim="hybrid", opp_sim="hybrid", keys=()):
+    """Phase B, one session: plan (saved to plan.json first, so a cut-off run can be resumed), execute, collect.
+    Every game is reseeded (game i uses seed*1000003+i: any game replays alone and --jobs never changes results), stopped
+    at the end of your turn `cap` or when you've lost (real opponents left: played out for the pod result), with
+    snapshots at your main phase and cleanup."""
+    plan = plan_harness(builds, pods, 0, games, seed, cap, timeout, run_dir, hero_ai, opp_ai, hero_sim, opp_sim, keys)
+    save_plan(run_dir, plan)
+    wall = execute(plan, jobs, run_dir, "s1", quiet)
+    records, missing = collect(run_dir, plan, builds, pods, hero_ai, opp_ai)
+    for e in missing: print(f"fishpond: warning: game {e['game']} ({e['label']}) produced no result", file=sys.stderr)
+    return records, wall
 
 def save(run_dir, meta, records):
     with open(os.path.join(run_dir, "games.jsonl"), "w", encoding="utf-8") as fh:
@@ -212,5 +250,6 @@ def save(run_dir, meta, records):
 
 def load_run(run_dir):
     meta = json.load(open(os.path.join(run_dir, "meta.json"), encoding="utf-8"))
-    records = [json.loads(l) for l in open(os.path.join(run_dir, "games.jsonl"), encoding="utf-8")]
+    gp = os.path.join(run_dir, "games.jsonl")
+    records = [json.loads(l) for l in open(gp, encoding="utf-8")] if os.path.exists(gp) else []
     return meta, records

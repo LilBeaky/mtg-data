@@ -214,7 +214,7 @@ Phase A/B acceptance, 2026-10-01, Claude Code container (4 CPUs), Forge 2.0.15, 
 Fishpond works end to end but isn't "set". In priority order:
 
 1. **Run it where Ian runs it.** Everything so far ran in a 4-CPU Claude Code container. The chat sandbox has 1 CPU, ~4 GB and no javac by default: test `setup --jdk`, memory with lookahead, and a real "Launch Fishpond" form round trip there.
-2. **Resumable runs** (`run --resume RUN_DIR --trials N` adds games with the next seeds to a saved run). With lookahead a game is 2-3 CPU-minutes, so a 40-game read is about 2 hours on 1 CPU: runs must survive across sessions and accumulate.
+2. ~~Resumable runs~~ Done 2026-10-01: `run --resume RUN_DIR [--trials N]` replays cut-off games from their seeds and adds new ones; `report` shows partial runs. Mulligan line added to the report.
 3. **Re-baseline with lookahead on.** The acceptance numbers (Chulane vacuum 26%, 0/20 into the gauntlet) were measured with lookahead off. Re-run Chulane, and each of Yusri, Zur, Klauth as the hero (vacuum + gauntlet), which also completes the 3-deck goldfish cross-check.
 4. **A headline block** at the top of the report (5-6 lines: win rate and interval, how it wins, how it loses, pilot-error share, the user's field-9 questions answered), with the tables below as detail. Combined report when a run uses both a vacuum and a gauntlet pod.
 5. **Validate `--variant` at scale** (code path exists, never run on a real swap question).
