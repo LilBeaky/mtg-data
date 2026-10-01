@@ -204,3 +204,41 @@ So GEF on today's engine reads fewer of the deck cards than the parser (53%). Th
 - then coin flips with the coin-flip-won event (4).
 
 Several of those are adapter work on constructs the engine already has, not new engine features. 70 deck cards are blocked only by refusals.
+
+## T3 step 3: engine features, in the adapter's order (session 5, in progress)
+
+Six slices, each with unit checks (`tests/gef_units.py`, now 44), the parity causes updated, and units, sweeps and smoke green before its commit:
+1. Enters tapped unless you control N lands of a kind (battle lands, Mystic Sanctuary); recursion to the library top; random discard; flicker of your own permanent.
+2. if/else; the condition "you control a commander"; untap one target creature; abilities activated only during your turn.
+3. Coin flips: flip N or until you lose, with win/lose effects; won-flip triggers; Krark's Thumb (a 3-in-4 win); Edgar (the first flips each turn win); Yusri's chosen number and free casting. The number chosen is pilot policy: the highest that keeps life 5 above the floor.
+4. Storm; your own spell limits (Rule of Law, Deafening Silence bind the pilot); skip your draw step.
+5. Nth from the top of the library; the counts greatest toughness, this creature's toughness and spells cast this turn; "exactly N cards in hand".
+6. Flicker until the next end step, and of all your creatures (Ghostway held as protection); cycle triggers; "when you cycle ~" as a cycling rider.
+
+These engine features run only from GEF: the regex parser never produces them, so the parser path and its headline (44.3%) are unchanged.
+
+**Where the decks stand** (fully read today, measured by the adapter; 0 audit-wrong reads among them):
+
+| Deck | Parser | GEF, after step 2 | GEF, now | Plan's step-3 target |
+|---|---|---|---|---|
+| Klauth | 50.7% (0 wrong) | 37.0% | **41.1%** | ~64% |
+| Yusri | 52.2% (4 wrong) | 43.5% | **59.4%** | ~67% |
+| Zur | 58.8% (5 wrong) | 52.9% | **72.1%** | ~75% |
+
+GEF now reads more of Yusri and Zur than the parser, and it reads nothing wrong. **The exit target isn't reached yet,** and Klauth is the gap.
+
+**Why Klauth lags.** Its remaining cards are one-offs:
+- mana restrictions (Gwenna, Maelstrom);
+- "first spell each turn" triggers (Scourge of the Throne, Shadow in the Warp);
+- an {X} activation (Kessig Wolf Run);
+- convoke, offering, eternalize, harmonize with {X};
+- library-and/or-graveyard searches (Finale of Devastation);
+- a team pump filtered by power (Goreclaw);
+- put-from-hand (Last March of the Ents).
+
+**The rest of the tail** (`translation/t2_report.py`, 44 deck cards):
+- 2 cards each: mana restrictions, put-from-hand (Show and Tell), "first each turn" events, activation restrictions other than your turn, tap-an-untapped-creature costs (Azami, Patron Wizard);
+- 1 card each: extra turns (Nexus of Fate, Stitch in Time), graveyard replacement, and about 25 more.
+
+None of them unlocks more than two deck cards. The 64/67/75 targets came from T2's "expressed" column, which assumed every expressed construct gets built. Reaching them means most of that tail, which is about two more sessions at this pace.
+

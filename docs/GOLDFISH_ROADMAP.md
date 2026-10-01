@@ -48,6 +48,13 @@ A separate track, not the Phase 0–3 parser work: have an LLM translate Oracle 
   - Fully read today, measured by the adapter: Klauth 37.0%, Yusri 43.5%, Zur 52.9%. That's below the validator's estimate, because its tables were per construct. The cards are listed in the T3 section of `docs/TRANSLATION_T2.md`.
   - `--gef` stays off by default until step 3 lifts those numbers past the parser's.
   - Step 3 should follow `translation/t2_report.py`'s adapter ranking, not the plan's original order.
+- **T3 step 3, in progress (fifth session):** six slices of engine features that run only from GEF:
+  - conditional enters-tapped, recursion to the top, random discard;
+  - flicker (now and until the end step);
+  - if/else and "you control a commander", untap one, your-turn activations;
+  - coin flips (Thumb, Edgar, Yusri), storm, spell limits, skip draw, library position, a few counts.
+
+  Deck cards fully read with `--gef`: Klauth 41.1%, Yusri 59.4%, Zur 72.1% (parser: 50.7 / 52.2 / 58.8, with 0 / 4 / 5 audit-wrong). The exit target (~64/67/75) isn't reached; Klauth's remaining cards are one-offs (`docs/TRANSLATION_T2.md`, step 3). The parser headline is unchanged at 44.3%.
 
 ## The rules that govern everything
 
