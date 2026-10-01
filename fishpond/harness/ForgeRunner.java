@@ -7,11 +7,17 @@
 // the end of the hero's turn CAP, and snapshots are taken at the hero's first main phase and cleanup step.
 //
 // usage: java -cp <jar>:<dir> ForgeRunner DECK_DIR PLAN_FILE    (cwd = the Forge install: it reads res/ from there)
-// PLAN_FILE lines, tab-separated: id seed cap timeout_s colors play_out deck1 deck2 deck3 deck4 ai1,ai2,ai3,ai4
+// PLAN_FILE lines, tab-separated: id seed cap timeout_s colors play_out deck1 deck2 deck3 deck4 ai1,ai2,ai3,ai4 sim1,..,sim4 keys
 //   colors = the hero's color identity (e.g. WUG); play_out = 1 to keep playing after the hero dies (real opponents left)
+//   sim = off | hybrid | full per seat: Forge's lookahead (AIOption). hybrid = the heuristic AI picks, a one-move simulation
+//   vetoes plays that leave it worse off; full = picks by search (depth 3, fixed in Forge) and also decides library searches.
+//   keys = the hero's '# key:' cards, '|'-separated (for tutor reporting)
 
 import com.google.common.eventbus.Subscribe;
 import forge.GuiDesktop;
+import forge.ai.AIOption;
+import forge.ai.PlayerControllerAi;
+import forge.game.ability.ApiType;
 import forge.ai.ComputerUtilMana;
 import forge.deck.Deck;
 import forge.deck.io.DeckSerializer;
@@ -47,6 +53,12 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class ForgeRunner {
+    enum AiControllerSim {
+        HYBRID(AIOption.USE_HYBRID_SIMULATION), FULL(AIOption.USE_FULL_SIMULATION);
+        final AIOption option;
+        AiControllerSim(AIOption o) { option = o; }
+    }
+
     static final String[] COLORS = {"W", "U", "B", "R", "G"};
     static PrintStream out;
 
@@ -62,7 +74,7 @@ public class ForgeRunner {
             if (line.isBlank() || line.startsWith("#")) continue;
             String[] f = line.split("\t");
             try {
-                runGame(f, deckDir, decks);
+                runGame(f, deckDir, decks, null);
             } catch (Throwable t) {
                 out.println("#FP-ERROR {\"id\": " + f[0] + ", \"error\": " + js(String.valueOf(t)) + "}");
                 out.println("\nGame Result: Game " + f[0] + " ended in a Draw! Took 0 ms.");
@@ -73,7 +85,8 @@ public class ForgeRunner {
         System.exit(0);
     }
 
-    static void runGame(String[] f, String deckDir, Map<String, Deck> decks) throws Exception {
+    /** fallbackTrace != null: this is a replay with lookahead off after Forge's simulation code crashed on the first try. */
+    static void runGame(String[] f, String deckDir, Map<String, Deck> decks, String fallbackTrace) throws Exception {
         int id = Integer.parseInt(f[0]);
         long seed = Long.parseLong(f[1]);
         int cap = Integer.parseInt(f[2]);
@@ -81,6 +94,9 @@ public class ForgeRunner {
         String colors = f[4];
         boolean playOut = f[5].equals("1");
         String[] ai = f[10].split(",");
+        String[] sims = f.length > 11 ? f[11].split(",") : new String[]{"off", "off", "off", "off"};
+        Set<String> keys = new HashSet<>();
+        if (f.length > 12) for (String k : f[12].split("\\|")) if (!k.isBlank()) keys.add(k);
 
         MyRandom.setRandom(new Random(seed));
         GameRules rules = new GameRules(GameType.Commander);
@@ -92,7 +108,9 @@ public class ForgeRunner {
             Deck d = decks.computeIfAbsent(file, k -> DeckSerializer.fromFile(new File(deckDir, k)));
             RegisteredPlayer rp = RegisteredPlayer.forCommander(d);
             String profile = ai[i].equals("Default") ? "" : ai[i];
-            rp.setPlayer(GamePlayerUtil.createAiPlayer("Ai(" + (i + 1) + ")-" + d.getName(), i, profile));
+            Set<AIOption> opts = sims[i].equals("full") ? EnumSet.of(AIOption.USE_FULL_SIMULATION)
+                    : sims[i].equals("hybrid") ? EnumSet.of(AIOption.USE_HYBRID_SIMULATION) : EnumSet.noneOf(AIOption.class);
+            rp.setPlayer(GamePlayerUtil.createAiPlayer("Ai(" + (i + 1) + ")-" + d.getName(), i, i, opts, profile));
             players.add(rp);
         }
         Match match = new Match(rules, players, "Fishpond");
@@ -109,7 +127,20 @@ public class ForgeRunner {
         }
         Player hero = null;
         for (Player p : game.getPlayers()) if (p.getName().startsWith("Ai(1)-")) hero = p;
+        Map<String, String> simOn = new TreeMap<>();      // what the controllers actually run, per seat
+        for (Player p : game.getPlayers()) {
+            String seat = p.getName().replaceAll("^Ai\\((\\d+)\\).*", "$1"), m = "?";
+            if (p.getController() instanceof PlayerControllerAi pc)
+                m = pc.getAi().usesFullSimulation() ? "full" : pc.getAi().usesHybridSimulation() ? "hybrid" : "off";
+            simOn.put(seat, m);
+        }
         Watcher w = new Watcher(game, hero, cap, colors, playOut);
+        w.keys = keys;
+        for (Player p : game.getPlayers())
+            if (p.getController() instanceof PlayerControllerAi pc) {
+                AiControllerSim m = pc.getAi().usesFullSimulation() ? AiControllerSim.FULL : pc.getAi().usesHybridSimulation() ? AiControllerSim.HYBRID : null;
+                if (m != null) w.simmers.put(pc, m);
+            }
         game.subscribeToEvents(w);
 
         long t0 = System.currentTimeMillis();
@@ -122,17 +153,36 @@ public class ForgeRunner {
             fut.cancel(true);
         } catch (ExecutionException e) {
             w.halt("error: " + e.getCause());
+            StringBuilder tr = new StringBuilder();
+            for (StackTraceElement el : e.getCause().getStackTrace()) {
+                if (tr.length() > 0) tr.append(" < ");
+                tr.append(el.getClassName().replaceAll("^forge\\.", "")).append('.').append(el.getMethodName()).append(':').append(el.getLineNumber());
+                if (tr.length() > 1500) break;
+            }
+            w.trace = tr.toString();
         }
         ex.shutdownNow();
         if (!game.isGameOver()) game.setGameOver(GameEndReason.Draw);
         long ms = System.currentTimeMillis() - t0;
+        if (w.trace != null && w.trace.contains("ai.simulation") && fallbackTrace == null && !w.simmers.isEmpty()) {
+            String[] g = f.clone();                     // Forge's lookahead crashed: replay this game (same seed) without it
+            g[11] = "off,off,off,off";
+            runGame(g, deckDir, decks, w.trace);
+            return;
+        }
 
         List<GameLogEntry> log = game.getGameLog().getLogEntries(null);
         Collections.reverse(log);
         for (GameLogEntry e : log) out.println(e);
         for (String s : w.snaps) out.println("#FP-SNAP " + s);
+        for (String s : w.tutors) out.println("#FP-TUTOR " + s);
         StringBuilder end = new StringBuilder("{\"id\": " + id + ", \"seed\": " + seed + ", \"stop\": " + js(w.stop == null ? "natural" : w.stop)
-                + ", \"ms\": " + ms + ", \"hero_turns\": " + w.heroTurns + ", \"global_turns\": " + w.globalTurns + ", \"players\": {");
+                + ", \"ms\": " + ms + ", \"hero_turns\": " + w.heroTurns + ", \"global_turns\": " + w.globalTurns
+                + (w.trace != null ? ", \"trace\": " + js(w.trace) : "")
+                + (fallbackTrace != null ? ", \"sim_fallback\": " + js(fallbackTrace) : "")
+                + ", \"sim_paused_turns\": " + w.pausedTurns + ", \"sim_pauses\": " + w.pauses
+                + ", \"sim\": {" + String.join(", ", simOn.entrySet().stream().map(x -> "\"" + x.getKey() + "\": " + js(x.getValue())).toList()) + "}"
+                + ", \"players\": {");
         String winner = null;
         int k = 0;
         for (Player p : game.getRegisteredPlayers()) {
@@ -173,8 +223,30 @@ public class ForgeRunner {
         int heroTurns = 0, globalTurns = 0, afterDeath = 0;
         int discarded = 0, recurred = 0;                // the hero's cards: hand -> graveyard; graveyard -> hand/battlefield/stack
         List<String> lastHand = new ArrayList<>();      // the hero's hand at the latest phase it was alive (a dead player's cards leave)
+        Set<String> keys = new HashSet<>();
+        final List<String> tutors = new ArrayList<>();  // the hero's library searches and digs that put a card into hand or play
         int lastLib = 0;
         volatile String stop = null;
+        String trace = null;                            // Java stack of a crash inside Forge, for the report
+        // Forge's lookahead copies the game, and its copier can't copy a prepared card's "may cast a copy" permission (crash in
+        // StaticAbilityContinuous, Forge 2.0.15): lookahead is paused while any prepared card is on the battlefield.
+        final Map<PlayerControllerAi, AiControllerSim> simmers = new HashMap<>();
+        boolean paused = false;
+        int pauses = 0, pausedTurns = 0;
+
+        void checkPrepared() {
+            if (simmers.isEmpty()) return;
+            boolean any = false;
+            for (Player p : g.getPlayers()) {
+                for (Card c : p.getCardsIn(ZoneType.Battlefield)) if (c.isPrepared()) { any = true; break; }
+                if (any) break;
+            }
+            if (any == paused) return;
+            paused = any;
+            if (any) pauses++;
+            for (Map.Entry<PlayerControllerAi, AiControllerSim> e : simmers.entrySet())
+                e.getKey().getAi().setUseSimulation(any ? null : e.getValue().option);
+        }
         final List<String> snaps = new ArrayList<>();
 
         Watcher(Game g, Player hero, int cap, String colors, boolean playOut) {
@@ -190,6 +262,7 @@ public class ForgeRunner {
         @Subscribe public void onTurn(GameEventTurnBegan e) {
             globalTurns++;
             Player p = g.getPhaseHandler().getPlayerTurn();
+            if (paused && p == hero) pausedTurns++;
             if (hero.hasLost()) {
                 if (!playOut) halt("hero_lost");
                 else if (++afterDeath > 4 * cap) halt("cap_after_death");
@@ -213,11 +286,33 @@ public class ForgeRunner {
         @Subscribe public void onZone(GameEventCardChangeZone e) {
             if (e.from() == null || e.to() == null || e.from().player() == null || !e.from().player().equals(hero.getView())) return;
             ZoneType f = e.from().zoneType(), t = e.to().zoneType();
+            if (f == ZoneType.Library && (t == ZoneType.Hand || t == ZoneType.Battlefield)) tutor(e, t);
             if (f == ZoneType.Hand && t == ZoneType.Graveyard) discarded++;
             else if (f == ZoneType.Graveyard && (t == ZoneType.Hand || t == ZoneType.Battlefield || t == ZoneType.Stack)) recurred++;
         }
 
+        /** A card left the hero's library for hand or play while a library search or dig resolved (draws don't count). */
+        void tutor(GameEventCardChangeZone e, ZoneType to) {
+            SpellAbility sa = g.getStack().isResolving() ? g.getStack().peekAbility() : null;
+            String kind = null;
+            for (SpellAbility s = sa; s != null && kind == null; s = s.getSubAbility()) {
+                ApiType a = s.getApi();
+                if ((a == ApiType.ChangeZone || a == ApiType.ChangeZoneAll) && s.getParam("Origin") != null && s.getParam("Origin").contains("Library")) kind = "search";
+                else if (a == ApiType.Dig || a == ApiType.DigUntil) kind = "dig";
+            }
+            if (kind == null) return;
+            Card c = g.findById(e.card().getId());
+            String name = c != null ? c.getName() : e.card().getCurrentState().getName();
+            int keysLeft = 0;
+            for (Card x : hero.getCardsIn(ZoneType.Library)) if (keys.contains(x.getName())) keysLeft++;
+            tutors.add("{\"t\": " + heroTurns + ", \"kind\": \"" + kind + "\", \"src\": " + js(sa.getHostCard() != null ? sa.getHostCard().getName() : "?")
+                    + ", \"card\": " + js(name) + ", \"to\": \"" + to.name() + "\", \"land\": " + (c != null && c.isLand())
+                    + ", \"key\": " + keys.contains(name) + ", \"keys_left\": " + keysLeft
+                    + ", \"turn_of\": " + (g.getPhaseHandler().getPlayerTurn() == hero ? "\"you\"" : "\"opp\"") + "}");
+        }
+
         @Subscribe public void any(GameEvent e) {
+            checkPrepared();
             if (stop == null && !playOut && hero.hasLost()) halt("hero_lost");
         }
 

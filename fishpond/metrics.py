@@ -144,7 +144,17 @@ def extras(games, hero, T):
     end_hand = Counter()
     for g in games:
         for c in set(((g.get("end") or {}).get("hand")) or []): end_hand[c] += 1
-    return {"n": n, "results": res, "routes": routes, "losses": losses, "draws": draws, "order": dict(order),
+    tut = [t for g in games for t in g.get("tutors") or []]
+    searches = [t for t in tut if t["kind"] == "search"]
+    tutor = {"games": sum(1 for g in games if g.get("tutors") is not None), "searches": len(searches),
+             "digs": sum(1 for t in tut if t["kind"] == "dig"),
+             "nonland": Counter(t["card"] for t in searches if not t["land"]), "lands": sum(1 for t in searches if t["land"]),
+             "by_src": defaultdict(Counter), "key_picked": sum(1 for t in searches if t["key"]),
+             "key_left": sum(1 for t in searches if not t["key"] and t["keys_left"])}
+    for t in searches:
+        if not t["land"]: tutor["by_src"][t["src"]][t["card"]] += 1
+    ms_all = sorted((g.get("end") or {}).get("ms") or g.get("ms") or 0 for g in games)
+    return {"n": n, "results": res, "tutor": tutor, "game_ms": ms_all, "routes": routes, "losses": losses, "draws": draws, "order": dict(order),
             "cast_games": cast_games, "cast_turn": cast_turn, "cast_n": cast_n, "games_with": games_with, "win_with": win_with,
             "seen": seen, "tags": tags, "dummy": dummy, "kills_by": kills_by, "cmd_casts": cmd_casts, "trig": trig, "ms": ms, "end_hand": end_hand,
             "hero_turns": [g["hero_turns"] for g in games]}

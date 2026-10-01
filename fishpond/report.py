@@ -47,7 +47,20 @@ def print_header(meta, records, ex):
     n = ex["n"]
     print(f"=== FISHPOND: {meta['commander']} | {meta['cards']} cards | {n} games | {mode_of(records)} | Forge {meta['forge']} | "
           f"engine {meta['engine']} | seed {meta['seed']} ===")
-    print(pod_line(records, meta.get("engine", "harness")) + f"  (you: seat 1, AI {meta.get('hero_ai', 'Default')}; every player at 40 life)")
+    sim = f", lookahead {meta.get('sim', 'off')}" if meta.get("engine") == "harness" else ", no lookahead (cli engine)"
+    osim = f"; real opponents' lookahead {meta.get('opp_sim', 'off')}" if any(p["kind"] != "dummy" for r_ in records for p in r_["pod"]) else ""
+    print(pod_line(records, meta.get("engine", "harness")) + f"  (you: seat 1, AI {meta.get('hero_ai', 'Default')}{sim}{osim}; every player at 40 life)")
+    if meta.get("engine") == "harness" and meta.get("sim", "off") != "off":
+        pt = sum((r_.get("end") or {}).get("sim_paused_turns", 0) for r_ in records)
+        pg = sum(1 for r_ in records if (r_.get("end") or {}).get("sim_pauses"))
+        fb = sum(1 for r_ in records if (r_.get("end") or {}).get("sim_fallback"))
+        ht = sum(r_.get("hero_turns", 0) for r_ in records)
+        print(f"lookahead: paused in {pg} game(s), {pt} of {ht} of your turns (a prepared card was on the battlefield; "
+              f"docs/FORGE_ISSUES.md #1); {fb} game(s) replayed without lookahead after a crash in Forge's simulation code")
+    gm = [m / 1000 for m in ex["game_ms"] if m]
+    if gm:
+        print(f"game time (one CPU per game): median {sr.q(gm, .5):.0f}s, P90 {sr.q(gm, .9):.0f}s, max {max(gm):.0f}s; "
+              f"{len(gm)} games = {sum(gm) / 60:.0f} CPU-minutes, {meta.get('wall', 0) / 60:.1f} min wall on {meta.get('jobs', 1)} worker(s)")
     r = ex["results"]
     w, l, d = r.get("win", 0), r.get("loss", 0), r.get("draw", 0)
     print(f"results: won {w} ({share(w, n)}, {ci(w, n)}) | lost {l} ({share(l, n)}) | unfinished {d} ({share(d, n)}"
@@ -113,6 +126,15 @@ def print_opponents(label, records):
     src = Counter(r["loss"]["src"] for r in records if r["result"] == "loss" and r["loss"].get("by") not in (None, 1) and r["loss"].get("src"))
     if src: print("killing blow (biggest share of the final life change): " + " | ".join(f"{k} {v}" for k, v in src.most_common(8)))
 
+def wincons(hero):
+    """The hero's cards whose Oracle text can win the game outright (watch list for pilot blind spots)."""
+    import mtg
+    out = []
+    for n in sorted(hero.names()):
+        c = mtg.find(n)[0]
+        if c and "win the game" in mtg.text_of(c).lower(): out.append(c["name"])
+    return out
+
 def print_cards(label, ex, hero, meta, T):
     n = ex["n"]
     print(f"\n## {label}: cards (share of games cast; median first cast turn; avg casts per game)")
@@ -124,6 +146,22 @@ def print_cards(label, ex, hero, meta, T):
         print("key cards: " + " | ".join(f"{c} cast {share(ex['cast_games'][L(c)], n)}" + (f" (median T{sr.q(ex['cast_turn'][L(c)], .5)})" if ex['cast_turn'][L(c)] else "")
                                          + (f", won {share(ex['win_with'][L(c)], ex['games_with'][L(c)])} of games it was cast or entered"
                                             if ex['games_with'][L(c)] else "") for c in keys))
+    tu = ex.get("tutor") or {}
+    if tu.get("games"):
+        print(f"tutoring (your library searches that put a card into hand or play; avg per game): {tu['searches'] / n:.2f} searches "
+              f"({tu['lands'] / n:.2f} for lands), {tu['digs'] / n:.2f} digs")
+        if tu["nonland"]:
+            print("  tutor targets (times fetched, avg per game): " + " | ".join(f"{c} {k / n:.2f}" for c, k in tu["nonland"].most_common(10)))
+            top = sorted(tu["by_src"].items(), key=lambda kv: -sum(kv[1].values()))[:4]
+            print("  by tutor: " + "; ".join(f"{src}: " + ", ".join(f"{c} {k}" for c, k in picks.most_common(4)) for src, picks in top))
+        if meta.get("key"):
+            print(f"  '# key:' cards fetched in {tu['key_picked']} of {tu['searches']} searches; {tu['key_left']} other searches happened "
+                  "while a key card was still in the library (it may not have been a legal target for that tutor)")
+    wc = wincons(hero)
+    if wc:
+        print("win-condition cards (Oracle text says 'win the game'): " + " | ".join(
+            f"{c}: cast in {ex['cast_games'][hero.forge.get(c, c)]} games, won with it in "
+            f"{sum(1 for r in ex.get('records', []) if r.get('route') and hero.forge.get(c, c) in r['route'])}" for c in wc))
     eh = ex.get("end_hand")
     if eh: print("left in hand when the game ended (share of games; dead-card candidates): "
                   + " | ".join(f"{c} {share(k, n)}" for c, k in eh.most_common(10) if k / n >= 0.1))
@@ -146,6 +184,7 @@ def print_all(meta, builds, approx_notes=None):
         groups = groups_for(meta.get("track"), meta.get("extra_track"), meta.get("key") or [], hero)
         res = mx.bundle(records, T, groups, [hero.forge.get(c, c) for c in hero.commanders], produced=hero.produced, identity=hero.identity)
         ex = mx.extras(records, hero, T)
+        ex["records"] = records
         sm = sr.summary(res, groups)
         if "hand" in res["rec"]:
             for t in sm["turns"]: sm["turns"][t]["hand"]["leq1"] = round(sr.mean([1 if h <= 1 else 0 for h in res["rec"]["hand"][t]]), 4)

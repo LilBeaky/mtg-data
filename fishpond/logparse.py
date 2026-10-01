@@ -66,15 +66,18 @@ def split_games(text):
 def harness_lines(lines):
     """The harness's own lines in a game block: (snaps {hero turn: {'main': {...}, 'end': {...}}}, end info or None)."""
     import json
-    snaps, end = {}, None
+    snaps, end, tutors = {}, None, []
     for line in lines:
         if line.startswith("#FP-SNAP "):
             s = json.loads(line[9:])
             snaps.setdefault(str(s["t"]), {})[s["at"]] = s
+        elif line.startswith("#FP-TUTOR "):
+            tutors.append(json.loads(line[10:]))
         elif line.startswith("#FP-END "):
             end = json.loads(line[8:])
         elif line.startswith("#FP-ERROR "):
             end = dict(json.loads(line[10:]), stop="error")
+    if end is not None: end["tutors"] = tutors      # the hero's library searches and digs into hand or play
     return snaps, end
 
 def outcome_kind(text):

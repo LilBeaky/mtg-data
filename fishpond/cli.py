@@ -16,13 +16,16 @@ run options:
   --fixed-pod            with a gauntlet: the same sampled seats for every game
   --ai PROFILE           your AI profile: Default, Cautious, Experimental, Reckless (Forge's res/ai)
   --opp-ai A,B,C         the opponents' AI profiles, by seat
+  --sim MODE             your seat's lookahead (harness): off, hybrid (default: a one-move simulation vetoes bad plays),
+                         full (plays chosen by a 3-deep search; also decides library searches). Slower as it goes up.
+  --opp-sim MODE         the same for real-deck opponents (default hybrid; dummies never need it)
   --track "Label=REGEX"  first turn a matching card is cast or enters (repeatable; '# track:' header lines are added)
   --variant "Label|Out=>In;Out=>In"  also run a swapped build on the same seeds and pods (repeatable)
   --commander NAME       when the list has no Commander section
   --engine E             harness (default when javac is available: one JVM per worker, every game reseeded, stops when
                          you've lost or at --cap, per-turn snapshots) or cli (Forge's stock sim; no javac needed)
   --cap N                harness: end a game after your turn N as unfinished (default 20)
-  --timeout S            harness: wall-clock safety limit per game (default 600)
+  --timeout S            harness: wall-clock safety limit per game (default 1800; lookahead games can run long)
   --clock S              cli: wall-clock seconds before Forge calls a game a draw (default 120)
   --jobs N               parallel JVMs (default: CPUs and memory allow)
   --out DIR              where to save the run (default data/fishpond/<time>-<deck>/, gitignored)
@@ -103,13 +106,14 @@ def cmd_run(args):
               file=sys.stderr)
     if engine == "harness":
         records, wall = runner.run_harness(builds, pods, args.trials, args.seed, args.cap, args.timeout, jobs, run_dir, hero_ai=args.ai,
-                                           opp_ai=opp_ai, quiet=args.quiet)
+                                           opp_ai=opp_ai, quiet=args.quiet, hero_sim=args.sim, opp_sim=args.opp_sim, keys=_keys(hero))
     else:
         records, wall = runner.run_cli(builds, pods, args.trials, args.seed, args.clock, jobs, run_dir, hero_ai=args.ai,
                                        opp_ai=opp_ai, quiet=args.quiet)
     meta = {"deck": os.path.relpath(args.deck, dk.REPO) if os.path.exists(args.deck) else args.deck, "commander": hero.label,
             "cards": hero.size, "trials": args.trials, "seed": args.seed, "turns": args.turns, "engine": engine, "cap": args.cap,
             "forge": forge.FORGE_VERSION, "jobs": jobs, "wall": wall, "clock": args.clock, "hero_ai": args.ai, "opp_ai": opp_ai,
+            "sim": args.sim if engine == "harness" else "off", "opp_sim": args.opp_sim if engine == "harness" else "off",
             "track": hero.meta.get("track", []), "extra_track": args.track, "key": _keys(hero),
             "variants": args.variant, "opp": _opp_specs(args), "fixed_pod": args.fixed_pod, "run_dir": _rel(run_dir),
             "commander_opt": args.commander}
@@ -180,11 +184,12 @@ def reparse(run_dir, meta, records, builds):
         seats = runner.seat_objs(heroes[r["build"]], opps)
         if r["log"] not in logs:
             logs[r["log"]] = lp.split_games(open(os.path.join(run_dir, r["log"]), encoding="utf-8", errors="replace").read())
-        keys = ("v", "engine", "forge", "build", "game", "chunk", "seed", "pos", "pod", "hero_ai", "log", "log_game", "log_id", "snaps", "stop", "end")
+        keys = ("v", "engine", "forge", "build", "game", "chunk", "seed", "pos", "pod", "hero_ai", "log", "log_game", "log_id", "snaps", "stop", "end",
+                "tutors", "sim")
         keep = {k: r[k] for k in keys if k in r}
         block = _block(logs[keep["log"]], keep)
         r.clear(); r.update(lp.parse_game([l for l in block if not l.startswith("#FP")], seats)); r.update(keep)
-        if r.get("stop") in ("cap", "timeout") and r["result"] != "loss": r["result"], r["route"] = "draw", None
+        if r.get("engine") == "harness" and r.get("stop") not in ("natural", "hero_lost") and r["result"] != "loss": r["result"], r["route"] = "draw", None
         if r.get("engine") == "harness": r["stopped"] = r.get("stop") == "timeout"
     runner.save(run_dir, meta, records)
 
@@ -231,10 +236,11 @@ def main(argv=None):
     r.add_argument("--trials", "--games", type=int, default=20); r.add_argument("--seed", type=int, default=1)
     r.add_argument("--turns", type=int, default=10); r.add_argument("--opp", action="append"); r.add_argument("--opp-set")
     r.add_argument("--fixed-pod", action="store_true"); r.add_argument("--ai", default="Default"); r.add_argument("--opp-ai")
+    r.add_argument("--sim", choices=runner.SIM_MODES, default="hybrid"); r.add_argument("--opp-sim", choices=runner.SIM_MODES, default="hybrid")
     r.add_argument("--track", action="append", default=[]); r.add_argument("--variant", action="append", default=[])
     r.add_argument("--commander"); r.add_argument("--clock", type=int, default=120); r.add_argument("--jobs", type=int, default=0)
     r.add_argument("--engine", choices=["auto", "harness", "cli"], default="auto"); r.add_argument("--cap", type=int, default=20)
-    r.add_argument("--timeout", type=int, default=600); r.add_argument("--out"); r.add_argument("--json", action="store_true")
+    r.add_argument("--timeout", type=int, default=1800); r.add_argument("--out"); r.add_argument("--json", action="store_true")
     r.add_argument("--quiet", action="store_true")
     p = sub.add_parser("report"); p.add_argument("run"); p.add_argument("--turns", type=int, default=0); p.add_argument("--json", action="store_true")
     p.add_argument("--reparse", action="store_true", help="re-run the log parser over the saved logs first")

@@ -132,7 +132,10 @@ def harness_classes(quiet=False):
     except OSError: import shutil; shutil.rmtree(tmp, ignore_errors=True)   # another run got there first
     return d
 
-def run_harness(builds, pods, games, seed, cap, timeout, jobs, run_dir, hero_ai="Default", opp_ai=("Default",) * 3, quiet=False):
+SIM_MODES = ("off", "hybrid", "full")
+
+def run_harness(builds, pods, games, seed, cap, timeout, jobs, run_dir, hero_ai="Default", opp_ai=("Default",) * 3, quiet=False,
+                hero_sim="hybrid", opp_sim="hybrid", keys=()):
     """Phase B: every game reseeded (game i uses seed*1000003+i, so any game replays alone and --jobs never changes
     results), stopped at the end of your turn `cap` or when you've lost (real opponents left: played out to get the pod
     result, up to 4*cap more turns), with snapshots at your main phase and cleanup."""
@@ -156,7 +159,10 @@ def run_harness(builds, pods, games, seed, cap, timeout, jobs, run_dir, hero_ai=
         for b, (label, hero) in enumerate(builds):
             hf = dck_file(hero, f"hero{b}_{hero.tag}")
             gid = len(plan)
-            line = "\t".join(map(str, [gid, s, cap, timeout, hero.identity or "C", play_out, hf, *of, ",".join([hero_ai, *opp_ai])]))
+            sims = [hero_sim] + [opp_sim if d.kind != "dummy" else "off" for d in opps]     # a dummy has nothing to decide
+            kl = "|".join(hero.forge.get(k, k) for k in keys) or "-"
+            line = "\t".join(map(str, [gid, s, cap, timeout, hero.identity or "C", play_out, hf, *of, ",".join([hero_ai, *opp_ai]),
+                                        ",".join(sims), kl]))
             plan.append({"id": gid, "build": b, "label": label, "game": i, "seed": s, "hero": hero, "opps": opps, "line": line})
     jobs = max(1, min(jobs, len(plan)))
     chunks = [plan[j::jobs] for j in range(jobs)] if len(builds) == 1 else \
@@ -189,8 +195,9 @@ def run_harness(builds, pods, games, seed, cap, timeout, jobs, run_dir, hero_ai=
             r = lp.parse_game([l for l in block if not l.startswith("#FP")], seat_objs(p["hero"], p["opps"]))
             r.update({"v": 1, "engine": "harness", "forge": forge.FORGE_VERSION, "build": p["label"], "game": p["game"],
                       "seed": p["seed"], "pod": pod_info(p["opps"], opp_ai), "hero_ai": hero_ai, "snaps": snaps, "stop": end.get("stop"),
-                      "end": end, "log": os.path.relpath(lf, run_dir), "log_id": end["id"]})
-            if end.get("stop") in ("cap", "timeout") and r["result"] != "loss": r["result"], r["route"] = "draw", None
+                      "end": end, "log": os.path.relpath(lf, run_dir), "log_id": end["id"], "tutors": end.get("tutors", []),
+                      "sim": end.get("sim")})
+            if end.get("stop") not in ("natural", "hero_lost") and r["result"] != "loss": r["result"], r["route"] = "draw", None
             r["stopped"] = end.get("stop") in ("timeout",)
             records.append(r)
     for p in by_id.values():

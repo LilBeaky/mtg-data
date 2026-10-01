@@ -1,0 +1,11 @@
+# FORGE ISSUES — suspected Forge bugs met by Fishpond
+
+One entry per issue: card(s), Forge version, how to reproduce, evidence, and what Fishpond does about it. Never work around a Forge bug silently: the workaround is reported in Fishpond's output too. Remove an entry when a newer pinned Forge release fixes it (re-test first).
+
+## 1. Lookahead crashes on prepared cards (prepare mechanic)
+
+- **Forge:** 2.0.15. **Cards:** any card with the prepare mechanic once it is prepared (seen with Studious First-Year // Rampant Growth in `tests/forge/chulane.txt`).
+- **When:** only with the AI's lookahead on (`AIOption.USE_HYBRID_SIMULATION` or `USE_FULL_SIMULATION`; Fishpond `--sim hybrid|full`). The plain AI is fine.
+- **What:** the lookahead copies the game (`ai.simulation.GameCopier.makeCopy`); in the copy, the prepared card's "you may cast a copy of its spell" permission (a `MayPlay` static added at run time by `AlterAttributeEffect`) resolves its `MayPlayPlayer` to an empty player list, and `StaticAbilityContinuous.applyContinuousAbility` (line 903) calls `get(0)` on it: `java.lang.IndexOutOfBoundsException: Index 0 out of bounds for length 0`. The exception escapes the AI's decision and ends the real game.
+- **Evidence (2026-10-01):** 12 Chulane vacuum games, seeds 1000003..1000014, hybrid lookahead on seat 1: 6 crashed, every one in a game where Studious First-Year had been prepared; none of the 5 clean games had it. Replays exactly from its seed (game 7, seed 1000010). Stack: `GameAction.checkStateEffects < GameCopier.makeCopy:175 < GameSimulator.<init> < OnePlaySafetyChecker.isAcceptable < AiController.saSideEffects < AiController.filterLandsToPlay`.
+- **Fishpond's workaround (harness):** lookahead is paused for every seat while any prepared card is on the battlefield and resumed when none is (`ForgeRunner.Watcher.checkPrepared`); each game record counts the pauses and the user's turns played paused, and the report prints them. Safety net for this or any other crash inside Forge's simulation code: the game is replayed from its seed with lookahead off, recorded as `sim_fallback` with the crash's stack, and counted in the report. Verified on seed 1000010: completes with one pause.

@@ -8,7 +8,7 @@ Fishpond plays the user's deck on [Forge](https://github.com/Card-Forge/forge), 
 python3 -m fishpond setup [--jdk]                     # once per session: downloads Forge (~300 MB, about a minute) to ~/forge-cache/
 python3 -m fishpond deck DECK [--opp SPEC]...          # check the list against Forge first
 python3 -m fishpond run DECK [--trials 20] [--seed 1] [--turns 10] [--cap 20] [--opp SPEC]... [--opp-set FILE] [--fixed-pod]
-    [--ai PROFILE] [--opp-ai A,B,C] [--track "Label=REGEX"] [--variant "Label|Out=>In;Out=>In"] [--commander NAME]
+    [--ai PROFILE] [--opp-ai A,B,C] [--sim off|hybrid|full] [--opp-sim off|hybrid|full] [--track "Label=REGEX"] [--variant "Label|Out=>In;Out=>In"] [--commander NAME]
     [--engine auto|harness|cli] [--jobs N] [--timeout S] [--clock S] [--out DIR] [--json]
 python3 -m fishpond report RUN_DIR [--reparse] [--turns N] [--json]
 python3 -m fishpond show RUN_DIR GAME [--build LABEL] [--log] [--phases]
@@ -31,11 +31,23 @@ A pod is **always 4 players**: the user's deck in seat 1 plus 3 opponent seats. 
 - Gauntlets so far: `own` (the user's own lists). Build more as `fishpond/opponents/<name>/*.txt` in the usual deck format, with `# bracket:` headers.
 - Every report prints the pod and says whether it was a vacuum, mixed or real pod. Say which mode produced a number when you quote it.
 
+## The pilot
+
+Forge's AI plays every seat. By default it is a heuristic AI: a rule set per ability type decides "should I play this now?" one card at a time, tuned by the profile (`--ai`: Default, Cautious, Experimental, Reckless; 121 knobs such as the chance to counter a spell by its cost). It plays fair Magic like a decent casual player and handles complicated rules correctly, but it has no plan: it doesn't set up combos or alternate wins, takes every optional "may" (Primal Surge), and tutors for "the most expensive castable thing" (Forge's own note on its tutoring logic).
+
+**Lookahead (`--sim`, harness only; default `hybrid` for the user's seat and for real-deck opponents, never for dummies).** Forge's simulation AI copies the game and plays candidate moves out to score them:
+- `hybrid` (the default, the "low" setting): the heuristic AI still chooses; every play it picks is simulated one move ahead and vetoed if it leaves the position worse.
+- `full`: plays are chosen by a search (depth 3, fixed in Forge) and library searches ("search your library for...") are chosen by simulating each candidate. The only mode that changes tutoring, scoring board value, so it still won't find a combo piece whose value comes later.
+- `off`: the plain heuristic AI.
+Each game record says which mode every seat actually ran (checked on the live controllers). Lookahead costs run time; the header's "game time" line reports it. Forge 2.0.15's lookahead crashes on prepared cards (`docs/FORGE_ISSUES.md` #1), so it pauses while one is on the battlefield; any crash inside Forge's simulation code replays the game from its seed without lookahead. The header counts both: quote them when they're large.
+
+**Pilot watch.** Known blind spots are tagged (`surge_trap`, `oracle_trap`) or listed (win-condition cards cast vs won with, never-cast cards, AI-flagged cards, dead cards, tutor targets). New ones will appear with new decks: when a number looks odd, audit a game (`show --log`) and add a tag or a report line rather than trusting the number.
+
 ## Engines
 
 - **harness** (default when `javac` exists): `fishpond/harness/ForgeRunner.java`, compiled at run time against the cached Forge jar. Every game is its own Forge match with its own seed (game i of `--seed S` uses `S*1000003+i`), so any game replays alone and `--jobs` never changes results. A game ends when the table dies, when the user's deck has lost (with real opponents left it plays on to get the pod's winner), or after the user's turn `--cap` (default 20: "unfinished: turn cap"). Snapshots at the user's main phase and cleanup give real lands, Forge's mana estimate, colors, hand and graveyard.
 - **cli**: Forge's stock `sim` mode, no javac needed. Games are chained 5 per JVM (one can't be replayed alone; a game cut by the wall clock changes the rest of its chunk), the other seats play on to the clock after the user's deck dies, and the development table has fewer columns (land drops instead of lands; no mana, hand or graveyard).
-- Speed: a game costs 30 s to 2 min of one CPU (about 15 s of JVM startup per worker on top). Turns with huge trigger stacks (a Primal Surge turn resolves 100+) are the slow part, and real opponents are slower than dummies. Measured on 4 CPUs with 4 workers: about 4 Chulane vacuum games a minute. The chat sandbox (1 CPU, ~4 GB) runs one worker: budget about 1 game a minute, so 20 games is a 20-minute run; say so before starting a big one. `--jobs` defaults to what CPUs and memory allow (about 1.1 GB per JVM).
+- Speed: a game costs 30 s to 2 min of one CPU (about 15 s of JVM startup per worker on top). Turns with huge trigger stacks (a Primal Surge turn resolves 100+) are the slow part, and real opponents are slower than dummies. Measured on 4 CPUs with 4 workers and no lookahead: about 4 Chulane vacuum games a minute. Hybrid lookahead (the default) costs about 2 to 3 times the CPU on a busy deck like Chulane (median game 77 s -> 152 s on the same seeds) and about 15% on Zur. The chat sandbox (1 CPU, ~4 GB) runs one worker: budget about 2 to 3 minutes a game with lookahead, so 20 games is about an hour; say so before starting a big one. `--jobs` defaults to what CPUs and memory allow (about 1.1 GB per JVM).
 - Forge's AI gives up on a decision after 5 s by default, which makes results depend on machine load. The harness raises that limit (120 s; `-Dfishpond.aiTimeout` on the JVM) and the report warns when any decision still timed out. The cli engine can't change it, so busy machines get load-dependent cli results.
 
 ## Reading the report
@@ -49,6 +61,10 @@ A pod is **always 4 players**: the user's deck in seat 1 plus 3 opponent seats. 
 The header also prints the win rate with tagged pilot-error losses (`surge_trap`, `oracle_trap`) left out, and says "pilot-sensitive" when more than 20% of losses are tagged: then treat the headline win rate as a floor and quote both.
 
 **goldfish's layout** follows (`scripts/sim_report.py`): development, card flow, combat and damage, by the user's turn, to `--turns` (default 10). A game that ended earlier repeats its final state. A column marked `≈` is measured differently from goldfish; the notes at the bottom say how. A metric Fishpond can't measure is left out, never faked. Tracked groups come from `# track:` headers and `--track`, and every `# key:` card is tracked too ("first cast or seen entering").
+
+**Tutoring** (harness): library searches that put a card into hand or play, per game (and how many were for lands), digs, the most-fetched cards, what each tutor fetched, and how often a `# key:` card was fetched (or still in the library when something else was). Draws, mills and Primal Surge-style exiles don't count.
+
+**Win-condition cards**: every card in the list whose Oracle text says "win the game", with games cast vs games won with it (Thassa's Oracle is often cast for its body).
 
 On the harness the card-flow table also has `discarded` (hand to graveyard, cycling included) and `recursion` (graveyard to hand, battlefield or stack), and `mana spent` is counted from the log on both engines.
 
