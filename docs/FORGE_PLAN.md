@@ -209,9 +209,22 @@ Phase A/B acceptance, 2026-10-01, Claude Code container (4 CPUs), Forge 2.0.15, 
 - **Cross-check with goldfish** (Chulane only so far; the plan asks for 3 decks): lands agree at the median on every turn T1-T8; all colors close (T3 81% vs 72%, T4 91.5% vs 92%); Forge's mana estimate runs 1-2 higher from T3; **the commander comes about a turn later on Forge** (goldfish 62.5% by T4 / 91% by T5; Forge 36% / 68%): Forge's AI doesn't prioritise the commander the way goldfish's pilot does. Spells cast by T8: median 13 vs 10. **Zur** (16 vacuum games vs goldfish 1,000; goldfish leaves 18 of 61 nonland cards blank): lands within one at the median (T8 6 vs 7), commander again about a turn later on Forge (25% by T4 / 56% by T5 vs goldfish 57% / 78%). Fishpond Zur: won 9 (56%), lost 0, 7 hit the turn cap (slow combat into 120 life); wins 5 combat, 4 Approach of the Second Sun. The commander-timing gap is consistent across both decks: treat it as a known pilot difference, not a bug. Third deck still to do.
 - **Stock CLI engine** (10 vacuum games, chunks of 5): same picture (6 of 10 lost to `surge_trap`); about 70 s per game per JVM because the dummies play on to the clock after the hero dies. 5 real-pod games: 11 AI decision timeouts under load, which is what led to the harness raising the limit.
 
+## Roadmap (2026-10-01, after the merge to main)
+
+Fishpond works end to end but isn't "set". In priority order:
+
+1. **Run it where Ian runs it.** Everything so far ran in a 4-CPU Claude Code container. The chat sandbox has 1 CPU, ~4 GB and no javac by default: test `setup --jdk`, memory with lookahead, and a real "Launch Fishpond" form round trip there.
+2. **Resumable runs** (`run --resume RUN_DIR --trials N` adds games with the next seeds to a saved run). With lookahead a game is 2-3 CPU-minutes, so a 40-game read is about 2 hours on 1 CPU: runs must survive across sessions and accumulate.
+3. **Re-baseline with lookahead on.** The acceptance numbers (Chulane vacuum 26%, 0/20 into the gauntlet) were measured with lookahead off. Re-run Chulane, and each of Yusri, Zur, Klauth as the hero (vacuum + gauntlet), which also completes the 3-deck goldfish cross-check.
+4. **A headline block** at the top of the report (5-6 lines: win rate and interval, how it wins, how it loses, pilot-error share, the user's field-9 questions answered), with the tables below as detail. Combined report when a run uses both a vacuum and a gauntlet pod.
+5. **Validate `--variant` at scale** (code path exists, never run on a real swap question).
+6. **Pilot modes** (Ian: "later"): hybrid vs full and the AI profiles, on Zur (tutoring) and Chulane. Then decide on the opt-in key/package tutor override.
+7. **Gauntlet growth:** tester decks by bracket beyond Ian's own lists (Phase D 5).
+8. **Leftovers:** stranded and cycled columns, combo/line detection, card impact beyond association; Forge version-bump procedure (re-test FORGE_ISSUES entries).
+
 ## Open questions for Ian
 
-- The brackets of the 'own' gauntlet (Yusri, Zur, Klauth). Reports print "bracket ?" until the lists carry `# bracket:` headers.
+- The brackets, plans and key cards of the saved decks (decks/Ians_Yusri_Omni, Ians_Zur_Cycling, Ians_Klauth_Dragons). Reports print "bracket ?" until they carry headers. Ians Ragost Burn: list not in the repo yet.
 - Klauth's list has 101 cards (mtg.py agrees). Fix the list, or keep it as is for testing?
 
 - Which decks form the first real-opponent gauntlet, and at what bracket?
