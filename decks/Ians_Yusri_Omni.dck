@@ -1,9 +1,8 @@
-# Opponent gauntlet 'own': the user's own list, copied from translation/decks/yusri.txt (2026-09-30).
-# No bracket header: the user hasn't stated one; add '# bracket: N' when known.
-Commander
+[metadata]
+Name=Ians Yusri Omni
+[Commander]
 1 Yusri, Fortune's Flame
-
-Deck
+[Main]
 1 Academy Ruins
 1 Aetherflux Reservoir
 1 Ancient Silver Dragon
@@ -28,7 +27,7 @@ Deck
 1 Full Throttle
 1 Fury of the Horde
 1 Gamble
-1 Ghal Maraz, the Great Shatterer
+1 Loxodon Warhammer
 1 Gifts Ungiven
 1 Goblin Engineer
 1 Inventors' Fair

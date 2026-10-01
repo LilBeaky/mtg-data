@@ -2,6 +2,7 @@
 
   python3 -m fishpond setup [--jdk]               download/cache the pinned Forge release; print versions and paths
   python3 -m fishpond deck DECK [--opp SPEC]...    check a deck (and opponents) against Forge: unknown cards, AI flags
+  python3 -m fishpond save DECK --name "Ians Zur Cycling"   store the list in decks/ (.txt source + Forge .dck)
   python3 -m fishpond run DECK [options]           play DECK in 4-player pods on Forge and report (goldfish's layout + more)
   python3 -m fishpond report RUN_DIR [--reparse]   reprint a saved run's report (--reparse: parse its logs again)
   python3 -m fishpond show RUN_DIR GAME [--log]    one game's parsed record (and its Forge log) for hand audits
@@ -70,6 +71,19 @@ def cmd_deck(args):
         d = dk.load(path, "opponent", idx=idx)
         print(f"opponent: {d.label} ({os.path.relpath(path)}) | {d.size} cards | bracket {d.bracket or '?'}")
         _print_problems(d.label, d)
+
+def cmd_save(args):
+    """Save a list into decks/ as NAME.txt (source, headers kept) + NAME.dck (Forge-ready)."""
+    forge.ensure()
+    d = dk.load(args.deck, "hero", idx=forge.index(), commander=args.commander)
+    for p in dk.validate(d): print(f"  warning: {p}")
+    stem = re.sub(r"[^A-Za-z0-9]+", "_", args.name.strip()).strip("_")
+    out = os.path.join(dk.REPO, "decks"); os.makedirs(out, exist_ok=True)
+    src = open(args.deck, encoding="utf-8").read()
+    if not src.startswith("# name:"): src = f"# name: {args.name.strip()}\n" + src
+    open(os.path.join(out, stem + ".txt"), "w", encoding="utf-8").write(src)
+    open(os.path.join(out, stem + ".dck"), "w", encoding="utf-8").write(d.dck(args.name.strip()))
+    print(f"saved decks/{stem}.txt and decks/{stem}.dck ({d.label}, {d.size} cards, bracket {d.bracket or '?'})")
 
 def cmd_run(args):
     if args.trials < 1: sys.exit("fishpond: --trials must be at least 1")
@@ -231,6 +245,7 @@ def main(argv=None):
     s = sub.add_parser("setup"); s.add_argument("--jdk", action="store_true", help="also install javac (harness)")
     d = sub.add_parser("deck"); d.add_argument("deck"); d.add_argument("--opp", action="append"); d.add_argument("--opp-set")
     d.add_argument("--commander")
+    v = sub.add_parser("save"); v.add_argument("deck"); v.add_argument("--name", required=True); v.add_argument("--commander")
     r = sub.add_parser("run")
     r.add_argument("deck")
     r.add_argument("--trials", "--games", type=int, default=20); r.add_argument("--seed", type=int, default=1)
@@ -248,4 +263,4 @@ def main(argv=None):
     w.add_argument("--log", action="store_true"); w.add_argument("--phases", action="store_true")
     args = ap.parse_args(argv)
     if not args.cmd: ap.print_help(); return
-    {"setup": cmd_setup, "deck": cmd_deck, "run": cmd_run, "report": cmd_report, "show": cmd_show}[args.cmd](args)
+    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show}[args.cmd](args)

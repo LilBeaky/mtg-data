@@ -1,5 +1,4 @@
-# Opponent gauntlet 'own': the user's own list, copied from translation/decks/klauth.txt (2026-09-30).
-# No bracket header: the user hasn't stated one; add '# bracket: N' when known.
+# name: Ians Klauth Dragons
 Commander
 1 Klauth, Unrivaled Ancient
 

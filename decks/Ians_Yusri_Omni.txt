@@ -1,0 +1,86 @@
+# name: Ians Yusri Omni
+Commander
+1 Yusri, Fortune's Flame
+
+Deck
+1 Academy Ruins
+1 Aetherflux Reservoir
+1 Ancient Silver Dragon
+1 Arena of Glory
+1 Basilisk Collar
+1 Buried Ruin
+1 Cascade Bluffs
+1 Chaos Warp
+1 Command Tower
+1 Commander's Plate
+1 Consecrated Sphinx
+1 Counterbalance
+1 Counterspell
+1 Cyclonic Rift
+1 Diplomatic Immunity
+1 Dream Halls
+1 Edgar, King of Figaro
+1 Enter the Infinite
+1 Ethereal Usher
+1 Fabricate
+1 Frenetic Efreet
+1 Full Throttle
+1 Fury of the Horde
+1 Gamble
+1 Ghal Maraz, the Great Shatterer
+1 Gifts Ungiven
+1 Goblin Engineer
+1 Inventors' Fair
+1 Invert Polarity
+13 Island
+1 Jace, Wielder of Mysteries
+1 Jeska's Will
+1 Jin-Gitaxias, Core Augur
+1 Krark's Thumb
+1 Laboratory Maniac
+1 Library of Leng
+1 Lightning Greaves
+1 Long-Term Plans
+7 Mountain
+1 Muddle the Mixture
+1 Mystic Remora
+1 Mystical Tutor
+1 Nexus of Fate
+1 Okaun, Eye of Chaos
+1 Planar Chaos
+1 Pongify
+1 Prismari, the Inspiration
+1 Reality Shift
+1 Reckless Handling
+1 Reliquary Tower
+1 Resurrection Orb
+1 Rhystic Study
+1 Ruby Medallion
+1 Sapphire Medallion
+1 Seize the Day
+1 Shivan Reef
+1 Show and Tell
+1 Simian Spirit Guide
+1 Sol Ring
+1 Spellbook
+1 Spirebluff Canal
+1 Squee's Revenge
+1 Steam Vents
+1 Stitch in Time
+1 Stock Up
+1 Stormcarved Coast
+1 Sulfur Falls
+1 Swan Song
+1 Sword of War and Peace
+1 Tavern Scoundrel
+1 Temple of Epiphany
+1 Thassa's Oracle
+1 The Endstone
+1 Thought Vessel
+1 Tribute Mage
+1 Twenty-Toed Toad
+1 Valakut Awakening
+1 Vivi Ornitier
+1 Whir of Invention
+1 Witch's Clinic
+1 Zndrsplt, Eye of Wisdom

@@ -38,9 +38,9 @@ def seat_from(path, k, kind, tag):
 HERO = seat_from(os.path.join(REPO, "tests", "forge", "chulane.txt"), 1, "hero", "Chulane")
 DUMMY = lambda k: lp.Seat(k, "Dummy", "dummy", {"Isamaru, Hound of Konda", "Wastes"}, ["Isamaru, Hound of Konda"])
 VAC = {1: HERO, 2: DUMMY(2), 3: DUMMY(3), 4: DUMMY(4)}
-OWN = os.path.join(REPO, "fishpond", "opponents", "own")
-REAL = {1: HERO, 2: seat_from(os.path.join(OWN, "yusri.txt"), 2, "opponent", "Yusri"),
-        3: seat_from(os.path.join(OWN, "zur.txt"), 3, "opponent", "Zur"), 4: seat_from(os.path.join(OWN, "klauth.txt"), 4, "opponent", "Klauth")}
+OWN = os.path.join(REPO, "decks")
+REAL = {1: HERO, 2: seat_from(os.path.join(OWN, "Ians_Yusri_Omni.txt"), 2, "opponent", "Yusri"),
+        3: seat_from(os.path.join(OWN, "Ians_Zur_Cycling.txt"), 3, "opponent", "Zur"), 4: seat_from(os.path.join(OWN, "Ians_Klauth_Dragons.txt"), 4, "opponent", "Klauth")}
 
 def load(name):
     return [l.rstrip("\n") for l in open(os.path.join(FIX, name), encoding="utf-8") if l.strip()]
