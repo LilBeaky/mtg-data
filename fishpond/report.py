@@ -18,11 +18,11 @@ def ci(k, n):
     lo, hi = sr.ci95(k, n)
     return f"95% CI {100 * lo:.0f}-{100 * hi:.0f}%"
 
-def pod_line(records):
+def pod_line(records, engine="harness"):
     pods = Counter(" | ".join(f"seat {p['seat']} {p['deck']}" + (f" (B{p['bracket']})" if p.get("bracket") else "") +
                               (f" [{p['ai']}]" if p.get("ai") and p["ai"] != "Default" else "") for p in r["pod"]) for r in records)
     if len(pods) == 1: return "pod: " + next(iter(pods))
-    return f"pods ({len(pods)} different, sampled per chunk): " + "; ".join(f"{k} ×{v}" for k, v in pods.most_common(4)) + ("; ..." if len(pods) > 4 else "")
+    return f"pods ({len(pods)} different seat orders/lineups, sampled per {'game' if engine == 'harness' else 'chunk of 5'}): " + "; ".join(f"{k} ×{v}" for k, v in pods.most_common(4)) + ("; ..." if len(pods) > 4 else "")
 
 def mode_of(records):
     kinds = {p["kind"] for r in records for p in r["pod"]}
@@ -47,7 +47,7 @@ def print_header(meta, records, ex):
     n = ex["n"]
     print(f"=== FISHPOND: {meta['commander']} | {meta['cards']} cards | {n} games | {mode_of(records)} | Forge {meta['forge']} | "
           f"engine {meta['engine']} | seed {meta['seed']} ===")
-    print(pod_line(records) + f"  (you: seat 1, AI {meta.get('hero_ai', 'Default')}; every player at 40 life)")
+    print(pod_line(records, meta.get("engine", "harness")) + f"  (you: seat 1, AI {meta.get('hero_ai', 'Default')}; every player at 40 life)")
     r = ex["results"]
     w, l, d = r.get("win", 0), r.get("loss", 0), r.get("draw", 0)
     print(f"results: won {w} ({share(w, n)}, {ci(w, n)}) | lost {l} ({share(l, n)}) | unfinished {d} ({share(d, n)}"
@@ -179,7 +179,7 @@ def print_all(meta, builds, approx_notes=None):
     print("\nnotes:")
     for m, note in approx_notes.items(): print(f"  ≈ {note}")
     print(f"  pilot: Forge's AI plays every seat (decent at fair Magic, weak at combo sequencing). Read win rates with the loss "
-          f"reasons and the AI-flag list; a win rate from {builds[0][1] and len(builds[0][1])} games is ±{50 * 1.96 / max(1, len(builds[0][1])) ** .5:.0f} pts at worst.")
+          f"reasons and the AI-flag list; a win rate from {len(builds[0][1])} games is ±{50 * 1.96 / max(1, len(builds[0][1])) ** .5:.0f} pts at worst.")
     if meta["engine"] == "harness":
         print(f"  engine harness: every game is its own Forge match with its own seed (replayable alone); a game ends when the table "
               f"dies, when you've lost (with real opponents left it plays on for the pod result), or after your turn {meta.get('cap')} "
