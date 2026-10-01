@@ -65,7 +65,7 @@ def summary(res, groups, opp_n=3, start_life=40, life_floor=20):
     out["kill_by_turn"] = {lab: {t: round(mean([1 if len(f["deaths"]) >= need and f["deaths"][need - 1] <= t else 0 for f in F]), 4)
                                  for t in range(1, T + 1)}
                            for lab, need in (("first", 1), ("second", 2), ("table", opp_n))}
-    wins = sorted(f["won"] for f in F if f["won"])
+    wins = sorted(f["won"] for f in F if f["won"] and f["won"] <= T)     # a game can outlast the horizon (Fishpond)
     out["table_kill"] = {"share": round(len(wins) / n, 4), "p10": q(wins, .1) if wins else None,
                          "med": q(wins, .5) if wins else None, "p90": q(wins, .9) if wins else None}
     how = Counter(h for f in F for h in f["how"])
