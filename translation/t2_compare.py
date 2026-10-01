@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """T2 step 4: compare GEF translations with goldfish.py's regex parser on the same cards.
 
-  python3 translation/t2_compare.py GEF.json [GEF.json ...]   # writes translation/prototype/compare.json + review.md
+  python3 translation/t2_compare.py GEF.json [GEF.json ...] [--out DIR]   # writes DIR (default translation/prototype)/compare.json + review.md
 
 Both sides are reduced to a signature: the card's status (the parser's as goldfish_coverage reports it, GEF's as it
 would compile against today's engine), effect families, trigger events and combat keywords. A card whose signatures
@@ -147,7 +147,11 @@ def compact(gef):
 
 def main():
     gefs = {}
-    for p in sys.argv[1:]:
+    args = sys.argv[1:]
+    out = os.path.join(HERE, "prototype")
+    if "--out" in args:
+        i = args.index("--out"); out = args[i + 1]; args = args[:i] + args[i + 2:]
+    for p in args:
         for x in json.load(open(p, encoding="utf-8")): gefs[x.get("name")] = x
     idx = mtg.index()
     names = [n for n in gefs if n and n.lower() in idx]
@@ -170,7 +174,6 @@ def main():
             text = card.get("oracle_text") or " // ".join(f.get("oracle_text", "") for f in card.get("card_faces", []))
             md.append(f"## {n}\n\n**Oracle:** {text}\n\n**Parser ({ps}):** {pr}\n\n**GEF (today {gs_today}, expressed {gs_expr}):**\n{compact(gef)}\n\n"
                       f"**Signature diff:** " + "; ".join(f"{k}: parser-only {v['parser_only']}, gef-only {v['gef_only']}" for k, v in diff.items() if v['parser_only'] or v['gef_only']) + "\n")
-    out = os.path.join(HERE, "prototype")
     json.dump(rows, open(os.path.join(out, "compare.json"), "w", encoding="utf-8"), indent=1, ensure_ascii=False)
     open(os.path.join(out, "review.md"), "w", encoding="utf-8").write("\n".join(md))
     v = [r for r in rows if r["valid"]]

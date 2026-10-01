@@ -1,0 +1,173 @@
+[
+ {
+  "name": "Ornithopter",
+  "mana_cost": "{0}",
+  "type_line": "Artifact Creature — Thopter",
+  "oracle_text": "Flying",
+  "power": "0",
+  "toughness": "2"
+ },
+ {
+  "name": "Piggy Bank",
+  "mana_cost": "{1}{R}",
+  "type_line": "Artifact Creature — Boar Toy",
+  "oracle_text": "When this creature dies, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+  "power": "3",
+  "toughness": "2"
+ },
+ {
+  "name": "Prized Statue",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "When this artifact enters or is put into a graveyard from the battlefield, create a Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+ },
+ {
+  "name": "Ratchet, Field Medic // Ratchet, Rescue Racer",
+  "type_line": "Legendary Artifact Creature — Robot // Legendary Artifact — Vehicle",
+  "faces": [
+   {
+    "name": "Ratchet, Field Medic",
+    "mana_cost": "{2}{W}",
+    "type_line": "Legendary Artifact Creature — Robot",
+    "oracle_text": "More Than Meets the Eye {1}{W} (You may cast this card converted for {1}{W}.)\nLifelink\nWhenever you gain life, you may convert Ratchet. When you do, return target artifact card with mana value less than or equal to the amount of life you gained this turn from your graveyard to the battlefield tapped.",
+    "power": "2",
+    "toughness": "4"
+   },
+   {
+    "name": "Ratchet, Rescue Racer",
+    "type_line": "Legendary Artifact — Vehicle",
+    "oracle_text": "Living metal (During your turn, this Vehicle is also a creature.)\nLifelink\nWhenever one or more nontoken artifacts you control are put into a graveyard from the battlefield, convert Ratchet. This ability triggers only once each turn.",
+    "power": "1",
+    "toughness": "4"
+   }
+  ]
+ },
+ {
+  "name": "Roadside Reliquary",
+  "type_line": "Land",
+  "oracle_text": "{T}: Add {C}.\n{2}, {T}, Sacrifice this land: Draw a card if you control an artifact. Draw a card if you control an enchantment."
+ },
+ {
+  "name": "Scourge of the Nobilis",
+  "mana_cost": "{2}{R/W}",
+  "type_line": "Enchantment — Aura",
+  "oracle_text": "Enchant creature\nAs long as enchanted creature is red, it gets +1/+1 and has \"{R/W}: This creature gets +1/+0 until end of turn.\"\nAs long as enchanted creature is white, it gets +1/+1 and has lifelink. (Damage dealt by the creature also causes its controller to gain that much life.)"
+ },
+ {
+  "name": "Scrap Trawler",
+  "mana_cost": "{3}",
+  "type_line": "Artifact Creature — Construct",
+  "oracle_text": "Whenever this creature dies or another artifact you control is put into a graveyard from the battlefield, return to your hand target artifact card in your graveyard with lesser mana value.",
+  "power": "3",
+  "toughness": "2"
+ },
+ {
+  "name": "Seething Song",
+  "mana_cost": "{2}{R}",
+  "type_line": "Instant",
+  "oracle_text": "Add {R}{R}{R}{R}{R}."
+ },
+ {
+  "name": "Servo Schematic",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "When this artifact enters or is put into a graveyard from the battlefield, create a 1/1 colorless Servo artifact creature token."
+ },
+ {
+  "name": "Sheltered by Ghosts",
+  "mana_cost": "{1}{W}",
+  "type_line": "Enchantment — Aura",
+  "oracle_text": "Enchant creature you control\nWhen this Aura enters, exile target nonland permanent an opponent controls until this Aura leaves the battlefield.\nEnchanted creature gets +1/+0 and has lifelink and ward {2}."
+ },
+ {
+  "name": "Skrelv's Hive",
+  "mana_cost": "{1}{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "At the beginning of your upkeep, you lose 1 life and create a 1/1 colorless Phyrexian Mite artifact creature token with toxic 1 and \"This token can't block.\"\nCorrupted — As long as an opponent has three or more poison counters, creatures you control with toxic have lifelink."
+ },
+ {
+  "name": "Spirit Loop",
+  "mana_cost": "{1}{W}",
+  "type_line": "Enchantment — Aura",
+  "oracle_text": "Enchant creature you control\nWhenever enchanted creature deals damage, you gain that much life.\nWhen this Aura is put into a graveyard from the battlefield, return it to its owner's hand."
+ },
+ {
+  "name": "Stridehangar Automaton",
+  "mana_cost": "{3}",
+  "type_line": "Artifact Creature — Construct",
+  "oracle_text": "Thopters you control get +1/+1.\nIf one or more artifact tokens would be created under your control, those tokens plus an additional 1/1 colorless Thopter artifact creature token with flying are created instead.",
+  "power": "1",
+  "toughness": "4"
+ },
+ {
+  "name": "Test of Endurance",
+  "mana_cost": "{2}{W}{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "At the beginning of your upkeep, if you have 50 or more life, you win the game."
+ },
+ {
+  "name": "The Battle of Bywater",
+  "mana_cost": "{1}{W}{W}",
+  "type_line": "Sorcery",
+  "oracle_text": "Destroy all creatures with power 3 or greater. Then create a Food token for each creature you control. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")"
+ },
+ {
+  "name": "The Underworld Cookbook",
+  "mana_cost": "{1}",
+  "type_line": "Artifact — Book",
+  "oracle_text": "{T}, Discard a card: Create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\n{4}, {T}, Sacrifice this artifact: Return target creature card from your graveyard to your hand."
+ },
+ {
+  "name": "Thopter Assembly",
+  "mana_cost": "{6}",
+  "type_line": "Artifact Creature — Thopter",
+  "oracle_text": "Flying\nAt the beginning of your upkeep, if you control no Thopters other than this creature, return this creature to its owner's hand and create five 1/1 colorless Thopter artifact creature tokens with flying.",
+  "power": "5",
+  "toughness": "5"
+ },
+ {
+  "name": "Toggo, Goblin Weaponsmith",
+  "mana_cost": "{2}{R}",
+  "type_line": "Legendary Creature — Goblin Artificer",
+  "oracle_text": "Landfall — Whenever a land you control enters, create a colorless Equipment artifact token named Rock with \"Equipped creature has '{1}, {T}, Sacrifice Rock: This creature deals 2 damage to any target'\" and equip {1}.\nPartner (You can have two commanders if both have partner.)",
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Treasure Nabber",
+  "mana_cost": "{2}{R}",
+  "type_line": "Creature — Goblin Rogue",
+  "oracle_text": "Whenever an opponent taps an artifact for mana, gain control of that artifact until the end of your next turn.",
+  "power": "3",
+  "toughness": "2"
+ },
+ {
+  "name": "Treasure Vault",
+  "type_line": "Artifact Land",
+  "oracle_text": "{T}: Add {C}.\n{X}{X}, {T}, Sacrifice this land: Create X Treasure tokens."
+ },
+ {
+  "name": "Visions of Phyrexia",
+  "mana_cost": "{2}{R}{R}",
+  "type_line": "Enchantment",
+  "oracle_text": "At the beginning of your upkeep, exile the top card of your library. You may play that card this turn.\nAt the beginning of your end step, if you didn't play a card from exile this turn, create a tapped Powerstone token. (It's an artifact with \"{T}: Add {C}. This mana can't be spent to cast a nonartifact spell.\")"
+ },
+ {
+  "name": "Wake the Past",
+  "mana_cost": "{5}{R}{W}",
+  "type_line": "Sorcery",
+  "oracle_text": "Return all artifact cards from your graveyard to the battlefield. They gain haste until end of turn."
+ },
+ {
+  "name": "Weapons Manufacturing",
+  "mana_cost": "{1}{R}",
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever a nontoken artifact you control enters, create a colorless artifact token named Munitions with \"When this token leaves the battlefield, it deals 2 damage to any target.\""
+ },
+ {
+  "name": "Well of Lost Dreams",
+  "mana_cost": "{4}",
+  "type_line": "Artifact",
+  "oracle_text": "Whenever you gain life, you may pay {X}, where X is less than or equal to the amount of life you gained. If you do, draw X cards."
+ }
+]

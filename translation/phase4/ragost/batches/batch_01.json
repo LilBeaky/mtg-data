@@ -1,0 +1,245 @@
+[
+ {
+  "name": "Ragost, Deft Gastronaut",
+  "mana_cost": "{R}{W}",
+  "type_line": "Legendary Creature — Lobster Citizen",
+  "oracle_text": "Artifacts you control are Foods in addition to their other types and have \"{2}, {T}, Sacrifice this artifact: You gain 3 life.\"\n{1}, {T}, Sacrifice a Food: Ragost deals 3 damage to each opponent.\nAt the beginning of each end step, if you gained life this turn, untap Ragost.",
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Academy Manufactor",
+  "mana_cost": "{3}",
+  "type_line": "Artifact Creature — Assembly-Worker",
+  "oracle_text": "If you would create a Clue, Food, or Treasure token, instead create one of each.",
+  "power": "1",
+  "toughness": "3"
+ },
+ {
+  "name": "Bender's Waterskin",
+  "mana_cost": "{3}",
+  "type_line": "Artifact",
+  "oracle_text": "Untap this artifact during each other player's untap step.\n{T}: Add one mana of any color."
+ },
+ {
+  "name": "Caduceus, Staff of Hermes",
+  "mana_cost": "{2}{W}",
+  "type_line": "Legendary Artifact — Equipment",
+  "oracle_text": "Equipped creature has lifelink.\nAs long as you have 30 or more life, equipped creature gets +5/+5 and has indestructible and \"Prevent all damage that would be dealt to this creature.\"\nEquip {W}{W}"
+ },
+ {
+  "name": "City on Fire",
+  "mana_cost": "{5}{R}{R}{R}",
+  "type_line": "Enchantment",
+  "oracle_text": "Convoke (Your creatures can help cast this spell. Each creature you tap while casting this spell pays for {1} or one mana of that creature's color.)\nIf a source you control would deal damage to a permanent or player, it deals triple that damage instead."
+ },
+ {
+  "name": "Cloud Key",
+  "mana_cost": "{3}",
+  "type_line": "Artifact",
+  "oracle_text": "As this artifact enters, choose artifact, creature, enchantment, instant, or sorcery.\nSpells you cast of the chosen type cost {1} less to cast."
+ },
+ {
+  "name": "Colossus of the Blood Age",
+  "mana_cost": "{4}{R}{W}",
+  "type_line": "Artifact Creature — Construct",
+  "oracle_text": "When this creature enters, it deals 3 damage to each opponent and you gain 3 life.\nWhen this creature dies, discard any number of cards, then draw that many cards plus one.",
+  "power": "6",
+  "toughness": "6"
+ },
+ {
+  "name": "Curse of Opulence",
+  "mana_cost": "{R}",
+  "type_line": "Enchantment — Aura Curse",
+  "oracle_text": "Enchant player\nWhenever enchanted player is attacked, create a Gold token. Each opponent attacking that player does the same. (A Gold token is an artifact with \"Sacrifice this token: Add one mana of any color.\")"
+ },
+ {
+  "name": "Descent into Avernus",
+  "mana_cost": "{2}{R}",
+  "type_line": "Enchantment",
+  "oracle_text": "At the beginning of your upkeep, put two descent counters on this enchantment. Then each player creates X Treasure tokens and this enchantment deals X damage to each player, where X is the number of descent counters on this enchantment."
+ },
+ {
+  "name": "Experimental Synthesizer",
+  "mana_cost": "{R}",
+  "type_line": "Artifact",
+  "oracle_text": "When this artifact enters or leaves the battlefield, exile the top card of your library. Until end of turn, you may play that card.\n{2}{R}, Sacrifice this artifact: Create a 2/2 white Samurai creature token with vigilance. Activate only as a sorcery."
+ },
+ {
+  "name": "Fateful Showdown",
+  "mana_cost": "{2}{R}{R}",
+  "type_line": "Instant",
+  "oracle_text": "Fateful Showdown deals damage to any target equal to the number of cards in your hand. Discard all the cards in your hand, then draw that many cards."
+ },
+ {
+  "name": "Foundry Inspector",
+  "mana_cost": "{3}",
+  "type_line": "Artifact Creature — Construct",
+  "oracle_text": "Artifact spells you cast cost {1} less to cast.",
+  "power": "3",
+  "toughness": "2"
+ },
+ {
+  "name": "Furnace of Rath",
+  "mana_cost": "{1}{R}{R}{R}",
+  "type_line": "Enchantment",
+  "oracle_text": "If a source would deal damage to a permanent or player, it deals double that damage to that permanent or player instead."
+ },
+ {
+  "name": "Goblin Welder",
+  "mana_cost": "{R}",
+  "type_line": "Creature — Goblin Artificer",
+  "oracle_text": "{T}: Choose target artifact a player controls and target artifact card in that player's graveyard. If both targets are still legal as this ability resolves, that player simultaneously sacrifices the artifact and returns the artifact card to the battlefield.",
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Hot Dog Cart",
+  "mana_cost": "{3}",
+  "type_line": "Artifact",
+  "oracle_text": "When this artifact enters, create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\n{T}: Add one mana of any color."
+ },
+ {
+  "name": "Humble Defector",
+  "mana_cost": "{1}{R}",
+  "type_line": "Creature — Human Rogue",
+  "oracle_text": "{T}: Draw two cards. Target opponent gains control of this creature. Activate only during your turn.",
+  "power": "2",
+  "toughness": "1"
+ },
+ {
+  "name": "Ichor Wellspring",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "When this artifact enters or is put into a graveyard from the battlefield, draw a card."
+ },
+ {
+  "name": "Illusionist's Bracers",
+  "mana_cost": "{2}",
+  "type_line": "Artifact — Equipment",
+  "oracle_text": "Whenever an ability of equipped creature is activated, if it isn't a mana ability, copy that ability. You may choose new targets for the copy.\nEquip {3}"
+ },
+ {
+  "name": "Illustrious Wanderglyph",
+  "mana_cost": "{4}{W}",
+  "type_line": "Artifact Creature — Golem",
+  "oracle_text": "Ascend (If you control ten or more permanents, you get the city's blessing for the rest of the game.)\nOther artifact creatures you control get +2/+2 as long as you have the city's blessing.\nAt the beginning of each upkeep, create a 1/1 colorless Gnome artifact creature token.",
+  "power": "2",
+  "toughness": "2"
+ },
+ {
+  "name": "Ishgard, the Holy See // Faith & Grief",
+  "mana_cost": "{3}{W}{W}",
+  "type_line": "Land — Town // Sorcery — Adventure",
+  "faces": [
+   {
+    "name": "Ishgard, the Holy See",
+    "type_line": "Land — Town",
+    "oracle_text": "This land enters tapped.\n{T}: Add {W}."
+   },
+   {
+    "name": "Faith & Grief",
+    "mana_cost": "{3}{W}{W}",
+    "type_line": "Sorcery — Adventure",
+    "oracle_text": "Return up to two target artifact and/or enchantment cards from your graveyard to your hand. (Then exile this card. You may play the land later from exile.)"
+   }
+  ]
+ },
+ {
+  "name": "Junk Diver",
+  "mana_cost": "{3}",
+  "type_line": "Artifact Creature — Bird",
+  "oracle_text": "Flying\nWhen this creature dies, return another target artifact card from your graveyard to your hand.",
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Lembas",
+  "mana_cost": "{2}",
+  "type_line": "Artifact — Food",
+  "oracle_text": "When this artifact enters, scry 1, then draw a card.\n{2}, {T}, Sacrifice this artifact: You gain 3 life.\nWhen this artifact is put into a graveyard from the battlefield, its owner shuffles it into their library."
+ },
+ {
+  "name": "Lifelink",
+  "mana_cost": "{W}",
+  "type_line": "Enchantment — Aura",
+  "oracle_text": "Enchant creature\nEnchanted creature has lifelink. (Damage dealt by the creature also causes its controller to gain that much life.)"
+ },
+ {
+  "name": "Loyal Apprentice",
+  "mana_cost": "{1}{R}",
+  "type_line": "Creature — Human Artificer",
+  "oracle_text": "Haste\nLieutenant — At the beginning of combat on your turn, if you control your commander, create a 1/1 colorless Thopter artifact creature token with flying. That token gains haste until end of turn.",
+  "power": "2",
+  "toughness": "1"
+ },
+ {
+  "name": "Magus of the Wheel",
+  "mana_cost": "{2}{R}",
+  "type_line": "Creature — Human Wizard",
+  "oracle_text": "{1}{R}, {T}, Sacrifice this creature: Each player discards their hand, then draws seven cards.",
+  "power": "3",
+  "toughness": "3"
+ },
+ {
+  "name": "Mines of Moria",
+  "type_line": "Legendary Land",
+  "oracle_text": "Mines of Moria enters tapped unless you control a legendary creature.\n{T}: Add {R}.\n{3}{R}, {T}, Exile three cards from your graveyard: Create two Treasure tokens."
+ },
+ {
+  "name": "Molten Psyche",
+  "mana_cost": "{1}{R}{R}",
+  "type_line": "Sorcery",
+  "oracle_text": "Each player shuffles the cards from their hand into their library, then draws that many cards.\nMetalcraft — If you control three or more artifacts, Molten Psyche deals damage to each opponent equal to the number of cards that player has drawn this turn."
+ },
+ {
+  "name": "Monologue Tax",
+  "mana_cost": "{2}{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever an opponent casts their second spell each turn, you create a Treasure token."
+ },
+ {
+  "name": "Mycosynth Wellspring",
+  "mana_cost": "{2}",
+  "type_line": "Artifact",
+  "oracle_text": "When this artifact enters or is put into a graveyard from the battlefield, you may search your library for a basic land card, reveal it, put it into your hand, then shuffle."
+ },
+ {
+  "name": "Myr Retriever",
+  "mana_cost": "{2}",
+  "type_line": "Artifact Creature — Myr",
+  "oracle_text": "When this creature dies, return another target artifact card from your graveyard to your hand.",
+  "power": "1",
+  "toughness": "1"
+ },
+ {
+  "name": "Needleverge Pathway // Pillarverge Pathway",
+  "type_line": "Land // Land",
+  "faces": [
+   {
+    "name": "Needleverge Pathway",
+    "type_line": "Land",
+    "oracle_text": "{T}: Add {R}."
+   },
+   {
+    "name": "Pillarverge Pathway",
+    "type_line": "Land",
+    "oracle_text": "{T}: Add {W}."
+   }
+  ]
+ },
+ {
+  "name": "Neheb, the Eternal",
+  "mana_cost": "{3}{R}{R}",
+  "type_line": "Legendary Creature — Zombie Minotaur Warrior",
+  "oracle_text": "Afflict 3 (Whenever this creature becomes blocked, defending player loses 3 life.)\nAt the beginning of each of your postcombat main phases, add {R} for each 1 life your opponents have lost this turn.",
+  "power": "4",
+  "toughness": "6"
+ },
+ {
+  "name": "Nuka-Cola Vending Machine",
+  "mana_cost": "{3}",
+  "type_line": "Artifact",
+  "oracle_text": "{1}, {T}: Create a Food token. (It's an artifact with \"{2}, {T}, Sacrifice this token: You gain 3 life.\")\nWhenever you sacrifice a Food, create a tapped Treasure token. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")"
+ }
+]
