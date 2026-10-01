@@ -274,6 +274,25 @@ def checks():
         dict(name="goldfish food trace", cmd=S("goldfish.py", FOOD, "--trials", "2", "--trace", "2", "--disruption", "off"),
              must=["opponent 1's turn (", "activate Ragost, Deft Gastronaut (sacrifice ", "Ragost, Deft Gastronaut untaps",
                    "Ragost, Deft Gastronaut: 3 to each opponent"]),
+        # ---- Fishpond (Forge-backed simulator). The parser units run on saved Forge logs, no Forge needed.
+        dict(name="fishpond units", cmd=["tests/fishpond_units.py"], must=["units: all"]),
+        dict(name="fishpond help", cmd=["-m", "fishpond"], must=["python3 -m fishpond run DECK", "gauntlet:NAME"]),
+        *fishpond_live(),
+    ]
+
+def fishpond_live():
+    """Live Fishpond checks, only when the pinned Forge release is already cached (CI never downloads it)."""
+    sys.path.insert(0, REPO)
+    from fishpond import forge
+    if not forge.installed(): return []
+    return [
+        dict(name="fishpond deck", cmd=["-m", "fishpond", "deck", "tests/forge/chulane.txt", "--opp", "gauntlet:own"],
+             must=["hero: Chulane, Teller of Tales | 100 cards | bracket 3", "Selvala, Explorer Returned; Sungrass Prairie",
+                   "Klauth, Unrivaled Ancient: 101 cards"]),
+        dict(name="fishpond run (2 games, live Forge)", cmd=["-m", "fishpond", "run", "tests/forge/chulane.txt", "--trials", "2",
+                                                             "--cap", "3", "--turns", "3", "--jobs", "2", "--quiet", "--out", os.path.join(TMP, "fp")],
+             must=["=== FISHPOND: Chulane, Teller of Tales", "vacuum: 3 dummies", "dummies: never cast or attacked", "## base: combat and damage"],
+             must_not=["WARNING"]),
     ]
 
 def run(c):

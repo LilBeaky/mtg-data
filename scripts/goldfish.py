@@ -52,6 +52,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mtg
 import tutors as tu          # tutor targets and destinations are read exactly as tutors.py reads them
 import stats_math as sm      # '# package:' part resolution
+import sim_report as sr      # stats helpers + report layout (shared with Fishpond)
 
 COLORS = "WUBRG"
 ALL5 = frozenset(COLORS)
@@ -5998,60 +5999,15 @@ class Sim:
         return out
 
 # ---------------------------------------------------------------- report
-def pct(v): return f"{100 * v:5.1f}%"
-def q(vals, p):
-    s = sorted(vals); return s[min(len(s) - 1, int(p * (len(s) - 1) + 0.5))]
-def mean(v): return sum(v) / len(v) if v else 0
-def by_turn(turns_list, t): return mean([1 if x is not None and x <= t else 0 for x in turns_list])
-
-def nz(counter):
-    """Drop entries that round to nothing (cycling nets 0 extra cards; it is filtering, not advantage)."""
-    return Counter({k: v for k, v in counter.items() if abs(v) >= 1})
+# Stats helpers and the report layout live in sim_report.py (shared with Fishpond); goldfish passes its
+# constants and prints its own header.
+from sim_report import pct, q, mean, by_turn, nz, sd, mean_leq1, compare_table
 
 def summary(res, groups):
-    rec, T = res["rec"], res["turns"]
-    out = {"turns": {}}
-    for t in range(1, T + 1):
-        out["turns"][t] = {m: ({"p10": q(v, .1), "med": q(v, .5), "p90": q(v, .9), "mean": round(mean(v), 2)}
-                               if m not in ("colors", "cmd_out") else round(mean(v), 4))
-                           for m, v in ((m, rec[m][t]) for m in rec)}
-    out["commander_by_turn"] = {c: {t: round(by_turn(v, t), 4) for t in range(1, T + 1)} for c, v in res["cmd_first"].items()}
-    out["tracked_by_turn"] = {groups[gi][0]: {t: round(by_turn(v, t), 4) for t in range(1, T + 1)} for gi, v in res["first"].items()}
-    out["extra_card_sources"] = {k: round(v / res["trials"], 3) for k, v in nz(res["attr"]).most_common(12)}
-    out["recursion_sources"] = {k: round(v / res["trials"], 3) for k, v in nz(res["rattr"]).most_common(10)}
-    out["tutor_targets"] = {k: round(v / res["trials"], 3) for k, v in nz(res["tut"]).most_common(10)}
-    out["kept_hand_size"] = {k: round(v / res["trials"], 4) for k, v in sorted(res["kept"].items(), reverse=True)}
-    out["mulligan_rate"] = round(res["mulliganed"], 4)
-    F, n = res["finals"], res["trials"]
-    out["kill_by_turn"] = {lab: {t: round(mean([1 if len(f["deaths"]) >= need and f["deaths"][need - 1] <= t else 0 for f in F]), 4)
-                                 for t in range(1, T + 1)}
-                           for lab, need in (("first", 1), ("second", 2), ("table", OPP_N))}
-    wins = sorted(f["won"] for f in F if f["won"])
-    out["table_kill"] = {"share": round(len(wins) / n, 4), "p10": q(wins, .1) if wins else None,
-                         "med": q(wins, .5) if wins else None, "p90": q(wins, .9) if wins else None}
-    how = Counter(h for f in F for h in f["how"])
-    out["kills_by"] = {h: round(v / sum(how.values()), 3) for h, v in how.most_common()}
-    out["damage_sources"] = {k: round(v / n, 2) for k, v in res["dsrc"].most_common(10) if v / n >= 0.05}
-    kinds = Counter()
-    for (_, kind), v in res["trigs"].items(): kinds[kind] += v
-    out["triggers_by_kind"] = {k: round(kinds[k] / n, 2) for k in ("enter", "cast", "timed", "combat", "dies", "~opp", "other") if kinds[k]}
-    out["trigger_sources"] = {f"{name} ({kind})": round(v / n, 2) for (name, kind), v in res["trigs"].most_common(12) if v / n >= 0.05}
-    out["lost_in_combat"] = round(res["lost"], 3); out["attack_turns"] = round(res["atk_turns"], 2)
-    out["extra_combats"] = round(res["xcombats"], 2)
-    if res.get("spec"): out["blocks"] = {k: round(v / n, 3) for k, v in sorted(res["bstat"].items())}
-    paid = Counter()
-    for f in F: paid.update(f.get("life_paid") or {})
-    died = sorted(f["died"] for f in F if f.get("died"))
-    out["self_life"] = {"paid_avg": round(sum(paid.values()) / n, 2), "paid_by": {k: round(v / n, 2) for k, v in paid.most_common()},
-                        "died_share": round(len(died) / n, 4), "died_med": q(died, .5) if died else None,
-                        "died_by": dict(Counter(f.get("death") for f in F if f.get("died"))), "floor": LIFE_FLOOR,
-                        "end_p10": q(sorted(f.get("life", START_LIFE) for f in F), .1)}
-    return out
+    return sr.summary(res, groups, opp_n=OPP_N, start_life=START_LIFE, life_floor=LIFE_FLOOR)
 
 def print_report(label, sm, meta, groups, show_header=True):
     T = meta["turns"]
-    tt = sm["turns"]
-    def trio(t, m): d = tt[t][m]; return f"{d['p10']}/{d['med']}/{d['p90']}"
     if show_header:
         print(f"=== GOLDFISH: {meta['commander']} | {meta['n']} cards | {meta['trials']} games x {T} turns | "
               f"{'on the draw' if meta['draw'] else 'on the play'} | seed {meta['seed']} ===")
@@ -6063,83 +6019,10 @@ def print_report(label, sm, meta, groups, show_header=True):
         print(f"opponents: not simulated. {meta['opp_n']} card(s) use the fixed opponent approximations (~opp in --explain); "
               f"{meta['vac_n']} need opponents and do nothing here (vacuum)")
         if meta.get("kill"): print(f"--kill-commander {meta['kill']}: every clean game loses the commander after turn {meta['kill'] - 1}")
-    print(f"\n## {label}: development (P10/median/P90; lands and mana at the start of your main phase)")
-    print(f"{'turn':<5}{'lands':<10}{'mana':<10}{'all colors':>11}{'cmdr out':>10}   {'spells cast':<13}{'mana spent':<12}")
-    for t in range(1, T + 1):
-        print(f"T{t:<4}{trio(t, 'lands'):<10}{trio(t, 'mana'):<10}{pct(tt[t]['colors']):>11}{pct(tt[t]['cmd_out']):>10}   "
-              f"{trio(t, 'casts'):<13}{trio(t, 'spent'):<12}")
-    turns_show = [t for t in range(2, T + 1)]
-    for c, v in sm["commander_by_turn"].items():
-        print(f"commander {c}: " + " | ".join(f"<=T{t} {pct(v[t]).strip()}" for t in turns_show))
-    for g, v in sm["tracked_by_turn"].items():
-        print(f"tracked {g}: " + " | ".join(f"<=T{t} {pct(v[t]).strip()}" for t in turns_show))
-    print(f"\n## {label}: card flow (end of turn; extra = cards put in hand beyond draw steps)")
-    print(f"{'turn':<5}{'extra (cum)':<13}{'mean':>6}{'hand':>10}{'hand<=1':>9}{'stranded':>10}{'discarded':>11}"
-          f"{'graveyard':>11}{'recursion':>11}{'cycled':>8}")
-    for t in range(1, T + 1):
-        d = tt[t]
-        print(f"T{t:<4}{trio(t, 'extra'):<13}{d['extra']['mean']:>6.2f}{trio(t, 'hand'):>10}"
-              f"{pct(mean_leq1(d)):>9}{d['stranded']['mean']:>10.2f}{d['disc']['mean']:>11.2f}"
-              f"{trio(t, 'gy'):>11}{d['recur']['mean']:>11.2f}{d['cycled']['mean']:>8.2f}")
-    src = sm["extra_card_sources"]
-    if src:
-        print(f"extra cards by source (avg per game over {T} turns): "
-              + " | ".join(f"{k} {v:.2f}" for k, v in src.items()))
-    if sm.get("recursion_sources"):
-        print(f"recursion by source (cards back from the graveyard, avg per game): "
-              + " | ".join(f"{k} {v:.2f}" for k, v in sm["recursion_sources"].items()))
-    if sm.get("tutor_targets"):
-        print(f"tutor targets (times fetched, avg per game): "
-              + " | ".join(f"{k} {v:.2f}" for k, v in sm["tutor_targets"].items()))
-    print_combat(label, sm, T)
+    sr.print_report(label, sm, T, groups, opp_n=OPP_N, start_life=START_LIFE)
 
 def print_combat(label, sm, T):
-    tt = sm["turns"]
-    def trio(t, m): d = tt[t][m]; return f"{d['p10']}/{d['med']}/{d['p90']}"
-    bl = sm.get("blocks")
-    print(f"\n## {label}: combat and damage ({OPP_N} opponents at {START_LIFE} life; "
-          + (f"boards from --blockers: {sm.get('blockers_spec', '')}" if bl is not None else "no opposing creatures (--blockers not set)")
-          + "; opponents never attack; cumulative, end of turn)")
-    print(f"{'turn':<5}{'attackers':<11}{'combat dmg':<13}{'all dmg':<13}{'top cmdr dmg':<14}{'poison':<9}{'opps dead':>10}{'your life':>13}"
-          + (f"{'opp blockers':>14}" if bl is not None else ""))
-    for t in range(1, T + 1):
-        print(f"T{t:<4}{trio(t, 'atk'):<11}{trio(t, 'cdmg'):<13}{trio(t, 'dmg'):<13}{trio(t, 'cmdmax'):<14}{trio(t, 'poison'):<9}"
-              f"{tt[t]['kills']['mean']:>10.2f}{trio(t, 'life'):>13}" + (f"{trio(t, 'oppb'):>14}" if bl is not None else ""))
-    kb = sm["kill_by_turn"]
-    show = [t for t in range(3, T + 1)]
-    for lab, name in (("first", "first opponent dead"), ("table", "all opponents dead")):
-        print(f"{name}: " + " | ".join(f"<=T{t} {pct(kb[lab][t]).strip()}" for t in show))
-    sl = sm.get("self_life")
-    if sl and sl["died_share"]:
-        print(f"you lost in {pct(sl['died_share']).strip()} of games (median T{sl['died_med']}): "
-              + " | ".join(f"{'your own life payments' if k == 'life' else 'drew from an empty library'} {v / sum(sl['died_by'].values()):.0%}" for k, v in sl["died_by"].items()))
-    if sl and sl["paid_avg"]:
-        print(f"life you paid yourself (avg per game): {sl['paid_avg']:.2f} = " + " | ".join(f"{k} {v:.2f}" for k, v in sl["paid_by"].items())
-              + f"; life at the end P10 {sl['end_p10']}; floor {sl['floor']} for optional payments"
-              )
-    tk = sm["table_kill"]
-    print(f"table killed in {pct(tk['share']).strip()} of games by T{T}" +
-          (f" (P10 T{tk['p10']} / median T{tk['med']} / P90 T{tk['p90']} of those)" if tk["med"] else "")
-          + ("; kills by: " + " | ".join(f"{h} {pct(v).strip()}" for h, v in sm["kills_by"].items()) if sm["kills_by"] else ""))
-    if sm["damage_sources"]:
-        print("damage by source (avg per game): " + " | ".join(f"{k} {v:.1f}" for k, v in sm["damage_sources"].items()))
-    if sm["triggers_by_kind"]:
-        print("triggers fired (avg per game): " + " | ".join(f"{k} {v:.2f}" for k, v in sm["triggers_by_kind"].items()))
-    if sm["trigger_sources"]:
-        print("trigger sources (avg fires per game): " + " | ".join(f"{k} {v:.2f}" for k, v in sm["trigger_sources"].items()))
-    if bl is not None:
-        g_ = lambda k: bl.get(k, 0)
-        print(f"blocks (avg per game): attackers blocked {g_('blocked'):.2f} (chumped {g_('chump'):.2f}, traded {g_('trade'):.2f}, "
-              f"lost to the blocker {g_('bounced'):.2f}, stalled {g_('stalled'):.2f}) | held back from a bad block {g_('held_back'):.2f} | "
-              f"blockers killed {g_('blk_killed'):.2f} | combat damage stopped by blocks/fog/Maze {g_('stopped'):.1f} | "
-              f"your removal on a blocker {g_('removed_blk'):.2f}")
-        if any(g_(k) for k in ("fog", "settle", "deny_stop", "prop_paid", "mazed", "deny_countered", "removed_deny")):
-            print(f"denial (avg per game): fogs {g_('fog'):.2f} | Settles {g_('settle'):.2f} (your creatures exiled {g_('settled'):.2f}) | "
-                  f"attackers kept home by Moat/Bridge/Arbiter/attack tax {g_('deny_stop'):.2f} | attack tax paid {g_('prop_paid'):.2f} mana | "
-                  f"Maze {g_('mazed'):.2f} | countered {g_('deny_countered'):.2f} | your removal on denial {g_('removed_deny'):.2f}")
-    print(f"attacked on {sm['attack_turns']:.1f} turns per game" + (f"; {sm['extra_combats']:.2f} additional combat phases per game"
-          if sm['extra_combats'] else "") + f"; your creatures lost in combat {sm['lost_in_combat']:.2f} per game. "
-          f"A game ends when all opponents are dead; its later turns repeat its final state.")
+    sr.print_combat(label, sm, T, opp_n=OPP_N, start_life=START_LIFE)
 
 def disruption_summary(pairs, groups):
     """Per scenario: games, events answered / with no target, and the average change vs the same clean game."""
@@ -6181,9 +6064,6 @@ def print_disruption(label, ds, T, fixed):
     print(f"Δ = disrupted minus the same clean game, averaged over T1-T{T} (board: at end of T{T}; cmdr turns: turns ending with "
           "your commander out). 'answered' = your held counters/protection stopped it (mana left open, or free with a commander "
           "out); 'no target' = nothing there to hit. Positive Δspells/Δmana after a hit usually means rebuilding with spare mana.")
-
-def sd(v):
-    m = mean(v); return (sum((x - m) ** 2 for x in v) / (len(v) - 1)) ** 0.5 if len(v) > 1 else 0.0
 
 def ladder_summary(out, lad):
     """Per rung: events fired / hit / answered, Δ vs the shuffle's baseline mean, fold rate, rebuild; per shuffle:
@@ -6262,54 +6142,6 @@ def print_ladder(label, ls):
           "events that rolled in; hit = landed unanswered on something. rebuilt/in = games whose first board hit got back to the "
           "pre-hit board size by the horizon / median turns it took. dmg = damage to opponents; kill t = turn the table died "
           f"(T{T + 1} if it didn't); won = games that killed the table (never a fold). Events: data/goldfish_gradients.json (docs/GOLDFISH.md).")
-
-def mean_leq1(d):
-    return d["hand"].get("leq1", 0.0)
-
-def compare_table(builds, groups, T):
-    print("\n## Builds compared (same shuffles)")
-    labels = [b[0] for b in builds]
-    rows = []
-    def cm(sm, t):
-        v = list(sm["commander_by_turn"].values())
-        return v[0][t] if v else 0
-    for t in (3, 4, 5):
-        if t <= T: rows.append((f"commander <=T{t}", [pct(cm(sm, t)) for _, sm in builds]))
-    for g in [g[0] for g in groups]:
-        for t in (5, 6):
-            if t <= T: rows.append((f"{g} <=T{t}", [pct(sm["tracked_by_turn"][g][t]) for _, sm in builds]))
-    for t in (3, 4):
-        if t <= T: rows.append((f"all colors T{t}", [pct(sm["turns"][t]["colors"]) for _, sm in builds]))
-    t4 = min(4, T)
-    rows.append((f"mana T{t4} P10/med", [f"{sm['turns'][t4]['mana']['p10']}/{sm['turns'][t4]['mana']['med']}" for _, sm in builds]))
-    rows.append((f"stranded T{t4} (avg)", [f"{sm['turns'][t4]['stranded']['mean']:.2f}" for _, sm in builds]))
-    rows.append((f"extra cards T{T} P10/med/P90", [f"{sm['turns'][T]['extra']['p10']}/{sm['turns'][T]['extra']['med']}/{sm['turns'][T]['extra']['p90']}" for _, sm in builds]))
-    rows.append((f"mana spent T{T} median", [str(sm['turns'][T]['spent']['med']) for _, sm in builds]))
-    rows.append((f"recursion T{T} (avg)", [f"{sm['turns'][T]['recur']['mean']:.2f}" for _, sm in builds]))
-    rows.append((f"cards cycled T{T} (avg)", [f"{sm['turns'][T]['cycled']['mean']:.2f}" for _, sm in builds]))
-    rows.append((f"damage T{T} P10/med/P90", [f"{sm['turns'][T]['dmg']['p10']}/{sm['turns'][T]['dmg']['med']}/{sm['turns'][T]['dmg']['p90']}" for _, sm in builds]))
-    rows.append((f"top cmdr dmg T{T} median", [str(sm['turns'][T]['cmdmax']['med']) for _, sm in builds]))
-    rows.append((f"first opponent dead <=T{T}", [pct(sm['kill_by_turn']['first'][T]).strip() for _, sm in builds]))
-    rows.append((f"table killed <=T{T}", [pct(sm['table_kill']['share']).strip() for _, sm in builds]))
-    rows.append(("table kill median turn", [f"T{sm['table_kill']['med']}" if sm['table_kill']['med'] else "-" for _, sm in builds]))
-    if all("disruption" in sm and "any disruption" in sm["disruption"] for _, sm in builds):
-        rows.append((f"disrupted: Δspells T{T}", [f"{sm['disruption']['any disruption']['d_casts']:+.2f}" for _, sm in builds]))
-        rows.append((f"disrupted: Δcmdr turns", [f"{sm['disruption']['any disruption']['d_cmd_turns']:+.2f}" for _, sm in builds]))
-        rows.append((f"disrupted: Δdamage", [f"{sm['disruption']['any disruption']['d_dmg']:+.2f}" for _, sm in builds]))
-        rows.append(("disrupted: answered", [pct(sm['disruption']['any disruption']['answered']).strip() for _, sm in builds]))
-    if all("ladder" in sm for _, sm in builds):
-        L = [sm["ladder"] for _, sm in builds]
-        rows.append(("ladder: median breakpoint", [str(l["bp"]["med"]) if l["bp"] else "none" for l in L]))
-        rows.append(("ladder: never folded", [pct(l["never"]).strip() for l in L]))
-        rows.append(("ladder: fold (avg over rungs)", [pct(mean([r["fold"] for r in l["rungs"]])).strip() for l in L]))
-        rows.append(("ladder: fold at top rung", [pct(l["rungs"][-1]["fold"]).strip() for l in L]))
-        rows.append(("ladder: Δcmdr turns top rung", [f"{l['rungs'][-1]['d_cmd_turns']:+.2f}" for l in L]))
-        rows.append(("ladder: Δkill turn top rung", [f"{l['rungs'][-1]['d_killt']:+.2f}" for l in L]))
-    w = max(len(r[0]) for r in rows) + 2
-    cw = max(10, max(len(l) for l in labels) + 2)
-    print(f"{'':<{w}}" + "".join(f"{l:>{cw}}" for l in labels))
-    for name, vals in rows:
-        print(f"{name:<{w}}" + "".join(f"{v:>{cw}}" for v in vals))
 
 def explain(cache, names, commanders):
     _EXPLAIN_DECK[:] = [cache[n].raw for n in dict.fromkeys(commanders + names)]

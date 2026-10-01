@@ -1,0 +1,386 @@
+Ai(1)-Chulane vs Ai(2)-Dummy vs Ai(3)-Dummy vs Ai(4)-Dummy - one game of Commander seed 7
+Mulligan: Ai(1)-Chulane has kept a hand of 7 cards
+Mulligan: Ai(2)-Dummy has kept a hand of 7 cards
+Mulligan: Ai(3)-Dummy has kept a hand of 7 cards
+Mulligan: Ai(4)-Dummy has kept a hand of 7 cards
+Turn: Turn 1 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Command Tower (27)
+Turn: Turn 2 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (158)
+Turn: Turn 3 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (271)
+Turn: Turn 4 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (337)
+Turn: Turn 5 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Reliquary Tower (70)
+Add To Stack: Ai(1)-Chulane cast Bloom Tender
+Resolve Stack: Bloom Tender - Creature 1 / 1
+Turn: Turn 6 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (120)
+Turn: Turn 7 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (272)
+Turn: Turn 8 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (387)
+Turn: Turn 9 (Ai(1)-Chulane)
+Combat: Ai(1)-Chulane assigned Bloom Tender (65) to attack Ai(3)-Dummy.
+Combat: Ai(3)-Dummy didn't block Bloom Tender (65).
+Damage: Bloom Tender (65) deals 1 combat damage to Ai(3)-Dummy.
+Life: Life: Ai(3)-Dummy 40 > 39
+Land: Ai(1)-Chulane played Island (33)
+Add To Stack: Ai(1)-Chulane cast Esper Sentinel
+Resolve Stack: Esper Sentinel - Creature 1 / 1
+Turn: Turn 10 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (161)
+Turn: Turn 11 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (281)
+Turn: Turn 12 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (317)
+Turn: Turn 13 (Ai(1)-Chulane)
+Combat: Ai(1)-Chulane assigned Bloom Tender (65) and Esper Sentinel (82) to attack Ai(3)-Dummy.
+Combat: Ai(3)-Dummy didn't block Bloom Tender (65).
+Ai(3)-Dummy didn't block Esper Sentinel (82).
+Damage: Bloom Tender (65) deals 1 combat damage to Ai(3)-Dummy.
+Damage: Esper Sentinel (82) deals 1 combat damage to Ai(3)-Dummy.
+Life: Life: Ai(3)-Dummy 39 > 37
+Land: Ai(1)-Chulane played Plains (92)
+Add To Stack: Ai(1)-Chulane cast Shrieking Drake
+Resolve Stack: Shrieking Drake - Creature 1 / 1
+Add To Stack: Ai(1)-Chulane triggered Shrieking Drake
+Resolve Stack: When Shrieking Drake enters, return a creature you control to its owner's hand. [Zone Changer: Shrieking Drake (79)]
+Add To Stack: Ai(1)-Chulane cast Esper Sentinel
+Resolve Stack: Esper Sentinel - Creature 1 / 1
+Turn: Turn 14 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (117)
+Turn: Turn 15 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (238)
+Turn: Turn 16 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (330)
+Turn: Turn 17 (Ai(1)-Chulane)
+Combat: Ai(1)-Chulane assigned Bloom Tender (65), Shrieking Drake (79) and Esper Sentinel (82) to attack Ai(3)-Dummy.
+Combat: Ai(3)-Dummy didn't block Bloom Tender (65).
+Ai(3)-Dummy didn't block Shrieking Drake (79).
+Ai(3)-Dummy didn't block Esper Sentinel (82).
+Damage: Bloom Tender (65) deals 1 combat damage to Ai(3)-Dummy.
+Damage: Shrieking Drake (79) deals 1 combat damage to Ai(3)-Dummy.
+Damage: Esper Sentinel (82) deals 1 combat damage to Ai(3)-Dummy.
+Life: Life: Ai(3)-Dummy 37 > 34
+Land: Ai(1)-Chulane played Forest (45)
+Add To Stack: Ai(1)-Chulane cast Chulane, Teller of Tales
+Resolve Stack: Chulane, Teller of Tales - Creature 2 / 4
+Turn: Turn 18 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (108)
+Turn: Turn 19 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (226)
+Turn: Turn 20 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (340)
+Turn: Turn 21 (Ai(1)-Chulane)
+Replacement Effect: Dreamroot Cascade enters tapped unless you control two or more other lands.
+Land: Ai(1)-Chulane played Dreamroot Cascade (73)
+Combat: Ai(1)-Chulane assigned Chulane, Teller of Tales (100), Bloom Tender (65), Shrieking Drake (79) and Esper Sentinel (82) to attack Ai(2)-Dummy.
+Combat: Ai(2)-Dummy didn't block Chulane, Teller of Tales (100).
+Ai(2)-Dummy didn't block Bloom Tender (65).
+Ai(2)-Dummy didn't block Shrieking Drake (79).
+Ai(2)-Dummy didn't block Esper Sentinel (82).
+Damage: Chulane, Teller of Tales (100) deals 2 combat damage to Ai(2)-Dummy.
+Damage: Bloom Tender (65) deals 1 combat damage to Ai(2)-Dummy.
+Damage: Shrieking Drake (79) deals 1 combat damage to Ai(2)-Dummy.
+Damage: Esper Sentinel (82) deals 1 combat damage to Ai(2)-Dummy.
+Life: Life: Ai(2)-Dummy 40 > 35
+Add To Stack: Ai(1)-Chulane cast Selvala, Heart of the Wilds
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Selvala, Heart of the Wilds (56), Activator: Ai(1)-Chulane, SpellAbility: Selvala, Heart of the Wilds - Creature 2 / 3]
+Add To Stack: Ai(1)-Chulane triggered Brokers Hideout
+Zone Change: Brokers Hideout (50) was put into Graveyard from Battlefield.
+Resolve Stack: When Brokers Hideout enters, sacrifice it. When you do, search your library for a basic Forest, Plains, or Island card, put it onto the battlefield tapped, then shuffle and you gain 1 life. [Zone Changer: Brokers Hideout (50)]
+Add To Stack: Ai(1)-Chulane triggered Brokers Hideout
+Life: Life: Ai(1)-Chulane 40 > 41
+Resolve Stack: Search your library for a basic Forest, Plains, or Island card, put it onto the battlefield tapped, then shuffle and you gain 1 life.
+Resolve Stack: Selvala, Heart of the Wilds - Creature 2 / 3
+Turn: Turn 22 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (198)
+Turn: Turn 23 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (270)
+Turn: Turn 24 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (336)
+Turn: Turn 25 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Island (28)
+Combat: Ai(1)-Chulane assigned Chulane, Teller of Tales (100), Selvala, Heart of the Wilds (56), Bloom Tender (65), Shrieking Drake (79) and Esper Sentinel (82) to attack Ai(4)-Dummy.
+Combat: Ai(4)-Dummy didn't block Chulane, Teller of Tales (100).
+Ai(4)-Dummy didn't block Selvala, Heart of the Wilds (56).
+Ai(4)-Dummy didn't block Bloom Tender (65).
+Ai(4)-Dummy didn't block Shrieking Drake (79).
+Ai(4)-Dummy didn't block Esper Sentinel (82).
+Damage: Chulane, Teller of Tales (100) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Selvala, Heart of the Wilds (56) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Bloom Tender (65) deals 1 combat damage to Ai(4)-Dummy.
+Damage: Shrieking Drake (79) deals 1 combat damage to Ai(4)-Dummy.
+Damage: Esper Sentinel (82) deals 1 combat damage to Ai(4)-Dummy.
+Life: Life: Ai(4)-Dummy 40 > 33
+Add To Stack: Ai(1)-Chulane cast Drift of Phantasms
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Drift of Phantasms (69), Activator: Ai(1)-Chulane, SpellAbility: Drift of Phantasms - Creature 0 / 5]
+Resolve Stack: Drift of Phantasms - Creature 0 / 5
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Resolve Stack: Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power. [Zone Changer: Drift of Phantasms (69)]
+Add To Stack: Ai(1)-Chulane cast Seedborn Muse
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Seedborn Muse (10), Activator: Ai(1)-Chulane, SpellAbility: Seedborn Muse - Creature 2 / 4]
+Resolve Stack: Seedborn Muse - Creature 2 / 4
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Resolve Stack: Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power. [Zone Changer: Seedborn Muse (10)]
+Zone Change: Terramorphic Expanse (99) was put into Graveyard from Battlefield.
+Add To Stack: Ai(1)-Chulane activated Terramorphic Expanse
+Resolve Stack: Terramorphic Expanse (99) - Ai(1)-Chulane searches their library for a basic land card, puts it onto the battlefield tapped, then shuffles.
+Turn: Turn 26 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (178)
+Turn: Turn 27 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (246)
+Turn: Turn 28 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (362)
+Turn: Turn 29 (Ai(1)-Chulane)
+Add To Stack: Ai(1)-Chulane cast Frilled Mystic
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Frilled Mystic (68), Activator: Ai(1)-Chulane, SpellAbility: Frilled Mystic - Creature 3 / 2]
+Resolve Stack: Frilled Mystic - Creature 3 / 2
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Resolve Stack: Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power. [Zone Changer: Frilled Mystic (68)]
+Replacement Effect: This land enters tapped unless you control two or more basic lands.
+Land: Ai(1)-Chulane played Sodden Verdure (90)
+Combat: Ai(1)-Chulane assigned Chulane, Teller of Tales (100), Selvala, Heart of the Wilds (56), Seedborn Muse (10), Bloom Tender (65), Shrieking Drake (79) and Esper Sentinel (82) to attack Ai(4)-Dummy.
+Combat: Ai(4)-Dummy didn't block Chulane, Teller of Tales (100).
+Ai(4)-Dummy didn't block Selvala, Heart of the Wilds (56).
+Ai(4)-Dummy didn't block Seedborn Muse (10).
+Ai(4)-Dummy didn't block Bloom Tender (65).
+Ai(4)-Dummy didn't block Shrieking Drake (79).
+Ai(4)-Dummy didn't block Esper Sentinel (82).
+Damage: Chulane, Teller of Tales (100) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Selvala, Heart of the Wilds (56) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Seedborn Muse (10) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Bloom Tender (65) deals 1 combat damage to Ai(4)-Dummy.
+Damage: Shrieking Drake (79) deals 1 combat damage to Ai(4)-Dummy.
+Damage: Esper Sentinel (82) deals 1 combat damage to Ai(4)-Dummy.
+Life: Life: Ai(4)-Dummy 33 > 24
+Turn: Turn 30 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (153)
+Turn: Turn 31 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (233)
+Turn: Turn 32 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (349)
+Turn: Turn 33 (Ai(1)-Chulane)
+Add To Stack: Ai(1)-Chulane cast Whitemane Lion
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Whitemane Lion (64), Activator: Ai(1)-Chulane, SpellAbility: Whitemane Lion - Creature 2 / 2]
+Resolve Stack: Whitemane Lion - Creature 2 / 2
+Add To Stack: Ai(1)-Chulane triggered Whitemane Lion
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Resolve Stack: Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power. [Zone Changer: Whitemane Lion (64)]
+Resolve Stack: When Whitemane Lion enters, return a creature you control to its owner's hand. [Zone Changer: Whitemane Lion (64)]
+Combat: Ai(1)-Chulane assigned Frilled Mystic (68), Chulane, Teller of Tales (100), Selvala, Heart of the Wilds (56), Seedborn Muse (10), Bloom Tender (65) and Shrieking Drake (79) to attack Ai(3)-Dummy.
+Combat: Ai(3)-Dummy didn't block Frilled Mystic (68).
+Ai(3)-Dummy didn't block Chulane, Teller of Tales (100).
+Ai(3)-Dummy didn't block Selvala, Heart of the Wilds (56).
+Ai(3)-Dummy didn't block Seedborn Muse (10).
+Ai(3)-Dummy didn't block Bloom Tender (65).
+Ai(3)-Dummy didn't block Shrieking Drake (79).
+Damage: Frilled Mystic (68) deals 3 combat damage to Ai(3)-Dummy.
+Damage: Chulane, Teller of Tales (100) deals 2 combat damage to Ai(3)-Dummy.
+Damage: Selvala, Heart of the Wilds (56) deals 2 combat damage to Ai(3)-Dummy.
+Damage: Seedborn Muse (10) deals 2 combat damage to Ai(3)-Dummy.
+Damage: Bloom Tender (65) deals 1 combat damage to Ai(3)-Dummy.
+Damage: Shrieking Drake (79) deals 1 combat damage to Ai(3)-Dummy.
+Life: Life: Ai(3)-Dummy 34 > 23
+Add To Stack: Ai(1)-Chulane cast Elvish Mystic
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Elvish Mystic (14), Activator: Ai(1)-Chulane, SpellAbility: Elvish Mystic - Creature 1 / 1]
+Resolve Stack: Elvish Mystic - Creature 1 / 1
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Resolve Stack: Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power. [Zone Changer: Elvish Mystic (14)]
+Add To Stack: Ai(1)-Chulane cast Semblance Anvil
+Resolve Stack: Semblance Anvil
+Add To Stack: Ai(1)-Chulane triggered Semblance Anvil
+Resolve Stack: Imprint — When Semblance Anvil enters, you may exile a nonland card from your hand. [Zone Changer: Semblance Anvil (84)]
+Turn: Turn 34 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (119)
+Turn: Turn 35 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (236)
+Turn: Turn 36 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (306)
+Turn: Turn 37 (Ai(1)-Chulane)
+Combat: Ai(1)-Chulane assigned Frilled Mystic (68), Chulane, Teller of Tales (100), Selvala, Heart of the Wilds (56), Seedborn Muse (10), Whitemane Lion (64), Bloom Tender (65), Shrieking Drake (79) and Elvish Mystic (14) to attack Ai(3)-Dummy.
+Combat: Ai(3)-Dummy didn't block Frilled Mystic (68).
+Ai(3)-Dummy didn't block Chulane, Teller of Tales (100).
+Ai(3)-Dummy didn't block Selvala, Heart of the Wilds (56).
+Ai(3)-Dummy didn't block Seedborn Muse (10).
+Ai(3)-Dummy didn't block Whitemane Lion (64).
+Ai(3)-Dummy didn't block Bloom Tender (65).
+Ai(3)-Dummy didn't block Shrieking Drake (79).
+Ai(3)-Dummy didn't block Elvish Mystic (14).
+Damage: Frilled Mystic (68) deals 3 combat damage to Ai(3)-Dummy.
+Damage: Chulane, Teller of Tales (100) deals 2 combat damage to Ai(3)-Dummy.
+Damage: Selvala, Heart of the Wilds (56) deals 2 combat damage to Ai(3)-Dummy.
+Damage: Seedborn Muse (10) deals 2 combat damage to Ai(3)-Dummy.
+Damage: Whitemane Lion (64) deals 2 combat damage to Ai(3)-Dummy.
+Damage: Bloom Tender (65) deals 1 combat damage to Ai(3)-Dummy.
+Damage: Shrieking Drake (79) deals 1 combat damage to Ai(3)-Dummy.
+Damage: Elvish Mystic (14) deals 1 combat damage to Ai(3)-Dummy.
+Life: Life: Ai(3)-Dummy 23 > 9
+Add To Stack: Ai(1)-Chulane cast Incubation Druid
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Incubation Druid (3), Activator: Ai(1)-Chulane, SpellAbility: Incubation Druid - Creature 0 / 2]
+Resolve Stack: Incubation Druid - Creature 0 / 2
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Resolve Stack: Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power. [Zone Changer: Incubation Druid (3)]
+Turn: Turn 38 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (157)
+Turn: Turn 39 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (220)
+Turn: Turn 40 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (357)
+Add To Stack: Ai(1)-Chulane activated Incubation Druid
+Resolve Stack: Incubation Druid (3) - Adapt 3
+Turn: Turn 41 (Ai(1)-Chulane)
+Combat: Ai(1)-Chulane assigned Frilled Mystic (68), Incubation Druid (3), Chulane, Teller of Tales (100), Selvala, Heart of the Wilds (56), Seedborn Muse (10), Whitemane Lion (64), Bloom Tender (65), Shrieking Drake (79) and Elvish Mystic (14) to attack Ai(3)-Dummy.
+Combat: Ai(3)-Dummy didn't block Frilled Mystic (68).
+Ai(3)-Dummy didn't block Incubation Druid (3).
+Ai(3)-Dummy didn't block Chulane, Teller of Tales (100).
+Ai(3)-Dummy didn't block Selvala, Heart of the Wilds (56).
+Ai(3)-Dummy didn't block Seedborn Muse (10).
+Ai(3)-Dummy didn't block Whitemane Lion (64).
+Ai(3)-Dummy didn't block Bloom Tender (65).
+Ai(3)-Dummy didn't block Shrieking Drake (79).
+Ai(3)-Dummy didn't block Elvish Mystic (14).
+Damage: Frilled Mystic (68) deals 3 combat damage to Ai(3)-Dummy.
+Damage: Incubation Druid (3) deals 3 combat damage to Ai(3)-Dummy.
+Damage: Chulane, Teller of Tales (100) deals 2 combat damage to Ai(3)-Dummy.
+Damage: Selvala, Heart of the Wilds (56) deals 2 combat damage to Ai(3)-Dummy.
+Damage: Seedborn Muse (10) deals 2 combat damage to Ai(3)-Dummy.
+Damage: Whitemane Lion (64) deals 2 combat damage to Ai(3)-Dummy.
+Damage: Bloom Tender (65) deals 1 combat damage to Ai(3)-Dummy.
+Damage: Shrieking Drake (79) deals 1 combat damage to Ai(3)-Dummy.
+Damage: Elvish Mystic (14) deals 1 combat damage to Ai(3)-Dummy.
+Life: Life: Ai(3)-Dummy 9 > -8
+Turn: Turn 42 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (127)
+Turn: Turn 43 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (351)
+Turn: Turn 44 (Ai(1)-Chulane)
+Combat: Ai(1)-Chulane assigned Frilled Mystic (68), Incubation Druid (3), Chulane, Teller of Tales (100), Selvala, Heart of the Wilds (56), Seedborn Muse (10), Whitemane Lion (64), Bloom Tender (65), Shrieking Drake (79) and Elvish Mystic (14) to attack Ai(2)-Dummy.
+Combat: Ai(2)-Dummy didn't block Frilled Mystic (68).
+Ai(2)-Dummy didn't block Incubation Druid (3).
+Ai(2)-Dummy didn't block Chulane, Teller of Tales (100).
+Ai(2)-Dummy didn't block Selvala, Heart of the Wilds (56).
+Ai(2)-Dummy didn't block Seedborn Muse (10).
+Ai(2)-Dummy didn't block Whitemane Lion (64).
+Ai(2)-Dummy didn't block Bloom Tender (65).
+Ai(2)-Dummy didn't block Shrieking Drake (79).
+Ai(2)-Dummy didn't block Elvish Mystic (14).
+Damage: Frilled Mystic (68) deals 3 combat damage to Ai(2)-Dummy.
+Damage: Incubation Druid (3) deals 3 combat damage to Ai(2)-Dummy.
+Damage: Chulane, Teller of Tales (100) deals 2 combat damage to Ai(2)-Dummy.
+Damage: Selvala, Heart of the Wilds (56) deals 2 combat damage to Ai(2)-Dummy.
+Damage: Seedborn Muse (10) deals 2 combat damage to Ai(2)-Dummy.
+Damage: Whitemane Lion (64) deals 2 combat damage to Ai(2)-Dummy.
+Damage: Bloom Tender (65) deals 1 combat damage to Ai(2)-Dummy.
+Damage: Shrieking Drake (79) deals 1 combat damage to Ai(2)-Dummy.
+Damage: Elvish Mystic (14) deals 1 combat damage to Ai(2)-Dummy.
+Life: Life: Ai(2)-Dummy 35 > 18
+Add To Stack: Ai(1)-Chulane cast Faeburrow Elder
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Replacement Effect: Path of Ancestry enters tapped.
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Faeburrow Elder (23), Activator: Ai(1)-Chulane, SpellAbility: Faeburrow Elder - Creature 0 / 0]
+Resolve Stack: Faeburrow Elder - Creature 0 / 0
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Resolve Stack: Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power. [Zone Changer: Faeburrow Elder (23)]
+Turn: Turn 45 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (135)
+Turn: Turn 46 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (352)
+Turn: Turn 47 (Ai(1)-Chulane)
+Combat: Ai(1)-Chulane assigned Frilled Mystic (68), Incubation Druid (3), Faeburrow Elder (23), Chulane, Teller of Tales (100), Selvala, Heart of the Wilds (56), Seedborn Muse (10), Whitemane Lion (64), Bloom Tender (65), Shrieking Drake (79) and Elvish Mystic (14) to attack Ai(2)-Dummy.
+Combat: Ai(2)-Dummy didn't block Frilled Mystic (68).
+Ai(2)-Dummy didn't block Incubation Druid (3).
+Ai(2)-Dummy didn't block Faeburrow Elder (23).
+Ai(2)-Dummy didn't block Chulane, Teller of Tales (100).
+Ai(2)-Dummy didn't block Selvala, Heart of the Wilds (56).
+Ai(2)-Dummy didn't block Seedborn Muse (10).
+Ai(2)-Dummy didn't block Whitemane Lion (64).
+Ai(2)-Dummy didn't block Bloom Tender (65).
+Ai(2)-Dummy didn't block Shrieking Drake (79).
+Ai(2)-Dummy didn't block Elvish Mystic (14).
+Damage: Frilled Mystic (68) deals 3 combat damage to Ai(2)-Dummy.
+Damage: Incubation Druid (3) deals 3 combat damage to Ai(2)-Dummy.
+Damage: Faeburrow Elder (23) deals 3 combat damage to Ai(2)-Dummy.
+Damage: Chulane, Teller of Tales (100) deals 2 combat damage to Ai(2)-Dummy.
+Damage: Selvala, Heart of the Wilds (56) deals 2 combat damage to Ai(2)-Dummy.
+Damage: Seedborn Muse (10) deals 2 combat damage to Ai(2)-Dummy.
+Damage: Whitemane Lion (64) deals 2 combat damage to Ai(2)-Dummy.
+Damage: Bloom Tender (65) deals 1 combat damage to Ai(2)-Dummy.
+Damage: Shrieking Drake (79) deals 1 combat damage to Ai(2)-Dummy.
+Damage: Elvish Mystic (14) deals 1 combat damage to Ai(2)-Dummy.
+Life: Life: Ai(2)-Dummy 18 > -2
+Add To Stack: Ai(1)-Chulane cast Elven Chorus
+Resolve Stack: Elven Chorus
+Turn: Turn 48 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (397)
+Turn: Turn 49 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Island (30)
+Combat: Ai(1)-Chulane assigned Frilled Mystic (68), Incubation Druid (3), Faeburrow Elder (23), Chulane, Teller of Tales (100), Selvala, Heart of the Wilds (56), Seedborn Muse (10), Whitemane Lion (64), Bloom Tender (65), Shrieking Drake (79) and Elvish Mystic (14) to attack Ai(4)-Dummy.
+Combat: Ai(4)-Dummy didn't block Frilled Mystic (68).
+Ai(4)-Dummy didn't block Incubation Druid (3).
+Ai(4)-Dummy didn't block Faeburrow Elder (23).
+Ai(4)-Dummy didn't block Chulane, Teller of Tales (100).
+Ai(4)-Dummy didn't block Selvala, Heart of the Wilds (56).
+Ai(4)-Dummy didn't block Seedborn Muse (10).
+Ai(4)-Dummy didn't block Whitemane Lion (64).
+Ai(4)-Dummy didn't block Bloom Tender (65).
+Ai(4)-Dummy didn't block Shrieking Drake (79).
+Ai(4)-Dummy didn't block Elvish Mystic (14).
+Damage: Frilled Mystic (68) deals 3 combat damage to Ai(4)-Dummy.
+Damage: Incubation Druid (3) deals 3 combat damage to Ai(4)-Dummy.
+Damage: Faeburrow Elder (23) deals 3 combat damage to Ai(4)-Dummy.
+Damage: Chulane, Teller of Tales (100) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Selvala, Heart of the Wilds (56) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Seedborn Muse (10) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Whitemane Lion (64) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Bloom Tender (65) deals 1 combat damage to Ai(4)-Dummy.
+Damage: Shrieking Drake (79) deals 1 combat damage to Ai(4)-Dummy.
+Damage: Elvish Mystic (14) deals 1 combat damage to Ai(4)-Dummy.
+Life: Life: Ai(4)-Dummy 24 > 4
+Turn: Turn 50 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (376)
+Turn: Turn 51 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Plains (93)
+Combat: Ai(1)-Chulane assigned Frilled Mystic (68), Incubation Druid (3), Faeburrow Elder (23), Chulane, Teller of Tales (100), Selvala, Heart of the Wilds (56), Seedborn Muse (10), Whitemane Lion (64), Bloom Tender (65), Shrieking Drake (79) and Elvish Mystic (14) to attack Ai(4)-Dummy.
+Combat: Ai(4)-Dummy didn't block Frilled Mystic (68).
+Ai(4)-Dummy didn't block Incubation Druid (3).
+Ai(4)-Dummy didn't block Faeburrow Elder (23).
+Ai(4)-Dummy didn't block Chulane, Teller of Tales (100).
+Ai(4)-Dummy didn't block Selvala, Heart of the Wilds (56).
+Ai(4)-Dummy didn't block Seedborn Muse (10).
+Ai(4)-Dummy didn't block Whitemane Lion (64).
+Ai(4)-Dummy didn't block Bloom Tender (65).
+Ai(4)-Dummy didn't block Shrieking Drake (79).
+Ai(4)-Dummy didn't block Elvish Mystic (14).
+Damage: Frilled Mystic (68) deals 3 combat damage to Ai(4)-Dummy.
+Damage: Incubation Druid (3) deals 3 combat damage to Ai(4)-Dummy.
+Damage: Faeburrow Elder (23) deals 3 combat damage to Ai(4)-Dummy.
+Damage: Chulane, Teller of Tales (100) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Selvala, Heart of the Wilds (56) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Seedborn Muse (10) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Whitemane Lion (64) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Bloom Tender (65) deals 1 combat damage to Ai(4)-Dummy.
+Damage: Shrieking Drake (79) deals 1 combat damage to Ai(4)-Dummy.
+Damage: Elvish Mystic (14) deals 1 combat damage to Ai(4)-Dummy.
+Life: Life: Ai(4)-Dummy 4 > -16
+Player Control: Ai(1)-Chulane has restored control over themself
+Player Control: Ai(2)-Dummy has restored control over themself
+Player Control: Ai(3)-Dummy has restored control over themself
+Player Control: Ai(4)-Dummy has restored control over themself
+Game Outcome: Match Duration 0m : 20s
+Game Outcome: Turn 26
+Game Outcome: Ai(1)-Chulane has won because all opponents have lost
+Game Outcome: Ai(2)-Dummy has lost because life total reached 0
+Game Outcome: Ai(3)-Dummy has lost because life total reached 0
+Game Outcome: Ai(4)-Dummy has lost because life total reached 0
+Match Result: Ai(1)-Chulane: 1 Ai(2)-Dummy: 0 Ai(3)-Dummy: 0 Ai(4)-Dummy: 0
+Game Result: Game 1 ended in 22370 ms. Ai(1)-Chulane has won!

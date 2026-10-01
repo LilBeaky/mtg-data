@@ -1,0 +1,4 @@
+# Gauntlet "own": the user's saved decks (paths relative to this file).
+../../decks/Ians_Yusri_Omni.txt
+../../decks/Ians_Zur_Cycling.txt
+../../decks/Ians_Klauth_Dragons.txt

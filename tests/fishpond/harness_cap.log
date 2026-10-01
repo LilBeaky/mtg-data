@@ -1,0 +1,66 @@
+Mulligan: Ai(2)-Dummy has kept a hand of 7 cards
+Mulligan: Ai(3)-Dummy has kept a hand of 7 cards
+Mulligan: Ai(4)-Dummy has kept a hand of 7 cards
+Mulligan: Ai(1)-Chulane has kept a hand of 7 cards
+Turn: Turn 1 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (165)
+Turn: Turn 2 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (215)
+Turn: Turn 3 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (355)
+Turn: Turn 4 (Ai(1)-Chulane)
+Replacement Effect: This land enters tapped unless you control two or more basic lands.
+Land: Ai(1)-Chulane played Sodden Verdure (90)
+Turn: Turn 5 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (106)
+Turn: Turn 6 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (294)
+Turn: Turn 7 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (338)
+Turn: Turn 8 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Sungrass Prairie (11)
+Turn: Turn 9 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (138)
+Turn: Turn 10 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (273)
+Turn: Turn 11 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (359)
+Turn: Turn 12 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Island (28)
+Turn: Turn 13 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (102)
+Turn: Turn 14 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (298)
+Turn: Turn 15 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (314)
+Turn: Turn 16 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Forest (45)
+Mana: Island (28) - {T}: Add {U}.
+Mana: Forest (45) - {T}: Add {G}.
+Mana: Sodden Verdure (90) - {T}: Add {G}.
+Add To Stack: Ai(1)-Chulane cast Semblance Anvil
+Resolve Stack: Semblance Anvil
+Add To Stack: Ai(1)-Chulane triggered Semblance Anvil
+Resolve Stack: Imprint — When Semblance Anvil enters, you may exile a nonland card from your hand. [Zone Changer: Semblance Anvil (84)]
+Turn: Turn 17 (Ai(2)-Dummy)
+Player Control: Ai(1)-Chulane has restored control over themself
+Player Control: Ai(2)-Dummy has restored control over themself
+Player Control: Ai(3)-Dummy has restored control over themself
+Player Control: Ai(4)-Dummy has restored control over themself
+Game Outcome: Match Duration 0m : 08s
+Game Outcome: Turn 9
+Game Outcome: Ai(1)-Chulane has won because all opponents have lost
+Game Outcome: Ai(2)-Dummy has won because all opponents have lost
+Game Outcome: Ai(3)-Dummy has won because all opponents have lost
+Game Outcome: Ai(4)-Dummy has won because all opponents have lost
+Match Result: Ai(1)-Chulane: 0 Ai(2)-Dummy: 0 Ai(3)-Dummy: 0 Ai(4)-Dummy: 1
+#FP-SNAP {"t": 1, "at": "main", "life": 40, "hand": 8, "lib": 91, "gy": 0, "exile": 0, "creatures": 0, "power": 0, "perms": 0, "cmd_out": false, "cmd_casts": 0, "drawn": 1, "disc": 0, "recur": 0, "lands": 0, "mana": 0, "producible": "", "colors": false, "opps": {"2": [40, 0, 0, 0], "3": [40, 0, 0, 0], "4": [40, 0, 0, 0]}}
+#FP-SNAP {"t": 1, "at": "end", "life": 40, "hand": 7, "lib": 91, "gy": 0, "exile": 0, "creatures": 0, "power": 0, "perms": 1, "cmd_out": false, "cmd_casts": 0, "drawn": 1, "disc": 0, "recur": 0, "lands": 1, "opps": {"2": [40, 0, 0, 0], "3": [40, 0, 0, 0], "4": [40, 0, 0, 0]}}
+#FP-SNAP {"t": 2, "at": "main", "life": 40, "hand": 8, "lib": 90, "gy": 0, "exile": 0, "creatures": 0, "power": 0, "perms": 1, "cmd_out": false, "cmd_casts": 0, "drawn": 1, "disc": 0, "recur": 0, "lands": 1, "mana": 1, "producible": "GU", "colors": false, "opps": {"2": [40, 0, 0, 0], "3": [40, 0, 0, 0], "4": [40, 0, 0, 0]}}
+#FP-SNAP {"t": 2, "at": "end", "life": 40, "hand": 7, "lib": 90, "gy": 0, "exile": 0, "creatures": 0, "power": 0, "perms": 2, "cmd_out": false, "cmd_casts": 0, "drawn": 1, "disc": 0, "recur": 0, "lands": 2, "opps": {"2": [40, 0, 0, 0], "3": [40, 0, 0, 0], "4": [40, 0, 0, 0]}}
+#FP-SNAP {"t": 3, "at": "main", "life": 40, "hand": 8, "lib": 89, "gy": 0, "exile": 0, "creatures": 0, "power": 0, "perms": 2, "cmd_out": false, "cmd_casts": 0, "drawn": 1, "disc": 0, "recur": 0, "lands": 2, "mana": 2, "producible": "GU", "colors": false, "opps": {"2": [40, 0, 0, 0], "3": [40, 0, 0, 0], "4": [40, 0, 0, 0]}}
+#FP-SNAP {"t": 3, "at": "end", "life": 40, "hand": 7, "lib": 89, "gy": 0, "exile": 0, "creatures": 0, "power": 0, "perms": 3, "cmd_out": false, "cmd_casts": 0, "drawn": 1, "disc": 0, "recur": 0, "lands": 3, "opps": {"2": [40, 0, 0, 0], "3": [40, 0, 0, 0], "4": [40, 0, 0, 0]}}
+#FP-SNAP {"t": 4, "at": "main", "life": 40, "hand": 8, "lib": 88, "gy": 0, "exile": 0, "creatures": 0, "power": 0, "perms": 3, "cmd_out": false, "cmd_casts": 0, "drawn": 1, "disc": 0, "recur": 0, "lands": 3, "mana": 3, "producible": "GU", "colors": false, "opps": {"2": [40, 0, 0, 0], "3": [40, 0, 0, 0], "4": [40, 0, 0, 0]}}
+#FP-SNAP {"t": 4, "at": "end", "life": 40, "hand": 5, "lib": 88, "gy": 0, "exile": 1, "creatures": 0, "power": 0, "perms": 5, "cmd_out": false, "cmd_casts": 0, "drawn": 1, "disc": 0, "recur": 0, "lands": 4, "opps": {"2": [40, 0, 0, 0], "3": [40, 0, 0, 0], "4": [40, 0, 0, 0]}}
+#FP-END {"id": 0, "seed": 1000003, "stop": "cap", "ms": 11006, "hero_turns": 4, "global_turns": 17, "players": {"1": {"name": "Ai(1)-Chulane", "outcome": "has won because all opponents have lost", "loss": "", "alt": "", "spell": "", "life": 40, "poison": 0}, "2": {"name": "Ai(2)-Dummy", "outcome": "has won because all opponents have lost", "loss": "", "alt": "", "spell": "", "life": 40, "poison": 0}, "3": {"name": "Ai(3)-Dummy", "outcome": "has won because all opponents have lost", "loss": "", "alt": "", "spell": "", "life": 40, "poison": 0}, "4": {"name": "Ai(4)-Dummy", "outcome": "has won because all opponents have lost", "loss": "", "alt": "", "spell": "", "life": 40, "poison": 0}}, "hand": ["Drift of Phantasms", "Silverback Elder", "Whitemane Lion", "Forest", "Lotus Cobra"], "lib": 88}
+Game Result: Game 0 ended in a Draw! Took 11006 ms.
