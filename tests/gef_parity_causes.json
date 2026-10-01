@@ -30,7 +30,6 @@
  "Mage's Attendant": "ENGINE: a token with its own abilities isn't mapped (token_card compiles Oracle text, GEF has structure).",
  "Mossfire Valley": "PARSER-APPROX: the parser reads '{1}, {T}: Add {R}{G}' as a free {R} or {G}; GEF compiles the filter (needs {1} in).",
  "Mox Amber": "FORMAT-GAP: colors among your legendary permanents; the parser assumes any color (PARSER-APPROX).",
- "Nature's Rhythm": "ENGINE: harmonize with {X} in its cost isn't mapped; the parser reads harmonize ignoring X.",
  "Ponder": "FORMAT-GAP: the translator marked the optional shuffle a gap, so the look line is refused; the parser arranges the top three. Same games.",
  "Pongify": "PARSER-APPROX: the parser reads Pongify as a clean blocker kill although the opponent gets a 3/3 Ape (it skips Beast Within's for the same reason); GEF holds both without a blocker kill. Same games.",
  "Reality Shift": "FORMAT-GAP: manifest makes the exile line unread, so the spell isn't held; the parser holds it as removal.",

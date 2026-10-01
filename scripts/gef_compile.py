@@ -727,7 +727,7 @@ def keyword_ability(a, ctx):
         else:
             if not isinstance(a.get("cost"), str): refuse(w + " cost")
             gc["gen"], gc["pips"], x, _ = g.parse_cost(a["cost"])
-            if x or w == "escape": refuse(w + " cost")
+            if (x and not (w == "harmonize" and k.x)) or w == "escape": refuse(w + " cost")   # harmonize {X}: the spell's own X
         if w == "unearth" and "Creature" not in k.types: refuse("unearth on a noncreature")
         gc["exile_after"] = w != "retrace"
         k.gycast = gc; return "read"

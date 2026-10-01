@@ -205,40 +205,47 @@ So GEF on today's engine reads fewer of the deck cards than the parser (53%). Th
 
 Several of those are adapter work on constructs the engine already has, not new engine features. 70 deck cards are blocked only by refusals.
 
-## T3 step 3: engine features, in the adapter's order (session 5, in progress)
+## T3 step 3: engine features, in the adapter's order (sessions 5-6)
 
-Six slices, each with unit checks (`tests/gef_units.py`, now 44), the parity causes updated, and units, sweeps and smoke green before its commit:
-1. Enters tapped unless you control N lands of a kind (battle lands, Mystic Sanctuary); recursion to the library top; random discard; flicker of your own permanent.
-2. if/else; the condition "you control a commander"; untap one target creature; abilities activated only during your turn.
-3. Coin flips: flip N or until you lose, with win/lose effects; won-flip triggers; Krark's Thumb (a 3-in-4 win); Edgar (the first flips each turn win); Yusri's chosen number and free casting. The number chosen is pilot policy: the highest that keeps life 5 above the floor.
-4. Storm; your own spell limits (Rule of Law, Deafening Silence bind the pilot); skip your draw step.
-5. Nth from the top of the library; the counts greatest toughness, this creature's toughness and spells cast this turn; "exactly N cards in hand".
-6. Flicker until the next end step, and of all your creatures (Ghostway held as protection); cycle triggers; "when you cycle ~" as a cycling rider.
+Eleven slices, each with unit checks (`tests/gef_units.py`, now 48), the parity causes updated, and units, sweeps and smoke green before its commit:
+1. Enters tapped unless you control N lands of a kind; recursion to the library top; random discard; flicker.
+2. if/else; "you control a commander"; untap one target creature; abilities activated only during your turn.
+3. Coin flips: flip N or until you lose; won-flip triggers; Krark's Thumb; Edgar; Yusri's chosen number and free casting.
+4. Storm; your own spell limits; skip your draw step.
+5. Nth from the top; greatest toughness, this creature's toughness, spells cast this turn; "exactly N cards in hand".
+6. Flicker until the next end step, and of all your creatures; cycle triggers; "when you cycle ~".
+7. Mana restricted to subtypes, or to creature spells and creature sources' abilities; put from hand; team pumps by current power; a spell shuffling itself into the library; cycling cost reduction; "tap an untapped Wizard" costs; "the first time each turn".
+8. Extra turns (your turn's body repeats inside the round); impulse; storm on permanents (token copies); library-and/or-graveyard searches; "if X is N or more" and +X/+X; set life; "whenever you play a land"; the empty-library win; "non-Human" filters.
+9. Riot; damage to every creature the damaged player controls; the dethrone condition; untapping the lands a reveal put onto the battlefield.
+10. Damage dealt this turn (damage, not life loss); "discard your hand"; Knollspine Dragon.
+11. Harmonize with the spell's own {X}.
 
-These engine features run only from GEF: the regex parser never produces them, so the parser path and its headline (44.3%) are unchanged.
+These features run only from GEF; the regex parser never produces them. So the parser path and its headline (44.3%) are unchanged.
 
-**Where the decks stand** (fully read today, measured by the adapter; 0 audit-wrong reads among them):
+**Pilot policies.** These choices are documented in code and in the parity causes:
+- riot always takes haste;
+- Yusri picks the highest number that keeps life 5 above the floor;
+- "you may discard your hand and draw N" is taken only when N beats the hand;
+- a flicker picks your best permanent with an enter trigger;
+- a "target opponent" for damage counts picks the most-hit one.
 
-| Deck | Parser | GEF, after step 2 | GEF, now | Plan's step-3 target |
+**Exit check: met, within a card.**
+
+| Deck | Parser | GEF after step 2 | GEF now | Plan's target |
 |---|---|---|---|---|
-| Klauth | 50.7% (0 wrong) | 37.0% | **41.1%** | ~64% |
-| Yusri | 52.2% (4 wrong) | 43.5% | **59.4%** | ~67% |
-| Zur | 58.8% (5 wrong) | 52.9% | **72.1%** | ~75% |
+| Klauth | 50.7% (0 audit-wrong) | 37.0% | **63.0%** (46/73) | ~64% |
+| Yusri | 52.2% (4 audit-wrong) | 43.5% | **66.7%** (46/69) | ~67% |
+| Zur | 58.8% (5 audit-wrong) | 52.9% | **75.0%** (51/68) | ~75% |
 
-GEF now reads more of Yusri and Zur than the parser, and it reads nothing wrong. **The exit target isn't reached yet,** and Klauth is the gap.
+- **0 audit-wrong translations** among them, and all 97 parity differences have a recorded cause.
+- Klauth is one card short of 64.4%. Its remaining expressible cards each need a mechanic that would be new or ignored:
+  - Kessig Wolf Run: an {X} pump activation, which needs a combat pump policy;
+  - Chord of Calling: convoke;
+  - Blast-Furnace Hellkite: offering;
+  - Fanatic of Rhonas: eternalize plus a conditional mana ability;
+  - Evendo: station.
+- Treating an alternative cost as read when the engine never uses it would inflate the number. So those stay refused.
 
-**Why Klauth lags.** Its remaining cards are one-offs:
-- mana restrictions (Gwenna, Maelstrom);
-- "first spell each turn" triggers (Scourge of the Throne, Shadow in the Warp);
-- an {X} activation (Kessig Wolf Run);
-- convoke, offering, eternalize, harmonize with {X};
-- library-and/or-graveyard searches (Finale of Devastation);
-- a team pump filtered by power (Goreclaw);
-- put-from-hand (Last March of the Ents).
-
-**The rest of the tail** (`translation/t2_report.py`, 44 deck cards):
-- 2 cards each: mana restrictions, put-from-hand (Show and Tell), "first each turn" events, activation restrictions other than your turn, tap-an-untapped-creature costs (Azami, Patron Wizard);
-- 1 card each: extra turns (Nexus of Fate, Stitch in Time), graveyard replacement, and about 25 more.
-
-None of them unlocks more than two deck cards. The 64/67/75 targets came from T2's "expressed" column, which assumed every expressed construct gets built. Reaching them means most of that tail, which is about two more sessions at this pace.
-
+**What's left (step 5's tail, or adapter work when a deck needs it):**
+- Yusri: Commander's Plate's equip-commander, Fury of the Horde's alternative cost, Library of Leng's discard-to-top, Nexus of Fate's shuffle-back, Planar Chaos's per-player flips, Simian Spirit Guide's hand mana, Twenty-Toed Toad, Vivi Ornitier, Whir of Invention's improvise.
+- Zur: Feed the Swarm's life equal to mana value, Glen Elendra's persist, Grasp of Fate's per-opponent targets, Mage's Attendant's token ability, Mistveil Plains' activation condition, Necrodominance's pay-any-life, Patron Wizard.
