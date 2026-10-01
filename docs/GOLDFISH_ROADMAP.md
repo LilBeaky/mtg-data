@@ -53,6 +53,8 @@ A separate track, not the Phase 0–3 parser work: have an LLM translate Oracle 
   - restricted mana, spell limits, skip draw, conditional enters-tapped, library positions, a dozen counts and conditions.
 
   Deck cards fully read with `--gef`: Klauth 63.0%, Yusri 66.7%, Zur 75.0%, against the plan's ~64 / 67 / 75 and the parser's 50.7 / 52.2 / 58.8 (with 0 / 4 / 5 audit-wrong). 0 audit-wrong translations. The parser headline is unchanged at 44.3%. Details: the step 3 section of `docs/TRANSLATION_T2.md`.
+- **T3 step 4, translation error log** (one line per deck: translated / rejected first pass / audited / misreads):
+  - Ragost (2026-10-01): 57 / 0 / 30 / **0** (0%; 95% CI 0-11%). Fully read: parser 71.8%, GEF 63.5%. The full-pool gate needs two more decks at ≤1%.
 
 ## The rules that govern everything
 

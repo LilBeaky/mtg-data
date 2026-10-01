@@ -249,3 +249,37 @@ These features run only from GEF; the regex parser never produces them. So the p
 **What's left (step 5's tail, or adapter work when a deck needs it):**
 - Yusri: Commander's Plate's equip-commander, Fury of the Horde's alternative cost, Library of Leng's discard-to-top, Nexus of Fate's shuffle-back, Planar Chaos's per-player flips, Simian Spirit Guide's hand mana, Twenty-Toed Toad, Vivi Ornitier, Whir of Invention's improvise.
 - Zur: Feed the Swarm's life equal to mana value, Glen Elendra's persist, Grasp of Fate's per-opponent targets, Mage's Attendant's token ability, Mistveil Plains' activation condition, Necrodominance's pay-any-life, Patron Wizard.
+
+## T3 step 4: translating per deck (session 6, deck 1: Ragost)
+
+Workflow (`translation/deck_workflow.py`):
+1. `select DECK NAME` picks every card except basics and plain lands the parser reads fully, minus cards already in `data/gef/`.
+2. Translator subagents run on the batches (Sonnet, prompt v2, as T2 and 0.2).
+3. `merge NAME` gathers and validates the outputs.
+4. `t2_compare.py --out` flags the disagreements.
+5. The flagged cards are hand-audited, plus a seeded 10% of the "agree" cards.
+6. The translations go to `data/gef/NAME.json`, where `--gef` uses them, and the parity harness gets a cause for each new difference.
+7. `report DECK NAME` gives the deck's numbers.
+
+The deck file stays out of the repo; the per-card artifacts are in `translation/phase4/NAME/`.
+
+**Deck 1: the user's Ragost list** (RW artifacts and Food, bracket 2).
+- **Translated:** 57 cards in two batches (33 + 24). The other 28 were already translated or are plain lands. 0 rejects on the first pass.
+- **Audited:** 30 cards, 0 misreads (95% CI 0-11%). That's the 27 the comparator flagged plus 3 of the 30 it called agree (seed 4).
+- **Gaps:** every unexpressible line is a genuine format gap. Examples: Academy Manufactor's one-of-each tokens, Bender's Waterskin's untap on other turns, Well of Lost Dreams' X capped by life gained, Goblin Welder's swap, "More Than Meets the Eye".
+- **This is the first blind measurement of prompt v2:** no doc example uses these cards.
+- **Adapter work the deck needed:**
+  - type grants with granted activations (Ragost's Food);
+  - damage multipliers; damage to each player; per-player tokens;
+  - each player's upkeep and end step; Servo and Thopter presets;
+  - "that token gains haste" folded into the token;
+  - an enchanted creature's damage and life equal to it; a card returning itself;
+  - recursion of all; a same-size wheel.
+
+  It also found an adapter bug: "it" in a trigger with no object pointed at the engine's stale trigger object. It's now refused.
+- **Parity:** 357 GEF cards; all 118 differences have a recorded cause.
+- **Fully read** (85 non-basic cards): parser **71.8%**, GEF **63.5%**. The parser was tuned for this exact deck the session before (the Ragost engine). The GEF gap is the format gaps above, plus tokens with their own abilities (Skrelv's Hive, Toggo, Weapons Manufacturing), which the adapter doesn't compile yet.
+- **Cost:** about 420k subagent tokens for the two batches (196k + 222k). That's 2.5× T2's per-batch figure: the format doc, vocabulary and examples grew, and the batches were larger.
+
+**The full-pool gate:** two to three decks in a row at ≤1% misreads, and GEF 0.2 stable. Deck 1 passes (0 of 30 audited). Decks 2 and 3 remain. Budget allowing, they should be decks the user actually plays.
+
