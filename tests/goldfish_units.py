@@ -1323,6 +1323,37 @@ def _():
     tg = next(e[1] for e in k.etb if e[0] == "tutor")
     return tg.describe() == "Aura" and not g.tutor_unread(tg)
 
+# ---- T2 audit (session 4): the parser misreads t2_misreads makes honest, pinned card by card (docs/TRANSLATION_T2.md)
+T2_MIS = {
+    "draw your library, put one back": ["Enter the Infinite"],
+    "roll a d20. Draw cards equal to the result.": ["Ancient Silver Dragon"],
+    "if an artifact was discarded, 2 damage to each opponent": ["Reckless Handling"],
+    "each player (you too) can't cast more than one spell a turn": ["Rule of Law", "Deafening Silence", "Eidolon of Rhetoric",
+                                                                    "High Noon", "Arcane Laboratory"],
+    "puts the card third from the top": ["Long-Term Plans"],
+    "an opponent gains control of it (one use)": ["Wishclaw Talisman"],
+    "draw only if you created a token this turn": ["Idol of Oblivion"],
+    "blink your own creature": ["Ephemerate", "Splash Portal", "Settle Beyond Reality", "Go Ninja Go", "Eternal Acrobat Toast",
+                                "Momentary Blink", "Y'shtola Rhul", "Escape Protocol", "Against All Odds"],
+}
+TNAMES = [n for ns in T2_MIS.values() for n in ns]
+TRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(TNAMES)}
+TK = {n: g.compile_card(TRAW[n], g.ALL5) for n in TNAMES}
+
+@check("T2 audit: all 20 t2_misreads cards say partial/blank with their 'unread (T2 audit)' note, never fully read")
+def _():
+    return len(TK) == 20 and all(TK[n].status in ("partial", "blank") and f"unread (T2 audit): {m}" in TK[n].notes
+                                 for m, ns in T2_MIS.items() for n in ns)
+@check("T2 audit: Long-Term Plans doesn't tutor to the top; Wishclaw tutors once; Idol of Oblivion's draw is dropped")
+def _():
+    wish = TK["Wishclaw Talisman"].ctr_enter
+    return not any(e[0] == "tutor" for e in TK["Long-Term Plans"].spell) and wish and wish[0] == "wish" and wish[1] == 1 \
+        and not any(a["fx"] == [("draw", 1)] for a in TK["Idol of Oblivion"].acts)
+@check("T2 audit: blinking your own creature is neither held interaction nor stax removal (Ephemerate, Escape Protocol, ...)")
+def _():
+    return all(not TK[n].hold and not any(e[0] == "kill_perm" for t in TK[n].trig for e in t[2])
+               for n in T2_MIS["blink your own creature"])
+
 def main():
     fails = 0
     for name, fn in CHECKS:
