@@ -4,9 +4,11 @@ Working doc for Claude (chat or Claude Code) implementing this. Not user-facing.
 
 ## Why
 
-Ian's goal: analyze decks *while he builds them*. The tool must read and play **any** deck mechanically; the pilot may be imperfect. The goldfish engine can't get there: ~44% of the pool fully read, every mechanic hand-built, and GEF only moves the problem into "build the engine feature". Forge is a mature GPL-3.0 rules engine with ~34k card scripts and a headless sim mode. Decision: **Forge becomes the engine for "does the deck work, and how".** goldfish.py stays for fast mana/curve/variant/ladder stats on cards it reads well.
+Ian's goal: analyze decks *while he builds them*. The tool must read and play **any** deck mechanically; the pilot may be imperfect. The goldfish engine can't get there: ~44% of the pool fully read, every mechanic hand-built, and GEF only moves the problem into "build the engine feature". Forge is a mature GPL-3.0 rules engine with ~34k card scripts and a headless sim mode. Decision (Ian, 2026-10-01): **Forge is the primary simulator.** Ian expects to rarely use goldfish.py. What he wants to keep is **goldfish's report format**, plus the new data in Phase D.
 
-Freeze: the GEF translation track (T3 step 4+, step 5) and new goldfish engine features for exotic mechanics. Keep: goldfish parser maintenance for mana/draw/land cards only. Don't delete GEF code yet; mark it frozen in GOLDFISH_ROADMAP.md when Phase A lands.
+- goldfish.py is **frozen** (legacy). No new engine features, no GEF work, no parser work. It stays in the repo, still working and still in smoke, as a fast cross-check and for quick "what-if" ladders. Don't delete it unless Ian asks.
+- Mark GEF/T3 and the goldfish parser roadmap frozen in GOLDFISH_ROADMAP.md and UPGRADE_PLAN.md when Phase A lands.
+- **Report layer = goldfish's layout.** Extract goldfish's stats/report code (`pct`, `q`, `mean`, `by_turn`, `summary`, `print_report`, `print_combat`, and the variant side-by-side) into `scripts/sim_report.py`; goldfish imports it back unchanged, so its output stays byte-identical (check with smoke plus a diff of a seeded run before/after). forge_sim.py fills the same `res` bundle (`rec[metric][turn]` lists, `cmd_first`, `first`, `finals` with `deaths`/`won`/`how`, `attr`, `tut`, `trigs`, `dsrc`, `kept`, `mulliganed`, ...) from Forge data, then appends its new sections. A metric Forge computes differently from goldfish keeps its row but gets a `≈` marker and a footnote; a metric Forge can't produce is omitted, never faked.
 
 ## Verified facts (sandbox, 2026-10-01)
 
@@ -43,6 +45,7 @@ Freeze: the GEF translation track (T3 step 4+, step 5) and new goldfish engine f
 ```
 scripts/forge_setup.py   download + cache pinned release (~/forge-cache/<ver>/), install JDK if javac needed, write ~/.forge prefs
 scripts/forge_deck.py    deck file (mtg.py parser, same headers) -> .dck; dummy decks; copies into ~/.forge/decks/commander/
+scripts/sim_report.py    shared stats + report printers, extracted from goldfish.py (goldfish layout is the house style)
 scripts/forge_sim.py     driver: run N games (Phase A: CLI sim; Phase B: harness), parse logs -> JSONL per game, then report
 decks/opponents/         tester gauntlet lists we build (committed; mtg.py deck format with headers), e.g. by bracket
 tools/forge/ForgeRunner.java   Phase B harness: one JVM, N seeded games, event subscriber, per-turn snapshots, hero-loss end, JSONL out
@@ -59,7 +62,7 @@ Reuse `mtg.py`'s deck parsing (headers: `bracket`, `plan`, `key`, `track`, `pack
 2. `forge_deck.py`: convert; warn on any card name Forge doesn't know. Build a name index from `cardsfolder.zip` once and cache it; handle DFC/split names (`A // B`). Emit the deck's `AI:RemoveDeck:All` list.
 3. `forge_sim.py run DECK --games N --seed S [--opp SPEC]x3`: always a 4-player pod; invokes the CLI, captures stdout, splits it per game on `Game Result:`. Opponent decks go into `~/.forge/decks/commander/` under unique names (avoid name collisions with the hero).
 4. Log parser -> per game JSON: winner, reason (normalized: `combat`, `alt_win:<card>`, `decked`, `life`, `poison`, `cmdr_dmg`, `draw/clock`), hero's turn count, per hero-turn: lands played, spells cast (names), triggers, damage dealt, life totals; first turn each `track`/`key` card is cast or enters; commander casts; mulligans.
-5. Report (text, goldfish-style): win %, kill-turn P10/median/P90, wins by route, losses by reason, commander turn distribution, tracked/key card turns, top cast cards, AI-flag list, Forge version, seeds, games, wall time.
+5. Report via `sim_report.py` (goldfish layout first, then the new sections): win %, kill-turn P10/median/P90, wins by route, losses by reason, commander turn distribution, tracked/key card turns, top cast cards, AI-flag list, Forge version, seeds, games, wall time.
 6. Acceptance: Chulane 50 games in a vacuum (3 dummies) **and** 20 games into 3 real lists (Ian's own decks are fine as the first gauntlet); numbers reproduce with the same seed; dummies never cast; hand-audit 3 game logs against the parsed JSON, including at least one with real opponents.
 
 ## Phase B: Java harness (target: 1–2 sessions)
