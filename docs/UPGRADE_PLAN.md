@@ -1,5 +1,7 @@
 # Goldfish upgrade plan: status (updated 2026-10-01)
 
+> **FROZEN 2026-10-01.** Ian moved simulation to Forge; see `docs/FORGE_PLAN.md`. Do not continue this plan (no GEF translation, no new engine features, no parser work). goldfish.py stays as a working legacy tool.
+
 This is the plan from `UPGRADE_PLAN.md` (the original was written 2026-10-01, at `main` 4bf2f97). Each step below shows what's done, with its commits, and what's left. The details are in `docs/TRANSLATION_T2.md` (the T3 sections) and `docs/GOLDFISH_ROADMAP.md`.
 
 **Summary**

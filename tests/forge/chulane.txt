@@ -1,0 +1,88 @@
+# bracket: 3
+# plan: Primal Surge
+# key: Shrieking Drake; Primal Surge; Thassa's Oracle
+# pets: Seedborn Muse + Tidal Barracuda
+# track: Surge=Primal Surge
+# track: Oracle=Thassa's Oracle
+Commander
+1 Chulane, Teller of Tales
+Deck
+1 Aura Shards
+1 Avacyn's Pilgrim
+1 Azusa, Lost but Seeking
+1 Beast Whisperer
+1 Birds of Paradise
+1 Bloom Tender
+1 Brightglass Gearhulk
+1 Brokers Hideout
+1 Canopy Vista
+1 Circle of Dreams Druid
+1 Command Tower
+1 Concordant Crossroads
+1 Crashing Drawbridge
+1 Dreamroot Cascade
+1 Drift of Phantasms
+1 Elven Chorus
+1 Elvish Mystic
+1 Esper Sentinel
+1 Evolving Wilds
+1 Exotic Orchard
+1 Faeburrow Elder
+12 Forest
+1 Formidable Speaker
+1 Frilled Mystic
+1 Fyndhorn Elves
+1 Grasp of Fate
+1 Guardian Project
+1 Gwenna, Eyes of Gaea
+1 Gyre Sage
+1 Helm of Awakening
+1 Hinterland Harbor
+1 Hullbreaker Horror
+1 Incubation Druid
+1 Inga and Esika
+6 Island
+1 Kinnan, Bonder Prodigy
+1 Knight of Autumn
+1 Leyline of Anticipation
+1 Lightning Greaves
+1 Llanowar Elves
+1 Lotus Cobra
+1 Lurking Predators
+1 Moon-Blessed Cleric
+1 Mystic Remora
+1 Mystic Snake
+1 Noble Hierarch
+1 Paradise Druid
+1 Path of Ancestry
+1 Peregrine Drake
+5 Plains
+1 Primal Surge
+1 Recruiter of the Guard
+1 Reliquary Tower
+1 Seaside Citadel
+1 Seedborn Muse
+1 Selvala, Explorer Returned
+1 Selvala, Heart of the Wilds
+1 Semblance Anvil
+1 Shrieking Drake
+1 Silverback Elder
+1 Sodden Verdure
+1 Sol Ring
+1 Somberwald Sage
+1 Sterling Grove
+1 Studious First-Year
+1 Sungrass Prairie
+1 Sunpetal Grove
+1 Swiftfoot Boots
+1 Tatyova, Benthic Druid
+1 Tectonic Split
+1 Temple of Mystery
+1 Temple of Plenty
+1 Terramorphic Expanse
+1 Thassa's Oracle
+1 Tidal Barracuda
+1 Tireless Provisioner
+1 Urban Retreat
+1 Whitemane Lion
+1 Yavimaya Coast

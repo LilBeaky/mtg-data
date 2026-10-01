@@ -17,7 +17,7 @@ Re-clone every session (sandbox resets). Use git, not the GitHub API, for readin
 | Card text, rulings, tags, search, deck check, GCs, combos, rules | `mtg.py` |
 | Draw odds beyond the audit | `stats_math.py` (§6) |
 | Tutor chains / access odds | `tutors.py` (§6) |
-| How a deck plays out (timing, mana, swaps) | `goldfish.py` (§6 → `docs/GOLDFISH.md`) |
+| How a deck plays out | **Forge migration in progress: read `docs/FORGE_PLAN.md`.** Until `forge_sim.py` exists, `goldfish.py` (§6 → `docs/GOLDFISH.md`) is the frozen legacy option |
 | Goldfish parser coverage / regression diff | `goldfish_coverage.py` (`docs/GOLDFISH_ROADMAP.md`) |
 | EDHREC comparison | `edhrec_diff.py` (§9); audit runs it if a snapshot exists |
 | Data refresh | automatic (§12); `trim.py` is the manual fallback |

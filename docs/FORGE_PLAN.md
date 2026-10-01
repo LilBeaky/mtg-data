@@ -2,6 +2,39 @@
 
 Working doc for Claude (chat or Claude Code) implementing this. Not user-facing. Update the Status table as work lands. Written 2026-10-01.
 
+## Start here (fresh session, no prior chat context needed)
+
+This doc is self-contained. Everything learned in the feasibility chat is below; don't ask Ian to re-explain it.
+
+1. Clone the repo and read `docs/USE_INSTRUCTIONS.md` once (it's the general workflow), then this file. You don't need GOLDFISH.md, GOLDFISH_ROADMAP.md, UPGRADE_PLAN.md or the TRANSLATION_* docs; they describe the frozen legacy path. Read `scripts/goldfish.py` lines ~6000–6320 (stats + report printers) only when you do the `sim_report.py` extraction.
+2. Set up the environment exactly as in "Environment recipe" below.
+3. Work the Status table top to bottom. Phase A is next. Its acceptance test uses `tests/forge/chulane.txt` (Ian's Chulane list, 100 cards, B3, plan Primal Surge, keys Shrieking Drake / Primal Surge / Thassa's Oracle).
+4. Push straight to main, one commit per step; run `python3 tests/smoke.py` before each push. The GitHub token is in the project instructions, not in the repo. Never commit it.
+
+### Environment recipe (all verified 2026-10-01 in the chat sandbox unless marked untested)
+
+```bash
+# Forge (pinned). ~1 min download, ~600 MB unpacked; outside the repo.
+mkdir -p ~/forge && cd ~/forge
+curl -sL https://github.com/Card-Forge/forge/releases/download/forge-2.0.15/forge-installer-2.0.15.tar.bz2 -o f.tbz && tar -xjf f.tbz && rm f.tbz
+# JDK only for Phase B (javac); the runtime is preinstalled
+apt-get update -q && apt-get install -y -q openjdk-21-jdk-headless
+# Decks must live here and be referenced by deck *name* (Name= in [metadata]), not by path
+mkdir -p ~/.forge/decks/commander
+# Run (the stdout game log is the data; don't use -q)
+java -Xmx3500m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -jar ~/forge/forge-gui-desktop-2.0.15-jar-with-dependencies.jar \
+  sim -d Hero Opp1 Opp2 Opp3 -f commander -n N -s SEED -c CLOCK_SECONDS > run.log 2>&1
+```
+- The sandbox has 1 CPU and ~4 GB RAM. ~15 s of startup per JVM. Forge also writes `~/.forge/forge.log`.
+- The hero is whichever deck is listed first; in the log it appears as `Ai(1)-<Name>`.
+- The `.dck` written for the test: `[metadata]` / `Name=Chulane` / `[Commander]` / `1 Chulane, Teller of Tales` / `[Main]` / the other 99 lines as `1 Card Name` (basics as `12 Forest`). Forge loaded the Chulane list as written (the DFC "Studious First-Year" was written as its front name).
+- Dummy actually tested: `Kozilek, Butcher of Truth` + 99 Wastes. Bad choice (castable on turn 10). The planned replacement (mono-W legendary + 99 Wastes) is **untested**: verify it loads and never casts.
+- **Untested:** real-deck opponents; deck names with spaces in `-d` (quote them, or use slug names); whether Forge enforces 100-card/color-identity legality in sim; per-game wall time in 4p pods.
+
+### Governance (Ian's standing rule, 2026-10-01)
+
+Ian is tired of structural rewrites of the simulator. No change to the engine choice or the overall architecture without (1) a written case, (2) a cheap test with evidence, and (3) Ian's go-ahead. Before building any new capability, check first whether an existing tool already does it. Iteration inside this plan (parsers, reports, harness) is fine.
+
 ## Why
 
 Ian's goal: analyze decks *while he builds them*. The tool must read and play **any** deck mechanically; the pilot may be imperfect. The goldfish engine can't get there: ~44% of the pool fully read, every mechanic hand-built, and GEF only moves the problem into "build the engine feature". Forge is a mature GPL-3.0 rules engine with ~34k card scripts and a headless sim mode. Decision (Ian, 2026-10-01): **Forge is the primary simulator.** Ian expects to rarely use goldfish.py. What he wants to keep is **goldfish's report format**, plus the new data in Phase D.
@@ -63,7 +96,7 @@ Reuse `mtg.py`'s deck parsing (headers: `bracket`, `plan`, `key`, `track`, `pack
 3. `forge_sim.py run DECK --games N --seed S [--opp SPEC]x3`: always a 4-player pod; invokes the CLI, captures stdout, splits it per game on `Game Result:`. Opponent decks go into `~/.forge/decks/commander/` under unique names (avoid name collisions with the hero).
 4. Log parser -> per game JSON: winner, reason (normalized: `combat`, `alt_win:<card>`, `decked`, `life`, `poison`, `cmdr_dmg`, `draw/clock`), hero's turn count, per hero-turn: lands played, spells cast (names), triggers, damage dealt, life totals; first turn each `track`/`key` card is cast or enters; commander casts; mulligans.
 5. Report via `sim_report.py` (goldfish layout first, then the new sections): win %, kill-turn P10/median/P90, wins by route, losses by reason, commander turn distribution, tracked/key card turns, top cast cards, AI-flag list, Forge version, seeds, games, wall time.
-6. Acceptance: Chulane 50 games in a vacuum (3 dummies) **and** 20 games into 3 real lists (Ian's own decks are fine as the first gauntlet); numbers reproduce with the same seed; dummies never cast; hand-audit 3 game logs against the parsed JSON, including at least one with real opponents.
+6. Acceptance (deck: `tests/forge/chulane.txt`): Chulane 50 games in a vacuum (3 dummies) **and** 20 games into 3 real lists (Ian's own decks are fine as the first gauntlet); numbers reproduce with the same seed; dummies never cast; hand-audit 3 game logs against the parsed JSON, including at least one with real opponents.
 
 ## Phase B: Java harness (target: 1–2 sessions)
 
