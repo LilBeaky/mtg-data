@@ -340,6 +340,19 @@ def _():
     G = game([]); G.life = 40; G.do(fx[:1], y, None, 0)
     return ok and edgar_ok and 0.68 < wins / 400 < 0.82 and G.ctx_num == 5
 
+@check("step 3: storm copies per earlier spell; Rule of Law stops a second spell; skip your draw step")
+def _():
+    import argparse, random
+    ds = C("Opt", A("keyword", keyword="storm"), SP({"do": "draw", "n": 1}))
+    rl = C("Rule of Law", S({"static": "spell_limit", "n": 1, "who": "each_player"}))
+    nd = C("Necrodominance", S({"static": "skip_step", "what": "draw_step", "who": "you"}))
+    forest = g.compile_card(IDX["forest"], g.ALL5); opt = g.compile_card(IDX["opt"], g.ALL5)
+    sim = g.Sim(["Forest"], [], argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False), [], {"Forest": forest}, g.ALL5)
+    G = g.Game(sim, [], [forest] * 30, random.Random(1)); G.turn, G.phase, G.turns_left, G.cmd = 3, 3, 3, []
+    G.perms = [g.Perm(rl), g.Perm(nd)]; G._st = None
+    G.tcast = (opt, opt); h0 = len(G.hand); G.do(ds.castfx + ds.spell, ds, None, 0)
+    return ds.castfx == [("storm",)] and len(G.hand) - h0 == 2 and G.st.skip_draw and not G.try_cast(opt, "hand")
+
 @check("status: unexpressible out_of_scope is never a miss; format_gap is; a refused ability leaves the rest read")
 def _():
     v = C("Counterbalance", A("unexpressible", reason="opponents' spells", scope="out_of_scope"))

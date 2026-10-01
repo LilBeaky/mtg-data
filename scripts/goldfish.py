@@ -2793,6 +2793,7 @@ class Statics:
         self.lands_any = False; self.lands_any_n = 0; self.spend_any = False; self.all_colors = False
         self.free = []; self.alts = []; self.reduce = []; self.extra_land = 0; self.prolif = 1
         self.coin_thumbs = 0; self.coin_first = False   # Krark's Thumb (flip two, keep one) / Edgar (first flips each turn win)
+        self.spell_limit = []; self.skip_draw = False     # Rule of Law / Deafening Silence: (n, filter); skip your draw step
         self.plus = []; self.times = []; self.no_max = False; self.mana_mult = []; self.mana_add = []
         self.reduce_dyn = []    # (filter, dyn key): affinity-style reducers granted to spells (Pearl-Ear)
         self.equip_red = 0      # equip costs {N} less (Strong Back ~approx: on the creature it enchants)
@@ -2829,6 +2830,8 @@ class Statics:
                 elif t == "attack_limit": self.attack_limit = min(self.attack_limit or 99, s[1])
                 elif t == "base_pt": self.base_pt.append((p, s[1], s[2], s[3]))
                 elif t == "extra_land": self.extra_land += s[1]
+                elif t == "spell_limit": self.spell_limit.append((s[1], s[2]))
+                elif t == "skip_draw": self.skip_draw = True
                 elif t == "coin_rule":
                     if s[1] == "flip_two_ignore_one": self.coin_thumbs += 1
                     else: self.coin_first = True
@@ -3179,6 +3182,7 @@ class Game:
 
     def try_cast(self, k, zone):
         if k.requires and not self.has(k.requires, k): return False
+        if any(spell_ok(k, f) and sum(1 for c in self.tcast if spell_ok(c, f)) >= n for n, f in self.st.spell_limit): return False
         if zone != "hand" and self.stax and self.locked() and not (zone == "gy" and k.gycast["kw"] == "unearth"): return False
         if zone == "gy" and not self.gy_extra_ok(k): return False
         for gen, pips in self.options(k, zone):
@@ -4324,6 +4328,8 @@ class Game:
                 self.life = sum(1 for q in self.perms if self.is_creature(q))
                 self.note(f"    {name}: opponents to {self.opp_creatures()} life, you to {self.life}")
                 self.check_deaths("noncombat")
+            elif t == "storm":                                   # a copy of the spell for each spell cast before it this turn
+                for _ in range(max(0, len(self.tcast) - 1)): self.do(k.spell, k, None, x)
             elif t == "flip":                                    # ('flip', n, win effects, lose effects, until you lose)
                 if self.dry: continue
                 self.flip_coins(self.num(e[1], p, x), e[4], e[2], e[3], k, p, x)
@@ -5555,7 +5561,7 @@ class Game:
             for k in self.rebound:
                 self.fire("cast", k); self.do(k.spell, k); self.gy.append(k)
             self.rebound = []
-            if not (t == 1 and sim.on_play): self.draw(1)
+            if not (t == 1 and sim.on_play) and not self.st.skip_draw: self.draw(1)
             self.fire("drawstep")
             self.note(f"T{t} hand: " + "; ".join(c.name for c in self.hand))
             if self.drops > 0:

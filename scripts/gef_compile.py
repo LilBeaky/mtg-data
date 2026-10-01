@@ -671,6 +671,9 @@ def keyword_ability(a, ctx):
         gc["exile_after"] = w != "retrace"
         k.gycast = gc; return "read"
     if w == "cascade": k.castfx.append(("cascade", k.mv, 1)); return "read"
+    if w == "storm":
+        if not k.types & {"Instant", "Sorcery"}: refuse("storm on a permanent")
+        k.castfx.append(("storm",)); return "read"
     if w == "sunburst": k.ctr_enter = ("+1/+1" if "Creature" in k.types else "charge", ("converge",), False); return "read"
     if w == "cumulative upkeep": k.cum_upkeep = True; return "read"
     if w == "rebound": k.rebound = True; return "read"
@@ -816,6 +819,12 @@ def static(a, ctx):
             key = count_key(pw)
             k.statics.append(("anthem", {"self": True}, ("per", 1, key), ("per", 0, key), frozenset(), False, False)); return "read"
         refuse("pt_equals form")
+    if st == "spell_limit":
+        if s["who"] not in ("you", "each_player"): return "read"           # opponents only: nothing for you
+        k.statics.append(("spell_limit", s["n"], spell_filter(s.get("spells")) or g.parse_filter(""))); return "read"
+    if st == "skip_step":
+        if s["what"] != "draw_step" or s.get("who", "you") != "you": refuse("skip " + s["what"])
+        k.statics.append(("skip_draw",)); return "read"
     if st == "coin_flip_rule": k.statics.append(("coin_rule", s["rule"])); return "read"
     if st == "mana_multiplier":
         src = {"permanents you tap for mana": "permanent", "permanent": "permanent", "lands": "land", "land": "land"}.get(s.get("sources", ""))
