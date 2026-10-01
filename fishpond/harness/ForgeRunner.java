@@ -23,6 +23,7 @@ import forge.game.GameType;
 import forge.game.Match;
 import forge.game.card.Card;
 import forge.game.event.GameEvent;
+import forge.game.event.GameEventCardChangeZone;
 import forge.game.event.GameEventTurnBegan;
 import forge.game.event.GameEventTurnPhase;
 import forge.game.phase.PhaseType;
@@ -97,6 +98,15 @@ public class ForgeRunner {
         Match match = new Match(rules, players, "Fishpond");
         Game game = match.createGame();
         game.setNoGUIUser();
+        // Forge's AI gives up on a decision after Game.AI_TIMEOUT seconds (5, no setter). A timeout makes the result depend on
+        // machine load, so raise it (-Dfishpond.aiTimeout, default 120); any timeout left is counted by the log parser.
+        try {
+            java.lang.reflect.Field fld = Game.class.getDeclaredField("AI_TIMEOUT");
+            fld.setAccessible(true);
+            fld.setInt(game, Integer.getInteger("fishpond.aiTimeout", 120));
+        } catch (Exception e) {
+            out.println("#FP-WARN could not raise the AI timeout: " + e);
+        }
         Player hero = null;
         for (Player p : game.getPlayers()) if (p.getName().startsWith("Ai(1)-")) hero = p;
         Watcher w = new Watcher(game, hero, cap, colors, playOut);
@@ -137,7 +147,12 @@ public class ForgeRunner {
                .append(", \"life\": ").append(p.getLife()).append(", \"poison\": ").append(p.getPoisonCounters()).append("}");
             if (o != null && o.hasWon() && w.stop == null) winner = p.getName();
         }
-        end.append("}}");
+        end.append("}, \"hand\": [");
+        List<String> hand = new ArrayList<>();
+        if (hero.hasLost()) hand = w.lastHand;
+        else for (Card c : hero.getCardsIn(ZoneType.Hand)) hand.add(c.getName());
+        for (int h = 0; h < hand.size(); h++) end.append(h > 0 ? ", " : "").append(js(hand.get(h)));
+        end.append("], \"lib\": ").append(hero.hasLost() ? w.lastLib : hero.getCardsIn(ZoneType.Library).size()).append("}");
         out.println("#FP-END " + end);
         if (winner != null && !game.getOutcome().isDraw()) out.println("\nGame Result: Game " + id + " ended in " + ms + " ms. " + winner + " has won!");
         else out.println("\nGame Result: Game " + id + " ended in a Draw! Took " + ms + " ms.");
@@ -156,6 +171,9 @@ public class ForgeRunner {
     public static class Watcher {
         final Game g; final Player hero; final int cap; final String colors; final boolean playOut;
         int heroTurns = 0, globalTurns = 0, afterDeath = 0;
+        int discarded = 0, recurred = 0;                // the hero's cards: hand -> graveyard; graveyard -> hand/battlefield/stack
+        List<String> lastHand = new ArrayList<>();      // the hero's hand at the latest phase it was alive (a dead player's cards leave)
+        int lastLib = 0;
         volatile String stop = null;
         final List<String> snaps = new ArrayList<>();
 
@@ -182,9 +200,21 @@ public class ForgeRunner {
         }
 
         @Subscribe public void onPhase(GameEventTurnPhase e) {
+            if (stop == null && !hero.hasLost()) {
+                lastHand = new ArrayList<>();
+                for (Card c : hero.getCardsIn(ZoneType.Hand)) lastHand.add(c.getName());
+                lastLib = hero.getCardsIn(ZoneType.Library).size();
+            }
             if (stop != null || g.getPhaseHandler().getPlayerTurn() != hero || hero.hasLost()) return;
             if (e.phase() == PhaseType.MAIN1) snap("main");
             else if (e.phase() == PhaseType.CLEANUP) snap("end");
+        }
+
+        @Subscribe public void onZone(GameEventCardChangeZone e) {
+            if (e.from() == null || e.to() == null || e.from().player() == null || !e.from().player().equals(hero.getView())) return;
+            ZoneType f = e.from().zoneType(), t = e.to().zoneType();
+            if (f == ZoneType.Hand && t == ZoneType.Graveyard) discarded++;
+            else if (f == ZoneType.Graveyard && (t == ZoneType.Hand || t == ZoneType.Battlefield || t == ZoneType.Stack)) recurred++;
         }
 
         @Subscribe public void any(GameEvent e) {
@@ -209,6 +239,7 @@ public class ForgeRunner {
             for (Card c : hero.getCommanders()) tax += hero.getCommanderCast(c);
             b.append(", \"cmd_casts\": ").append(tax);
             b.append(", \"drawn\": ").append(hero.getNumDrawnThisTurn());
+            b.append(", \"disc\": ").append(discarded).append(", \"recur\": ").append(recurred);
             b.append(", \"lands\": ").append(hero.getLandsInPlay().size());
             if (when.equals("main")) {
                 int mana = 0;

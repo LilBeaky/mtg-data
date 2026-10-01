@@ -1,6 +1,8 @@
-# FORGE PLAN: Forge-backed simulation for mtg-data
+# FORGE PLAN: Fishpond, the Forge-backed simulator for mtg-data
 
-Working doc for Claude (chat or Claude Code) implementing this. Not user-facing. Update the Status table as work lands. Written 2026-10-01.
+Working doc for Claude (chat or Claude Code) implementing this. Not user-facing (that's `docs/FISHPOND.md`). Update the Status table as work lands. Written 2026-10-01.
+
+**Name and layout (Ian, 2026-10-01):** the tool is **Fishpond**, a folder `fishpond/` run as `python3 -m fishpond`. The `forge_setup.py` / `forge_deck.py` / `forge_sim.py` names below are the original plan; the "Architecture" section maps them to the real files.
 
 ## Start here (fresh session, no prior chat context needed)
 
@@ -8,10 +10,16 @@ This doc is self-contained. Everything learned in the feasibility chat is below;
 
 1. Clone the repo and read `docs/USE_INSTRUCTIONS.md` once (it's the general workflow), then this file. You don't need GOLDFISH.md, GOLDFISH_ROADMAP.md, UPGRADE_PLAN.md or the TRANSLATION_* docs; they describe the frozen legacy path. Read `scripts/goldfish.py` lines ~6000–6320 (stats + report printers) only when you do the `sim_report.py` extraction.
 2. Set up the environment exactly as in "Environment recipe" below.
-3. Work the Status table top to bottom. Phase A is next. Its acceptance test uses `tests/forge/chulane.txt` (Ian's Chulane list, 100 cards, B3, plan Primal Surge, keys Shrieking Drake / Primal Surge / Thassa's Oracle).
-4. Push straight to main, one commit per step; run `python3 tests/smoke.py` before each push. The GitHub token is in the project instructions, not in the repo. Never commit it.
+3. Work the Status table top to bottom. Phases A and B are built; Phase C/D items are next. Acceptance runs use `tests/forge/chulane.txt` (Ian's Chulane list, 100 cards, B3, plan Primal Surge, keys Shrieking Drake / Primal Surge / Thassa's Oracle).
+4. Push straight to main, one commit per step; run `python3 tests/smoke.py` before each push. The GitHub token is in the project instructions, not in the repo. Never commit it. (A Claude Code session pinned to a branch pushes there instead; Ian merges.)
 
 ### Environment recipe (all verified 2026-10-01 in the chat sandbox unless marked untested)
+
+Now automated: `python3 -m fishpond setup [--jdk]` downloads and unpacks the pinned release into `~/forge-cache/<ver>/` (override with `FISHPOND_CACHE`), indexes the card scripts, and reports Java/javac. The manual recipe below is kept for reference. Corrections found while building (2026-10-01, Claude Code container, 4 CPUs / 16 GB):
+- The JVM must run with **cwd = the Forge install dir**: Forge reads `res/` relative to the working directory (from elsewhere it crashes on the missing language bundle).
+- `sim -D <absolute dir>/` loads decks by file name (`-d hero.dck ...`) in Commander too, so runs keep their `.dck` files in the run folder instead of `~/.forge/decks/commander/`.
+- The mono-W dummy (Isamaru, Hound of Konda + 99 Wastes) **verified**: it loads and never casts or attacks (checked in every run).
+- Real-deck opponents **verified**; Forge's sim does **not** enforce 100 cards (Ian's Klauth list has 101 and plays).
 
 ```bash
 # Forge (pinned). ~1 min download, ~600 MB unpacked; outside the repo.
@@ -57,6 +65,16 @@ Ian's goal: analyze decks *while he builds them*. The tool must read and play **
 - AI coverage signal: card scripts carry `AI:RemoveDeck:All` (the AI can't use the card sensibly; 2,500 of 33,978 scripts) and `AI:RemoveDeck:Random` (random-deck exclusion, mostly ignorable). `NonCommander` = irrelevant here. Chulane test: all 79 unique cards scripted; `All` on Selvala, Explorer Returned and Sungrass Prairie.
 - Forge API (for Phase B), from javap: `forge.view.SimulateMatch` (reference implementation), `forge.game.Match(GameRules, List<RegisteredPlayer>, String)`, `Match.createGame()/startGame(Game)`, `RegisteredPlayer.forCommander(Deck)`, `RegisteredPlayer.setStartingLife(int)`, `Game.subscribeToEvents(Object)` (Guava-style bus; events are records in `forge.game.event`, 61 classes incl. `GameEventTurnBegan`, `GameEventTurnPhase`, `GameEventCardChangeZone`, `GameEventSpellResolved`, `GameEventManaPool`, `GameEventGameOutcome`), `Game.setGameOver(GameEndReason)`, `Game.getPhaseHandler()`, `Game.getGameLog()`, `GameRules.setSimTimeout(int)`. Check the record fields with `javap -p` before coding against them.
 
+### Verified while building Fishpond (2026-10-01, Forge 2.0.15)
+
+- `sim -s SEED` seeds `MyRandom` **once per JVM**: game k depends on games 1..k-1, and within a `-n N` match the previous game's loser goes first. The harness reseeds per game in a fresh `Match`.
+- Forge prints a game's whole log **after** the game ends. A wall-clock stop (`-c`) prints "Stopping slow match as draw" before that log, and its `Game Outcome` lines mark **every surviving player** "has won because all opponents have lost"; `Game Result` then names an arbitrary winner. Treat more than one winner as unfinished.
+- Players lost mid-game are skipped in the turn order, so the log's global turn counter isn't 4x the hero's turns. Count the hero's own `Turn:` lines.
+- Noncombat damage is logged as `deals N non-combat damage` (hyphen); combat as `deals N combat damage`; damage to a permanent as `deals N damage to Card (id)`.
+- Card ids are roughly per-player blocks of ~100 but not exactly (seat 4 reached 402): attribute damage by the source's decklist first, ids second.
+- **AI decision timeout:** `AiController` chooses spells on a "Game AI Eval" thread and gives up after `Game.AI_TIMEOUT` = 5 s (no setter). Under CPU load this happens (11 times in one 5-game real-pod CLI run), making results load-dependent. The harness sets the field by reflection (default 120 s, `-Dfishpond.aiTimeout`); the parser counts "AI eval thread at timeout" lines and the report warns. The stock CLI can't change it.
+- Memory: ~1.1 GB RSS per JVM. Speed (4 CPUs, 4 workers): ~1 to 2 min per Chulane vacuum game per worker at cap 20; the Primal Surge turns (100+ triggers) dominate.
+
 ## First-run findings (Chulane, the reason this plan exists)
 
 - 1v1 vs dummy, seed 7, 5 games: 3 combat wins, 1 Thassa's Oracle win, 1 loss by drawing from an empty library.
@@ -75,15 +93,26 @@ Ian's goal: analyze decks *while he builds them*. The tool must read and play **
 
 ## Architecture
 
+As built (2026-10-01):
+
 ```
-scripts/forge_setup.py   download + cache pinned release (~/forge-cache/<ver>/), install JDK if javac needed, write ~/.forge prefs
-scripts/forge_deck.py    deck file (mtg.py parser, same headers) -> .dck; dummy decks; copies into ~/.forge/decks/commander/
-scripts/sim_report.py    shared stats + report printers, extracted from goldfish.py (goldfish layout is the house style)
-scripts/forge_sim.py     driver: run N games (Phase A: CLI sim; Phase B: harness), parse logs -> JSONL per game, then report
-decks/opponents/         tester gauntlet lists we build (committed; mtg.py deck format with headers), e.g. by bracket
-tools/forge/ForgeRunner.java   Phase B harness: one JVM, N seeded games, event subscriber, per-turn snapshots, hero-loss end, JSONL out
-data/forge/              (gitignored) raw logs, JSONL
+scripts/sim_report.py           shared stats + report printers, extracted from goldfish.py (goldfish output byte-identical)
+fishpond/forge.py               (plan: forge_setup.py) pinned release + cache, Java/javac, card-name index + AI flags, CLI sim command
+fishpond/decks.py               (plan: forge_deck.py) deck file -> .dck, dummies, opponent SPECs, gauntlet sampling, --variant swaps
+fishpond/logparse.py            Forge game log -> per-game record (both engines)
+fishpond/runner.py              (plan: forge_sim.py driver) engine 'cli' (stock sim, chunks of 5) and 'harness' (Phase B), parallel JVMs
+fishpond/harness/ForgeRunner.java   Phase B harness, compiled at runtime into ~/forge-cache/<ver>/fishpond-harness/<hash>/
+fishpond/metrics.py, report.py  records -> sim_report bundle + Fishpond's sections
+fishpond/cli.py                 setup | deck | run | report [--reparse] | show
+fishpond/opponents/<gauntlet>/  (plan: decks/opponents/) committed opponent lists; first gauntlet 'own' = Yusri, Zur, Klauth
+tests/fishpond_units.py + tests/fishpond/*.log   offline parser checks on real Forge logs (smoke runs them; live checks only if Forge is cached)
+data/fishpond/<run>/            (gitignored; plan: data/forge/) meta.json, games.jsonl, report.txt, decks/, logs/
 ```
+
+Decisions made while building (iteration inside the plan, flagged for Ian):
+- `--cap` (default 20 hero turns) is separate from the report horizon `--turns` (default 10): with one flag, Chulane's typical T12-T19 wins would all read "unfinished".
+- Harness lands are counted at end of turn and mana/colors at the start of main phase plus that turn's land drop, to match goldfish's sense ("after the land drop").
+- The harness raises Forge's AI decision timeout (see Verified facts) so results don't depend on machine load.
 
 **Opponent spec (all tools, all phases):** `--opp SPEC` given 1–3 times, or `--opp-set FILE`; missing seats are filled with dummies, always 3 seats. SPEC = `dummy` | a deck file path | a name in `decks/opponents/` | `gauntlet:<name>` (a folder or list file of decks; each game samples 3 seats from it, seeded, with an option to fix the pairings). Per-seat AI profile: `--opp-ai Default,Reckless,...`. Each opponent deck is validated with `mtg.py deck` before the run, and Forge-unknown cards are warned about. Reports always print the pod: seat, deck, bracket, AI profile.
 
@@ -154,12 +183,26 @@ Priority order:
 |---|---|
 | Feasibility (download, run, parse by hand) | Done 2026-10-01 (chat sandbox) |
 | Opponent model decided (3 seats, each dummy or real deck) | Done 2026-10-01 |
-| Phase A | Not started |
-| Phase B | Not started |
-| Phase C | Not started |
-| Phase D | Not started |
+| sim_report.py extraction | Done 2026-10-01 (goldfish byte-identical on 6 seeded runs; smoke 74/74) |
+| Phase A (setup, deck, cli engine, parser, report) | Built 2026-10-01; acceptance: see "Acceptance log" |
+| Phase B (harness) | Built 2026-10-01: per-game seeds (same seed = identical game mid-JVM, verified), hero-loss end (plays on with real opponents left), turn cap, snapshots |
+| Phase C | Partly: development (lands, mana, colors, cmdr out, casts), card flow (extra draws, hand, graveyard), combat tables filled from snapshots + log; `--variant` works (paired by seed and pod). Not yet: mana spent, stranded, discarded, recursion |
+| Phase D | Partly: win routes/loss reasons with killer seat (1), cast rates + association win rates + never-cast (2, partial), pilot tags self_decked/surge_trap/oracle_trap (4), real-opponent pods (5, reporting partial) |
+
+## Acceptance log
+
+Phase A/B acceptance, 2026-10-01, Claude Code container (4 CPUs), Forge 2.0.15, harness engine unless noted, `tests/forge/chulane.txt`:
+
+- **Vacuum, 50 games, seed 1** (788 s on 4 workers = 3.8 games/min): won 13 (26%, 95% CI 16-40%), lost 36, 1 at the turn cap. Every loss is Chulane decking itself; 32 are `surge_trap` (the AI takes every Primal Surge put until the library is empty; 29 were decked the turn Surge was cast). Excluding tagged pilot errors: 13 of 18 (72%). Wins: 12 combat, 1 Thassa's Oracle; median win on hero turn 13. Dummies never cast or attacked; 0 AI timeouts.
+- **Reproducibility:** the first 12 games re-run with 2 workers instead of 4 (and a newer harness build) give identical records 12/12 and identical Forge logs apart from the `Match Result` line (Forge credits an arbitrary survivor when the harness stops a game; the parser ignores that line). Same seed = same game, independent of `--jobs`.
+- **Hand audits:** (1) stock-CLI vacuum game, Chulane loses on T7 to the Primal Surge deck-out: turns, casts, attacks, combat damage 1/1/3/6/5, land drops and the Whitemane Lion bounce match the log; (2) harness vacuum game 44, the Thassa's Oracle win: Chulane on T7, the 17-spell T8, seat 4 killed in combat on T9 then Oracle cast from hand wins; route, deaths and turn all match. (3) real-opponent game: see below.
+- **Cross-check with goldfish** (Chulane only so far; the plan asks for 3 decks): lands agree at the median on every turn T1-T8; all colors close (T3 81% vs 72%, T4 91.5% vs 92%); Forge's mana estimate runs 1-2 higher from T3; **the commander comes about a turn later on Forge** (goldfish 62.5% by T4 / 91% by T5; Forge 36% / 68%): Forge's AI doesn't prioritise the commander the way goldfish's pilot does. Spells cast by T8: median 13 vs 10.
+- **Stock CLI engine** (10 vacuum games, chunks of 5): same picture (6 of 10 lost to `surge_trap`); about 70 s per game per JVM because the dummies play on to the clock after the hero dies. 5 real-pod games: 11 AI decision timeouts under load, which is what led to the harness raising the limit.
 
 ## Open questions for Ian
+
+- The brackets of the 'own' gauntlet (Yusri, Zur, Klauth). Reports print "bracket ?" until the lists carry `# bracket:` headers.
+- Klauth's list has 101 cards (mtg.py agrees). Fix the list, or keep it as is for testing?
 
 - Which decks form the first real-opponent gauntlet, and at what bracket?
 - Should tagged pilot-error losses be excluded from the headline win rate or only shown beside it?

@@ -14,6 +14,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/**'
+      - 'fishpond/**'
       - 'tests/**'
       - '!tests/smoke_status.json'      # the bot's own status commit must not retrigger this
       - 'snapshots/**'

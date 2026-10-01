@@ -123,10 +123,13 @@ def harness_classes(quiet=False):
     if os.path.exists(os.path.join(d, "ForgeRunner.class")): return d
     if not forge.java_major("javac") and not forge.install_jdk(quiet=quiet):
         sys.exit("fishpond: the harness needs javac (python3 -m fishpond setup --jdk), or use --engine cli")
-    os.makedirs(d, exist_ok=True)
-    r = subprocess.run(["javac", "-nowarn", "-encoding", "UTF-8", "-cp", forge.jar(), "-d", d, HARNESS_SRC], capture_output=True, text=True)
-    if r.returncode or not os.path.exists(os.path.join(d, "ForgeRunner.class")):
+    tmp = f"{d}.tmp{os.getpid()}"                  # compile privately, then rename: parallel runs may compile at once
+    os.makedirs(tmp, exist_ok=True)
+    r = subprocess.run(["javac", "-nowarn", "-encoding", "UTF-8", "-cp", forge.jar(), "-d", tmp, HARNESS_SRC], capture_output=True, text=True)
+    if r.returncode or not os.path.exists(os.path.join(tmp, "ForgeRunner.class")):
         sys.exit("fishpond: compiling the harness failed:\n" + "\n".join(l for l in (r.stderr + r.stdout).splitlines() if "Picked up" not in l)[-2000:])
+    try: os.rename(tmp, d)
+    except OSError: import shutil; shutil.rmtree(tmp, ignore_errors=True)   # another run got there first
     return d
 
 def run_harness(builds, pods, games, seed, cap, timeout, jobs, run_dir, hero_ai="Default", opp_ai=("Default",) * 3, quiet=False):

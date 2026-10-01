@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(HERE), "scripts"))
 import sim_report as sr  # noqa: E402
 from . import metrics as mx  # noqa: E402
 
+PILOT_ERRORS = {"surge_trap", "oracle_trap"}      # tags that mark a pilot decision, not the deck or the rules
 DEATH_LABELS = {"decked": "drew from an empty library", "life": "life total reached 0", "poison": "poison",
                 "commander damage": "commander damage", "conceded": "conceded", "opponent alternate win": "an opponent's alternate win",
                 "spell effect": "a spell's lose-the-game effect", "unknown": "unknown"}
@@ -70,11 +71,47 @@ def print_header(meta, records, ex):
               + "  (self_decked = you drew from an empty library; surge_trap = decked in the turn Primal Surge resolved: the AI "
                 "takes every optional put until the library is empty; oracle_trap = an empty-library win card was cast while draw "
                 "triggers decked you first. Tagged losses are pilot decisions inside real rules, not rules errors)")
+    pilot = sum(1 for r_ in records if r_["result"] == "loss" and set(r_.get("tags", [])) & PILOT_ERRORS)
+    if pilot:
+        rest = n - pilot
+        print(f"excluding {pilot} loss(es) tagged as pilot errors ({', '.join(sorted(PILOT_ERRORS))}): won {w} of {rest} "
+              f"({share(w, rest)}, {ci(w, rest)})" + (f". {share(pilot, l)} of losses are pilot errors: the deck is pilot-sensitive, "
+              "read the headline win rate as a floor" if l and pilot / l > 0.2 else ""))
+    to = [r_.get("ai_timeouts", 0) for r_ in records]
+    if any(to):
+        print(f"WARNING: Forge's AI gave up on {sum(to)} decision(s) after its 5 s limit in {sum(1 for x in to if x)} game(s): those "
+              "games depend on machine load and won't replay exactly (the harness raises the limit; the cli engine can't)")
     if ex["dummy"]:
         print(f"WARNING: dummies acted in {len(ex['dummy'])} game(s), e.g. game {ex['dummy'][0][0]}: {ex['dummy'][0][1][:3]}. "
               "A dummy must never cast; check the dummy deck.")
     elif "dummy" in {p["kind"] for r_ in records for p in r_["pod"]}:
         print("dummies: never cast or attacked (checked every game)")
+
+def print_opponents(label, records):
+    """Real-opponent pods: who won the pod, and per opponent deck how the user's deck did against it."""
+    if all(p["kind"] == "dummy" for r in records for p in r["pod"]): return
+    n = len(records)
+    seat_deck = lambda r, k: next((p["deck"] for p in r["pod"] if p["seat"] == k), "?")
+    win = Counter("you" if r.get("winner") == 1 else seat_deck(r, r["winner"]) if r.get("winner") else "nobody (cap or clock)" for r in records)
+    print(f"\n## {label}: opponents (real decks play on after you die, so the pod winner is known when one emerged)")
+    print("pod won by: " + " | ".join(f"{k} {v} ({share(v, n)})" for k, v in win.most_common()))
+    decks = sorted({p["deck"] for r in records for p in r["pod"] if p["kind"] != "dummy"})
+    rows = []
+    for d in decks:
+        rs = [r for r in records if any(p["deck"] == d for p in r["pod"])]
+        seats = lambda r: {p["seat"] for p in r["pod"] if p["deck"] == d}
+        killed = sum(1 for r in rs if r["result"] == "loss" and r["loss"].get("by") in seats(r))
+        killed_by_you = sum(1 for r in rs for x in r["deaths"] if x["seat"] in seats(r) and x["by"] == 1)
+        won = sum(1 for r in rs if r.get("winner") in seats(r))
+        bk = next((p.get("bracket") for r in rs for p in r["pod"] if p["deck"] == d), None)
+        rows.append(f"{d}" + (f" (B{bk})" if bk else "") + f": in {len(rs)} games, you won {share(sum(1 for r in rs if r['result'] == 'win'), len(rs))}, "
+                    f"it killed you {killed}, you killed it {killed_by_you}, it won the pod {won}")
+    print("by opponent deck: " + " | ".join(rows))
+    how = Counter(f"{r['loss']['route']}" + (f" ({seat_deck(r, r['loss']['by'])})" if r["loss"].get("by") not in (None, 1) else "")
+                  for r in records if r["result"] == "loss")
+    if how: print("how you died: " + " | ".join(f"{k} {v}" for k, v in how.most_common(8)))
+    src = Counter(r["loss"]["src"] for r in records if r["result"] == "loss" and r["loss"].get("by") not in (None, 1) and r["loss"].get("src"))
+    if src: print("killing blow (biggest share of the final life change): " + " | ".join(f"{k} {v}" for k, v in src.most_common(8)))
 
 def print_cards(label, ex, hero, meta, T):
     n = ex["n"]
@@ -87,6 +124,9 @@ def print_cards(label, ex, hero, meta, T):
         print("key cards: " + " | ".join(f"{c} cast {share(ex['cast_games'][L(c)], n)}" + (f" (median T{sr.q(ex['cast_turn'][L(c)], .5)})" if ex['cast_turn'][L(c)] else "")
                                          + (f", won {share(ex['win_with'][L(c)], ex['games_with'][L(c)])} of games it was cast or entered"
                                             if ex['games_with'][L(c)] else "") for c in keys))
+    eh = ex.get("end_hand")
+    if eh: print("left in hand when the game ended (share of games; dead-card candidates): "
+                  + " | ".join(f"{c} {share(k, n)}" for c, k in eh.most_common(10) if k / n >= 0.1))
     never = sorted(c for c in hero.names() if not ({c, hero.forge.get(c, c)} | {f.strip() for f in c.split(" // ")}) & ex["seen"])
     if never: print(f"never cast, played or seen entering in {n} games ({len(never)}): " + "; ".join(never))
     ai = sorted(c for c, f in hero.flags.items() if "All" in f)
@@ -127,6 +167,7 @@ def print_all(meta, builds, approx_notes=None):
                         death_labels=DEATH_LABELS)
         kb = ex["kills_by"]
         if kb: print("opponent deaths by killer: " + " | ".join(f"{k} {v}" for k, v in kb.most_common()))
+        print_opponents(label, records)
         print_cards(label, ex, hero, meta, T)
     if len(summaries) > 1:
         extra = []
@@ -146,5 +187,7 @@ def print_all(meta, builds, approx_notes=None):
     if meta["engine"] == "cli":
         print("  engine cli: Forge's stock sim, games chained in chunks of 5 per JVM (a game can't be replayed alone); "
               "when you die the other seats play on to the clock; mulligans are Forge's own keep logic.")
-    print(f"  Forge {meta['forge']} | {meta['wall']:.0f}s wall, {meta['jobs']} JVM(s) | seed {meta['seed']} | run saved in {meta['run_dir']} "
+    total = sum(len(b[1]) for b in builds)
+    print(f"  Forge {meta['forge']} | {total} games in {meta['wall']:.0f}s on {meta['jobs']} JVM(s) = {60 * total / max(1, meta['wall']):.1f} games/min "
+          f"| seed {meta['seed']} | run saved in {meta['run_dir']} "
           f"(python3 -m fishpond show {meta['run_dir']} GAME --log)")

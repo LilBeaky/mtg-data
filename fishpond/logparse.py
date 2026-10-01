@@ -32,6 +32,17 @@ RX_ZONE = re.compile(r"^Zone Change: (.+?) \((\d+)\) was put into (\w+) from (\w
 RX_OUTCOME = re.compile(rf"^Game Outcome: {P} (has won|has lost|has conceded|accepted)(.*)$")
 RX_RESULT = re.compile(r"^Game Result: Game (\d+) ended in (?:(\d+) ms\.|a Draw! Took (\d+) ms\.)")
 RX_PLAYER_TARGET = re.compile(rf"^{P}$")
+RX_MANA = re.compile(r"^Mana: (.+?) \((\d+)\) - (.*)$")
+WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
+
+def mana_amount(text):
+    """Mana an ability line makes: 'Add {C}{C}' = 2, 'Add {G} or {U}' / 'one mana of any color' = 1; variable amounts = 1."""
+    seg = text.split("Add", 1)[1] if "Add" in text else text
+    seg = seg.split(".")[0]
+    m = re.search(r"\b(one|two|three|four|five) mana\b", seg)
+    if m: return WORDS[m.group(1)]
+    if " or " in seg: return 1
+    return max(1, len(re.findall(r"\{[WUBRGCS]\}", seg)))
 RX_CARD_IDS = re.compile(r"\((\d+)\)")
 PREFIXES = ("Turn:", "Phase:", "Land:", "Mana:", "Add To Stack:", "Resolve Stack:", "Damage:", "Life:", "Combat:", "Zone Change:",
             "Mulligan:", "Game Outcome:", "Game Result:", "Match Result:", "Replacement Effect:", "Player Control:", "Stopping slow match")
@@ -106,7 +117,7 @@ def parse_game(lines, seats, hero=1):
     turns = {}                          # hero turn -> stats
     def T(t):
         if t not in turns:
-            turns[t] = {"lands": 0, "land_names": [], "casts": [], "trig": 0, "act": 0, "dmg": 0, "cdmg": 0, "atk": 0, "life": None,
+            turns[t] = {"lands": 0, "land_names": [], "spent": 0, "casts": [], "trig": 0, "act": 0, "dmg": 0, "cdmg": 0, "atk": 0, "life": None,
                         "poison": 0, "cmd": 0, "dead": 0, "cmd_out": None}
         return turns[t]
     def idx(): return H if active == hero else H + 1
@@ -134,7 +145,9 @@ def parse_game(lines, seats, hero=1):
     prev_kind = None
 
     hero_cmds = seats[hero].commanders
+    ai_timeouts = 0
     for line in lines:
+        if line.startswith("AI eval thread at timeout"): ai_timeouts += 1; continue
         kind = next((p for p in PREFIXES if line.startswith(p)), None)
         if kind is None: kind = prev_kind if prev_kind in ("Combat:", "Damage:") else None
         else: prev_kind = kind
@@ -152,6 +165,10 @@ def parse_game(lines, seats, hero=1):
             if active == hero:
                 H += 1; t = T(H); t["cmd_out"] = cmd_out
                 if t["life"] is None: t["life"] = life[hero]
+            continue
+        m = RX_MANA.match(line)
+        if m:
+            if owner(m.group(1), int(m.group(2))) == hero: T(idx())["spent"] += mana_amount(m.group(3))
             continue
         m = RX_KEPT.match(line)
         if m: kept[int(m.group(1))] = int(m.group(2)); continue
@@ -258,8 +275,8 @@ def parse_game(lines, seats, hero=1):
                     t = T(idx()); t["dmg"] += n
                     if route == "combat": t["cdmg"] += n
                     dsrc[src] += n
-            if b <= 0 and k not in kill:
-                n, route, sk, src = parts[-1]
+            if b <= 0 and k not in kill:              # the killing blow: the biggest share of the final life change
+                n, route, sk, src = max(parts, key=lambda x: x[0])
                 kill[k] = (idx(), route, sk, src)
             continue
         m = RX_OUTCOME.match(line)
@@ -326,7 +343,7 @@ def parse_game(lines, seats, hero=1):
         n = len(seats)
         order = ((hero - first) % n) + 1
     return {
-        "result": result, "route": route,
+        "result": result, "route": route, "winner": winners[0] if len(winners) == 1 else None,
         "loss": ({"why": hero_death["why"], "route": hero_death["route"], "by": hero_death["by"], "src": hero_death["src"], "t": hero_death["t"],
                   "last_cast": hero_death["last_cast"]} if hero_death else None),
         "end_t": end_t, "hero_turns": H, "global_turns": gturn, "order": order, "first": first,
@@ -339,6 +356,6 @@ def parse_game(lines, seats, hero=1):
         "poison": {str(k): v for k, v in poison.items() if v},
         "final_life": {str(k): v for k, v in life.items()},
         "dmg_src": dict(dsrc), "trig_src": dict(trig_src), "act_src": dict(act_src),
-        "dummy_acts": dummy_acts[:10], "tags": tags, "stopped": stopped,
+        "dummy_acts": dummy_acts[:10], "tags": tags, "stopped": stopped, "ai_timeouts": ai_timeouts,
         "outcomes": outcome_lines, "ms": result_ms, "events": events,
     }

@@ -5,6 +5,7 @@ from collections import Counter, defaultdict
 APPROX_CLI = {
     "lands": "lands = land drops so far (the stock log doesn't show lands put onto the battlefield by effects, or lands that leave)",
     "cmd_out": "cmdr out = your commander has resolved and the log hasn't shown it leaving the battlefield",
+    "spent": "mana spent = mana made by your mana abilities, from the log (variable-amount abilities count 1; rituals aren't mana abilities)",
 }
 
 def _turn_value(g, t, key, cum=False, fill_last=True):
@@ -18,6 +19,8 @@ APPROX_HARNESS = {
     "mana": "mana = Forge's own AI estimate of the mana you could make at the start of your main phase (ComputerUtilMana) plus this turn's land drop; unusual sources can be undercounted",
     "colors": "all colors = your untapped mana sources at the start of your main phase plus this turn's land drop can make every color of your commander's identity",
     "extra": "extra = cards drawn during your own turns beyond one a turn (draws on opponents' turns, tutors and other card advantage aren't counted)",
+    "spent": "mana spent = mana made by your mana abilities, from the log (variable-amount abilities count 1; rituals aren't mana abilities)",
+    "disc": "discarded = your cards put from hand into the graveyard (cleanup and discard effects, and cycling, which goldfish counts apart)",
 }
 
 def snap_at(g, t, kind):
@@ -33,9 +36,10 @@ def bundle(games, T, groups, commanders, opp_n=3, produced=None, identity=""):
     n = len(games)
     snaps = n and all(g.get("snaps") for g in games)
     if snaps:
-        metrics = ("lands", "mana", "colors", "cmd_out", "casts", "extra", "hand", "gy", "atk", "cdmg", "dmg", "cmdmax", "poison", "kills", "life")
+        metrics = ("lands", "mana", "colors", "cmd_out", "casts", "spent", "extra", "hand", "gy", "atk", "cdmg", "dmg", "cmdmax", "poison", "kills", "life")
+        if all("disc" in s_ for g in games for v in g["snaps"].values() for s_ in v.values()): metrics += ("disc", "recur")
     else:
-        metrics = ("lands", "cmd_out", "casts", "atk", "cdmg", "dmg", "cmdmax", "poison", "kills", "life")
+        metrics = ("lands", "cmd_out", "casts", "spent", "atk", "cdmg", "dmg", "cmdmax", "poison", "kills", "life")
     rec = {m: {t: [] for t in range(1, T + 1)} for m in metrics}
     for g in games:
         last = max([r["t"] for r in g["turns"]] or [1])
@@ -47,6 +51,7 @@ def bundle(games, T, groups, commanders, opp_n=3, produced=None, identity=""):
                 "lands": _turn_value(g, tt, "lands", cum=True),
                 "cmd_out": 1 if row.get("cmd_out") else 0,
                 "casts": _turn_value(g, tt, "casts", cum=True),
+                "spent": sum(r.get("spent", 0) for r in g["turns"] if r["t"] <= tt),
                 "atk": row.get("atk", 0),
                 "cdmg": _turn_value(g, tt, "cdmg", cum=True),
                 "dmg": _turn_value(g, tt, "dmg", cum=True),
@@ -66,6 +71,7 @@ def bundle(games, T, groups, commanders, opp_n=3, produced=None, identity=""):
                              "mana": (max(0, m_["mana"]) if m_ else 0) + min(1, len(drop)),
                              "colors": 1 if set(identity or "") <= cols else 0, "cmd_out": 1 if m_ and m_["cmd_out"] else 0,
                              "extra": extra, "hand": e_["hand"] if e_ else 7, "gy": e_["gy"] if e_ else 0,
+                             "disc": (e_ or {}).get("disc", 0), "recur": (e_ or {}).get("recur", 0),
                              "life": e_["life"] if e_ else vals["life"]})
             for m in metrics: rec[m][t].append(vals[m])
     cmd_first = {c: [g["first_in"].get(c) for g in games] for c in commanders}
@@ -90,6 +96,12 @@ def bundle(games, T, groups, commanders, opp_n=3, produced=None, identity=""):
             "kept": kept, "mulliganed": sum(1 for g in games if (g.get("kept") or 7) < 7 or g.get("mulligans")) / max(1, n),
             "dsrc": dsrc, "atk_turns": atk_turns}
 
+def _deck(g, seat):
+    """The deck label in seat `seat` of game g (dummies read 'dummy (seat N)')."""
+    p = next((p for p in g.get("pod", []) if p["seat"] == seat), None)
+    if not p: return f"seat {seat}"
+    return f"dummy (seat {seat})" if p["kind"] == "dummy" else p["deck"]
+
 def extras(games, hero, T):
     """Fishpond's own numbers: results, routes, losses, seat order, card stats, pilot tags."""
     n = len(games)
@@ -99,7 +111,7 @@ def extras(games, hero, T):
     for g in games:
         if g["result"] == "loss":
             l = g["loss"]
-            who = "" if l["by"] in (None, 1) else f" (seat {l['by']})"
+            who = "" if l["by"] in (None, 1) else f" ({_deck(g, l['by'])})"
             src = f": {l['src']}" if l.get("src") and l["why"] in ("alternate win", "spell effect", "opponent alternate win") else ""
             losses[l["route"] + src + who] += 1
     draws = Counter({"cap": "turn cap"}.get(g.get("stop"), g.get("stop")) if g.get("stop") not in (None, "natural")
@@ -124,12 +136,15 @@ def extras(games, hero, T):
     kills_by = Counter()
     for g in games:
         for d in g["deaths"]:
-            kills_by["you" if d["by"] == 1 else f"seat {d['by']}" if d["by"] else "unattributed/self"] += 1
+            kills_by["you" if d["by"] == 1 else _deck(g, d["by"]) if d["by"] else "unattributed/self"] += 1
     cmd_casts = [len(g["cmd_casts"]) for g in games]
     trig = Counter()
     for g in games: trig.update(g.get("trig_src") or {})
     ms = [g.get("ms") or 0 for g in games]
+    end_hand = Counter()
+    for g in games:
+        for c in set(((g.get("end") or {}).get("hand")) or []): end_hand[c] += 1
     return {"n": n, "results": res, "routes": routes, "losses": losses, "draws": draws, "order": dict(order),
             "cast_games": cast_games, "cast_turn": cast_turn, "cast_n": cast_n, "games_with": games_with, "win_with": win_with,
-            "seen": seen, "tags": tags, "dummy": dummy, "kills_by": kills_by, "cmd_casts": cmd_casts, "trig": trig, "ms": ms,
+            "seen": seen, "tags": tags, "dummy": dummy, "kills_by": kills_by, "cmd_casts": cmd_casts, "trig": trig, "ms": ms, "end_hand": end_hand,
             "hero_turns": [g["hero_turns"] for g in games]}

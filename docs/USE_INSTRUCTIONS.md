@@ -7,7 +7,7 @@ For the assistant. This repo is the source of truth for card text, rulings, tags
 ```bash
 git clone -q --depth 1 https://github.com/LilBeaky/mtg-data.git && cd mtg-data
 ```
-Re-clone every session (sandbox resets). Use git, not the GitHub API, for reading. No `jq`; use the scripts or plain Python. Run everything from the repo root as `python3 scripts/<name>.py`. Each script prints usage with no args (tutors.py: `-h`). Read this file once per session.
+Re-clone every session (sandbox resets). Use git, not the GitHub API, for reading. No `jq`; use the scripts or plain Python. Run everything from the repo root as `python3 scripts/<name>.py` (Fishpond: `python3 -m fishpond`). Each script prints usage with no args (tutors.py: `-h`). Read this file once per session.
 
 ## 2. Which tool
 
@@ -17,7 +17,8 @@ Re-clone every session (sandbox resets). Use git, not the GitHub API, for readin
 | Card text, rulings, tags, search, deck check, GCs, combos, rules | `mtg.py` |
 | Draw odds beyond the audit | `stats_math.py` (§6) |
 | Tutor chains / access odds | `tutors.py` (§6) |
-| How a deck plays out | **Forge migration in progress: read `docs/FORGE_PLAN.md`.** Until `forge_sim.py` exists, `goldfish.py` (§6 → `docs/GOLDFISH.md`) is the frozen legacy option |
+| How a deck plays out (win rate, how it wins and loses, real opponents) | `python3 -m fishpond` (§6 → `docs/FISHPOND.md`) |
+| Fast mana/curve reads, swap ladders, disruption ladder | `goldfish.py` (§6 → `docs/GOLDFISH.md`; frozen legacy, still maintained in smoke) |
 | Goldfish parser coverage / regression diff | `goldfish_coverage.py` (`docs/GOLDFISH_ROADMAP.md`) |
 | EDHREC comparison | `edhrec_diff.py` (§9); audit runs it if a snapshot exists |
 | Data refresh | automatic (§12); `trim.py` is the manual fallback |
@@ -26,7 +27,7 @@ Custom queries only when no tool answers; respect §7. Suggest folding useful on
 
 ## 3. Layout
 
-`scripts/` (code) · `data/` (bulk data + `aliases.txt`, `goldfish_overrides.json`) · `docs/` · `snapshots/` (EDHREC transcriptions) · `tests/` (edge-case test deck, goldfish fixtures, `goldfish_units.py` + `smoke.py`; run `python3 tests/smoke.py` after changing any script, before pushing). Scripts pick the newest dated rulings/tags/rules files automatically.
+`scripts/` (code) · `fishpond/` (Forge-backed simulator; `fishpond/opponents/` holds opponent gauntlets) · `data/` (bulk data + `aliases.txt`, `goldfish_overrides.json`; `data/fishpond/` = saved runs, gitignored) · `docs/` · `snapshots/` (EDHREC transcriptions) · `tests/` (edge-case test deck, goldfish and Fishpond fixtures, `goldfish_units.py`, `fishpond_units.py` + `smoke.py`; run `python3 tests/smoke.py` after changing any script, before pushing). Scripts pick the newest dated rulings/tags/rules files automatically.
 
 ## 4. mtg.py and deck files
 
@@ -85,6 +86,8 @@ The user wants audits as thorough as the tooling allows. Every step exists becau
 - ⚠ marks approximations (MV X or less, "shares a type", opponent picks). Flag them when a conclusion rests on one.
 - Report: 1 inventory (dead tutors, shallow pools) · 2 chains · 3 coverage · 4 dependencies (single points of failure) · 5 access odds for `key`/package cards (exact) · 6 package assembly (sampled). A second view sets aside find-anything tutors to expose package structure.
 - NOT FOUND cards are warned about and left out. Odds ignore mana and chain time ("can you get there", not "how fast"). Commander tutoring is shown separately as a ceiling. Not tracked: searching others' libraries, tutoring from graveyard.
+
+**Fishpond (`python3 -m fishpond`)** — see `docs/FISHPOND.md` before running it. Plays the deck on the Forge rules engine (every card scripted) in 4-player pods: 3 opponent seats, each a dummy or a real deck (`--opp`, `gauntlet:NAME`). `setup` once per session, then `deck DECK` to report cards Forge lacks or its AI can't play, then `run`. Lead with the win rate and its interval, wins by route, losses by reason, and the pilot tags (losses the AI caused inside real rules, e.g. `surge_trap`). Say which pod mode produced a number. Budget time: one game is tens of seconds per CPU.
 
 **Goldfish (`goldfish.py`)** — see `docs/GOLDFISH.md` before running it. Always `--explain` first on a new list and report partial/blank cards before quoting numbers. It reads `key`/`package` header lines as tutor priorities; report its "tutor targets" line when tutoring matters. It plays the deck in a vacuum: opponent-dependent cards run on fixed approximations (`~opp`) or do nothing (`vacuum`); say which matter. Its disruption section is the resilience read: with a bracket 2-4 it runs the bracket's interaction ladder (`data/goldfish_gradients.json`; 5 clean baselines + 15 rungs per shuffle). Lead with the breakpoint and "what changed at the breakpoint" (what the deck folds to), and treat any Δ inside the noise band as noise. Without a bracket it falls back to sampled events; never guess the bracket to get the ladder. Its combat section is the clock: damage by turn, commander damage and poison per opponent, when the first opponent and the whole table die (killing all three ends the game), and triggers fired by kind. Opponents never attack; they have creatures and combat denial only with `--blockers "SPEC"` (e.g. `"1/1@2; 2/2 flying@4; 1:prop@5; 2:fog@6"`; syntax in GOLDFISH.md "Blockers"). Without it the clock is a ceiling: say so. With it, report the blocks and denial lines (what the deck gets stuck on) alongside the clock.
 

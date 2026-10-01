@@ -1,0 +1,562 @@
+Active player is no longer in the game...
+Stopping slow match as draw
+Mulligan: Ai(2)-Dummy has kept a hand of 7 cards
+Mulligan: Ai(3)-Dummy has kept a hand of 7 cards
+Mulligan: Ai(4)-Dummy has kept a hand of 7 cards
+Mulligan: Ai(1)-Chulane has kept a hand of 7 cards
+Turn: Turn 1 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (105)
+Turn: Turn 2 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (289)
+Turn: Turn 3 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (385)
+Turn: Turn 4 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Plains (91)
+Add To Stack: Ai(1)-Chulane cast Esper Sentinel
+Resolve Stack: Esper Sentinel - Creature 1 / 1
+Turn: Turn 5 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (119)
+Turn: Turn 6 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (283)
+Turn: Turn 7 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (332)
+Turn: Turn 8 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Forest (37)
+Combat: Ai(1)-Chulane assigned Esper Sentinel (82) to attack Ai(3)-Dummy.
+Combat: Ai(3)-Dummy didn't block Esper Sentinel (82).
+Damage: Esper Sentinel (82) deals 1 combat damage to Ai(3)-Dummy.
+Life: Life: Ai(3)-Dummy 40 > 39
+Add To Stack: Ai(1)-Chulane cast Fyndhorn Elves
+Resolve Stack: Fyndhorn Elves - Creature 1 / 1
+Turn: Turn 9 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (172)
+Turn: Turn 10 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (241)
+Turn: Turn 11 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (313)
+Turn: Turn 12 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Island (28)
+Combat: Ai(1)-Chulane assigned Esper Sentinel (82) and Fyndhorn Elves (53) to attack Ai(3)-Dummy.
+Combat: Ai(3)-Dummy didn't block Esper Sentinel (82).
+Ai(3)-Dummy didn't block Fyndhorn Elves (53).
+Damage: Esper Sentinel (82) deals 1 combat damage to Ai(3)-Dummy.
+Damage: Fyndhorn Elves (53) deals 1 combat damage to Ai(3)-Dummy.
+Life: Life: Ai(3)-Dummy 39 > 37
+Add To Stack: Ai(1)-Chulane cast Sol Ring
+Resolve Stack: Sol Ring
+Add To Stack: Ai(1)-Chulane cast Guardian Project
+Resolve Stack: Guardian Project
+Turn: Turn 13 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (103)
+Turn: Turn 14 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (240)
+Turn: Turn 15 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (390)
+Turn: Turn 16 (Ai(1)-Chulane)
+Replacement Effect: This land enters tapped unless you control two or more basic lands.
+Land: Ai(1)-Chulane played Sodden Verdure (90)
+Combat: Ai(1)-Chulane assigned Esper Sentinel (82) and Fyndhorn Elves (53) to attack Ai(3)-Dummy.
+Combat: Ai(3)-Dummy didn't block Esper Sentinel (82).
+Ai(3)-Dummy didn't block Fyndhorn Elves (53).
+Damage: Esper Sentinel (82) deals 1 combat damage to Ai(3)-Dummy.
+Damage: Fyndhorn Elves (53) deals 1 combat damage to Ai(3)-Dummy.
+Life: Life: Ai(3)-Dummy 37 > 35
+Add To Stack: Ai(1)-Chulane cast Lurking Predators
+Resolve Stack: Lurking Predators
+Turn: Turn 17 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (145)
+Turn: Turn 18 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (261)
+Turn: Turn 19 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (333)
+Turn: Turn 20 (Ai(1)-Chulane)
+Combat: Ai(1)-Chulane assigned Esper Sentinel (82) and Fyndhorn Elves (53) to attack Ai(3)-Dummy.
+Combat: Ai(3)-Dummy didn't block Esper Sentinel (82).
+Ai(3)-Dummy didn't block Fyndhorn Elves (53).
+Damage: Esper Sentinel (82) deals 1 combat damage to Ai(3)-Dummy.
+Damage: Fyndhorn Elves (53) deals 1 combat damage to Ai(3)-Dummy.
+Life: Life: Ai(3)-Dummy 35 > 33
+Add To Stack: Ai(1)-Chulane cast Chulane, Teller of Tales
+Resolve Stack: Chulane, Teller of Tales - Creature 2 / 4
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Resolve Stack: Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card. [Zone Changer: Chulane, Teller of Tales (100)]
+Add To Stack: Ai(1)-Chulane cast Llanowar Elves
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Llanowar Elves (26), Activator: Ai(1)-Chulane, SpellAbility: Llanowar Elves - Creature 1 / 1]
+Resolve Stack: Llanowar Elves - Creature 1 / 1
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Resolve Stack: Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card. [Zone Changer: Llanowar Elves (26)]
+Turn: Turn 21 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (161)
+Turn: Turn 22 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (293)
+Turn: Turn 23 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (387)
+Turn: Turn 24 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Island (32)
+Combat: Ai(1)-Chulane assigned Chulane, Teller of Tales (100), Esper Sentinel (82), Fyndhorn Elves (53) and Llanowar Elves (26) to attack Ai(2)-Dummy.
+Combat: Ai(2)-Dummy didn't block Chulane, Teller of Tales (100).
+Ai(2)-Dummy didn't block Esper Sentinel (82).
+Ai(2)-Dummy didn't block Fyndhorn Elves (53).
+Ai(2)-Dummy didn't block Llanowar Elves (26).
+Damage: Chulane, Teller of Tales (100) deals 2 combat damage to Ai(2)-Dummy.
+Damage: Esper Sentinel (82) deals 1 combat damage to Ai(2)-Dummy.
+Damage: Fyndhorn Elves (53) deals 1 combat damage to Ai(2)-Dummy.
+Damage: Llanowar Elves (26) deals 1 combat damage to Ai(2)-Dummy.
+Life: Life: Ai(2)-Dummy 40 > 35
+Add To Stack: Ai(1)-Chulane cast Tatyova, Benthic Druid
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Replacement Effect: Path of Ancestry enters tapped.
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Tatyova, Benthic Druid (89), Activator: Ai(1)-Chulane, SpellAbility: Tatyova, Benthic Druid - Creature 3 / 3]
+Resolve Stack: Tatyova, Benthic Druid - Creature 3 / 3
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Resolve Stack: Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card. [Zone Changer: Tatyova, Benthic Druid (89)]
+Turn: Turn 25 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (182)
+Turn: Turn 26 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (204)
+Turn: Turn 27 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (312)
+Turn: Turn 28 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Forest (46)
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 40 > 41
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Forest (46)]
+Add To Stack: Ai(1)-Chulane cast Swiftfoot Boots
+Resolve Stack: Swiftfoot Boots
+Add To Stack: Ai(1)-Chulane cast Silverback Elder
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Silverback Elder (55), Activator: Ai(1)-Chulane, SpellAbility: Silverback Elder - Creature 5 / 7]
+Resolve Stack: Silverback Elder - Creature 5 / 7
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Resolve Stack: Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card. [Zone Changer: Silverback Elder (55)]
+Add To Stack: Ai(1)-Chulane cast Brightglass Gearhulk
+Add To Stack: Ai(1)-Chulane triggered Silverback Elder
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Brightglass Gearhulk (6), Activator: Ai(1)-Chulane, SpellAbility: Brightglass Gearhulk - Creature 4 / 4]
+Replacement Effect: This land enters tapped.
+Resolve Stack: Whenever you cast a creature spell, look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order. [Card: Brightglass Gearhulk (6), Activator: Ai(1)-Chulane, SpellAbility: Brightglass Gearhulk - Creature 4 / 4]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 41 > 42
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Urban Retreat (75)]
+Resolve Stack: Brightglass Gearhulk - Creature 4 / 4
+Add To Stack: Ai(1)-Chulane triggered Brightglass Gearhulk
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Resolve Stack: Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card. [Zone Changer: Brightglass Gearhulk (6)]
+Resolve Stack: When this creature enters, you may search your library for up to two artifact, creature, and/or enchantment cards with mana value 1 or less, reveal them, put them into your hand, then shuffle. [Zone Changer: Brightglass Gearhulk (6)]
+Combat: Ai(1)-Chulane assigned Tatyova, Benthic Druid (89), Chulane, Teller of Tales (100) and Esper Sentinel (82) to attack Ai(4)-Dummy.
+Combat: Ai(4)-Dummy didn't block Tatyova, Benthic Druid (89).
+Ai(4)-Dummy didn't block Chulane, Teller of Tales (100).
+Ai(4)-Dummy didn't block Esper Sentinel (82).
+Damage: Tatyova, Benthic Druid (89) deals 3 combat damage to Ai(4)-Dummy.
+Damage: Chulane, Teller of Tales (100) deals 2 combat damage to Ai(4)-Dummy.
+Damage: Esper Sentinel (82) deals 1 combat damage to Ai(4)-Dummy.
+Life: Life: Ai(4)-Dummy 40 > 34
+Discard: Ai(1)-Chulane discards Hinterland Harbor (24).
+Discard: Ai(1)-Chulane discards Somberwald Sage (74).
+Discard: Ai(1)-Chulane discards Noble Hierarch (2).
+Turn: Turn 29 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (121)
+Turn: Turn 30 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (297)
+Turn: Turn 31 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (315)
+Turn: Turn 32 (Ai(1)-Chulane)
+Add To Stack: Ai(1)-Chulane cast Seedborn Muse
+Add To Stack: Ai(1)-Chulane triggered Silverback Elder
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Seedborn Muse (10), Activator: Ai(1)-Chulane, SpellAbility: Seedborn Muse - Creature 2 / 4]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 42 > 43
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Sungrass Prairie (11)]
+Resolve Stack: Whenever you cast a creature spell, look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order. [Card: Seedborn Muse (10), Activator: Ai(1)-Chulane, SpellAbility: Seedborn Muse - Creature 2 / 4]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 43 > 44
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Terramorphic Expanse (99)]
+Resolve Stack: Seedborn Muse - Creature 2 / 4
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Resolve Stack: Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card. [Zone Changer: Seedborn Muse (10)]
+Land: Ai(1)-Chulane played Forest (35)
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 44 > 45
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Forest (35)]
+Add To Stack: Ai(1)-Chulane cast Beast Whisperer
+Add To Stack: Ai(1)-Chulane triggered Silverback Elder
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Beast Whisperer (47), Activator: Ai(1)-Chulane, SpellAbility: Beast Whisperer - Creature 2 / 3]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 45 > 46
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Forest (42)]
+Resolve Stack: Whenever you cast a creature spell, look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order. [Card: Beast Whisperer (47), Activator: Ai(1)-Chulane, SpellAbility: Beast Whisperer - Creature 2 / 3]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Add To Stack: Ai(1)-Chulane triggered Brokers Hideout
+Zone Change: Brokers Hideout (50) was put into Graveyard from Battlefield.
+Resolve Stack: When Brokers Hideout enters, sacrifice it. When you do, search your library for a basic Forest, Plains, or Island card, put it onto the battlefield tapped, then shuffle and you gain 1 life. [Zone Changer: Brokers Hideout (50)]
+Add To Stack: Ai(1)-Chulane triggered Brokers Hideout
+Life: Life: Ai(1)-Chulane 46 > 47
+Resolve Stack: Search your library for a basic Forest, Plains, or Island card, put it onto the battlefield tapped, then shuffle and you gain 1 life.
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 47 > 48
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Plains (95)]
+Life: Life: Ai(1)-Chulane 48 > 49
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Brokers Hideout (50)]
+Resolve Stack: Beast Whisperer - Creature 2 / 3
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Resolve Stack: Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card. [Zone Changer: Beast Whisperer (47)]
+Add To Stack: Ai(1)-Chulane cast Gwenna, Eyes of Gaea
+Add To Stack: Ai(1)-Chulane triggered Silverback Elder
+Add To Stack: Ai(1)-Chulane triggered Path of Ancestry
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Add To Stack: Ai(1)-Chulane triggered Beast Whisperer
+Resolve Stack: Whenever you cast a creature spell, draw a card. [Card: Gwenna, Eyes of Gaea (60), Activator: Ai(1)-Chulane, SpellAbility: Gwenna, Eyes of Gaea - Creature 2 / 3]
+Replacement Effect: Sunpetal Grove enters tapped unless you control a Forest or a Plains.
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Gwenna, Eyes of Gaea (60), Activator: Ai(1)-Chulane, SpellAbility: Gwenna, Eyes of Gaea - Creature 2 / 3]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 49 > 50
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Sunpetal Grove (72)]
+Resolve Stack: Ai(1)-Chulane scried 1 card(s) to the bottom of the library
+Resolve Stack: When mana produced by Path of Ancestry is spent to cast a creature spell that shares a creature type with your commander, scry 1. ([Gwenna, Eyes of Gaea - Creature 2 / 3]) [Card: Gwenna, Eyes of Gaea (60), Activator: Ai(1)-Chulane, SpellAbility: Gwenna, Eyes of Gaea - Creature 2 / 3]
+Resolve Stack: Whenever you cast a creature spell, look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order. [Card: Gwenna, Eyes of Gaea (60), Activator: Ai(1)-Chulane, SpellAbility: Gwenna, Eyes of Gaea - Creature 2 / 3]
+Resolve Stack: Gwenna, Eyes of Gaea - Creature 2 / 3
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Resolve Stack: Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card. [Zone Changer: Gwenna, Eyes of Gaea (60)]
+Add To Stack: Ai(1)-Chulane cast Selvala, Heart of the Wilds
+Add To Stack: Ai(1)-Chulane triggered Silverback Elder
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Add To Stack: Ai(1)-Chulane triggered Beast Whisperer
+Resolve Stack: Whenever you cast a creature spell, draw a card. [Card: Selvala, Heart of the Wilds (56), Activator: Ai(1)-Chulane, SpellAbility: Selvala, Heart of the Wilds - Creature 2 / 3]
+Replacement Effect: Canopy Vista enters tapped unless you control two or more basic lands.
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Selvala, Heart of the Wilds (56), Activator: Ai(1)-Chulane, SpellAbility: Selvala, Heart of the Wilds - Creature 2 / 3]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 50 > 51
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Canopy Vista (76)]
+Resolve Stack: Whenever you cast a creature spell, look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order. [Card: Selvala, Heart of the Wilds (56), Activator: Ai(1)-Chulane, SpellAbility: Selvala, Heart of the Wilds - Creature 2 / 3]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 51 > 52
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Plains (94)]
+Resolve Stack: Selvala, Heart of the Wilds - Creature 2 / 3
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Resolve Stack: Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card. [Zone Changer: Selvala, Heart of the Wilds (56)]
+Add To Stack: Ai(1)-Chulane cast Avacyn's Pilgrim
+Add To Stack: Ai(1)-Chulane triggered Silverback Elder
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Add To Stack: Ai(1)-Chulane triggered Beast Whisperer
+Resolve Stack: Whenever you cast a creature spell, draw a card. [Card: Avacyn's Pilgrim (9), Activator: Ai(1)-Chulane, SpellAbility: Avacyn's Pilgrim - Creature 1 / 1]
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Avacyn's Pilgrim (9), Activator: Ai(1)-Chulane, SpellAbility: Avacyn's Pilgrim - Creature 1 / 1]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 52 > 53
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Command Tower (27)]
+Resolve Stack: Whenever you cast a creature spell, look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order. [Card: Avacyn's Pilgrim (9), Activator: Ai(1)-Chulane, SpellAbility: Avacyn's Pilgrim - Creature 1 / 1]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 53 > 54
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Evolving Wilds (34)]
+Resolve Stack: Avacyn's Pilgrim - Creature 1 / 1
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Resolve Stack: Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power. [Zone Changer: Avacyn's Pilgrim (9)]
+Resolve Stack: Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card. [Zone Changer: Avacyn's Pilgrim (9)]
+Add To Stack: Ai(1)-Chulane cast Studious First-Year
+Add To Stack: Ai(1)-Chulane triggered Silverback Elder
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Add To Stack: Ai(1)-Chulane triggered Beast Whisperer
+Resolve Stack: Whenever you cast a creature spell, draw a card. [Card: Studious First-Year (49), Activator: Ai(1)-Chulane, SpellAbility: Studious First-Year - Creature 1 / 1]
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Studious First-Year (49), Activator: Ai(1)-Chulane, SpellAbility: Studious First-Year - Creature 1 / 1]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 54 > 55
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Yavimaya Coast (25)]
+Resolve Stack: Whenever you cast a creature spell, look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order. [Card: Studious First-Year (49), Activator: Ai(1)-Chulane, SpellAbility: Studious First-Year - Creature 1 / 1]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 55 > 56
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Reliquary Tower (70)]
+Replacement Effect: This creature enters prepared. (While it's prepared, you may cast a copy of its spell. Doing so unprepares it.)
+Resolve Stack: Studious First-Year - Creature 1 / 1
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Resolve Stack: Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power. [Zone Changer: Studious First-Year (49)]
+Resolve Stack: Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card. [Zone Changer: Studious First-Year (49)]
+Add To Stack: Ai(1)-Chulane activated Swiftfoot Boots targeting [Silverback Elder (55)]
+Resolve Stack: Swiftfoot Boots (62) -  Attach to Silverback Elder (55)
+Combat: Ai(1)-Chulane assigned Silverback Elder (55), Brightglass Gearhulk (6), Tatyova, Benthic Druid (89), Chulane, Teller of Tales (100) and Esper Sentinel (82) to attack Ai(2)-Dummy.
+Combat: Ai(2)-Dummy didn't block Silverback Elder (55).
+Ai(2)-Dummy didn't block Brightglass Gearhulk (6).
+Ai(2)-Dummy didn't block Tatyova, Benthic Druid (89).
+Ai(2)-Dummy didn't block Chulane, Teller of Tales (100).
+Ai(2)-Dummy didn't block Esper Sentinel (82).
+Damage: Brightglass Gearhulk (6) deals 4 combat damage to Ai(2)-Dummy.
+Life: Life: Ai(2)-Dummy 35 > 31
+Damage: Silverback Elder (55) deals 5 combat damage to Ai(2)-Dummy.
+Damage: Tatyova, Benthic Druid (89) deals 3 combat damage to Ai(2)-Dummy.
+Damage: Chulane, Teller of Tales (100) deals 2 combat damage to Ai(2)-Dummy.
+Damage: Esper Sentinel (82) deals 1 combat damage to Ai(2)-Dummy.
+Life: Life: Ai(2)-Dummy 31 > 20
+Turn: Turn 33 (Ai(2)-Dummy)
+Zone Change: Terramorphic Expanse (99) was put into Graveyard from Battlefield.
+Add To Stack: Ai(1)-Chulane activated Terramorphic Expanse
+Resolve Stack: Terramorphic Expanse (99) - Ai(1)-Chulane searches their library for a basic land card, puts it onto the battlefield tapped, then shuffles.
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 56 > 57
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Plains (93)]
+Zone Change: Evolving Wilds (34) was put into Graveyard from Battlefield.
+Add To Stack: Ai(1)-Chulane activated Evolving Wilds
+Resolve Stack: Evolving Wilds (34) - Ai(1)-Chulane searches their library for a basic land card, puts it onto the battlefield tapped, then shuffles.
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 57 > 58
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Plains (92)]
+Add To Stack: Ai(1)-Chulane cast Whitemane Lion
+Add To Stack: Ai(1)-Chulane triggered Silverback Elder
+Add To Stack: Ai(1)-Chulane triggered Chulane, Teller of Tales
+Add To Stack: Ai(1)-Chulane triggered Beast Whisperer
+Resolve Stack: Whenever you cast a creature spell, draw a card. [Card: Whitemane Lion (64), Activator: Ai(1)-Chulane, SpellAbility: Whitemane Lion - Creature 2 / 2]
+Replacement Effect: Dreamroot Cascade enters tapped unless you control two or more other lands.
+Resolve Stack: Whenever you cast a creature spell, draw a card, then you may put a land card from your hand onto the battlefield. [Card: Whitemane Lion (64), Activator: Ai(1)-Chulane, SpellAbility: Whitemane Lion - Creature 2 / 2]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 58 > 59
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Dreamroot Cascade (73)]
+Resolve Stack: Whenever you cast a creature spell, look at the top five cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest on the bottom of your library in a random order. [Card: Whitemane Lion (64), Activator: Ai(1)-Chulane, SpellAbility: Whitemane Lion - Creature 2 / 2]
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 59 > 60
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Forest (40)]
+Resolve Stack: Whitemane Lion - Creature 2 / 2
+Add To Stack: Ai(1)-Chulane triggered Whitemane Lion
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Resolve Stack: Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power. [Zone Changer: Whitemane Lion (64)]
+Resolve Stack: Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card. [Zone Changer: Whitemane Lion (64)]
+Resolve Stack: When Whitemane Lion enters, return a creature you control to its owner's hand. [Zone Changer: Whitemane Lion (64)]
+Land: Ai(2)-Dummy played Wastes (194)
+Turn: Turn 34 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (276)
+Turn: Turn 35 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (362)
+Turn: Turn 36 (Ai(1)-Chulane)
+Land: Ai(1)-Chulane played Island (29)
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Life: Life: Ai(1)-Chulane 60 > 61
+Resolve Stack: Landfall — Whenever a land you control enters, you gain 1 life and draw a card. [Zone Changer: Island (29)]
+Add To Stack: Ai(1)-Chulane cast Primal Surge
+Replacement Effect: Seaside Citadel enters tapped.
+Replacement Effect: Temple of Plenty enters tapped.
+Resolve Stack: Primal Surge (61) - Exile the top card of your library. If it's a permanent card, you may put it onto the battlefield. If you do, repeat this process.
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Add To Stack: Ai(1)-Chulane triggered Temple of Plenty
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Add To Stack: Ai(1)-Chulane triggered Tatyova, Benthic Druid
+Add To Stack: Ai(1)-Chulane triggered Formidable Speaker
+Add To Stack: Ai(1)-Chulane triggered Shrieking Drake
+Add To Stack: Ai(1)-Chulane triggered Semblance Anvil
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Add To Stack: Ai(1)-Chulane triggered Guardian Project
+Add To Stack: Ai(1)-Chulane triggered Selvala, Heart of the Wilds
+Resolve Stack: Whenever another creature enters, its controller may draw a card if its power is greater than each other creature's power. [Zone Changer: Birds of Paradise (63)]
+Resolve Stack: Whenever a nontoken creature you control enters, if it doesn't have the same name as another creature you control or a creature card in your graveyard, draw a card. [Zone Changer: Birds of Paradise (63)]
+Turn: Turn 37 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (111)
+Turn: Turn 38 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (215)
+Turn: Turn 39 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (364)
+Turn: Turn 40 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (142)
+Turn: Turn 41 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (284)
+Turn: Turn 42 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (334)
+Turn: Turn 43 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (108)
+Turn: Turn 44 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (273)
+Turn: Turn 45 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (382)
+Turn: Turn 46 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (131)
+Turn: Turn 47 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (253)
+Turn: Turn 48 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (314)
+Turn: Turn 49 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (123)
+Turn: Turn 50 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (238)
+Turn: Turn 51 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (342)
+Turn: Turn 52 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (124)
+Turn: Turn 53 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (291)
+Turn: Turn 54 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (402)
+Turn: Turn 55 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (200)
+Turn: Turn 56 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (271)
+Turn: Turn 57 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (325)
+Turn: Turn 58 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (175)
+Turn: Turn 59 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (247)
+Turn: Turn 60 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (350)
+Turn: Turn 61 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (195)
+Turn: Turn 62 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (255)
+Turn: Turn 63 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (352)
+Turn: Turn 64 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (122)
+Turn: Turn 65 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (205)
+Turn: Turn 66 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (399)
+Turn: Turn 67 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (167)
+Turn: Turn 68 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (249)
+Turn: Turn 69 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (320)
+Turn: Turn 70 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (198)
+Turn: Turn 71 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (259)
+Turn: Turn 72 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (308)
+Turn: Turn 73 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (153)
+Turn: Turn 74 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (298)
+Turn: Turn 75 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (393)
+Turn: Turn 76 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (196)
+Turn: Turn 77 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (292)
+Turn: Turn 78 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (327)
+Turn: Turn 79 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (135)
+Turn: Turn 80 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (214)
+Turn: Turn 81 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (317)
+Turn: Turn 82 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (126)
+Turn: Turn 83 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (231)
+Turn: Turn 84 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (321)
+Turn: Turn 85 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (143)
+Turn: Turn 86 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (235)
+Turn: Turn 87 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (394)
+Turn: Turn 88 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (166)
+Turn: Turn 89 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (280)
+Turn: Turn 90 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (316)
+Turn: Turn 91 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (154)
+Turn: Turn 92 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (264)
+Turn: Turn 93 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (357)
+Turn: Turn 94 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (179)
+Turn: Turn 95 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (216)
+Turn: Turn 96 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (324)
+Turn: Turn 97 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (137)
+Turn: Turn 98 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (210)
+Turn: Turn 99 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (318)
+Turn: Turn 100 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (113)
+Turn: Turn 101 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (294)
+Turn: Turn 102 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (388)
+Turn: Turn 103 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (188)
+Turn: Turn 104 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (252)
+Turn: Turn 105 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (368)
+Turn: Turn 106 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (139)
+Turn: Turn 107 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (257)
+Turn: Turn 108 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (400)
+Turn: Turn 109 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (120)
+Turn: Turn 110 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (221)
+Turn: Turn 111 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (307)
+Turn: Turn 112 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (192)
+Turn: Turn 113 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (208)
+Turn: Turn 114 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (401)
+Turn: Turn 115 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (102)
+Turn: Turn 116 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (244)
+Turn: Turn 117 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (337)
+Turn: Turn 118 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (148)
+Turn: Turn 119 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (287)
+Turn: Turn 120 (Ai(4)-Dummy)
+Land: Ai(4)-Dummy played Wastes (344)
+Turn: Turn 121 (Ai(2)-Dummy)
+Land: Ai(2)-Dummy played Wastes (162)
+Turn: Turn 122 (Ai(3)-Dummy)
+Land: Ai(3)-Dummy played Wastes (211)
+Turn: Turn 123 (Ai(4)-Dummy)
+Player Control: Ai(1)-Chulane has restored control over themself
+Player Control: Ai(2)-Dummy has restored control over themself
+Player Control: Ai(3)-Dummy has restored control over themself
+Player Control: Ai(4)-Dummy has restored control over themself
+Game Outcome: Match Duration 0m : 59s
+Game Outcome: Turn 62
+Game Outcome: Ai(1)-Chulane has lost trying to draw cards from empty library
+Game Outcome: Ai(2)-Dummy has won because all opponents have lost
+Game Outcome: Ai(3)-Dummy has won because all opponents have lost
+Game Outcome: Ai(4)-Dummy has won because all opponents have lost
+Match Result: Ai(1)-Chulane: 1 Ai(2)-Dummy: 1 Ai(3)-Dummy: 0 Ai(4)-Dummy: 0
+Game Result: Game 2 ended in 60008 ms. Ai(2)-Dummy has won!
