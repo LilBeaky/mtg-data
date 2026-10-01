@@ -77,7 +77,7 @@ def _():
 @check("keywords: 'equip commander' (a filter) and an unknown keyword are refused")
 def _():
     return refused(C("Commander's Plate", A("keyword", keyword="equip", cost="{3}", filter={"commander": True}))) and \
-        refused(C("Grizzly Bears", A("keyword", keyword="storm")))
+        refused(C("Grizzly Bears", A("keyword", keyword="convoke")))
 @check("keywords: enchant creature sets what the Aura needs")
 def _(): return C("Unquestioned Authority", A("keyword", keyword="enchant", detail="creature")).requires == "creature"
 
@@ -157,9 +157,10 @@ def _():
     return s[0][0] == "tutor" and s[0][1].types == {"artifact", "enchantment"} and s[0][2] == "top" and s[1] == ("land_search", 2, (True, frozenset()), "split") \
         and s[2] == ("land_search", 1, (False, frozenset({"island", "swamp"})), "bf_t") and s[3][0] == "recur" and s[3][2] == "bf" \
         and s[4] == ("wheel", 7, False) and s[5] == ("putback", 2, False)
-@check("effects: a tutor of the library and/or graveyard, or to a position below the top in the hand, is refused")
+@check("effects: a tutor of the library and/or graveyard reads (flag); of the graveyard alone, or to a hand 'position', is refused")
 def _():
-    return refused(C("Opt", SP({"do": "tutor", "filter": {"any": True}, "to": "hand", "from": ["library", "graveyard"]}))) and \
+    lg = C("Opt", SP({"do": "tutor", "filter": {"any": True}, "to": "hand", "from": ["library", "graveyard"]}))
+    return lg.spell[0][4] is True and refused(C("Opt", SP({"do": "tutor", "filter": {"any": True}, "to": "hand", "from": ["graveyard"]}))) and \
         refused(C("Opt", SP({"do": "tutor", "filter": {"any": True}, "to": "hand", "position": 3})))
 @check("effects: mana (ritual, X in any combination of attackers' power), extra land, free cast up to mana value 5, free_top")
 def _():
@@ -394,12 +395,31 @@ def _():
     G.do(st.spell, st, None, 0)
     return shapes and any(q.k is bears for q in G.perms) and G.hand == [forest] and g.restr_ok(("sub", frozenset({"Dragon"})), bears, None) is False
 
+@check("step 3: extra turns (the turn body repeats, records once), impulse (gone at end step), storm token copies, X>=10, set life")
+def _():
+    import argparse, random
+    st = C("Stitch in Time", SP({"do": "extra_turn", "n": 1}))
+    jw = C("Opt", SP({"do": "impulse", "n": 3, "until": "end_of_turn"}))
+    fi = C("Finale of Devastation", SP({"do": "if", "cond": {"if": "x_at_least", "n": 10},
+          "then": [{"do": "pump_team", "filter": {"types": ["creature"], "controller": "you"}, "power": "X", "toughness": "X", "duration": "end_of_turn"}]}))
+    es = C("The Endstone", TR({"on": "end_step", "whose": "your"}, {"do": "set_life", "n": {"count": "starting_life_total", "divide": 2, "round": "up"}}))
+    shapes = st.spell == [("extra_turn", 1)] and jw.spell == [("impulse", 3)] and fi.spell[0][1] == ("x_ge", 10) and fi.spell[0][2][0][1] == "X" \
+        and es.trig[0][2] == [("set_life", ("div", ("start_life",), 2, True))] and not fi.alpha
+    forest = g.compile_card(IDX["forest"], g.ALL5); bears = g.compile_card(IDX["grizzly bears"], g.ALL5)
+    sim = g.Sim(["Forest"], [], argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False), [], {"Forest": forest}, g.ALL5)
+    G = g.Game(sim, [], [forest] * 30, random.Random(1)); G.turn, G.phase, G.turns_left, G.cmd = 3, 3, 3, []
+    G.perms = [g.Perm(bears)]; G._st = None
+    G.do(es.trig[0][2], es, None, 0); life = G.life
+    G.do(fi.spell, fi, None, 12); big = G.stats(G.perms[0])[0]
+    G.do(st.spell, st, None, 0)
+    return shapes and life == 20 and big == 2 + 12 and G.extra_turns == 1
+
 @check("status: unexpressible out_of_scope is never a miss; format_gap is; a refused ability leaves the rest read")
 def _():
     v = C("Counterbalance", A("unexpressible", reason="opponents' spells", scope="out_of_scope"))
     p = C("Grizzly Bears", A("keyword", keyword="flying"), A("unexpressible", reason="x", scope="format_gap"))
-    r = C("Grizzly Bears", TR({"on": "enters", "subject": "self"}, {"do": "draw", "n": 1}), TR({"on": "enters", "subject": "self"}, {"do": "set_life", "n": 10}))
-    return v.status == "vacuum" and p.status == "partial" and r.etb == [("draw", 1)] and r.status == "partial" and any("set_life" in n for n in r.notes)
+    r = C("Grizzly Bears", TR({"on": "enters", "subject": "self"}, {"do": "draw", "n": 1}), TR({"on": "enters", "subject": "self"}, {"do": "monarch"}))
+    return v.status == "vacuum" and p.status == "partial" and r.etb == [("draw", 1)] and r.status == "partial" and any("monarch" in n for n in r.notes)
 @check("loader: data/gef/ loads and validates every translation; goldfish.py --gef reads them (override > GEF > parser)")
 def _():
     cards, rejects = gc.load()

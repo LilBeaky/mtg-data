@@ -111,7 +111,8 @@ def spell_filter(f):
     if f.get("any"):
         if len(f) > 1: refuse("any with other fields")
         return None
-    extra = set(f) - {"types", "non_types", "subtypes", "supertypes", "colors", "multicolored", "historic", "mana_value", "chosen_type", "power"}
+    extra = set(f) - {"types", "non_types", "subtypes", "non_subtypes", "supertypes", "colors", "multicolored", "historic", "mana_value",
+                      "chosen_type", "power"}
     if extra: refuse("spell filter " + ", ".join(sorted(extra)))
     out = {"types": set(), "non": set(), "legendary": False, "colors": set(f.get("colors", [])), "multi": bool(f.get("multicolored")),
            "historic": bool(f.get("historic")), "mv_max": None, "unknown": False, "sub": set(f.get("subtypes", []))}
@@ -126,6 +127,7 @@ def spell_filter(f):
     if sup - {"legendary"}: refuse("spell supertype")
     out["legendary"] = "legendary" in sup
     if f.get("chosen_type"): out["sub"] |= {g.CHOSEN_TYPE or "Chosen"}
+    if f.get("non_subtypes"): out["nonsub"] = set(f["non_subtypes"])
     mv = f.get("mana_value")
     if mv:
         if set(mv) != {"max"} or not isinstance(mv["max"], int): refuse("spell mana value")
@@ -190,7 +192,11 @@ def amount(a, allow_x=True):
         if not allow_x: refuse("X")
         return "X"
     if not isinstance(a, dict): refuse("amount")
-    if set(a) - {"count", "filter", "card_filter", "colors", "times", "kind", "player"}: refuse("amount " + ", ".join(sorted(set(a) - {"count"})))
+    if set(a) - {"count", "filter", "card_filter", "colors", "times", "kind", "player", "divide", "round"}:
+        refuse("amount " + ", ".join(sorted(set(a) - {"count"})))
+    if a.get("divide"):                                   # 'half ..., rounded up'
+        if a.get("times") or a.get("round") not in ("up", "down"): refuse("divided amount")
+        return ("div", count_key(a), a["divide"], a["round"] == "up")
     if "player" in a and a["count"] != "cards_in_opponent_hand": refuse("count of another player")
     key = count_key(a)
     return ("per", a["times"], key) if a.get("times") else key
@@ -218,6 +224,7 @@ def count_key(a):
         if not re.fullmatch(r"[WUBRG]{1,2}", cols): refuse("devotion colors")
         return ("devotion",) + tuple(cols)
     if c == "coin_flips_won": return ("flips_won",)
+    if c == "starting_life_total": return ("start_life",)
     if c == "toughness_of_self" and not f: return ("tgh",)
     if c == "spells_cast_this_turn" and not cf: return ("tcast_n",)
     if c == "greatest_toughness" and (not f or {k: v for k, v in f.items() if k != "controller" or v != "you"} in ({}, {"types": ["creature"]})):
@@ -279,7 +286,8 @@ def effect(e, ctx):
             return [("look_f", e["n"], target(f), "bf" if to == "battlefield" else "hand")]
         refuse("look form")
     if d == "tutor":
-        if set(e.get("from", ["library"])) != {"library"}: refuse("tutor from " + "/".join(e["from"]))
+        gy = set(e.get("from", ["library"])) == {"library", "graveyard"}
+        if set(e.get("from", ["library"])) != {"library"} and not gy: refuse("tutor from " + "/".join(e["from"]))
         if "position" in e and e.get("to") != "library_top": refuse("library position")
         n = e.get("n", 1)
         if not isinstance(n, int): refuse("tutor count")
@@ -290,8 +298,8 @@ def effect(e, ctx):
             refuse("split tutor")
         dest = zone(e["to"])
         if e.get("position", 1) > 1: dest = f"top{e['position']}"
-        if ls and dest != "graveyard": return [("land_search", n, ls, dest)]
-        return [("tutor", target(e["filter"]), dest, n)]
+        if ls and dest != "graveyard" and not gy: return [("land_search", n, ls, dest)]
+        return [("tutor", target(e["filter"]), dest, n) + ((True,) if gy else ())]
     if d == "recur":
         if e.get("from", "your_graveyard") not in ("your_graveyard", "any_graveyard") or not isinstance(e.get("n", 1), int): refuse("recur form")
         return [("recur", target(e["filter"]), zone(e["to"], ("hand", "bf", "top")), e.get("n", 1))]
@@ -350,7 +358,7 @@ def effect(e, ctx):
         if not f.get("types"): f["types"] = ["creature"]
         sf = spell_filter({k: v for k, v in f.items()})
         if pw: sf["pow_now"] = pw["min"]                              # current power (engine), not printed
-        return [("pump_team", pump_amt(e.get("power", 0)), pump_amt(e.get("toughness", 0)), keywords(e.get("keywords")), sf, other, atk)]
+        return [("pump_team", pump_amt(e.get("power", 0), True), pump_amt(e.get("toughness", 0), True), keywords(e.get("keywords")), sf, other, atk)]
     if d == "damage":
         to = e["to"]
         if e.get("divided") or e.get("filter"): refuse("damage form")
@@ -396,6 +404,13 @@ def effect(e, ctx):
                     and t0 == [{"do": "recur", "filter": {"any": True}, "n": 1, "to": "hand", "from": "exile"}]:
                 return [("free_top", inner["n"] - 1)]
         refuse("reveal_until form")
+    if d == "impulse":
+        if e["until"] != "end_of_turn" or e.get("filter") or e.get("free") or not isinstance(e["n"], int): refuse("impulse form")
+        return [("impulse", e["n"])]
+    if d == "extra_turn": return [("extra_turn", e.get("n", 1))]
+    if d == "set_life":
+        if e.get("who", "you") != "you": refuse("set_life who")
+        return [("set_life", amount(e["n"], allow_x=False))]
     if d == "put_from_hand":
         f = e["filter"]
         n = e.get("n", 1)
@@ -464,8 +479,8 @@ def effect(e, ctx):
         return [may_pay(e, ctx)]
     refuse("effect " + d)
 
-def pump_amt(a):
-    v = amount(a, allow_x=False)
+def pump_amt(a, allow_x=False):
+    v = amount(a, allow_x=allow_x)
     return ("per", 1, v) if isinstance(v, tuple) and v[0] != "per" else v
 
 def keywords(kws):
@@ -534,6 +549,8 @@ def cond(c):
     if k == "opponent_more_lands": return "opp_lands"
     if k == "you_control_commander": return ("cmdr_out",)
     if k == "hand_exactly": return ("hand_eq", c["n"])
+    if k == "x_at_least": return ("x_ge", c["n"])
+    if k == "library_empty": return ("lib_empty",)
     if k == "amount_at_least": return ("amt", amount(c["amount"], allow_x=False), c["n"])
     if k == "graveyard_at_least" and not c.get("card_types"):
         f = c.get("filter") or {}
@@ -573,7 +590,7 @@ class Ctx:
         self.self_land_types = set()
 
 EVENTS = {"upkeep": "upkeep", "end_step": "end", "draw_step": "drawstep", "precombat_main": "main1", "combat_begin": "combat_begin",
-          "coin_flip_won": "coin_won", "coin_flip": "coin_flip",
+          "coin_flip_won": "coin_won", "coin_flip": "coin_flip", "play_land": "play_land",
           "gain_life": "gain", "draw_card": "draw_card", "cycle": "cycle", "proliferate": "prolif", "opponent_draws": "opp_draw",
           "opponent_second_spell": "opp_second", "opponent_landfall": "opp_land"}
 
@@ -589,6 +606,7 @@ def event(ev):
         if on in ("gain_life", "draw_card") and ev.get("who") not in (None, "you"): refuse(f"{on} who")
         if on == "cycle" and ev.get("who") not in (None, "you", "each_player"): refuse("cycle who")   # only you cycle in a goldfish
         if on in ("coin_flip_won", "coin_flip") and ev.get("who") not in (None, "you", "each_player"): refuse(f"{on} who")
+        if on == "play_land" and ev.get("who") not in (None, "you"): refuse("play_land who")
         return EVENTS[on], None
     if on == "cast_self": return "cast_self", None
     if on == "cycle_self": return "cycle_self", None
@@ -697,9 +715,7 @@ def keyword_ability(a, ctx):
         gc["exile_after"] = w != "retrace"
         k.gycast = gc; return "read"
     if w == "cascade": k.castfx.append(("cascade", k.mv, 1)); return "read"
-    if w == "storm":
-        if not k.types & {"Instant", "Sorcery"}: refuse("storm on a permanent")
-        k.castfx.append(("storm",)); return "read"
+    if w == "storm": k.castfx.append(("storm",)); return "read"          # permanent spells: token copies
     if w == "sunburst": k.ctr_enter = ("+1/+1" if "Creature" in k.types else "charge", ("converge",), False); return "read"
     if w == "cumulative upkeep": k.cum_upkeep = True; return "read"
     if w == "rebound": k.rebound = True; return "read"
@@ -1049,9 +1065,10 @@ def finish(k, ctx, done, missed, vac):
         if "prowess" in k.kw: k.trig.append(("cast", g.parse_filter("noncreature"), [("pump", "self", 1, 1, frozenset())], False, False, False))
         if "battle cry" in k.kw: k.trig.append(("attack_self", None, [("pump", "others_attacking", 1, 0, frozenset())], False, False, False))
     k.haste = k.haste or "haste" in k.kw
-    if k.types & {"Instant", "Sorcery"} and any(e[0] in ("pump", "pump_team", "extra_combat") for e in g.flat(k.spell)) \
+    COMBAT_FX = {"pump", "pump_team", "extra_combat", "untap_cr", "unblock"}      # alpha: a combat trick, held until it wins a fight
+    if k.types & {"Instant", "Sorcery"} and k.spell and all(e[0] in COMBAT_FX for e in k.spell) \
             or any(e[0] == "pump_team" for e in k.etb):
-        k.alpha = True
+        k.alpha = True                                   # not a tutor or draw spell with a conditional pump rider (Finale of Devastation)
     if k.types & {"Instant", "Sorcery"}:
         k.ritual = bool(k.spell) and all(e[0] in ("mana", "mana_n") for e in k.spell)
         k.hold = ctx.spell_interaction and not k.ritual

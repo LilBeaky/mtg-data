@@ -337,6 +337,7 @@ def spell_ok(k, f):
     if f.get("pow_min") is not None and k.power < f["pow_min"]: return False
     if f.get("nontoken") and k.token: return False
     if f.get("istoken") and not k.token: return False
+    if f.get("nonsub") and (k.subtypes & f["nonsub"]): return False      # GEF: 'non-Human'
     return True
 
 def land_filter(s):
@@ -2861,6 +2862,7 @@ class Game:
         self.ctx_gain = 0; self.gain_depth = 0  # the life a 'whenever you gain life' trigger is about; recursion guard
         self.pool = None; self.convs = []; self.dry = False; self._st = None
         self.coin_turn = -1; self.ctx_won = 0; self.ctx_num = 0; self.temp_free = []    # coin flips; 'cast free this turn' (GEF)
+        self.extra_turns = 0; self.impulse_eot = []      # extra turns to take; impulse cards that leave at the end step (GEF)
         self.extra = 0; self.drawn = len(hand); self.casts = 0; self.spent = 0; self.disc = 0
         self.attr = Counter(); self.first = {}; self.cmd_first = {}; self.rebound = []
         self.exile, self.unearthed = [], []
@@ -3351,6 +3353,7 @@ class Game:
 
     def play_land(self, k):
         self.hand.remove(k); self.drops -= 1
+        self.fire("play_land", k)
         self.note(f"  land {k.name}" + (" (tapped)" if self.etapped(k.mdfc if (k.mdfc and not k.is_land) else k) else ""))
         self.land_enters(k.mdfc if (k.mdfc and not k.is_land) else k)
 
@@ -3809,6 +3812,10 @@ class Game:
         if key == "tough_max": return max((self.stats(q)[1] for q in self.perms if self.is_creature(q)), default=0)
         if key == "tgh": return self.stats(p)[1] if isinstance(p, Perm) and p in self.perms else 0
         if key == "tcast_n": return len(self.tcast)
+        if key == "start_life": return START_LIFE
+        if key == "div":                                       # ('div', key, d, round up?): 'half your starting life total, rounded up'
+            n = self.val(v[1], p, x)
+            return -(-n // v[2]) if v[3] else n // v[2]
         if key == "num_chosen": return self.ctx_num
         if key == "converge": return self.converge
         if key == "pcount": return sum(1 for q in self.perms + self.lands if self.pmatch(v[1], q, None))
@@ -4018,7 +4025,7 @@ class Game:
                     else: self.land_enters(pick, force_tapped=dest in ("bf_t", "split"))
                 if dest != "top": self.rng.shuffle(self.lib)
             elif t == "tutor":
-                _, tg, dest, count = e
+                tg, dest, count = e[1], e[2], e[3]                # e[4]: the graveyard too (GEF 'library and/or graveyard')
                 if tutor_unread(tg): continue
                 have = self.have(); picks = []
                 xcap = x if any(re.match(r"mana value (?:x or less|less than or equal to x)", a) for a in tg.approx) else None
@@ -4028,13 +4035,14 @@ class Game:
                     if not isinstance(self.ctx_obj, Perm): continue
                     xcap = self.ctx_obj.k.mv + rel[1]; lo_ = xcap if rel[0] == "=" else 0
                 for _ in range(count):
-                    cands = [c for c in self.lib if self.sim.tmatch(tg, c) and c not in picks and (xcap is None or lo_ <= c.mv <= xcap)]
+                    cands = [c for c in self.lib + (self.gy if len(e) > 4 and e[4] else []) if self.sim.tmatch(tg, c) and c not in picks
+                             and (xcap is None or lo_ <= c.mv <= xcap)]
                     if not cands: break
                     if dest == "graveyard": pick = max(cands, key=self.gy_value)
                     elif land_first and any(c.is_land for c in cands):
                         pick = max((c for c in cands if c.is_land), key=lambda c: self.tutor_value(c, dest, have))
                     else: pick = max(cands, key=lambda c: self.tutor_value(c, dest, have))
-                    self.lib.remove(pick); picks.append(pick); have.add(pick)
+                    (self.lib if pick in self.lib else self.gy).remove(pick); picks.append(pick); have.add(pick)
                 self.rng.shuffle(self.lib)
                 for c in picks:
                     if not self.dry: self.tut[c.name] += 1
@@ -4077,7 +4085,7 @@ class Game:
                     elif dest == "top": self.lib.append(pick)
                     else: self.hand.append(pick); self.gain(1, name)
             elif t == "cond":
-                if self.cond_ok(e[1], p): self.do(e[2], k, p, x)
+                if (x >= e[1][1] if isinstance(e[1], tuple) and e[1][0] == "x_ge" else self.cond_ok(e[1], p)): self.do(e[2], k, p, x)
             elif t == "untap_self":
                 if isinstance(p, Perm) and p in self.perms and p.tapped:
                     p.tapped = False; self.note(f"    {name} untaps")
@@ -4240,7 +4248,7 @@ class Game:
                 if isinstance(q, Perm) and q in self.perms: q.tkw = (q.tkw or set()) | {"unblockable"}
             elif t == "pump_team":
                 _, dp, dt, kws, f, other, atk = e
-                dp, dt = self.amt(dp, p), self.amt(dt, p)
+                dp, dt = (x if dp == "X" else self.amt(dp, p)), (x if dt == "X" else self.amt(dt, p))
                 for q in self.perms:
                     if not self.is_creature(q) or (other and q is p) or (atk and q not in self.attackers) or not spell_ok(q.k, f): continue
                     if f and f.get("pow_now") is not None and self.stats(q)[0] < f["pow_now"]: continue
@@ -4369,7 +4377,17 @@ class Game:
                     else: self.enter(c)
             elif t == "self_shuffle": self.shuffle_self = True
             elif t == "storm":                                   # a copy of the spell for each spell cast before it this turn
-                for _ in range(max(0, len(self.tcast) - 1)): self.do(k.spell, k, None, x)
+                for _ in range(max(0, len(self.tcast) - 1)):
+                    if k.types & PERMANENT: self.enter(self.sim.copy_card(k))        # copies of a permanent spell are tokens
+                    else: self.do(k.spell, k, None, x)
+            elif t == "impulse":                                 # exile the top N; you may play them this turn (in hand, gone at end step)
+                if self.dry: continue
+                got = [self.lib.pop() for _ in range(min(self.num(e[1], p, x), len(self.lib)))]
+                self.hand += got; self.impulse_eot += got; self.gain(len(got), name)
+            elif t == "extra_turn": self.extra_turns += self.num(e[1], p, x); self.note(f"    {name}: an extra turn after this one")
+            elif t == "set_life":
+                n = self.val(e[1], p, x)
+                if isinstance(n, int): self.life = n; self.note(f"    {name}: your life becomes {n}")
             elif t == "flip":                                    # ('flip', n, win effects, lose effects, until you lose)
                 if self.dry: continue
                 self.flip_coins(self.num(e[1], p, x), e[4], e[2], e[3], k, p, x)
@@ -4519,6 +4537,7 @@ class Game:
         if k == "cmdr_out": return any(q.k in self.sim.commanders for q in self.perms)   # 'if you control a commander' (GEF)
         if k == "amt": n = self.val(c[1], p, 0); return isinstance(n, int) and n >= c[2]
         if k == "hand_eq": return len(self.hand) == c[1]
+        if k == "lib_empty": return not self.lib
         if k == "not_your_turn": return self.opp_turn
         if k == "main": return not self.opp_turn and not self.combat_on
         if k == "kicked":                            # only the cast spell itself (its token copies weren't kicked)
@@ -5587,91 +5606,99 @@ class Game:
             self.hand.remove(k); self.enter(k)
         if self.bspec: self.arrive(1)                      # boards already there for your first combat
         for t in range(1, turns + 1):
-            self.turn = t; self.phase += 1; self.tcast = (); self.gained = 0; self.turns_left = len(self.alive())
-            if self.bspec: self.expire(t)
-            for p in self.lands: p.tapped = False; p.sick = False
-            for p in self.perms:
-                p.sick = False
-                if not p.k.no_untap: p.tapped = False            # Mana Vault stays tapped
-            self.drops = 1 + self.st.extra_land
-            self.combat_done = False; self.atk_n = 0
-            for q in [q for q in self.perms if q.k.cum_upkeep]:
-                q.ctr = q.ctr or {}; q.ctr["age"] = q.ctr.get("age", 0) + 1
-                if q.ctr["age"] > 3: self.leave(q, "is let go (cumulative upkeep)")
-            self.fire("upkeep")
-            for k in self.rebound:
-                self.fire("cast", k); self.do(k.spell, k); self.gy.append(k)
-            self.rebound = []
-            if not (t == 1 and sim.on_play) and not self.st.skip_draw: self.draw(1)
-            self.fire("drawstep")
-            self.note(f"T{t} hand: " + "; ".join(c.name for c in self.hand))
-            if self.drops > 0:
-                land = self.choose_land()
-                if land: self.play_land(land)
-            evs = self.events.get(t, ())
-            self.ctr_now = [e for e in evs if e["kind"] == "counter"]
-            self.ctr_held += [e for e in evs if e["kind"] == "counterK"]
-            self.build_pool()
-            if self.stax and not self.dry: self.clear_stax()
-            for q in [q for q in self.perms + self.lands if q.k.chapters]: self.add_lore(q, 1)   # CR 714.3c
-            self.fire("main1")                                  # 'at the beginning of your first main phase': BMC, Black Market's mana
-            pool_n = sum(1 for u in self.pool if not u[5] and len(u) <= 6)     # fodder mana (sac outlets) isn't development
-            cols = set().union(*(u[0] | u[1] for u in self.pool if not u[5] and len(u) <= 6)) if self.pool else set()
-            if self.st.spend_any and cols - {"C"}: cols |= sim.anyc
-            rec["lands"][t].append(len(self.lands)); rec["mana"][t].append(pool_n)
-            rec["colors"][t].append(sim.anyc <= cols)
-            rec["stranded"][t].append(self.stranded())
-            self.note(f"  mana {pool_n} ({''.join(sorted(cols))}) at the start of main")
-            self.cast_loop(activate=False)                          # main phase 1: cast everything (nothing to hide)
-            self.animate_step()
-            self.equip_step()
-            if self.bspec and not self.dry: self.clear_path()
-            faced = sum(len(self.opps[i]["board"]) for i in self.alive())
-            sig = lambda: (len(self.hand), len(self.gy), len(self.cmd), sum(1 for u in self.pool if not u[5]))
-            before = sig()
-            self.combat()
-            n = 0
-            while self.xcombat and self.alive() and n < XCOMBAT_CAP:   # additional combat phases, each after a main phase
-                self.xcombat -= 1; n += 1; self.xcombats += 1
-                for sc in self.pending_untap: self.untap_cr(sc)
-                self.pending_untap = []
-                self.note("  additional combat phase")
-                self.cast_loop(activate=False)
+            extra_i = 0                                        # extra turns (GEF): your turn again, inside this round
+            while True:
+                self.turn = t; self.phase += 1; self.tcast = (); self.gained = 0; self.turns_left = len(self.alive())
+                if self.bspec: self.expire(t)
+                for p in self.lands: p.tapped = False; p.sick = False
+                for p in self.perms:
+                    p.sick = False
+                    if not p.k.no_untap: p.tapped = False            # Mana Vault stays tapped
+                self.drops = 1 + self.st.extra_land
+                self.combat_done = False; self.atk_n = 0
+                for q in [q for q in self.perms if q.k.cum_upkeep]:
+                    q.ctr = q.ctr or {}; q.ctr["age"] = q.ctr.get("age", 0) + 1
+                    if q.ctr["age"] > 3: self.leave(q, "is let go (cumulative upkeep)")
+                self.fire("upkeep")
+                for k in self.rebound:
+                    self.fire("cast", k); self.do(k.spell, k); self.gy.append(k)
+                self.rebound = []
+                if not (t == 1 and sim.on_play and not extra_i) and not self.st.skip_draw: self.draw(1)
+                self.fire("drawstep")
+                self.note(f"T{t} hand: " + "; ".join(c.name for c in self.hand))
+                if self.drops > 0:
+                    land = self.choose_land()
+                    if land: self.play_land(land)
+                evs = self.events.get(t, ()) if not extra_i else ()
+                self.ctr_now = [e for e in evs if e["kind"] == "counter"]
+                self.ctr_held += [e for e in evs if e["kind"] == "counterK"]
+                self.build_pool()
+                if self.stax and not self.dry: self.clear_stax()
+                for q in [q for q in self.perms + self.lands if q.k.chapters]: self.add_lore(q, 1)   # CR 714.3c
+                self.fire("main1")                                  # 'at the beginning of your first main phase': BMC, Black Market's mana
+                pool_n = sum(1 for u in self.pool if not u[5] and len(u) <= 6)     # fodder mana (sac outlets) isn't development
+                cols = set().union(*(u[0] | u[1] for u in self.pool if not u[5] and len(u) <= 6)) if self.pool else set()
+                if self.st.spend_any and cols - {"C"}: cols |= sim.anyc
+                if not extra_i: rec["lands"][t].append(len(self.lands)); rec["mana"][t].append(pool_n)
+                if not extra_i: rec["colors"][t].append(sim.anyc <= cols)
+                if not extra_i: rec["stranded"][t].append(self.stranded())
+                self.note(f"  mana {pool_n} ({''.join(sorted(cols))}) at the start of main")
+                self.cast_loop(activate=False)                          # main phase 1: cast everything (nothing to hide)
+                self.animate_step()
+                self.equip_step()
+                if self.bspec and not self.dry: self.clear_path()
+                faced = sum(len(self.opps[i]["board"]) for i in self.alive())
+                sig = lambda: (len(self.hand), len(self.gy), len(self.cmd), sum(1 for u in self.pool if not u[5]))
+                before = sig()
                 self.combat()
-            self.xcombat = 0; self.pending_untap = []; self.attacked = set()
-            after = sig()
-            if after[:3] == before[:3] and after[3] <= before[3]: self.activations()   # combat changed nothing castable
-            else: self.cast_loop()                                  # main phase 2: what combat drew or made, then activations
-            if self.hand_act(): self.cast_loop(activate=False)       # transmute, then cast what it found
-            while self.hand_act(eot=True): pass                     # leftover mana: cycle dead cards
-            for e in self.ctr_now: self.dis.append((e["kind"], "no target"))
-            self.ctr_now = []
-            self.open_pool = [u for u in self.pool if not u[5]] if self.pool else []
-            self.pool = None; self.convs = []
-            self.fire("end")
-            self.unanimate()
-            for q in self.unearthed:
-                if q in self.perms: self.leave(q, "is exiled (unearth)", "exile", quiet=True)
-            self.unearthed = []
-            for q, fate in self.eot:
-                if q in self.perms: self.leave(q, f"is {'sacrificed' if fate == 'sacrifice' else 'exiled'} (end step)",
-                                               "exile" if fate == "exile" else "gy", quiet=True, sac=fate == "sacrifice")
-            self.eot = []
-            back, self.flicker_back = getattr(self, "flicker_back", []), []
-            for c in back:                                        # flickered 'until the next end step' (Astral Slide, Ghostway)
-                self.note(f"    {c.name} returns (end step)"); self.enter(c)
-            for q in self.perms: q.pp = q.pt = q.dmg = 0; q.tkw = None          # cleanup: pumps wear off, damage heals
-            self.noblock = False
-            for o in self.opps:
-                for b in o["board"]:
-                    b["dmg"] = 0; b.pop("dt", None); b.pop("nob", None)
-                    if "orig" in b: b["p"], b["t"] = b.pop("orig")
-            for e in evs:
-                if e["kind"] not in ("counter", "counterK") and not self.won: self.disrupt(e)
-            if not self.st.no_max and len(self.hand) > 7:
-                self.hand.sort(key=self.value)
-                n = len(self.hand) - 7
-                self.gy += self.hand[:n]; del self.hand[:n]; self.disc += n
+                n = 0
+                while self.xcombat and self.alive() and n < XCOMBAT_CAP:   # additional combat phases, each after a main phase
+                    self.xcombat -= 1; n += 1; self.xcombats += 1
+                    for sc in self.pending_untap: self.untap_cr(sc)
+                    self.pending_untap = []
+                    self.note("  additional combat phase")
+                    self.cast_loop(activate=False)
+                    self.combat()
+                self.xcombat = 0; self.pending_untap = []; self.attacked = set()
+                after = sig()
+                if after[:3] == before[:3] and after[3] <= before[3]: self.activations()   # combat changed nothing castable
+                else: self.cast_loop()                                  # main phase 2: what combat drew or made, then activations
+                if self.hand_act(): self.cast_loop(activate=False)       # transmute, then cast what it found
+                while self.hand_act(eot=True): pass                     # leftover mana: cycle dead cards
+                for e in self.ctr_now: self.dis.append((e["kind"], "no target"))
+                self.ctr_now = []
+                self.open_pool = [u for u in self.pool if not u[5]] if self.pool else []
+                self.pool = None; self.convs = []
+                self.fire("end")
+                self.unanimate()
+                for q in self.unearthed:
+                    if q in self.perms: self.leave(q, "is exiled (unearth)", "exile", quiet=True)
+                self.unearthed = []
+                for q, fate in self.eot:
+                    if q in self.perms: self.leave(q, f"is {'sacrificed' if fate == 'sacrifice' else 'exiled'} (end step)",
+                                                   "exile" if fate == "exile" else "gy", quiet=True, sac=fate == "sacrifice")
+                self.eot = []
+                for c in self.impulse_eot:                            # impulse: what wasn't played this turn stays exiled
+                    if c in self.hand: self.hand.remove(c); self.exile.append(c); self.gain(-1, c.name)
+                self.impulse_eot = []
+                back, self.flicker_back = getattr(self, "flicker_back", []), []
+                for c in back:                                        # flickered 'until the next end step' (Astral Slide, Ghostway)
+                    self.note(f"    {c.name} returns (end step)"); self.enter(c)
+                for q in self.perms: q.pp = q.pt = q.dmg = 0; q.tkw = None          # cleanup: pumps wear off, damage heals
+                self.noblock = False
+                for o in self.opps:
+                    for b in o["board"]:
+                        b["dmg"] = 0; b.pop("dt", None); b.pop("nob", None)
+                        if "orig" in b: b["p"], b["t"] = b.pop("orig")
+                for e in evs:
+                    if e["kind"] not in ("counter", "counterK") and not self.won: self.disrupt(e)
+                if not self.st.no_max and len(self.hand) > 7:
+                    self.hand.sort(key=self.value)
+                    n = len(self.hand) - 7
+                    self.gy += self.hand[:n]; del self.hand[:n]; self.disc += n
+                if self.extra_turns > 0 and self.alive() and not self.won and not self.died:
+                    self.extra_turns -= 1; extra_i += 1; self.note(f"T{t}: extra turn"); continue
+                break
             rec["hand"][t].append(len(self.hand)); rec["extra"][t].append(self.extra)
             rec["casts"][t].append(self.casts); rec["spent"][t].append(self.spent)
             rec["disc"][t].append(self.disc)

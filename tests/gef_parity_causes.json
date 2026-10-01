@@ -13,7 +13,7 @@
  "Exotic Orchard": "FORMAT-GAP: colors depend on opponents' lands; the parser assumes any color (PARSER-APPROX).",
  "Feed the Swarm": "ENGINE: the life loss equal to the removed permanent's mana value has no count, so the spell is refused whole; the parser drops the life loss and holds the removal (PARSER-APPROX).",
  "Fellwar Stone": "FORMAT-GAP: colors depend on opponents' lands; the parser assumes any color (PARSER-APPROX).",
- "Finale of Devastation": "ENGINE: a search of library and/or graveyard isn't mapped (the engine's tutor reads the library only); the parser searches the library only (PARSER-APPROX).",
+ "Finale of Devastation": "GEF-MORE: the search reads the library and the graveyard, and X>=10 pumps the team +X/+X with haste (engine, T3 step 3); the parser searches the library only (PARSER-APPROX).",
  "Gamble": "PARSER-APPROX: the parser discards the worst card; GEF discards at random (discard_rand, T3 step 3).",
  "Gemstone Caverns": "FORMAT-GAP + ENGINE: the opening-hand line is a gap, and the mana split on a luck counter is a conditional mana ability the adapter refuses; the parser taps it for {C}.",
  "Ghostway": "PARSER-APPROX vs GEF: both hold it as a protect answer; GEF also runs its flicker of all your creatures until the end step when cast (engine delayed flicker, T3 step 3).",
@@ -22,8 +22,8 @@
  "Green Sun's Zenith": "PARSER-APPROX: the parser ignores 'shuffle Green Sun's Zenith into its owner's library' (it goes to the graveyard); GEF shuffles it in (engine self_shuffle, T3 step 3).",
  "Gwenna, Eyes of Gaea": "PARSER-APPROX: the parser restricts the mana to creature spells only; GEF also lets it pay creature sources' abilities (engine 'creature_src', T3 step 3), and reads the power-5 cast trigger the parser leaves unread.",
  "Invasion of Ikoria // Zilortha, Apex of Ikoria": "ENGINE: library-and/or-graveyard search; the back face isn't the card goldfish casts. The parser searches the library only.",
- "Jace, Wielder of Mysteries": "ENGINE: the -8's 'then if your library is empty, you win' needs a library_empty condition the engine lacks, so the -8 is refused; the parser reads its draw seven (and wins through the static).",
- "Jeska's Will": "ENGINE: the commander condition reads now, but the impulse mode (exile the top three, play them this turn) isn't in the engine; the parser reads both modes, impulse as draw 3 (PARSER-APPROX).",
+ "Jace, Wielder of Mysteries": "GEF-MORE: the -8's 'then if your library is empty, you win' reads (engine lib_empty, T3 step 3); the parser reads only the draw seven and wins through the static.",
+ "Jeska's Will": "PARSER-APPROX: the parser reads both modes (impulse as draw 3) always; GEF takes the impulse mode (exile three, play them this turn: engine impulse) only with a commander out, so the probe (no commander) adds only the red mana.",
  "Klauth's Will": "ENGINE: the commander condition reads now, but its removal modes target 'up to X' creatures, which the adapter refuses; the parser holds it as removal.",
  "Klauth, Unrivaled Ancient": "ENGINE: the attack mana is restricted to spells and persists through phases; mana_x carries no restriction, so it's refused. The parser reads unrestricted mana (PARSER-APPROX).",
  "Maelstrom of the Spirit Dragon": "PARSER-APPROX: the parser treats the Dragon-or-Omen mana as unrestricted; GEF restricts it to those subtypes (engine restriction ('sub', ...), T3 step 3).",
@@ -51,7 +51,7 @@
  "Sword of War and Peace": "GEF-MORE: the combat damage trigger (damage per card in their hand, life per card in yours) reads; the parser leaves it unread.",
  "Teferi's Protection": "FORMAT-GAP: phasing and the life lock; the parser holds it as a protect answer.",
  "Thassa's Oracle": "ENGINE: the look-at-X devotion line isn't mapped (look count X); the parser's oracle effect reads the win.",
- "The Endstone": "GEF-MORE + ENGINE: the cast trigger reads; play_land and set_life are refused. The parser leaves the card blank.",
+ "The Endstone": "GEF-MORE: play-a-land and cast-a-spell draws, and the end-step life of half your starting life (engine play_land, set_life, T3 step 3); the parser leaves it blank.",
  "The One Ring": "PARSER-APPROX: the parser loses a flat 1 life per upkeep; GEF loses 1 per burden counter.",
  "Thrakkus the Butcher": "FORMAT-GAP: doubling each Dragon's own power; the parser's double_pow reads it.",
  "Unnatural Growth": "FORMAT-GAP: doubling each creature's P/T; the parser's double_pow reads it.",
@@ -91,5 +91,8 @@
  "Fluctuator": "GEF-MORE: cycling costs {2} less (engine cycle_red, T3 step 3); the parser leaves it blank.",
  "Goreclaw, Terror of Qal Sisma": "GEF-MORE: the attack pump of creatures with power 4 or greater reads, by current power (engine pow_now, T3 step 3); the parser leaves it unread.",
  "Last March of the Ents": "GEF-MORE: draw by greatest toughness, then put any number of creatures from hand onto the battlefield (engine put_hand, T3 step 3); the parser leaves it blank.",
- "Show and Tell": "GEF-MORE: put your best permanent from hand onto the battlefield (engine put_hand, T3 step 3; the opponents' side is out of scope); the parser leaves it blank."
+ "Show and Tell": "GEF-MORE: put your best permanent from hand onto the battlefield (engine put_hand, T3 step 3; the opponents' side is out of scope); the parser leaves it blank.",
+ "Nexus of Fate": "GEF-MORE + ENGINE: the extra turn reads (engine extra turns, T3 step 3); shuffling it back into the library from anywhere is refused (graveyard_replacement). The parser leaves it blank.",
+ "Stitch in Time": "GEF-MORE: flip a coin, win an extra turn (engine flips + extra turns, T3 step 3); the parser leaves it blank.",
+ "Stormscale Scion": "GEF-MORE: storm on a permanent spell makes token copies (engine storm, T3 step 3); the parser leaves storm unread."
 }
