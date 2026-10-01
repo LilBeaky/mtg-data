@@ -30,9 +30,9 @@ Freeze: the GEF translation track (T3 step 4+, step 5) and new goldfish engine f
 
 ## Problems to design around
 
-1. **4-player games don't end** when the hero dies: dummies play on until the clock. Fix in Phase B by ending the game on hero loss (`setGameOver`). Phase A workaround: 1v1, or a short `-c`.
+1. **4-player games don't end** when the hero dies: dummies play on until the clock. Fix in Phase B by ending the game on hero loss (`setGameOver`). Phase A workaround: a short `-c` clock plus parsing the hero's loss line as the real end; never fall back to 1v1. With real opponents, the hero losing still ends *our* measurement (record who/what killed the hero), but the pod result is kept too.
 2. **Dummies must never act.** Kozilek + 99 Wastes is wrong: Kozilek is castable on turn 10. Use a commander the deck can't cast: a mono-W legendary (e.g. Isamaru, Hound of Konda) + 99 Wastes. Wastes make only {C}; the identity is legal. Check that no dummy `Add To Stack` lines exist in any run.
-3. **Opponent life model.** Goldfish uses 3 opponents at 40. Phase A 1v1 at 40 understates kill time (one opponent). Report 1v1 numbers as "single-opponent". Phase B: 4p with 3 dummies at 40 (parity), or 1v1 with the dummy at 120 via `setStartingLife` (cheaper, same total life, but per-player effects differ: Oracle and alt-wins don't care; "each opponent" drains do. Prefer true 4p for parity).
+3. **Opponent model (DECIDED by Ian 2026-10-01): always 3 opponents, 4-player pod, 40 life each.** No 1v1 mode as a default and no "1 dummy at 120" shortcut. Each of the 3 seats is independently either a **dummy** (vacuum) or a **real deck** (Ian's own lists, tester lists we build, or anything else). Mixed pods (e.g. 1 real + 2 dummies) must work. This is a hard requirement: **never simplify the opponent seats down to dummies-only**, in any phase, tool, flag or default. Ian will test both "into a vacuum" and "into real lists"; every metric and report must work in both modes and say which mode produced it.
 4. **Startup cost.** 15 s per JVM. Phase A batches with `-n N` in one invocation. Phase B runs every game in one JVM.
 5. **AI quality.** Forge AI is decent at fair Magic and weak at combo sequencing. Never present a win rate without the loss-reason breakdown and the AI-flag list.
 6. **Version drift.** New sets land in Forge releases. Pin `FORGE_VERSION` in `forge_setup.py`, bump deliberately, and log the version in every report.
@@ -44,9 +44,12 @@ Freeze: the GEF translation track (T3 step 4+, step 5) and new goldfish engine f
 scripts/forge_setup.py   download + cache pinned release (~/forge-cache/<ver>/), install JDK if javac needed, write ~/.forge prefs
 scripts/forge_deck.py    deck file (mtg.py parser, same headers) -> .dck; dummy decks; copies into ~/.forge/decks/commander/
 scripts/forge_sim.py     driver: run N games (Phase A: CLI sim; Phase B: harness), parse logs -> JSONL per game, then report
+decks/opponents/         tester gauntlet lists we build (committed; mtg.py deck format with headers), e.g. by bracket
 tools/forge/ForgeRunner.java   Phase B harness: one JVM, N seeded games, event subscriber, per-turn snapshots, hero-loss end, JSONL out
 data/forge/              (gitignored) raw logs, JSONL
 ```
+
+**Opponent spec (all tools, all phases):** `--opp SPEC` given 1–3 times, or `--opp-set FILE`; missing seats are filled with dummies, always 3 seats. SPEC = `dummy` | a deck file path | a name in `decks/opponents/` | `gauntlet:<name>` (a folder or list file of decks; each game samples 3 seats from it, seeded, with an option to fix the pairings). Per-seat AI profile: `--opp-ai Default,Reckless,...`. Each opponent deck is validated with `mtg.py deck` before the run, and Forge-unknown cards are warned about. Reports always print the pod: seat, deck, bracket, AI profile.
 
 Reuse `mtg.py`'s deck parsing (headers: `bracket`, `plan`, `key`, `track`, `package`, `pets`). Same CLI flags as goldfish.py where they mean the same thing (`--turns`, `--trials`, `--seed`, `--track`, `--variant`, `--json`).
 
@@ -54,10 +57,10 @@ Reuse `mtg.py`'s deck parsing (headers: `bracket`, `plan`, `key`, `track`, `pack
 
 1. `forge_setup.py`: idempotent; prints the version and paths.
 2. `forge_deck.py`: convert; warn on any card name Forge doesn't know. Build a name index from `cardsfolder.zip` once and cache it; handle DFC/split names (`A // B`). Emit the deck's `AI:RemoveDeck:All` list.
-3. `forge_sim.py run DECK --games N --seed S [--opp 1|3]`: invokes the CLI, captures stdout, splits it per game on `Game Result:`.
+3. `forge_sim.py run DECK --games N --seed S [--opp SPEC]x3`: always a 4-player pod; invokes the CLI, captures stdout, splits it per game on `Game Result:`. Opponent decks go into `~/.forge/decks/commander/` under unique names (avoid name collisions with the hero).
 4. Log parser -> per game JSON: winner, reason (normalized: `combat`, `alt_win:<card>`, `decked`, `life`, `poison`, `cmdr_dmg`, `draw/clock`), hero's turn count, per hero-turn: lands played, spells cast (names), triggers, damage dealt, life totals; first turn each `track`/`key` card is cast or enters; commander casts; mulligans.
 5. Report (text, goldfish-style): win %, kill-turn P10/median/P90, wins by route, losses by reason, commander turn distribution, tracked/key card turns, top cast cards, AI-flag list, Forge version, seeds, games, wall time.
-6. Acceptance: Chulane 50 games; numbers reproduce with the same seed; dummies never cast; hand-audit 3 game logs against the parsed JSON.
+6. Acceptance: Chulane 50 games in a vacuum (3 dummies) **and** 20 games into 3 real lists (Ian's own decks are fine as the first gauntlet); numbers reproduce with the same seed; dummies never cast; hand-audit 3 game logs against the parsed JSON, including at least one with real opponents.
 
 ## Phase B: Java harness (target: 1–2 sessions)
 
@@ -90,7 +93,7 @@ Priority order:
 2. **Card impact:** per card, the cast rate, average cast turn, win rate in games it resolved vs not (confounded: label it "association"), and dead-card rate (in hand at game end, never castable).
 3. **Combo/line detection:** sequences that preceded wins (e.g. Surge -> Oracle ETB). Count how often each key package assembles and fires.
 4. **Known-AI-trap tagging:** pattern rules over the log, e.g. `oracle_trap` = Oracle cast from hand while library ≤ pending cast-draw triggers. Report "losses attributable to pilot error" separately and offer an "excluding tagged pilot errors" win rate.
-5. **Real opponents (matchup/bracket mode):** gauntlet folders of real Commander decks by bracket (Ian's own decks first, then precons). Win rate and the turn the deck's plan is disrupted. This replaces the disruption ladder with actual interaction. Use 4p pods with 3 real decks.
+5. **Real-opponent analysis** (the seats already support real decks from Phase A; this item is the *reporting*): win rate by pod and by opponent deck, which opponent killed the hero and how, the turn the hero's plan was first disrupted (removal/counter/wipe hitting the hero's key cards), and how the hero's interaction was spent. Build tester gauntlets in `decks/opponents/` by bracket (Ian's own decks first, then purpose-built testers, e.g. "B3 interaction-heavy", "B3 fast combo", "B2 battlecruiser"). This replaces the goldfish disruption ladder with real interaction; keep the ladder in goldfish.py for fast what-ifs.
 6. **AI-profile sensitivity:** run Default vs Reckless/Cautious; if results swing a lot, the deck is pilot-sensitive (that's a finding).
 7. **Mana analysis:** flood/screw rate by turn, color-screw (castable-in-hand vs held), commander-tax cost over a game.
 8. **Interaction stats** (with real opponents): how often the deck's removal/counters were used, and what they hit.
@@ -114,6 +117,7 @@ Priority order:
 | Step | Status |
 |---|---|
 | Feasibility (download, run, parse by hand) | Done 2026-10-01 (chat sandbox) |
+| Opponent model decided (3 seats, each dummy or real deck) | Done 2026-10-01 |
 | Phase A | Not started |
 | Phase B | Not started |
 | Phase C | Not started |
@@ -121,6 +125,5 @@ Priority order:
 
 ## Open questions for Ian
 
-- Default opponent model: 3 dummies at 40 (goldfish parity) or 1v1?
 - Which decks form the first real-opponent gauntlet, and at what bracket?
 - Should tagged pilot-error losses be excluded from the headline win rate or only shown beside it?
