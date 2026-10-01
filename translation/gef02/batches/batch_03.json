@@ -1,0 +1,110 @@
+[
+ {
+  "name": "Kodama's Reach",
+  "mana_cost": "{2}{G}",
+  "type_line": "Sorcery — Arcane",
+  "oracle_text": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle."
+ },
+ {
+  "name": "Victimize",
+  "mana_cost": "{2}{B}",
+  "type_line": "Sorcery",
+  "oracle_text": "Choose two target creature cards in your graveyard. Sacrifice a creature. If you do, return the chosen cards to the battlefield tapped."
+ },
+ {
+  "name": "Roaming Throne",
+  "mana_cost": "{4}",
+  "type_line": "Artifact Creature — Golem",
+  "oracle_text": "Ward {2}\nAs this creature enters, choose a creature type.\nThis creature is the chosen type in addition to its other types.\nIf a triggered ability of another creature you control of the chosen type triggers, it triggers an additional time.",
+  "power": "4",
+  "toughness": "4"
+ },
+ {
+  "name": "War Room",
+  "type_line": "Land",
+  "oracle_text": "{T}: Add {C}.\n{3}, {T}, Pay life equal to the number of colors in your commanders' color identity: Draw a card."
+ },
+ {
+  "name": "Ponder",
+  "mana_cost": "{U}",
+  "type_line": "Sorcery",
+  "oracle_text": "Look at the top three cards of your library, then put them back in any order. You may shuffle.\nDraw a card."
+ },
+ {
+  "name": "Delighted Halfling",
+  "mana_cost": "{G}",
+  "type_line": "Creature — Halfling Citizen",
+  "oracle_text": "{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast a legendary spell, and that spell can't be countered.",
+  "power": "1",
+  "toughness": "2"
+ },
+ {
+  "name": "Herald's Horn",
+  "mana_cost": "{3}",
+  "type_line": "Artifact",
+  "oracle_text": "As this artifact enters, choose a creature type.\nCreature spells you cast of the chosen type cost {1} less to cast.\nAt the beginning of your upkeep, look at the top card of your library. If it's a creature card of the chosen type, you may reveal it and put it into your hand."
+ },
+ {
+  "name": "Sink into Stupor // Soporific Springs",
+  "type_line": "Instant // Land",
+  "faces": [
+   {
+    "name": "Sink into Stupor",
+    "mana_cost": "{1}{U}{U}",
+    "type_line": "Instant",
+    "oracle_text": "Return target spell or nonland permanent an opponent controls to its owner's hand."
+   },
+   {
+    "name": "Soporific Springs",
+    "type_line": "Land",
+    "oracle_text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {U}."
+   }
+  ]
+ },
+ {
+  "name": "Gemstone Caverns",
+  "type_line": "Legendary Land",
+  "oracle_text": "If this card is in your opening hand and you're not the starting player, you may begin the game with Gemstone Caverns on the battlefield with a luck counter on it. If you do, exile a card from your hand.\n{T}: Add {C}. If Gemstone Caverns has a luck counter on it, instead add one mana of any color."
+ },
+ {
+  "name": "Boros Charm",
+  "mana_cost": "{R}{W}",
+  "type_line": "Instant",
+  "oracle_text": "Choose one —\n• Boros Charm deals 4 damage to target player or planeswalker.\n• Permanents you control gain indestructible until end of turn.\n• Target creature gains double strike until end of turn."
+ },
+ {
+  "name": "Hardened Scales",
+  "mana_cost": "{G}",
+  "type_line": "Enchantment",
+  "oracle_text": "If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead."
+ },
+ {
+  "name": "Akroma's Will",
+  "mana_cost": "{3}{W}",
+  "type_line": "Instant",
+  "oracle_text": "Choose one. If you control a commander as you cast this spell, you may choose both instead.\n• Creatures you control gain flying, vigilance, and double strike until end of turn.\n• Creatures you control gain lifelink, indestructible, and protection from each color until end of turn."
+ },
+ {
+  "name": "Fell the Profane // Fell Mire",
+  "type_line": "Instant // Land",
+  "faces": [
+   {
+    "name": "Fell the Profane",
+    "mana_cost": "{2}{B}{B}",
+    "type_line": "Instant",
+    "oracle_text": "Destroy target creature or planeswalker."
+   },
+   {
+    "name": "Fell Mire",
+    "type_line": "Land",
+    "oracle_text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.\n{T}: Add {B}."
+   }
+  ]
+ },
+ {
+  "name": "Patchwork Banner",
+  "mana_cost": "{3}",
+  "type_line": "Artifact",
+  "oracle_text": "As this artifact enters, choose a creature type.\nCreatures you control of the chosen type get +1/+1.\n{T}: Add one mana of any color."
+ }
+]

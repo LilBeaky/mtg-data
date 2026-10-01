@@ -38,6 +38,8 @@ A separate track, not the Phase 0–3 parser work: have an LLM translate Oracle 
   - Translator misreads: 3/300 (1.0%). Parser misreads on the same cards: 10/300 (3.3%). 13 translations hid their meaning in free-text constructs (a schema hole, now counted as unread), 11 were over-cautious, 69 hit a real format gap.
   - Deck cards fully read: parser 53%. GEF on today's engine is about the same, 54%, because it refuses the parser's approximations. GEF once the engine runs what it expresses: 69%.
   - **Decision: partly.** Translate per deck as decks are built, after GEF 0.2 and a GEF-to-engine adapter; not the full pool (35–100× the prototype's cost, and the format still has gaps). T3 plan in `docs/TRANSLATION_T2.md`.
+- **T3 step 1, GEF 0.2 (fifth session, 2026-09-30):** free-text statics replaced by constructs, keywords an enum, `detail` only on silent keywords, the cheap T2 gaps, per-field validator support, prompt v2. 46 T2 cards re-translated: 44/46 right on the first pass, 46/46 after one retry. Real format gaps 69 → 57. Deck cards fully read *as expressed*: Klauth 69.9%, Yusri 81.2%, Zur 85.3% (T2: 64.4 / 66.7 / 75.0), 0 audit-wrong. *Today* is down on two decks (Klauth 34 → 33, Zur 44 → 41) because the validator stopped counting 11 lands and two 0.1 over-reads as executable. Details in the T3 section of `docs/TRANSLATION_T2.md`.
+  - **Headline unchanged at 44.4%:** goldfish.py wasn't touched. The 20 `t2_misreads` cards are now pinned by unit checks.
 
 ## The rules that govern everything
 
@@ -48,7 +50,7 @@ A separate track, not the Phase 0–3 parser work: have an LLM translate Oracle 
 
 **Every change passes three nets before it's pushed:**
 1. `goldfish_coverage.py diff HEAD --all`: read every changed reading. Group them with a scratch script by what changed, read the most-played first, and fix misreads before anything else.
-2. `tests/goldfish_units.py` (220 checks, deterministic board states) and `tests/goldfish_sweep.py` (all 32,116 Commander-legal cards, ~30 s): every card's effects executed once in a live game, which fails on any exception. The sweep found crashes the fixtures never hit.
+2. `tests/goldfish_units.py` (224 checks, deterministic board states) and `tests/goldfish_sweep.py` (all 32,116 Commander-legal cards, ~30 s): every card's effects executed once in a live game, which fails on any exception. The sweep found crashes the fixtures never hit.
 3. `tests/smoke.py` (70 checks, ~2.5 min). Run it in a separate git worktree at the commit being pushed, so editing can continue. Read the result before pushing.
 
 ## Done

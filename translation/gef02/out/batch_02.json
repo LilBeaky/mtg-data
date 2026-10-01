@@ -1,0 +1,139 @@
+[
+ {"gef": "0.2", "name": "Long-Term Plans", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for a card, then shuffle and put that card third from the top.",
+    "effects": [{"do": "tutor", "filter": {"any": true}, "n": 1, "to": "library_top", "position": 3}]}]},
+
+ {"gef": "0.2", "name": "Nexus of Fate", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Take an extra turn after this one.",
+    "effects": [{"do": "extra_turn", "n": 1}]},
+   {"kind": "static", "text": "If Nexus of Fate would be put into a graveyard from anywhere, reveal Nexus of Fate and shuffle it into its owner's library instead.",
+    "effect": {"static": "graveyard_replacement", "whose": "self", "to": "library_shuffled"}}]},
+
+ {"gef": "0.2", "name": "Sword of War and Peace", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Equipped creature gets +2/+2 and has protection from red and from white.",
+    "effect": {"static": "attached_bonus", "power": 2, "toughness": 2,
+               "keywords": [{"keyword": "protection", "detail": "red"}, {"keyword": "protection", "detail": "white"}]}},
+   {"kind": "triggered", "text": "Whenever equipped creature deals combat damage to a player, this Equipment deals damage to that player equal to the number of cards in their hand and you gain 1 life for each card in your hand.",
+    "event": {"on": "combat_damage_to_player", "subject": "equipped"},
+    "effects": [
+     {"do": "damage", "n": {"count": "cards_in_opponent_hand", "player": "that_player"}, "to": "that_player", "source": "self"},
+     {"do": "gain_life", "n": {"count": "cards_in_hand"}, "who": "you"}]},
+   {"kind": "keyword", "text": "Equip {2}", "keyword": "equip", "cost": "{2}"}]},
+
+ {"gef": "0.2", "name": "The Endstone", "source": "llm",
+  "notes": "'Whenever you play a land or cast a spell' is two events, so it is written as two triggered abilities (play_land and cast) carrying the same line and the same draw; they can never fire on the same event, so this is exact.",
+  "abilities": [
+   {"kind": "triggered", "text": "Whenever you play a land or cast a spell, draw a card.",
+    "event": {"on": "play_land"},
+    "effects": [{"do": "draw", "n": 1}]},
+   {"kind": "triggered", "text": "Whenever you play a land or cast a spell, draw a card.",
+    "event": {"on": "cast", "who": "you"},
+    "effects": [{"do": "draw", "n": 1}]},
+   {"kind": "triggered", "text": "At the beginning of your end step, your life total becomes half your starting life total, rounded up.",
+    "event": {"on": "end_step", "whose": "your"},
+    "effects": [{"do": "set_life", "n": {"count": "starting_life_total", "divide": 2, "round": "up"}, "who": "you"}]}]},
+
+ {"gef": "0.2", "name": "Approach of the Second Sun", "source": "llm",
+  "notes": "The win clause needs 'you've cast another spell named Approach of the Second Sun this game', which no condition can say, so that clause (with its 'Otherwise') is the unexpressible part; the put-seventh-from-top and the 7 life are written as the remaining effects (if the win clause applies the game is over, so they are moot).",
+  "abilities": [
+   {"kind": "spell", "text": "If this spell was cast from your hand and you've cast another spell named Approach of the Second Sun this game, you win the game. Otherwise, put Approach of the Second Sun into its owner's library seventh from the top and you gain 7 life.",
+    "effects": [
+     {"do": "unexpressible", "text": "If this spell was cast from your hand and you've cast another spell named Approach of the Second Sun this game, you win the game. Otherwise,",
+      "reason": "no condition for having cast another spell with the same name earlier this game (spells_cast_this_turn only covers this turn)", "scope": "format_gap"},
+     {"do": "self_to_library", "where": "top", "position": 7},
+     {"do": "gain_life", "n": 7, "who": "you"}]}]},
+
+ {"gef": "0.2", "name": "Archfiend of Ifnir", "source": "llm",
+  "notes": "The -1/-1 counters go only on creatures your opponents control and nothing comes back to you, so that line is out of scope.",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "unexpressible", "text": "Whenever you cycle or discard another card, put a -1/-1 counter on each creature your opponents control.",
+    "reason": "only puts -1/-1 counters on opponents' creatures; nothing comes back to you", "scope": "out_of_scope"},
+   {"kind": "keyword", "text": "Cycling {2}", "keyword": "cycling", "cost": "{2}"}]},
+
+ {"gef": "0.2", "name": "Astral Drift", "source": "llm",
+  "notes": "'Whenever you cycle this card or cycle another card' is two events, so it is written as two triggered abilities (cycle_self, which works from the graveyard, and cycle by you, which only happens with the enchantment on the battlefield) carrying the same line and effect.",
+  "abilities": [
+   {"kind": "triggered", "text": "Whenever you cycle this card or cycle another card while this enchantment is on the battlefield, you may exile target creature. If you do, return that card to the battlefield under its owner's control at the beginning of the next end step.",
+    "event": {"on": "cycle_self"}, "optional": true,
+    "effects": [{"do": "flicker", "what": {"ref": "target", "filter": {"types": ["creature"]}}, "returns": "next_end_step"}]},
+   {"kind": "triggered", "text": "Whenever you cycle this card or cycle another card while this enchantment is on the battlefield, you may exile target creature. If you do, return that card to the battlefield under its owner's control at the beginning of the next end step.",
+    "event": {"on": "cycle", "who": "you"}, "optional": true,
+    "effects": [{"do": "flicker", "what": {"ref": "target", "filter": {"types": ["creature"]}}, "returns": "next_end_step"}]},
+   {"kind": "keyword", "text": "Cycling {2}{W}", "keyword": "cycling", "cost": "{2}{W}"}]},
+
+ {"gef": "0.2", "name": "Deafening Silence", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Each player can't cast more than one noncreature spell each turn.",
+    "effect": {"static": "spell_limit", "n": 1, "spells": {"non_types": ["creature"]}, "who": "each_player"}}]},
+
+ {"gef": "0.2", "name": "Grasp of Fate", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "When this enchantment enters, for each opponent, exile up to one target nonland permanent that player controls until this enchantment leaves the battlefield.",
+    "event": {"on": "enters", "subject": "self"},
+    "effects": [{"do": "remove", "how": "exile",
+                 "target": {"ref": "target", "n": 1, "up_to": true, "for_each": "opponent",
+                            "filter": {"types": ["permanent"], "non_types": ["land"], "controller": "that_player"}},
+                 "duration": "as_long_as_source"}]}]},
+
+ {"gef": "0.2", "name": "Necrodominance", "source": "llm",
+  "notes": "'Pay any amount of life' is written as pay_life X with the draw counting that_much, X being the amount the player picks on resolution (not a paid X on a spell). The graveyard replacement is the plain 'put into your graveyard, exile instead' construct; the card also names tokens.",
+  "abilities": [
+   {"kind": "static", "text": "Skip your draw step.",
+    "effect": {"static": "skip_step", "what": "draw_step", "who": "you"}},
+   {"kind": "triggered", "text": "At the beginning of your end step, you may pay any amount of life. If you do, draw that many cards.",
+    "event": {"on": "end_step", "whose": "your"},
+    "effects": [{"do": "may_pay", "cost": {"pay_life": "X"}, "then": [{"do": "draw", "n": {"count": "that_much"}}], "who": "you"}]},
+   {"kind": "static", "text": "Your maximum hand size is five.",
+    "effect": {"static": "max_hand_size", "n": 5}},
+   {"kind": "static", "text": "If a card or token would be put into your graveyard from anywhere, exile it instead.",
+    "effect": {"static": "graveyard_replacement", "whose": "yours", "to": "exile"}}]},
+
+ {"gef": "0.2", "name": "Rule of Law", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Each player can't cast more than one spell each turn.",
+    "effect": {"static": "spell_limit", "n": 1, "who": "each_player"}}]},
+
+ {"gef": "0.2", "name": "Solitary Confinement", "source": "llm",
+  "notes": "'You have shroud' and 'Prevent all damage that would be dealt to you' are treated as out of scope (they only matter against opponents' spells and damage, which a goldfish never has); they would also block your own targeting of yourself and your own self-damage, which is the doubt.",
+  "abilities": [
+   {"kind": "triggered", "text": "At the beginning of your upkeep, sacrifice this enchantment unless you discard a card.",
+    "event": {"on": "upkeep", "whose": "your"},
+    "effects": [{"do": "may_pay", "cost": {"discard": {"n": 1}}, "then": [], "else": [{"do": "sacrifice", "what": {"ref": "self"}}], "who": "you"}]},
+   {"kind": "static", "text": "Skip your draw step.",
+    "effect": {"static": "skip_step", "what": "draw_step", "who": "you"}},
+   {"kind": "unexpressible", "text": "You have shroud.",
+    "reason": "player shroud: no construct, and it only keeps opponents' spells and abilities from targeting you", "scope": "out_of_scope"},
+   {"kind": "unexpressible", "text": "Prevent all damage that would be dealt to you.",
+    "reason": "damage prevention for you: no static construct, and it only stops damage from opponents, who never deal any in a goldfish", "scope": "out_of_scope"}]},
+
+ {"gef": "0.2", "name": "Step Through", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Return two target creatures to their owners' hands.",
+    "effects": [{"do": "remove", "how": "bounce", "target": {"ref": "target", "n": 2, "filter": {"types": ["creature"]}}}]},
+   {"kind": "keyword", "text": "Wizardcycling {2}", "keyword": "typecycling", "cost": "{2}", "card_filter": {"subtypes": ["Wizard"]}}]},
+
+ {"gef": "0.2", "name": "Vedalken Aethermage", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Flash", "keyword": "flash"},
+   {"kind": "triggered", "text": "When this creature enters, return target Sliver to its owner's hand.",
+    "event": {"on": "enters", "subject": "self"},
+    "effects": [{"do": "remove", "how": "bounce", "target": {"ref": "target", "n": 1, "filter": {"subtypes": ["Sliver"]}}}]},
+   {"kind": "keyword", "text": "Wizardcycling {3}", "keyword": "typecycling", "cost": "{3}", "card_filter": {"subtypes": ["Wizard"]}}]},
+
+ {"gef": "0.2", "name": "Cultivate", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+    "effects": [{"do": "tutor", "filter": {"types": ["land"], "supertypes": ["basic"]}, "n": 2, "reveal": true,
+                 "split": [{"n": 1, "to": "battlefield_tapped"}, {"n": 1, "to": "hand"}]}]}]},
+
+ {"gef": "0.2", "name": "Blasphemous Act", "source": "llm",
+  "abilities": [
+   {"kind": "self_cost_reduction", "text": "This spell costs {1} less to cast for each creature on the battlefield.",
+    "amount": {"count": "permanents_on_battlefield", "filter": {"types": ["creature"]}}},
+   {"kind": "spell", "text": "Blasphemous Act deals 13 damage to each creature.",
+    "effects": [{"do": "wipe", "how": "damage", "filter": {"types": ["creature"]}, "amount": 13}]}]}
+]

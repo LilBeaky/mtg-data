@@ -1,0 +1,117 @@
+[
+ {"gef": "0.2", "name": "Kodama's Reach", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+    "effects": [{"do": "tutor", "filter": {"types": ["land"], "supertypes": ["basic"]}, "n": 2, "reveal": true,
+                 "split": [{"n": 1, "to": "battlefield_tapped"}, {"n": 1, "to": "hand"}]}]}]},
+
+ {"gef": "0.2", "name": "Victimize", "source": "llm",
+  "notes": "Sacrificing is not optional in the text, but if you can't, nothing returns; may_pay + recur is how the format doc says to write it. The two targets are chosen on cast; recur n: 2 stands for them.",
+  "abilities": [
+   {"kind": "spell", "text": "Choose two target creature cards in your graveyard. Sacrifice a creature. If you do, return the chosen cards to the battlefield tapped.",
+    "effects": [{"do": "may_pay", "cost": {"sacrifice": {"filter": {"types": ["creature"], "controller": "you"}, "n": 1}},
+                 "then": [{"do": "recur", "filter": {"types": ["creature"]}, "n": 2, "to": "battlefield_tapped", "from": "your_graveyard"}]}]}]},
+
+ {"gef": "0.2", "name": "Roaming Throne", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Ward {2}", "keyword": "ward", "cost": "{2}"},
+   {"kind": "static", "text": "As this creature enters, choose a creature type.", "effect": {"static": "choose_on_enter", "choice": "creature_type"}},
+   {"kind": "static", "text": "This creature is the chosen type in addition to its other types.", "effect": {"static": "type_grant", "self": true, "add_chosen_type": true}},
+   {"kind": "static", "text": "If a triggered ability of another creature you control of the chosen type triggers, it triggers an additional time.",
+    "effect": {"static": "trigger_doubler", "cause": "any", "filter": {"types": ["creature"], "controller": "you", "another": true, "chosen_type": true}}}]},
+
+ {"gef": "0.2", "name": "War Room", "source": "llm",
+  "notes": "The draw ability's life payment is a count (colors in commanders' color identity) and Cost.pay_life only takes an integer or X, so that line is a format gap.",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "unexpressible", "text": "{3}, {T}, Pay life equal to the number of colors in your commanders' color identity: Draw a card.",
+    "reason": "the life payment in the cost is the number of colors in the commanders' color identity, and a cost's pay_life can't hold a count", "scope": "format_gap"}]},
+
+ {"gef": "0.2", "name": "Ponder", "source": "llm",
+  "notes": "The optional shuffle after reordering is the only gap (per the format doc).",
+  "abilities": [
+   {"kind": "spell", "text": "Look at the top three cards of your library, then put them back in any order. You may shuffle.",
+    "effects": [{"do": "look", "n": 3, "take": 0, "to": "library_top", "rest": "top"},
+                {"do": "unexpressible", "text": "You may shuffle.", "reason": "an optional shuffle of the library after reordering the top three has no construct", "scope": "format_gap"}]},
+   {"kind": "spell", "text": "Draw a card.", "effects": [{"do": "draw", "n": 1}]}]},
+
+ {"gef": "0.2", "name": "Delighted Halfling", "source": "llm",
+  "notes": "The second ability's 'that spell can't be countered' rider only matters against opponents' counterspells (out of scope) and a mana ability has no effects list to hold it; the spend restriction is in produce.restrict.",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "mana", "text": "{T}: Add one mana of any color. Spend this mana only to cast a legendary spell, and that spell can't be countered.", "cost": {"tap": true},
+    "produce": {"units": ["any"], "restrict": "Spend this mana only to cast a legendary spell"}}]},
+
+ {"gef": "0.2", "name": "Herald's Horn", "source": "llm",
+  "notes": "The upkeep trigger's 'you may reveal it and put it into your hand' is carried by look's take.",
+  "abilities": [
+   {"kind": "static", "text": "As this artifact enters, choose a creature type.", "effect": {"static": "choose_on_enter", "choice": "creature_type"}},
+   {"kind": "static", "text": "Creature spells you cast of the chosen type cost {1} less to cast.",
+    "effect": {"static": "cost_reduction", "spells": {"types": ["creature"], "chosen_type": true}, "amount": 1}},
+   {"kind": "triggered", "text": "At the beginning of your upkeep, look at the top card of your library. If it's a creature card of the chosen type, you may reveal it and put it into your hand.",
+    "event": {"on": "upkeep"},
+    "effects": [{"do": "look", "n": 1, "take": 1, "filter": {"types": ["creature"], "chosen_type": true}, "to": "hand", "rest": "top", "reveal": true}]}]},
+
+ {"gef": "0.2", "name": "Sink into Stupor // Soporific Springs", "source": "llm",
+  "notes": "Sink into Stupor's single target is 'spell or nonland permanent', which no one target can say, and it only acts on opponents' spells and permanents: out of scope.",
+  "faces": [
+   {"name": "Sink into Stupor", "abilities": [
+    {"kind": "unexpressible", "text": "Return target spell or nonland permanent an opponent controls to its owner's hand.",
+     "reason": "returns an opponent's spell or nonland permanent to hand; nothing comes back to the caster", "scope": "out_of_scope"}]},
+   {"name": "Soporific Springs", "abilities": [
+    {"kind": "static", "text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.",
+     "effect": {"static": "enters_tapped", "unless_pay": {"pay_life": 3}}},
+    {"kind": "mana", "text": "{T}: Add {U}.", "cost": {"tap": true}, "produce": {"units": ["U"]}}]}]},
+
+ {"gef": "0.2", "name": "Gemstone Caverns", "source": "llm",
+  "notes": "The opening-hand line is a format gap. The mana line is two mana abilities split on the luck counter (which only that gap line could ever put on it).",
+  "abilities": [
+   {"kind": "unexpressible", "text": "If this card is in your opening hand and you're not the starting player, you may begin the game with Gemstone Caverns on the battlefield with a luck counter on it. If you do, exile a card from your hand.",
+    "reason": "beginning the game with this card on the battlefield with a luck counter and exiling a card from hand before the game starts has no construct", "scope": "format_gap"},
+   {"kind": "mana", "text": "{T}: Add {C}. If Gemstone Caverns has a luck counter on it, instead add one mana of any color.", "cost": {"tap": true},
+    "produce": {"units": ["C"]}, "if": {"if": "not", "cond": {"if": "self_has_counters", "kind": "luck", "min": 1}}},
+   {"kind": "mana", "text": "{T}: Add {C}. If Gemstone Caverns has a luck counter on it, instead add one mana of any color.", "cost": {"tap": true},
+    "produce": {"units": ["any"]}, "if": {"if": "self_has_counters", "kind": "luck", "min": 1}}]},
+
+ {"gef": "0.2", "name": "Boros Charm", "source": "llm",
+  "abilities": [
+   {"kind": "spell", "text": "Choose one —\n• Boros Charm deals 4 damage to target player or planeswalker.\n• Permanents you control gain indestructible until end of turn.\n• Target creature gains double strike until end of turn.",
+    "effects": [{"do": "choose", "n": 1, "modes": [
+      [{"do": "damage", "n": 4, "to": "target_player", "source": "self"}],
+      [{"do": "protect", "target": {"ref": "each", "filter": {"types": ["permanent"], "controller": "you"}}, "grant": ["indestructible"], "duration": "end_of_turn"}],
+      [{"do": "pump", "target": {"ref": "target", "filter": {"types": ["creature"]}}, "keywords": ["double strike"], "duration": "end_of_turn"}]]}]}]},
+
+ {"gef": "0.2", "name": "Hardened Scales", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "If one or more +1/+1 counters would be put on a creature you control, that many plus one +1/+1 counters are put on it instead.",
+    "effect": {"static": "extra_counters", "n": 1, "kind": "+1/+1", "on": {"types": ["creature"], "controller": "you"}}}]},
+
+ {"gef": "0.2", "name": "Akroma's Will", "source": "llm",
+  "notes": "With a commander the player may choose one or both modes, written as an if on you_control_commander; both branches repeat the same two modes.",
+  "abilities": [
+   {"kind": "spell", "text": "Choose one. If you control a commander as you cast this spell, you may choose both instead.\n• Creatures you control gain flying, vigilance, and double strike until end of turn.\n• Creatures you control gain lifelink, indestructible, and protection from each color until end of turn.",
+    "effects": [{"do": "if", "cond": {"if": "you_control_commander"},
+      "then": [{"do": "choose", "n": 2, "up_to": true, "modes": [
+        [{"do": "pump_team", "filter": {"types": ["creature"], "controller": "you"}, "keywords": ["flying", "vigilance", "double strike"], "duration": "end_of_turn"}],
+        [{"do": "pump_team", "filter": {"types": ["creature"], "controller": "you"}, "keywords": ["lifelink", "indestructible", {"keyword": "protection", "detail": "each color"}], "duration": "end_of_turn"}]]}],
+      "else": [{"do": "choose", "n": 1, "modes": [
+        [{"do": "pump_team", "filter": {"types": ["creature"], "controller": "you"}, "keywords": ["flying", "vigilance", "double strike"], "duration": "end_of_turn"}],
+        [{"do": "pump_team", "filter": {"types": ["creature"], "controller": "you"}, "keywords": ["lifelink", "indestructible", {"keyword": "protection", "detail": "each color"}], "duration": "end_of_turn"}]]}]}]}]},
+
+ {"gef": "0.2", "name": "Fell the Profane // Fell Mire", "source": "llm",
+  "faces": [
+   {"name": "Fell the Profane", "abilities": [
+    {"kind": "spell", "text": "Destroy target creature or planeswalker.",
+     "effects": [{"do": "remove", "how": "destroy", "target": {"ref": "target", "filter": {"types": ["creature", "planeswalker"]}}}]}]},
+   {"name": "Fell Mire", "abilities": [
+    {"kind": "static", "text": "As this land enters, you may pay 3 life. If you don't, it enters tapped.",
+     "effect": {"static": "enters_tapped", "unless_pay": {"pay_life": 3}}},
+    {"kind": "mana", "text": "{T}: Add {B}.", "cost": {"tap": true}, "produce": {"units": ["B"]}}]}]},
+
+ {"gef": "0.2", "name": "Patchwork Banner", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "As this artifact enters, choose a creature type.", "effect": {"static": "choose_on_enter", "choice": "creature_type"}},
+   {"kind": "static", "text": "Creatures you control of the chosen type get +1/+1.",
+    "effect": {"static": "anthem", "filter": {"types": ["creature"], "controller": "you", "chosen_type": true}, "power": 1, "toughness": 1}},
+   {"kind": "mana", "text": "{T}: Add one mana of any color.", "cost": {"tap": true}, "produce": {"units": ["any"]}}]}
+]

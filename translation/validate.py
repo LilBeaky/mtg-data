@@ -8,6 +8,8 @@ A file holds one GEF card object or a JSON array of them. A translation is ACCEP
      when the `jsonschema` package is installed it also runs, and any disagreement is reported), and
   2. its `text` fields account for every Oracle line of the card, in the card's own words, and cite no line the
      card doesn't have (a translator can't skip a line silently; unrepresentable lines are `unexpressible`).
+  3. it passes the lint: rules the schema can't state (`detail` only on silent keywords, a tutor names one
+     destination or a split, `position` only on the library top, a damage-dealt count names its player, ...).
 Anything else is REJECTED with the reasons; nothing is repaired or guessed.
 
 --status adds the derived goldfish status twice: as expressed (if the engine ran every GEF construct) and today
@@ -18,6 +20,8 @@ import json, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 SCHEMA = json.load(open(os.path.join(HERE, "gef.schema.json"), encoding="utf-8"))
+sys.path.insert(0, HERE)
+from gef_schema import SILENT_KEYWORDS as _SILENT     # noqa: E402  (one list for the format rule and the status)
 
 # ---------------------------------------------------------------- JSON Schema subset
 def _resolve(ref):
@@ -117,6 +121,50 @@ def coverage(gef, card):
             if not u: errs.append(f"{face.get('name', card['name'])}: Oracle line not accounted for: {' '.join(blocks[i])[:80]!r}")
     return errs
 
+# ---------------------------------------------------------------- lint: format rules the schema can't state
+KW_FILTER = {"equip", "offering"}                  # keyword `filter`: what it targets or needs
+KW_CARD_FILTER = {"typecycling", "landcycling"}    # keyword `card_filter`: what it finds
+PLAYER_COUNTS = {"damage_dealt_this_turn"}         # counts that need Amount.player
+PLAYER_OPTIONAL = {"cards_in_opponent_hand"}       # counts that may name it ("the number of cards in their hand")
+PHASE_EVENTS = {"upkeep", "draw_step", "precombat_main", "combat_begin", "end_of_combat", "postcombat_main", "end_step"}
+
+def _nodes(x, path="$"):
+    if isinstance(x, dict):
+        yield x, path
+        for k, v in x.items(): yield from _nodes(v, f"{path}.{k}")
+    elif isinstance(x, list):
+        for i, v in enumerate(x): yield from _nodes(v, f"{path}[{i}]")
+
+def lint(gef):
+    errs = []
+    for o, path in _nodes(gef):
+        if o.get("kind") == "keyword":
+            w = o.get("keyword")
+            if "detail" in o and w not in _SILENT:
+                errs.append(f"{path}: 'detail' is only for silent keywords ({w!r} isn't one): say it with filter/card_filter/cost/n, or mark it unexpressible")
+            if "filter" in o and w not in KW_FILTER: errs.append(f"{path}: keyword 'filter' is only for {sorted(KW_FILTER)}")
+            if "card_filter" in o and w not in KW_CARD_FILTER: errs.append(f"{path}: keyword 'card_filter' is only for {sorted(KW_CARD_FILTER)}")
+        d = o.get("do")
+        if d == "tutor":
+            if ("to" in o) == ("split" in o): errs.append(f"{path}: tutor needs exactly one of 'to' or 'split'")
+            if "position" in o and o.get("to") != "library_top": errs.append(f"{path}: 'position' needs to: library_top")
+            if "split" in o and isinstance(o.get("n"), int) and sum(x["n"] for x in o["split"]) != o["n"]:
+                errs.append(f"{path}: split counts don't add up to n")
+        if d == "self_to_library" and "position" in o and o.get("where") != "top":
+            errs.append(f"{path}: 'position' needs where: top")
+        if d == "damage" and "filter" in o and o.get("to") not in ("each_creature", "each_opposing_creature"):
+            errs.append(f"{path}: damage 'filter' only narrows each_creature / each_opposing_creature")
+        if "count" in o and isinstance(o.get("count"), str):
+            if (o["count"] in PLAYER_COUNTS and "player" not in o) or ("player" in o and o["count"] not in PLAYER_COUNTS | PLAYER_OPTIONAL):
+                errs.append(f"{path}: 'player' is required for {sorted(PLAYER_COUNTS)}, allowed for {sorted(PLAYER_OPTIONAL)}, and nothing else")
+        if isinstance(o.get("on"), str) and o["on"] in PHASE_EVENTS and "whose" not in o:
+            errs.append(f"{path}: a beginning-of-phase event needs 'whose' (\"your upkeep\" is whose: your)")
+        if o.get("static") == "type_grant" and ("filter" in o) == bool(o.get("self")):
+            errs.append(f"{path}: type_grant needs exactly one of 'filter' or self: true")
+        if "for_each" in o and "ref" in o and o["ref"] != "target":
+            errs.append(f"{path}: 'for_each' is only for ref: target")
+    return errs
+
 # ---------------------------------------------------------------- status (GEF -> goldfish status)
 # What goldfish.py executes today, by construct. 'lacks' constructs make the line unread for the today-status.
 ENGINE_EFFECTS = {"draw", "discard", "mill", "scry", "surveil", "look", "tutor", "recur", "wheel", "put_back", "mana",
@@ -136,20 +184,46 @@ ENGINE_CONDS = {"control", "life_at_least", "life_at_most", "hand_at_most", "han
 ENGINE_STATICS = {"anthem", "attached_bonus", "grant_abilities", "cost_reduction", "extra_land", "no_max_hand_size",
                   "token_doubler", "counter_doubler", "trigger_doubler", "mana_multiplier", "damage_multiplier",
                   "type_grant", "enters_tapped", "enters_with_counters", "evasion", "free_cast", "alt_cost_all",
-                  "lab_man", "doesnt_untap", "pt_equals", "spend_mana_as_any", "lands_tap_any", "cant_attack",
-                  "cant_block"}
+                  "draw_from_empty_library_wins", "doesnt_untap", "pt_equals", "spend_mana_as_any", "lands_tap_any",
+                  "cant_attack", "cant_block",
+                  "extra_counters",       # Hardened Scales ('ctr_plus')
+                  "choose_on_enter"}      # creature type: read as the deck's tribe (CHOSEN_TYPE); color: see _field_lacks
 ENGINE_KEYWORDS = {"flying", "reach", "trample", "vigilance", "haste", "lifelink", "deathtouch", "menace", "first strike",
                    "double strike", "indestructible", "defender", "infect", "wither", "fear", "intimidate", "shadow",
                    "horsemanship", "skulk", "prowess", "exalted", "unblockable", "myriad", "melee", "battle cry",
                    "training", "dethrone", "annihilator", "toxic", "poisonous", "flanking", "bushido", "rampage",
                    "afflict", "mentor", "kicker", "multikicker", "flashback", "cycling", "landcycling", "typecycling",
                    "transmute", "rebound", "cascade", "affinity", "escape", "jump-start", "retrace", "unearth",
-                   "harmonize", "sunburst", "equip", "cumulative upkeep", "living weapon", "landwalk"}
-SILENT_KEYWORDS = {"hexproof", "shroud", "protection", "ward", "flash", "changeling", "partner", "partner with",
-                   "companion", "choose a background", "friends forever", "enchant", "split second", "umbra armor",
-                   "banding", "phasing", "crew", "reconfigure"}
+                   "harmonize", "sunburst", "equip", "cumulative upkeep", "living weapon"}
+SILENT_KEYWORDS = set(_SILENT)                    # goldfish.py's KW_SILENT (landwalk moved here in 0.2, as there)
 INTERACTION = {"counter_spell", "protect", "remove", "wipe", "gain_control", "prevent_damage", "opponent_discards"}
-FREE_TEXT = {"replacement", "restriction"}        # statics that carry the Oracle sentence instead of a structure (T2 finding)
+LAND_TYPES = {"Land", "Plains", "Island", "Swamp", "Mountain", "Forest", "Desert", "Gate", "Cave", "Lair", "Locus",
+              "Mine", "Power-Plant", "Tower", "Urza's", "Sphere", "Town"}
+
+def _field_lacks(a):
+    """Per-field support: constructs the engine runs only in some shapes (T2's 'validator optimism'). Everything in
+    the ability, including granted abilities, counts."""
+    out = []
+    for o, _ in _nodes(a):
+        d, st = o.get("do"), o.get("static")
+        if d == "recur" and o.get("to") in ("library_top", "library_bottom"): out.append("recur to library top/bottom")
+        if d == "tutor" and "position" in o: out.append("library position")
+        if d == "tutor" and "split" in o and (o.get("filter") or {}).get("types") != ["land"]: out.append("split tutor (nonland)")
+        if d == "self_to_library" and "position" in o: out.append("library position")
+        if st == "enters_tapped":
+            if "unless" in o: out.append("conditional enters-tapped")
+            if set(o.get("unless_pay", {})) - {"pay_life"}: out.append("enters-tapped payment other than life")
+        if st == "type_grant" and ("land" in ((o.get("filter") or {}).get("types") or [])
+                                   or LAND_TYPES & set(o.get("add_types") or [])):
+            out.append("land type grant")
+        if st == "choose_on_enter" and o.get("choice") != "creature_type": out.append("choose " + o.get("choice", "?"))
+        if o.get("kind") == "keyword" and o.get("keyword") == "equip" and "filter" in o: out.append("equip [quality]")
+        c = o.get("count")
+        if c in ("permanents_on_battlefield", "commander_identity_colors", "damage_dealt_this_turn"): out.append("count " + c)
+        if c == "total_power" and o.get("filter") != {"attacking": True}: out.append("count total_power (not of attackers)")
+        if o.get("controller") == "that_player": out.append("filter controller that_player")
+        if "for_each" in o and "ref" in o: out.append("target for each opponent")
+    return out
 OPPONENT_ONLY = {"opponent_discards", "gain_control", "prevent_damage"}
 
 def _walk(effects):
@@ -168,12 +242,11 @@ def ability_state(a, today):
     if k == "keyword":
         w = a["keyword"]
         if w in SILENT_KEYWORDS: return "silent", False
-        return ("read" if (not today or w in ENGINE_KEYWORDS) else "missed"), False
+        return ("read" if (not today or (w in ENGINE_KEYWORDS and not _field_lacks(a))) else "missed"), False
     lacks = []
     fx = list(_walk(a.get("effects", [])))
     if k == "static":
         st = a["effect"]["static"]
-        if st in FREE_TEXT: return "missed", False          # a sentence, not a construct: nothing can execute it
         if today and st not in ENGINE_STATICS: lacks.append(st)
         for sub in a["effect"].get("abilities", []):
             s2, _ = ability_state(sub, today)
@@ -192,7 +265,7 @@ def ability_state(a, today):
                 stack += x.get("conds", []) + ([x["cond"]] if "cond" in x else [])
     unexp = [e for e in fx if e.get("do") == "unexpressible" and e.get("scope") != "out_of_scope"]
     oos_fx = [e for e in fx if e.get("do") == "unexpressible" and e.get("scope") == "out_of_scope"]
-    if today: lacks += [e["do"] for e in fx if e.get("do") not in ENGINE_EFFECTS | {"unexpressible"}]
+    if today: lacks += [e["do"] for e in fx if e.get("do") not in ENGINE_EFFECTS | {"unexpressible"}] + _field_lacks(a)
     real = [e for e in fx if e.get("do") != "unexpressible"]
     inter = bool(real) and all(e["do"] in INTERACTION | {"if", "choose", "may_pay"} for e in real)
     if real and all(e["do"] in OPPONENT_ONLY for e in real): return "oos", True
@@ -234,7 +307,7 @@ def validate(gef, mtg):
         c, how = mtg.find(gef["name"])
         if not c or how not in ("exact", "alias"): errs.append(f"not an Oracle card name: {gef['name']!r}")
         else: card = c
-    if card and not errs: errs += coverage(gef, card)
+    if card and not errs: errs += lint(gef) + coverage(gef, card)
     return errs, card
 
 def main():

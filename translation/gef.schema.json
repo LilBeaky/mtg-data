@@ -1,14 +1,14 @@
 {
  "$schema": "https://json-schema.org/draft/2020-12/schema",
- "$id": "gef-0.1",
- "title": "Goldfish Effect Format 0.1",
+ "$id": "gef-0.2",
+ "title": "Goldfish Effect Format 0.2",
  "$ref": "#/$defs/Card",
  "$defs": {
   "Card": {
    "type": "object",
    "properties": {
     "gef": {
-     "const": "0.1"
+     "const": "0.2"
     },
     "name": {
      "type": "string"
@@ -81,7 +81,11 @@
               "attacking_creatures",
               "equipment_and_auras_attached",
               "number_chosen",
-              "coin_flips_won"
+              "coin_flips_won",
+              "total_power",
+              "permanents_on_battlefield",
+              "commander_identity_colors",
+              "damage_dealt_this_turn"
              ]
             },
             "filter": {
@@ -114,6 +118,19 @@
             },
             "max": {
              "type": "integer"
+            },
+            "player": {
+             "enum": [
+              "you",
+              "target_player",
+              "target_opponent",
+              "each_opponent",
+              "each_player",
+              "defending_player",
+              "that_player",
+              "its_controller",
+              "an_opponent"
+             ]
             }
            },
            "required": [
@@ -180,7 +197,11 @@
               "attacking_creatures",
               "equipment_and_auras_attached",
               "number_chosen",
-              "coin_flips_won"
+              "coin_flips_won",
+              "total_power",
+              "permanents_on_battlefield",
+              "commander_identity_colors",
+              "damage_dealt_this_turn"
              ]
             },
             "filter": {
@@ -213,6 +234,19 @@
             },
             "max": {
              "type": "integer"
+            },
+            "player": {
+             "enum": [
+              "you",
+              "target_player",
+              "target_opponent",
+              "each_opponent",
+              "each_player",
+              "defending_player",
+              "that_player",
+              "its_controller",
+              "an_opponent"
+             ]
             }
            },
            "required": [
@@ -575,6 +609,102 @@
              },
              {
               "const": "X"
+             },
+             {
+              "type": "object",
+              "properties": {
+               "count": {
+                "enum": [
+                 "permanents_you_control",
+                 "cards_in_hand",
+                 "cards_in_graveyard",
+                 "cards_in_library",
+                 "cards_in_opponent_hand",
+                 "devotion",
+                 "domain",
+                 "converge",
+                 "times_kicked",
+                 "opponents",
+                 "your_life_total",
+                 "starting_life_total",
+                 "power_of_self",
+                 "toughness_of_self",
+                 "power_of_that",
+                 "greatest_power",
+                 "greatest_toughness",
+                 "greatest_mana_value",
+                 "counters_on_self",
+                 "counters_on_that",
+                 "colors_among_permanents",
+                 "creature_types_among",
+                 "spells_cast_this_turn",
+                 "cards_drawn_this_turn",
+                 "creatures_died_this_turn",
+                 "life_gained_this_turn",
+                 "damage_dealt_this_way",
+                 "life_lost_this_way",
+                 "that_much",
+                 "mana_value_of_that",
+                 "x_paid",
+                 "attacking_creatures",
+                 "equipment_and_auras_attached",
+                 "number_chosen",
+                 "coin_flips_won",
+                 "total_power",
+                 "permanents_on_battlefield",
+                 "commander_identity_colors",
+                 "damage_dealt_this_turn"
+                ]
+               },
+               "filter": {
+                "$ref": "#/$defs/PermFilter"
+               },
+               "card_filter": {
+                "$ref": "#/$defs/CardFilter"
+               },
+               "colors": {
+                "type": "string",
+                "pattern": "^(?:[WUBRGC]+|any|any_one_color|commander_colors|chosen_color)$"
+               },
+               "kind": {
+                "type": "string"
+               },
+               "times": {
+                "type": "integer"
+               },
+               "plus": {
+                "type": "integer"
+               },
+               "divide": {
+                "type": "integer"
+               },
+               "round": {
+                "enum": [
+                 "down",
+                 "up"
+                ]
+               },
+               "max": {
+                "type": "integer"
+               },
+               "player": {
+                "enum": [
+                 "you",
+                 "target_player",
+                 "target_opponent",
+                 "each_opponent",
+                 "each_player",
+                 "defending_player",
+                 "that_player",
+                 "its_controller",
+                 "an_opponent"
+                ]
+               }
+              },
+              "required": [
+               "count"
+              ],
+              "additionalProperties": false
              }
             ]
            },
@@ -740,6 +870,12 @@
           "additionalProperties": false
          }
         ]
+       },
+       "filter": {
+        "$ref": "#/$defs/PermFilter"
+       },
+       "card_filter": {
+        "$ref": "#/$defs/CardFilter"
        },
        "detail": {
         "type": "string"
@@ -919,6 +1055,102 @@
            },
            {
             "const": "X"
+           },
+           {
+            "type": "object",
+            "properties": {
+             "count": {
+              "enum": [
+               "permanents_you_control",
+               "cards_in_hand",
+               "cards_in_graveyard",
+               "cards_in_library",
+               "cards_in_opponent_hand",
+               "devotion",
+               "domain",
+               "converge",
+               "times_kicked",
+               "opponents",
+               "your_life_total",
+               "starting_life_total",
+               "power_of_self",
+               "toughness_of_self",
+               "power_of_that",
+               "greatest_power",
+               "greatest_toughness",
+               "greatest_mana_value",
+               "counters_on_self",
+               "counters_on_that",
+               "colors_among_permanents",
+               "creature_types_among",
+               "spells_cast_this_turn",
+               "cards_drawn_this_turn",
+               "creatures_died_this_turn",
+               "life_gained_this_turn",
+               "damage_dealt_this_way",
+               "life_lost_this_way",
+               "that_much",
+               "mana_value_of_that",
+               "x_paid",
+               "attacking_creatures",
+               "equipment_and_auras_attached",
+               "number_chosen",
+               "coin_flips_won",
+               "total_power",
+               "permanents_on_battlefield",
+               "commander_identity_colors",
+               "damage_dealt_this_turn"
+              ]
+             },
+             "filter": {
+              "$ref": "#/$defs/PermFilter"
+             },
+             "card_filter": {
+              "$ref": "#/$defs/CardFilter"
+             },
+             "colors": {
+              "type": "string",
+              "pattern": "^(?:[WUBRGC]+|any|any_one_color|commander_colors|chosen_color)$"
+             },
+             "kind": {
+              "type": "string"
+             },
+             "times": {
+              "type": "integer"
+             },
+             "plus": {
+              "type": "integer"
+             },
+             "divide": {
+              "type": "integer"
+             },
+             "round": {
+              "enum": [
+               "down",
+               "up"
+              ]
+             },
+             "max": {
+              "type": "integer"
+             },
+             "player": {
+              "enum": [
+               "you",
+               "target_player",
+               "target_opponent",
+               "each_opponent",
+               "each_player",
+               "defending_player",
+               "that_player",
+               "its_controller",
+               "an_opponent"
+              ]
+             }
+            },
+            "required": [
+             "count"
+            ],
+            "additionalProperties": false
            }
           ]
          },
@@ -1202,6 +1434,102 @@
            },
            {
             "const": "X"
+           },
+           {
+            "type": "object",
+            "properties": {
+             "count": {
+              "enum": [
+               "permanents_you_control",
+               "cards_in_hand",
+               "cards_in_graveyard",
+               "cards_in_library",
+               "cards_in_opponent_hand",
+               "devotion",
+               "domain",
+               "converge",
+               "times_kicked",
+               "opponents",
+               "your_life_total",
+               "starting_life_total",
+               "power_of_self",
+               "toughness_of_self",
+               "power_of_that",
+               "greatest_power",
+               "greatest_toughness",
+               "greatest_mana_value",
+               "counters_on_self",
+               "counters_on_that",
+               "colors_among_permanents",
+               "creature_types_among",
+               "spells_cast_this_turn",
+               "cards_drawn_this_turn",
+               "creatures_died_this_turn",
+               "life_gained_this_turn",
+               "damage_dealt_this_way",
+               "life_lost_this_way",
+               "that_much",
+               "mana_value_of_that",
+               "x_paid",
+               "attacking_creatures",
+               "equipment_and_auras_attached",
+               "number_chosen",
+               "coin_flips_won",
+               "total_power",
+               "permanents_on_battlefield",
+               "commander_identity_colors",
+               "damage_dealt_this_turn"
+              ]
+             },
+             "filter": {
+              "$ref": "#/$defs/PermFilter"
+             },
+             "card_filter": {
+              "$ref": "#/$defs/CardFilter"
+             },
+             "colors": {
+              "type": "string",
+              "pattern": "^(?:[WUBRGC]+|any|any_one_color|commander_colors|chosen_color)$"
+             },
+             "kind": {
+              "type": "string"
+             },
+             "times": {
+              "type": "integer"
+             },
+             "plus": {
+              "type": "integer"
+             },
+             "divide": {
+              "type": "integer"
+             },
+             "round": {
+              "enum": [
+               "down",
+               "up"
+              ]
+             },
+             "max": {
+              "type": "integer"
+             },
+             "player": {
+              "enum": [
+               "you",
+               "target_player",
+               "target_opponent",
+               "each_opponent",
+               "each_player",
+               "defending_player",
+               "that_player",
+               "its_controller",
+               "an_opponent"
+              ]
+             }
+            },
+            "required": [
+             "count"
+            ],
+            "additionalProperties": false
            }
           ]
          },
@@ -1424,7 +1752,11 @@
                "attacking_creatures",
                "equipment_and_auras_attached",
                "number_chosen",
-               "coin_flips_won"
+               "coin_flips_won",
+               "total_power",
+               "permanents_on_battlefield",
+               "commander_identity_colors",
+               "damage_dealt_this_turn"
               ]
              },
              "filter": {
@@ -1457,6 +1789,19 @@
              },
              "max": {
               "type": "integer"
+             },
+             "player": {
+              "enum": [
+               "you",
+               "target_player",
+               "target_opponent",
+               "each_opponent",
+               "each_player",
+               "defending_player",
+               "that_player",
+               "its_controller",
+               "an_opponent"
+              ]
              }
             },
             "required": [
@@ -1740,6 +2085,102 @@
            },
            {
             "const": "X"
+           },
+           {
+            "type": "object",
+            "properties": {
+             "count": {
+              "enum": [
+               "permanents_you_control",
+               "cards_in_hand",
+               "cards_in_graveyard",
+               "cards_in_library",
+               "cards_in_opponent_hand",
+               "devotion",
+               "domain",
+               "converge",
+               "times_kicked",
+               "opponents",
+               "your_life_total",
+               "starting_life_total",
+               "power_of_self",
+               "toughness_of_self",
+               "power_of_that",
+               "greatest_power",
+               "greatest_toughness",
+               "greatest_mana_value",
+               "counters_on_self",
+               "counters_on_that",
+               "colors_among_permanents",
+               "creature_types_among",
+               "spells_cast_this_turn",
+               "cards_drawn_this_turn",
+               "creatures_died_this_turn",
+               "life_gained_this_turn",
+               "damage_dealt_this_way",
+               "life_lost_this_way",
+               "that_much",
+               "mana_value_of_that",
+               "x_paid",
+               "attacking_creatures",
+               "equipment_and_auras_attached",
+               "number_chosen",
+               "coin_flips_won",
+               "total_power",
+               "permanents_on_battlefield",
+               "commander_identity_colors",
+               "damage_dealt_this_turn"
+              ]
+             },
+             "filter": {
+              "$ref": "#/$defs/PermFilter"
+             },
+             "card_filter": {
+              "$ref": "#/$defs/CardFilter"
+             },
+             "colors": {
+              "type": "string",
+              "pattern": "^(?:[WUBRGC]+|any|any_one_color|commander_colors|chosen_color)$"
+             },
+             "kind": {
+              "type": "string"
+             },
+             "times": {
+              "type": "integer"
+             },
+             "plus": {
+              "type": "integer"
+             },
+             "divide": {
+              "type": "integer"
+             },
+             "round": {
+              "enum": [
+               "down",
+               "up"
+              ]
+             },
+             "max": {
+              "type": "integer"
+             },
+             "player": {
+              "enum": [
+               "you",
+               "target_player",
+               "target_opponent",
+               "each_opponent",
+               "each_player",
+               "defending_player",
+               "that_player",
+               "its_controller",
+               "an_opponent"
+              ]
+             }
+            },
+            "required": [
+             "count"
+            ],
+            "additionalProperties": false
            }
           ]
          },
@@ -2001,6 +2442,102 @@
            },
            {
             "const": "X"
+           },
+           {
+            "type": "object",
+            "properties": {
+             "count": {
+              "enum": [
+               "permanents_you_control",
+               "cards_in_hand",
+               "cards_in_graveyard",
+               "cards_in_library",
+               "cards_in_opponent_hand",
+               "devotion",
+               "domain",
+               "converge",
+               "times_kicked",
+               "opponents",
+               "your_life_total",
+               "starting_life_total",
+               "power_of_self",
+               "toughness_of_self",
+               "power_of_that",
+               "greatest_power",
+               "greatest_toughness",
+               "greatest_mana_value",
+               "counters_on_self",
+               "counters_on_that",
+               "colors_among_permanents",
+               "creature_types_among",
+               "spells_cast_this_turn",
+               "cards_drawn_this_turn",
+               "creatures_died_this_turn",
+               "life_gained_this_turn",
+               "damage_dealt_this_way",
+               "life_lost_this_way",
+               "that_much",
+               "mana_value_of_that",
+               "x_paid",
+               "attacking_creatures",
+               "equipment_and_auras_attached",
+               "number_chosen",
+               "coin_flips_won",
+               "total_power",
+               "permanents_on_battlefield",
+               "commander_identity_colors",
+               "damage_dealt_this_turn"
+              ]
+             },
+             "filter": {
+              "$ref": "#/$defs/PermFilter"
+             },
+             "card_filter": {
+              "$ref": "#/$defs/CardFilter"
+             },
+             "colors": {
+              "type": "string",
+              "pattern": "^(?:[WUBRGC]+|any|any_one_color|commander_colors|chosen_color)$"
+             },
+             "kind": {
+              "type": "string"
+             },
+             "times": {
+              "type": "integer"
+             },
+             "plus": {
+              "type": "integer"
+             },
+             "divide": {
+              "type": "integer"
+             },
+             "round": {
+              "enum": [
+               "down",
+               "up"
+              ]
+             },
+             "max": {
+              "type": "integer"
+             },
+             "player": {
+              "enum": [
+               "you",
+               "target_player",
+               "target_opponent",
+               "each_opponent",
+               "each_player",
+               "defending_player",
+               "that_player",
+               "its_controller",
+               "an_opponent"
+              ]
+             }
+            },
+            "required": [
+             "count"
+            ],
+            "additionalProperties": false
            }
           ]
          },
@@ -2242,7 +2779,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -2275,6 +2816,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -2474,7 +3028,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -2507,6 +3065,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -2602,7 +3173,11 @@
                "attacking_creatures",
                "equipment_and_auras_attached",
                "number_chosen",
-               "coin_flips_won"
+               "coin_flips_won",
+               "total_power",
+               "permanents_on_battlefield",
+               "commander_identity_colors",
+               "damage_dealt_this_turn"
               ]
              },
              "filter": {
@@ -2635,6 +3210,19 @@
              },
              "max": {
               "type": "integer"
+             },
+             "player": {
+              "enum": [
+               "you",
+               "target_player",
+               "target_opponent",
+               "each_opponent",
+               "each_player",
+               "defending_player",
+               "that_player",
+               "its_controller",
+               "an_opponent"
+              ]
              }
             },
             "required": [
@@ -2741,7 +3329,11 @@
                "attacking_creatures",
                "equipment_and_auras_attached",
                "number_chosen",
-               "coin_flips_won"
+               "coin_flips_won",
+               "total_power",
+               "permanents_on_battlefield",
+               "commander_identity_colors",
+               "damage_dealt_this_turn"
               ]
              },
              "filter": {
@@ -2774,6 +3366,19 @@
              },
              "max": {
               "type": "integer"
+             },
+             "player": {
+              "enum": [
+               "you",
+               "target_player",
+               "target_opponent",
+               "each_opponent",
+               "each_player",
+               "defending_player",
+               "that_player",
+               "its_controller",
+               "an_opponent"
+              ]
              }
             },
             "required": [
@@ -2872,7 +3477,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -2905,6 +3514,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -2985,7 +3607,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -3018,6 +3644,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -3098,7 +3737,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -3131,6 +3774,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -3308,7 +3964,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -3341,6 +4001,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -3377,12 +4050,45 @@
        },
        "reveal": {
         "type": "boolean"
+       },
+       "split": {
+        "type": "array",
+        "items": {
+         "type": "object",
+         "properties": {
+          "n": {
+           "type": "integer"
+          },
+          "to": {
+           "enum": [
+            "hand",
+            "battlefield",
+            "battlefield_tapped",
+            "library_top",
+            "library_bottom",
+            "library_shuffled",
+            "graveyard",
+            "exile",
+            "exile_castable",
+            "command_zone"
+           ]
+          }
+         },
+         "required": [
+          "n",
+          "to"
+         ],
+         "additionalProperties": false
+        },
+        "minItems": 2
+       },
+       "position": {
+        "type": "integer"
        }
       },
       "required": [
        "do",
-       "filter",
-       "to"
+       "filter"
       ],
       "additionalProperties": false
      }
@@ -3455,7 +4161,11 @@
                "attacking_creatures",
                "equipment_and_auras_attached",
                "number_chosen",
-               "coin_flips_won"
+               "coin_flips_won",
+               "total_power",
+               "permanents_on_battlefield",
+               "commander_identity_colors",
+               "damage_dealt_this_turn"
               ]
              },
              "filter": {
@@ -3488,6 +4198,19 @@
              },
              "max": {
               "type": "integer"
+             },
+             "player": {
+              "enum": [
+               "you",
+               "target_player",
+               "target_opponent",
+               "each_opponent",
+               "each_player",
+               "defending_player",
+               "that_player",
+               "its_controller",
+               "an_opponent"
+              ]
              }
             },
             "required": [
@@ -3595,7 +4318,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -3628,6 +4355,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -3724,7 +4464,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -3757,6 +4501,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -3844,7 +4601,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -3877,6 +4638,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -3988,7 +4762,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -4021,6 +4799,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -4107,7 +4898,11 @@
                "attacking_creatures",
                "equipment_and_auras_attached",
                "number_chosen",
-               "coin_flips_won"
+               "coin_flips_won",
+               "total_power",
+               "permanents_on_battlefield",
+               "commander_identity_colors",
+               "damage_dealt_this_turn"
               ]
              },
              "filter": {
@@ -4140,6 +4935,19 @@
              },
              "max": {
               "type": "integer"
+             },
+             "player": {
+              "enum": [
+               "you",
+               "target_player",
+               "target_opponent",
+               "each_opponent",
+               "each_player",
+               "defending_player",
+               "that_player",
+               "its_controller",
+               "an_opponent"
+              ]
              }
             },
             "required": [
@@ -4245,7 +5053,11 @@
                "attacking_creatures",
                "equipment_and_auras_attached",
                "number_chosen",
-               "coin_flips_won"
+               "coin_flips_won",
+               "total_power",
+               "permanents_on_battlefield",
+               "commander_identity_colors",
+               "damage_dealt_this_turn"
               ]
              },
              "filter": {
@@ -4278,6 +5090,19 @@
              },
              "max": {
               "type": "integer"
+             },
+             "player": {
+              "enum": [
+               "you",
+               "target_player",
+               "target_opponent",
+               "each_opponent",
+               "each_player",
+               "defending_player",
+               "that_player",
+               "its_controller",
+               "an_opponent"
+              ]
              }
             },
             "required": [
@@ -4417,6 +5242,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -4495,7 +5326,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -4528,6 +5363,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -4606,7 +5454,192 @@
          "keywords": {
           "type": "array",
           "items": {
-           "type": "string"
+           "anyOf": [
+            {
+             "enum": [
+              "flying",
+              "reach",
+              "trample",
+              "vigilance",
+              "haste",
+              "lifelink",
+              "deathtouch",
+              "menace",
+              "first strike",
+              "double strike",
+              "indestructible",
+              "hexproof",
+              "shroud",
+              "defender",
+              "infect",
+              "wither",
+              "fear",
+              "intimidate",
+              "shadow",
+              "horsemanship",
+              "skulk",
+              "prowess",
+              "exalted",
+              "unblockable",
+              "protection",
+              "ward",
+              "flash",
+              "changeling",
+              "myriad",
+              "melee",
+              "battle cry",
+              "training",
+              "dethrone",
+              "annihilator",
+              "toxic",
+              "poisonous",
+              "flanking",
+              "bushido",
+              "rampage",
+              "afflict",
+              "mentor",
+              "persist",
+              "undying",
+              "kicker",
+              "multikicker",
+              "flashback",
+              "cycling",
+              "landcycling",
+              "typecycling",
+              "transmute",
+              "rebound",
+              "cascade",
+              "storm",
+              "convoke",
+              "improvise",
+              "delve",
+              "affinity",
+              "evoke",
+              "buyback",
+              "entwine",
+              "madness",
+              "suspend",
+              "foretell",
+              "escape",
+              "jump-start",
+              "retrace",
+              "unearth",
+              "harmonize",
+              "emerge",
+              "overload",
+              "spree",
+              "dash",
+              "blitz",
+              "prowl",
+              "ninjutsu",
+              "miracle",
+              "split second",
+              "splice",
+              "replicate",
+              "casualty",
+              "offering",
+              "bargain",
+              "plot",
+              "warp",
+              "echo",
+              "cumulative upkeep",
+              "sunburst",
+              "equip",
+              "reconfigure",
+              "crew",
+              "saddle",
+              "station",
+              "level up",
+              "partner",
+              "partner with",
+              "companion",
+              "choose a background",
+              "friends forever",
+              "enchant",
+              "living weapon",
+              "morph",
+              "megamorph",
+              "disguise",
+              "mutate",
+              "bestow",
+              "eternalize",
+              "embalm",
+              "encore",
+              "disturb",
+              "aftermath",
+              "fuse",
+              "dredge",
+              "hideaway",
+              "exploit",
+              "devour",
+              "evolve",
+              "riot",
+              "fabricate",
+              "afterlife",
+              "extort",
+              "landwalk",
+              "gift",
+              "offspring",
+              "squad",
+              "mobilize",
+              "decayed",
+              "prototype",
+              "read ahead",
+              "backup",
+              "craft",
+              "impending",
+              "exhaust",
+              "soulshift",
+              "outlast",
+              "renown",
+              "spectacle",
+              "surge",
+              "cipher",
+              "transfigure",
+              "vanishing",
+              "fading",
+              "phasing",
+              "banding",
+              "umbra armor"
+             ]
+            },
+            {
+             "type": "object",
+             "properties": {
+              "keyword": {
+               "enum": [
+                "hexproof",
+                "shroud",
+                "protection",
+                "ward",
+                "flash",
+                "changeling",
+                "partner",
+                "partner with",
+                "companion",
+                "choose a background",
+                "friends forever",
+                "enchant",
+                "split second",
+                "umbra armor",
+                "banding",
+                "phasing",
+                "crew",
+                "reconfigure",
+                "landwalk"
+               ]
+              },
+              "detail": {
+               "type": "string"
+              }
+             },
+             "required": [
+              "keyword",
+              "detail"
+             ],
+             "additionalProperties": false
+            }
+           ]
           }
          },
          "abilities": {
@@ -4699,6 +5732,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -4753,7 +5792,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -4786,6 +5829,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -4882,7 +5938,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -4915,6 +5975,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -4961,6 +6034,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -5060,6 +6139,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -5114,7 +6199,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -5147,6 +6236,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -5203,7 +6305,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -5236,6 +6342,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -5248,7 +6367,192 @@
        "keywords": {
         "type": "array",
         "items": {
-         "type": "string"
+         "anyOf": [
+          {
+           "enum": [
+            "flying",
+            "reach",
+            "trample",
+            "vigilance",
+            "haste",
+            "lifelink",
+            "deathtouch",
+            "menace",
+            "first strike",
+            "double strike",
+            "indestructible",
+            "hexproof",
+            "shroud",
+            "defender",
+            "infect",
+            "wither",
+            "fear",
+            "intimidate",
+            "shadow",
+            "horsemanship",
+            "skulk",
+            "prowess",
+            "exalted",
+            "unblockable",
+            "protection",
+            "ward",
+            "flash",
+            "changeling",
+            "myriad",
+            "melee",
+            "battle cry",
+            "training",
+            "dethrone",
+            "annihilator",
+            "toxic",
+            "poisonous",
+            "flanking",
+            "bushido",
+            "rampage",
+            "afflict",
+            "mentor",
+            "persist",
+            "undying",
+            "kicker",
+            "multikicker",
+            "flashback",
+            "cycling",
+            "landcycling",
+            "typecycling",
+            "transmute",
+            "rebound",
+            "cascade",
+            "storm",
+            "convoke",
+            "improvise",
+            "delve",
+            "affinity",
+            "evoke",
+            "buyback",
+            "entwine",
+            "madness",
+            "suspend",
+            "foretell",
+            "escape",
+            "jump-start",
+            "retrace",
+            "unearth",
+            "harmonize",
+            "emerge",
+            "overload",
+            "spree",
+            "dash",
+            "blitz",
+            "prowl",
+            "ninjutsu",
+            "miracle",
+            "split second",
+            "splice",
+            "replicate",
+            "casualty",
+            "offering",
+            "bargain",
+            "plot",
+            "warp",
+            "echo",
+            "cumulative upkeep",
+            "sunburst",
+            "equip",
+            "reconfigure",
+            "crew",
+            "saddle",
+            "station",
+            "level up",
+            "partner",
+            "partner with",
+            "companion",
+            "choose a background",
+            "friends forever",
+            "enchant",
+            "living weapon",
+            "morph",
+            "megamorph",
+            "disguise",
+            "mutate",
+            "bestow",
+            "eternalize",
+            "embalm",
+            "encore",
+            "disturb",
+            "aftermath",
+            "fuse",
+            "dredge",
+            "hideaway",
+            "exploit",
+            "devour",
+            "evolve",
+            "riot",
+            "fabricate",
+            "afterlife",
+            "extort",
+            "landwalk",
+            "gift",
+            "offspring",
+            "squad",
+            "mobilize",
+            "decayed",
+            "prototype",
+            "read ahead",
+            "backup",
+            "craft",
+            "impending",
+            "exhaust",
+            "soulshift",
+            "outlast",
+            "renown",
+            "spectacle",
+            "surge",
+            "cipher",
+            "transfigure",
+            "vanishing",
+            "fading",
+            "phasing",
+            "banding",
+            "umbra armor"
+           ]
+          },
+          {
+           "type": "object",
+           "properties": {
+            "keyword": {
+             "enum": [
+              "hexproof",
+              "shroud",
+              "protection",
+              "ward",
+              "flash",
+              "changeling",
+              "partner",
+              "partner with",
+              "companion",
+              "choose a background",
+              "friends forever",
+              "enchant",
+              "split second",
+              "umbra armor",
+              "banding",
+              "phasing",
+              "crew",
+              "reconfigure",
+              "landwalk"
+             ]
+            },
+            "detail": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "keyword",
+            "detail"
+           ],
+           "additionalProperties": false
+          }
+         ]
         }
        },
        "duration": {
@@ -5334,7 +6638,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -5367,6 +6675,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -5423,7 +6744,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -5456,6 +6781,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -5468,7 +6806,192 @@
        "keywords": {
         "type": "array",
         "items": {
-         "type": "string"
+         "anyOf": [
+          {
+           "enum": [
+            "flying",
+            "reach",
+            "trample",
+            "vigilance",
+            "haste",
+            "lifelink",
+            "deathtouch",
+            "menace",
+            "first strike",
+            "double strike",
+            "indestructible",
+            "hexproof",
+            "shroud",
+            "defender",
+            "infect",
+            "wither",
+            "fear",
+            "intimidate",
+            "shadow",
+            "horsemanship",
+            "skulk",
+            "prowess",
+            "exalted",
+            "unblockable",
+            "protection",
+            "ward",
+            "flash",
+            "changeling",
+            "myriad",
+            "melee",
+            "battle cry",
+            "training",
+            "dethrone",
+            "annihilator",
+            "toxic",
+            "poisonous",
+            "flanking",
+            "bushido",
+            "rampage",
+            "afflict",
+            "mentor",
+            "persist",
+            "undying",
+            "kicker",
+            "multikicker",
+            "flashback",
+            "cycling",
+            "landcycling",
+            "typecycling",
+            "transmute",
+            "rebound",
+            "cascade",
+            "storm",
+            "convoke",
+            "improvise",
+            "delve",
+            "affinity",
+            "evoke",
+            "buyback",
+            "entwine",
+            "madness",
+            "suspend",
+            "foretell",
+            "escape",
+            "jump-start",
+            "retrace",
+            "unearth",
+            "harmonize",
+            "emerge",
+            "overload",
+            "spree",
+            "dash",
+            "blitz",
+            "prowl",
+            "ninjutsu",
+            "miracle",
+            "split second",
+            "splice",
+            "replicate",
+            "casualty",
+            "offering",
+            "bargain",
+            "plot",
+            "warp",
+            "echo",
+            "cumulative upkeep",
+            "sunburst",
+            "equip",
+            "reconfigure",
+            "crew",
+            "saddle",
+            "station",
+            "level up",
+            "partner",
+            "partner with",
+            "companion",
+            "choose a background",
+            "friends forever",
+            "enchant",
+            "living weapon",
+            "morph",
+            "megamorph",
+            "disguise",
+            "mutate",
+            "bestow",
+            "eternalize",
+            "embalm",
+            "encore",
+            "disturb",
+            "aftermath",
+            "fuse",
+            "dredge",
+            "hideaway",
+            "exploit",
+            "devour",
+            "evolve",
+            "riot",
+            "fabricate",
+            "afterlife",
+            "extort",
+            "landwalk",
+            "gift",
+            "offspring",
+            "squad",
+            "mobilize",
+            "decayed",
+            "prototype",
+            "read ahead",
+            "backup",
+            "craft",
+            "impending",
+            "exhaust",
+            "soulshift",
+            "outlast",
+            "renown",
+            "spectacle",
+            "surge",
+            "cipher",
+            "transfigure",
+            "vanishing",
+            "fading",
+            "phasing",
+            "banding",
+            "umbra armor"
+           ]
+          },
+          {
+           "type": "object",
+           "properties": {
+            "keyword": {
+             "enum": [
+              "hexproof",
+              "shroud",
+              "protection",
+              "ward",
+              "flash",
+              "changeling",
+              "partner",
+              "partner with",
+              "companion",
+              "choose a background",
+              "friends forever",
+              "enchant",
+              "split second",
+              "umbra armor",
+              "banding",
+              "phasing",
+              "crew",
+              "reconfigure",
+              "landwalk"
+             ]
+            },
+            "detail": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "keyword",
+            "detail"
+           ],
+           "additionalProperties": false
+          }
+         ]
         }
        },
        "duration": {
@@ -5540,6 +7063,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -5621,6 +7150,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -5689,6 +7224,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -5768,6 +7309,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -5822,7 +7369,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -5855,6 +7406,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -5911,7 +7475,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -5944,6 +7512,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -5968,7 +7549,192 @@
        "keywords": {
         "type": "array",
         "items": {
-         "type": "string"
+         "anyOf": [
+          {
+           "enum": [
+            "flying",
+            "reach",
+            "trample",
+            "vigilance",
+            "haste",
+            "lifelink",
+            "deathtouch",
+            "menace",
+            "first strike",
+            "double strike",
+            "indestructible",
+            "hexproof",
+            "shroud",
+            "defender",
+            "infect",
+            "wither",
+            "fear",
+            "intimidate",
+            "shadow",
+            "horsemanship",
+            "skulk",
+            "prowess",
+            "exalted",
+            "unblockable",
+            "protection",
+            "ward",
+            "flash",
+            "changeling",
+            "myriad",
+            "melee",
+            "battle cry",
+            "training",
+            "dethrone",
+            "annihilator",
+            "toxic",
+            "poisonous",
+            "flanking",
+            "bushido",
+            "rampage",
+            "afflict",
+            "mentor",
+            "persist",
+            "undying",
+            "kicker",
+            "multikicker",
+            "flashback",
+            "cycling",
+            "landcycling",
+            "typecycling",
+            "transmute",
+            "rebound",
+            "cascade",
+            "storm",
+            "convoke",
+            "improvise",
+            "delve",
+            "affinity",
+            "evoke",
+            "buyback",
+            "entwine",
+            "madness",
+            "suspend",
+            "foretell",
+            "escape",
+            "jump-start",
+            "retrace",
+            "unearth",
+            "harmonize",
+            "emerge",
+            "overload",
+            "spree",
+            "dash",
+            "blitz",
+            "prowl",
+            "ninjutsu",
+            "miracle",
+            "split second",
+            "splice",
+            "replicate",
+            "casualty",
+            "offering",
+            "bargain",
+            "plot",
+            "warp",
+            "echo",
+            "cumulative upkeep",
+            "sunburst",
+            "equip",
+            "reconfigure",
+            "crew",
+            "saddle",
+            "station",
+            "level up",
+            "partner",
+            "partner with",
+            "companion",
+            "choose a background",
+            "friends forever",
+            "enchant",
+            "living weapon",
+            "morph",
+            "megamorph",
+            "disguise",
+            "mutate",
+            "bestow",
+            "eternalize",
+            "embalm",
+            "encore",
+            "disturb",
+            "aftermath",
+            "fuse",
+            "dredge",
+            "hideaway",
+            "exploit",
+            "devour",
+            "evolve",
+            "riot",
+            "fabricate",
+            "afterlife",
+            "extort",
+            "landwalk",
+            "gift",
+            "offspring",
+            "squad",
+            "mobilize",
+            "decayed",
+            "prototype",
+            "read ahead",
+            "backup",
+            "craft",
+            "impending",
+            "exhaust",
+            "soulshift",
+            "outlast",
+            "renown",
+            "spectacle",
+            "surge",
+            "cipher",
+            "transfigure",
+            "vanishing",
+            "fading",
+            "phasing",
+            "banding",
+            "umbra armor"
+           ]
+          },
+          {
+           "type": "object",
+           "properties": {
+            "keyword": {
+             "enum": [
+              "hexproof",
+              "shroud",
+              "protection",
+              "ward",
+              "flash",
+              "changeling",
+              "partner",
+              "partner with",
+              "companion",
+              "choose a background",
+              "friends forever",
+              "enchant",
+              "split second",
+              "umbra armor",
+              "banding",
+              "phasing",
+              "crew",
+              "reconfigure",
+              "landwalk"
+             ]
+            },
+            "detail": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "keyword",
+            "detail"
+           ],
+           "additionalProperties": false
+          }
+         ]
         }
        },
        "duration": {
@@ -6041,6 +7807,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -6085,6 +7857,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -6154,6 +7932,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -6285,6 +8069,9 @@
          "bottom",
          "shuffle"
         ]
+       },
+       "position": {
+        "type": "integer"
        }
       },
       "required": [
@@ -6380,7 +8167,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -6413,6 +8204,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -6449,6 +8253,9 @@
          "equipped",
          "enchanted"
         ]
+       },
+       "filter": {
+        "$ref": "#/$defs/PermFilter"
        }
       },
       "required": [
@@ -6522,7 +8329,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -6555,6 +8366,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -6649,7 +8473,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -6682,6 +8510,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -6775,7 +8616,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -6808,6 +8653,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -6901,7 +8759,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -6934,6 +8796,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -7268,6 +9143,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -7322,7 +9203,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -7355,6 +9240,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -7460,7 +9358,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -7493,6 +9395,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -7533,7 +9448,8 @@
         "$ref": "#/$defs/CardFilter"
        },
        "unless_pays": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^(\\{(?:[0-9]+|[WUBRGCSX]|[WUBRG]/[WUBRGP]|[0-9]/[WUBRG]|[WUBRG]/P)\\})+$"
        },
        "abilities": {
         "type": "boolean"
@@ -7598,6 +9514,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -7608,7 +9530,192 @@
        "grant": {
         "type": "array",
         "items": {
-         "type": "string"
+         "anyOf": [
+          {
+           "enum": [
+            "flying",
+            "reach",
+            "trample",
+            "vigilance",
+            "haste",
+            "lifelink",
+            "deathtouch",
+            "menace",
+            "first strike",
+            "double strike",
+            "indestructible",
+            "hexproof",
+            "shroud",
+            "defender",
+            "infect",
+            "wither",
+            "fear",
+            "intimidate",
+            "shadow",
+            "horsemanship",
+            "skulk",
+            "prowess",
+            "exalted",
+            "unblockable",
+            "protection",
+            "ward",
+            "flash",
+            "changeling",
+            "myriad",
+            "melee",
+            "battle cry",
+            "training",
+            "dethrone",
+            "annihilator",
+            "toxic",
+            "poisonous",
+            "flanking",
+            "bushido",
+            "rampage",
+            "afflict",
+            "mentor",
+            "persist",
+            "undying",
+            "kicker",
+            "multikicker",
+            "flashback",
+            "cycling",
+            "landcycling",
+            "typecycling",
+            "transmute",
+            "rebound",
+            "cascade",
+            "storm",
+            "convoke",
+            "improvise",
+            "delve",
+            "affinity",
+            "evoke",
+            "buyback",
+            "entwine",
+            "madness",
+            "suspend",
+            "foretell",
+            "escape",
+            "jump-start",
+            "retrace",
+            "unearth",
+            "harmonize",
+            "emerge",
+            "overload",
+            "spree",
+            "dash",
+            "blitz",
+            "prowl",
+            "ninjutsu",
+            "miracle",
+            "split second",
+            "splice",
+            "replicate",
+            "casualty",
+            "offering",
+            "bargain",
+            "plot",
+            "warp",
+            "echo",
+            "cumulative upkeep",
+            "sunburst",
+            "equip",
+            "reconfigure",
+            "crew",
+            "saddle",
+            "station",
+            "level up",
+            "partner",
+            "partner with",
+            "companion",
+            "choose a background",
+            "friends forever",
+            "enchant",
+            "living weapon",
+            "morph",
+            "megamorph",
+            "disguise",
+            "mutate",
+            "bestow",
+            "eternalize",
+            "embalm",
+            "encore",
+            "disturb",
+            "aftermath",
+            "fuse",
+            "dredge",
+            "hideaway",
+            "exploit",
+            "devour",
+            "evolve",
+            "riot",
+            "fabricate",
+            "afterlife",
+            "extort",
+            "landwalk",
+            "gift",
+            "offspring",
+            "squad",
+            "mobilize",
+            "decayed",
+            "prototype",
+            "read ahead",
+            "backup",
+            "craft",
+            "impending",
+            "exhaust",
+            "soulshift",
+            "outlast",
+            "renown",
+            "spectacle",
+            "surge",
+            "cipher",
+            "transfigure",
+            "vanishing",
+            "fading",
+            "phasing",
+            "banding",
+            "umbra armor"
+           ]
+          },
+          {
+           "type": "object",
+           "properties": {
+            "keyword": {
+             "enum": [
+              "hexproof",
+              "shroud",
+              "protection",
+              "ward",
+              "flash",
+              "changeling",
+              "partner",
+              "partner with",
+              "companion",
+              "choose a background",
+              "friends forever",
+              "enchant",
+              "split second",
+              "umbra armor",
+              "banding",
+              "phasing",
+              "crew",
+              "reconfigure",
+              "landwalk"
+             ]
+            },
+            "detail": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "keyword",
+            "detail"
+           ],
+           "additionalProperties": false
+          }
+         ]
         },
         "minItems": 1
        },
@@ -7708,6 +9815,12 @@
          },
          "filter": {
           "$ref": "#/$defs/PermFilter"
+         },
+         "for_each": {
+          "enum": [
+           "opponent",
+           "player"
+          ]
          }
         },
         "required": [
@@ -7794,7 +9907,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -7827,6 +9944,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -7989,6 +10119,102 @@
            },
            {
             "const": "X"
+           },
+           {
+            "type": "object",
+            "properties": {
+             "count": {
+              "enum": [
+               "permanents_you_control",
+               "cards_in_hand",
+               "cards_in_graveyard",
+               "cards_in_library",
+               "cards_in_opponent_hand",
+               "devotion",
+               "domain",
+               "converge",
+               "times_kicked",
+               "opponents",
+               "your_life_total",
+               "starting_life_total",
+               "power_of_self",
+               "toughness_of_self",
+               "power_of_that",
+               "greatest_power",
+               "greatest_toughness",
+               "greatest_mana_value",
+               "counters_on_self",
+               "counters_on_that",
+               "colors_among_permanents",
+               "creature_types_among",
+               "spells_cast_this_turn",
+               "cards_drawn_this_turn",
+               "creatures_died_this_turn",
+               "life_gained_this_turn",
+               "damage_dealt_this_way",
+               "life_lost_this_way",
+               "that_much",
+               "mana_value_of_that",
+               "x_paid",
+               "attacking_creatures",
+               "equipment_and_auras_attached",
+               "number_chosen",
+               "coin_flips_won",
+               "total_power",
+               "permanents_on_battlefield",
+               "commander_identity_colors",
+               "damage_dealt_this_turn"
+              ]
+             },
+             "filter": {
+              "$ref": "#/$defs/PermFilter"
+             },
+             "card_filter": {
+              "$ref": "#/$defs/CardFilter"
+             },
+             "colors": {
+              "type": "string",
+              "pattern": "^(?:[WUBRGC]+|any|any_one_color|commander_colors|chosen_color)$"
+             },
+             "kind": {
+              "type": "string"
+             },
+             "times": {
+              "type": "integer"
+             },
+             "plus": {
+              "type": "integer"
+             },
+             "divide": {
+              "type": "integer"
+             },
+             "round": {
+              "enum": [
+               "down",
+               "up"
+              ]
+             },
+             "max": {
+              "type": "integer"
+             },
+             "player": {
+              "enum": [
+               "you",
+               "target_player",
+               "target_opponent",
+               "each_opponent",
+               "each_player",
+               "defending_player",
+               "that_player",
+               "its_controller",
+               "an_opponent"
+              ]
+             }
+            },
+            "required": [
+             "count"
+            ],
+            "additionalProperties": false
            }
           ]
          },
@@ -8287,7 +10513,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -8320,6 +10550,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -8550,7 +10793,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -8583,6 +10830,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -8710,14 +10970,18 @@
       "free_cast",
       "alt_cost_all",
       "play_from_top",
-      "lab_man",
+      "draw_from_empty_library_wins",
       "doesnt_untap",
       "pt_equals",
       "spend_mana_as_any",
       "lands_tap_any",
-      "restriction",
-      "replacement",
-      "hand_ability"
+      "skip_step",
+      "extra_counters",
+      "graveyard_replacement",
+      "discard_to_top",
+      "spell_limit",
+      "coin_flip_rule",
+      "choose_on_enter"
      ]
     }
    },
@@ -8788,7 +11052,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -8821,6 +11089,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -8877,7 +11158,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -8910,6 +11195,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -8922,7 +11220,192 @@
        "keywords": {
         "type": "array",
         "items": {
-         "type": "string"
+         "anyOf": [
+          {
+           "enum": [
+            "flying",
+            "reach",
+            "trample",
+            "vigilance",
+            "haste",
+            "lifelink",
+            "deathtouch",
+            "menace",
+            "first strike",
+            "double strike",
+            "indestructible",
+            "hexproof",
+            "shroud",
+            "defender",
+            "infect",
+            "wither",
+            "fear",
+            "intimidate",
+            "shadow",
+            "horsemanship",
+            "skulk",
+            "prowess",
+            "exalted",
+            "unblockable",
+            "protection",
+            "ward",
+            "flash",
+            "changeling",
+            "myriad",
+            "melee",
+            "battle cry",
+            "training",
+            "dethrone",
+            "annihilator",
+            "toxic",
+            "poisonous",
+            "flanking",
+            "bushido",
+            "rampage",
+            "afflict",
+            "mentor",
+            "persist",
+            "undying",
+            "kicker",
+            "multikicker",
+            "flashback",
+            "cycling",
+            "landcycling",
+            "typecycling",
+            "transmute",
+            "rebound",
+            "cascade",
+            "storm",
+            "convoke",
+            "improvise",
+            "delve",
+            "affinity",
+            "evoke",
+            "buyback",
+            "entwine",
+            "madness",
+            "suspend",
+            "foretell",
+            "escape",
+            "jump-start",
+            "retrace",
+            "unearth",
+            "harmonize",
+            "emerge",
+            "overload",
+            "spree",
+            "dash",
+            "blitz",
+            "prowl",
+            "ninjutsu",
+            "miracle",
+            "split second",
+            "splice",
+            "replicate",
+            "casualty",
+            "offering",
+            "bargain",
+            "plot",
+            "warp",
+            "echo",
+            "cumulative upkeep",
+            "sunburst",
+            "equip",
+            "reconfigure",
+            "crew",
+            "saddle",
+            "station",
+            "level up",
+            "partner",
+            "partner with",
+            "companion",
+            "choose a background",
+            "friends forever",
+            "enchant",
+            "living weapon",
+            "morph",
+            "megamorph",
+            "disguise",
+            "mutate",
+            "bestow",
+            "eternalize",
+            "embalm",
+            "encore",
+            "disturb",
+            "aftermath",
+            "fuse",
+            "dredge",
+            "hideaway",
+            "exploit",
+            "devour",
+            "evolve",
+            "riot",
+            "fabricate",
+            "afterlife",
+            "extort",
+            "landwalk",
+            "gift",
+            "offspring",
+            "squad",
+            "mobilize",
+            "decayed",
+            "prototype",
+            "read ahead",
+            "backup",
+            "craft",
+            "impending",
+            "exhaust",
+            "soulshift",
+            "outlast",
+            "renown",
+            "spectacle",
+            "surge",
+            "cipher",
+            "transfigure",
+            "vanishing",
+            "fading",
+            "phasing",
+            "banding",
+            "umbra armor"
+           ]
+          },
+          {
+           "type": "object",
+           "properties": {
+            "keyword": {
+             "enum": [
+              "hexproof",
+              "shroud",
+              "protection",
+              "ward",
+              "flash",
+              "changeling",
+              "partner",
+              "partner with",
+              "companion",
+              "choose a background",
+              "friends forever",
+              "enchant",
+              "split second",
+              "umbra armor",
+              "banding",
+              "phasing",
+              "crew",
+              "reconfigure",
+              "landwalk"
+             ]
+            },
+            "detail": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "keyword",
+            "detail"
+           ],
+           "additionalProperties": false
+          }
+         ]
         }
        }
       },
@@ -8995,7 +11478,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -9028,6 +11515,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -9084,7 +11584,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -9117,6 +11621,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -9129,7 +11646,192 @@
        "keywords": {
         "type": "array",
         "items": {
-         "type": "string"
+         "anyOf": [
+          {
+           "enum": [
+            "flying",
+            "reach",
+            "trample",
+            "vigilance",
+            "haste",
+            "lifelink",
+            "deathtouch",
+            "menace",
+            "first strike",
+            "double strike",
+            "indestructible",
+            "hexproof",
+            "shroud",
+            "defender",
+            "infect",
+            "wither",
+            "fear",
+            "intimidate",
+            "shadow",
+            "horsemanship",
+            "skulk",
+            "prowess",
+            "exalted",
+            "unblockable",
+            "protection",
+            "ward",
+            "flash",
+            "changeling",
+            "myriad",
+            "melee",
+            "battle cry",
+            "training",
+            "dethrone",
+            "annihilator",
+            "toxic",
+            "poisonous",
+            "flanking",
+            "bushido",
+            "rampage",
+            "afflict",
+            "mentor",
+            "persist",
+            "undying",
+            "kicker",
+            "multikicker",
+            "flashback",
+            "cycling",
+            "landcycling",
+            "typecycling",
+            "transmute",
+            "rebound",
+            "cascade",
+            "storm",
+            "convoke",
+            "improvise",
+            "delve",
+            "affinity",
+            "evoke",
+            "buyback",
+            "entwine",
+            "madness",
+            "suspend",
+            "foretell",
+            "escape",
+            "jump-start",
+            "retrace",
+            "unearth",
+            "harmonize",
+            "emerge",
+            "overload",
+            "spree",
+            "dash",
+            "blitz",
+            "prowl",
+            "ninjutsu",
+            "miracle",
+            "split second",
+            "splice",
+            "replicate",
+            "casualty",
+            "offering",
+            "bargain",
+            "plot",
+            "warp",
+            "echo",
+            "cumulative upkeep",
+            "sunburst",
+            "equip",
+            "reconfigure",
+            "crew",
+            "saddle",
+            "station",
+            "level up",
+            "partner",
+            "partner with",
+            "companion",
+            "choose a background",
+            "friends forever",
+            "enchant",
+            "living weapon",
+            "morph",
+            "megamorph",
+            "disguise",
+            "mutate",
+            "bestow",
+            "eternalize",
+            "embalm",
+            "encore",
+            "disturb",
+            "aftermath",
+            "fuse",
+            "dredge",
+            "hideaway",
+            "exploit",
+            "devour",
+            "evolve",
+            "riot",
+            "fabricate",
+            "afterlife",
+            "extort",
+            "landwalk",
+            "gift",
+            "offspring",
+            "squad",
+            "mobilize",
+            "decayed",
+            "prototype",
+            "read ahead",
+            "backup",
+            "craft",
+            "impending",
+            "exhaust",
+            "soulshift",
+            "outlast",
+            "renown",
+            "spectacle",
+            "surge",
+            "cipher",
+            "transfigure",
+            "vanishing",
+            "fading",
+            "phasing",
+            "banding",
+            "umbra armor"
+           ]
+          },
+          {
+           "type": "object",
+           "properties": {
+            "keyword": {
+             "enum": [
+              "hexproof",
+              "shroud",
+              "protection",
+              "ward",
+              "flash",
+              "changeling",
+              "partner",
+              "partner with",
+              "companion",
+              "choose a background",
+              "friends forever",
+              "enchant",
+              "split second",
+              "umbra armor",
+              "banding",
+              "phasing",
+              "crew",
+              "reconfigure",
+              "landwalk"
+             ]
+            },
+            "detail": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "keyword",
+            "detail"
+           ],
+           "additionalProperties": false
+          }
+         ]
         }
        },
        "abilities": {
@@ -9245,7 +11947,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -9278,6 +11984,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -9372,7 +12091,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -9405,6 +12128,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -9671,11 +12407,17 @@
        "filter": {
         "$ref": "#/$defs/PermFilter"
        },
+       "self": {
+        "type": "boolean"
+       },
        "add_types": {
         "type": "array",
         "items": {
          "type": "string"
         }
+       },
+       "add_chosen_type": {
+        "type": "boolean"
        },
        "abilities": {
         "type": "array",
@@ -9685,8 +12427,7 @@
        }
       },
       "required": [
-       "static",
-       "filter"
+       "static"
       ],
       "additionalProperties": false
      }
@@ -9709,6 +12450,333 @@
        },
        "unless": {
         "$ref": "#/$defs/Cond"
+       },
+       "unless_pay": {
+        "type": "object",
+        "properties": {
+         "mana": {
+          "type": "string",
+          "pattern": "^(\\{(?:[0-9]+|[WUBRGCSX]|[WUBRG]/[WUBRGP]|[0-9]/[WUBRG]|[WUBRG]/P)\\})+$"
+         },
+         "tap": {
+          "type": "boolean"
+         },
+         "untap": {
+          "type": "boolean"
+         },
+         "sacrifice": {
+          "anyOf": [
+           {
+            "const": "self"
+           },
+           {
+            "type": "object",
+            "properties": {
+             "filter": {
+              "$ref": "#/$defs/PermFilter"
+             },
+             "n": {
+              "type": "integer"
+             }
+            },
+            "required": [
+             "filter"
+            ],
+            "additionalProperties": false
+           }
+          ]
+         },
+         "discard": {
+          "anyOf": [
+           {
+            "const": "hand"
+           },
+           {
+            "type": "object",
+            "properties": {
+             "n": {
+              "type": "integer"
+             },
+             "filter": {
+              "$ref": "#/$defs/CardFilter"
+             },
+             "random": {
+              "type": "boolean"
+             }
+            },
+            "required": [
+             "n"
+            ],
+            "additionalProperties": false
+           }
+          ]
+         },
+         "pay_life": {
+          "anyOf": [
+           {
+            "type": "integer"
+           },
+           {
+            "const": "X"
+           },
+           {
+            "type": "object",
+            "properties": {
+             "count": {
+              "enum": [
+               "permanents_you_control",
+               "cards_in_hand",
+               "cards_in_graveyard",
+               "cards_in_library",
+               "cards_in_opponent_hand",
+               "devotion",
+               "domain",
+               "converge",
+               "times_kicked",
+               "opponents",
+               "your_life_total",
+               "starting_life_total",
+               "power_of_self",
+               "toughness_of_self",
+               "power_of_that",
+               "greatest_power",
+               "greatest_toughness",
+               "greatest_mana_value",
+               "counters_on_self",
+               "counters_on_that",
+               "colors_among_permanents",
+               "creature_types_among",
+               "spells_cast_this_turn",
+               "cards_drawn_this_turn",
+               "creatures_died_this_turn",
+               "life_gained_this_turn",
+               "damage_dealt_this_way",
+               "life_lost_this_way",
+               "that_much",
+               "mana_value_of_that",
+               "x_paid",
+               "attacking_creatures",
+               "equipment_and_auras_attached",
+               "number_chosen",
+               "coin_flips_won",
+               "total_power",
+               "permanents_on_battlefield",
+               "commander_identity_colors",
+               "damage_dealt_this_turn"
+              ]
+             },
+             "filter": {
+              "$ref": "#/$defs/PermFilter"
+             },
+             "card_filter": {
+              "$ref": "#/$defs/CardFilter"
+             },
+             "colors": {
+              "type": "string",
+              "pattern": "^(?:[WUBRGC]+|any|any_one_color|commander_colors|chosen_color)$"
+             },
+             "kind": {
+              "type": "string"
+             },
+             "times": {
+              "type": "integer"
+             },
+             "plus": {
+              "type": "integer"
+             },
+             "divide": {
+              "type": "integer"
+             },
+             "round": {
+              "enum": [
+               "down",
+               "up"
+              ]
+             },
+             "max": {
+              "type": "integer"
+             },
+             "player": {
+              "enum": [
+               "you",
+               "target_player",
+               "target_opponent",
+               "each_opponent",
+               "each_player",
+               "defending_player",
+               "that_player",
+               "its_controller",
+               "an_opponent"
+              ]
+             }
+            },
+            "required": [
+             "count"
+            ],
+            "additionalProperties": false
+           }
+          ]
+         },
+         "remove_counters": {
+          "type": "object",
+          "properties": {
+           "kind": {
+            "type": "string"
+           },
+           "n": {
+            "anyOf": [
+             {
+              "type": "integer"
+             },
+             {
+              "const": "X"
+             },
+             {
+              "const": "any"
+             }
+            ]
+           },
+           "from": {
+            "enum": [
+             "self",
+             "any"
+            ]
+           }
+          },
+          "required": [
+           "kind",
+           "n"
+          ],
+          "additionalProperties": false
+         },
+         "put_counters": {
+          "type": "object",
+          "properties": {
+           "kind": {
+            "type": "string"
+           },
+           "n": {
+            "type": "integer"
+           }
+          },
+          "required": [
+           "kind",
+           "n"
+          ],
+          "additionalProperties": false
+         },
+         "exile_from_graveyard": {
+          "anyOf": [
+           {
+            "const": "self"
+           },
+           {
+            "type": "object",
+            "properties": {
+             "n": {
+              "anyOf": [
+               {
+                "type": "integer"
+               },
+               {
+                "const": "X"
+               }
+              ]
+             },
+             "filter": {
+              "$ref": "#/$defs/CardFilter"
+             }
+            },
+            "required": [
+             "n"
+            ],
+            "additionalProperties": false
+           }
+          ]
+         },
+         "exile_from_hand": {
+          "anyOf": [
+           {
+            "const": "self"
+           },
+           {
+            "type": "object",
+            "properties": {
+             "n": {
+              "type": "integer"
+             },
+             "filter": {
+              "$ref": "#/$defs/CardFilter"
+             }
+            },
+            "required": [
+             "n"
+            ],
+            "additionalProperties": false
+           }
+          ]
+         },
+         "exile_self": {
+          "type": "boolean"
+         },
+         "tap_untapped": {
+          "type": "object",
+          "properties": {
+           "n": {
+            "type": "integer"
+           },
+           "filter": {
+            "$ref": "#/$defs/PermFilter"
+           }
+          },
+          "required": [
+           "n"
+          ],
+          "additionalProperties": false
+         },
+         "return_to_hand": {
+          "type": "object",
+          "properties": {
+           "n": {
+            "type": "integer"
+           },
+           "filter": {
+            "$ref": "#/$defs/PermFilter"
+           }
+          },
+          "required": [
+           "filter"
+          ],
+          "additionalProperties": false
+         },
+         "exert": {
+          "type": "boolean"
+         },
+         "energy": {
+          "type": "integer"
+         },
+         "loyalty": {
+          "anyOf": [
+           {
+            "type": "integer"
+           },
+           {
+            "const": "X"
+           },
+           {
+            "const": "-X"
+           }
+          ]
+         },
+         "mill": {
+          "type": "integer"
+         },
+         "reveal": {
+          "$ref": "#/$defs/CardFilter"
+         }
+        },
+        "required": [],
+        "additionalProperties": false
        }
       },
       "required": [
@@ -9783,7 +12851,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -9816,6 +12888,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -10036,6 +13121,102 @@
            },
            {
             "const": "X"
+           },
+           {
+            "type": "object",
+            "properties": {
+             "count": {
+              "enum": [
+               "permanents_you_control",
+               "cards_in_hand",
+               "cards_in_graveyard",
+               "cards_in_library",
+               "cards_in_opponent_hand",
+               "devotion",
+               "domain",
+               "converge",
+               "times_kicked",
+               "opponents",
+               "your_life_total",
+               "starting_life_total",
+               "power_of_self",
+               "toughness_of_self",
+               "power_of_that",
+               "greatest_power",
+               "greatest_toughness",
+               "greatest_mana_value",
+               "counters_on_self",
+               "counters_on_that",
+               "colors_among_permanents",
+               "creature_types_among",
+               "spells_cast_this_turn",
+               "cards_drawn_this_turn",
+               "creatures_died_this_turn",
+               "life_gained_this_turn",
+               "damage_dealt_this_way",
+               "life_lost_this_way",
+               "that_much",
+               "mana_value_of_that",
+               "x_paid",
+               "attacking_creatures",
+               "equipment_and_auras_attached",
+               "number_chosen",
+               "coin_flips_won",
+               "total_power",
+               "permanents_on_battlefield",
+               "commander_identity_colors",
+               "damage_dealt_this_turn"
+              ]
+             },
+             "filter": {
+              "$ref": "#/$defs/PermFilter"
+             },
+             "card_filter": {
+              "$ref": "#/$defs/CardFilter"
+             },
+             "colors": {
+              "type": "string",
+              "pattern": "^(?:[WUBRGC]+|any|any_one_color|commander_colors|chosen_color)$"
+             },
+             "kind": {
+              "type": "string"
+             },
+             "times": {
+              "type": "integer"
+             },
+             "plus": {
+              "type": "integer"
+             },
+             "divide": {
+              "type": "integer"
+             },
+             "round": {
+              "enum": [
+               "down",
+               "up"
+              ]
+             },
+             "max": {
+              "type": "integer"
+             },
+             "player": {
+              "enum": [
+               "you",
+               "target_player",
+               "target_opponent",
+               "each_opponent",
+               "each_player",
+               "defending_player",
+               "that_player",
+               "its_controller",
+               "an_opponent"
+              ]
+             }
+            },
+            "required": [
+             "count"
+            ],
+            "additionalProperties": false
            }
           ]
          },
@@ -10241,7 +13422,7 @@
      "if": {
       "properties": {
        "static": {
-        "const": "lab_man"
+        "const": "draw_from_empty_library_wins"
        }
       },
       "required": [
@@ -10251,7 +13432,7 @@
      "then": {
       "properties": {
        "static": {
-        "const": "lab_man"
+        "const": "draw_from_empty_library_wins"
        }
       },
       "required": [
@@ -10346,7 +13527,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -10379,6 +13564,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -10435,7 +13633,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -10468,6 +13670,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -10534,7 +13749,7 @@
      "if": {
       "properties": {
        "static": {
-        "const": "restriction"
+        "const": "skip_step"
        }
       },
       "required": [
@@ -10544,7 +13759,15 @@
      "then": {
       "properties": {
        "static": {
-        "const": "restriction"
+        "const": "skip_step"
+       },
+       "what": {
+        "enum": [
+         "draw_step",
+         "untap_step",
+         "upkeep",
+         "combat"
+        ]
        },
        "who": {
         "enum": [
@@ -10558,14 +13781,11 @@
          "its_controller",
          "an_opponent"
         ]
-       },
-       "text": {
-        "type": "string"
        }
       },
       "required": [
        "static",
-       "text"
+       "what"
       ],
       "additionalProperties": false
      }
@@ -10574,7 +13794,7 @@
      "if": {
       "properties": {
        "static": {
-        "const": "replacement"
+        "const": "extra_counters"
        }
       },
       "required": [
@@ -10584,28 +13804,69 @@
      "then": {
       "properties": {
        "static": {
-        "const": "replacement"
+        "const": "extra_counters"
        },
-       "text": {
-        "type": "string"
+       "n": {
+        "type": "integer"
        },
        "kind": {
+        "type": "string"
+       },
+       "on": {
+        "$ref": "#/$defs/PermFilter"
+       }
+      },
+      "required": [
+       "static",
+       "n",
+       "on"
+      ],
+      "additionalProperties": false
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "static": {
+        "const": "graveyard_replacement"
+       }
+      },
+      "required": [
+       "static"
+      ]
+     },
+     "then": {
+      "properties": {
+       "static": {
+        "const": "graveyard_replacement"
+       },
+       "whose": {
         "enum": [
-         "draw",
-         "discard",
+         "self",
+         "yours",
+         "opponents",
+         "each_player"
+        ]
+       },
+       "to": {
+        "enum": [
+         "hand",
+         "battlefield",
+         "battlefield_tapped",
+         "library_top",
+         "library_bottom",
+         "library_shuffled",
          "graveyard",
-         "life_gain",
-         "damage",
-         "tokens",
-         "counters",
-         "other"
+         "exile",
+         "exile_castable",
+         "command_zone"
         ]
        }
       },
       "required": [
        "static",
-       "text",
-       "kind"
+       "whose",
+       "to"
       ],
       "additionalProperties": false
      }
@@ -10614,7 +13875,7 @@
      "if": {
       "properties": {
        "static": {
-        "const": "hand_ability"
+        "const": "discard_to_top"
        }
       },
       "required": [
@@ -10624,14 +13885,115 @@
      "then": {
       "properties": {
        "static": {
-        "const": "hand_ability"
+        "const": "discard_to_top"
        },
-       "text": {
-        "type": "string"
+       "optional": {
+        "type": "boolean"
+       },
+       "effects_only": {
+        "type": "boolean"
        }
       },
       "required": [
        "static"
+      ],
+      "additionalProperties": false
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "static": {
+        "const": "spell_limit"
+       }
+      },
+      "required": [
+       "static"
+      ]
+     },
+     "then": {
+      "properties": {
+       "static": {
+        "const": "spell_limit"
+       },
+       "n": {
+        "type": "integer"
+       },
+       "spells": {
+        "$ref": "#/$defs/CardFilter"
+       },
+       "who": {
+        "enum": [
+         "you",
+         "opponents",
+         "each_player"
+        ]
+       }
+      },
+      "required": [
+       "static",
+       "n",
+       "who"
+      ],
+      "additionalProperties": false
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "static": {
+        "const": "coin_flip_rule"
+       }
+      },
+      "required": [
+       "static"
+      ]
+     },
+     "then": {
+      "properties": {
+       "static": {
+        "const": "coin_flip_rule"
+       },
+       "rule": {
+        "enum": [
+         "flip_two_ignore_one",
+         "first_flips_each_turn_win"
+        ]
+       }
+      },
+      "required": [
+       "static",
+       "rule"
+      ],
+      "additionalProperties": false
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "static": {
+        "const": "choose_on_enter"
+       }
+      },
+      "required": [
+       "static"
+      ]
+     },
+     "then": {
+      "properties": {
+       "static": {
+        "const": "choose_on_enter"
+       },
+       "choice": {
+        "enum": [
+         "creature_type",
+         "color"
+        ]
+       }
+      },
+      "required": [
+       "static",
+       "choice"
       ],
       "additionalProperties": false
      }
@@ -11633,7 +14995,11 @@
              "attacking_creatures",
              "equipment_and_auras_attached",
              "number_chosen",
-             "coin_flips_won"
+             "coin_flips_won",
+             "total_power",
+             "permanents_on_battlefield",
+             "commander_identity_colors",
+             "damage_dealt_this_turn"
             ]
            },
            "filter": {
@@ -11666,6 +15032,19 @@
            },
            "max": {
             "type": "integer"
+           },
+           "player": {
+            "enum": [
+             "you",
+             "target_player",
+             "target_opponent",
+             "each_opponent",
+             "each_player",
+             "defending_player",
+             "that_player",
+             "its_controller",
+             "an_opponent"
+            ]
            }
           },
           "required": [
@@ -11848,7 +15227,8 @@
       "monarch",
       "initiative",
       "explores",
-      "search_library"
+      "search_library",
+      "play_land"
      ]
     },
     "subject": {
@@ -12000,7 +15380,8 @@
      "enum": [
       "you",
       "opponent",
-      "any"
+      "any",
+      "that_player"
      ]
     },
     "another": {
@@ -12064,13 +15445,383 @@
     "keywords": {
      "type": "array",
      "items": {
-      "type": "string"
+      "anyOf": [
+       {
+        "enum": [
+         "flying",
+         "reach",
+         "trample",
+         "vigilance",
+         "haste",
+         "lifelink",
+         "deathtouch",
+         "menace",
+         "first strike",
+         "double strike",
+         "indestructible",
+         "hexproof",
+         "shroud",
+         "defender",
+         "infect",
+         "wither",
+         "fear",
+         "intimidate",
+         "shadow",
+         "horsemanship",
+         "skulk",
+         "prowess",
+         "exalted",
+         "unblockable",
+         "protection",
+         "ward",
+         "flash",
+         "changeling",
+         "myriad",
+         "melee",
+         "battle cry",
+         "training",
+         "dethrone",
+         "annihilator",
+         "toxic",
+         "poisonous",
+         "flanking",
+         "bushido",
+         "rampage",
+         "afflict",
+         "mentor",
+         "persist",
+         "undying",
+         "kicker",
+         "multikicker",
+         "flashback",
+         "cycling",
+         "landcycling",
+         "typecycling",
+         "transmute",
+         "rebound",
+         "cascade",
+         "storm",
+         "convoke",
+         "improvise",
+         "delve",
+         "affinity",
+         "evoke",
+         "buyback",
+         "entwine",
+         "madness",
+         "suspend",
+         "foretell",
+         "escape",
+         "jump-start",
+         "retrace",
+         "unearth",
+         "harmonize",
+         "emerge",
+         "overload",
+         "spree",
+         "dash",
+         "blitz",
+         "prowl",
+         "ninjutsu",
+         "miracle",
+         "split second",
+         "splice",
+         "replicate",
+         "casualty",
+         "offering",
+         "bargain",
+         "plot",
+         "warp",
+         "echo",
+         "cumulative upkeep",
+         "sunburst",
+         "equip",
+         "reconfigure",
+         "crew",
+         "saddle",
+         "station",
+         "level up",
+         "partner",
+         "partner with",
+         "companion",
+         "choose a background",
+         "friends forever",
+         "enchant",
+         "living weapon",
+         "morph",
+         "megamorph",
+         "disguise",
+         "mutate",
+         "bestow",
+         "eternalize",
+         "embalm",
+         "encore",
+         "disturb",
+         "aftermath",
+         "fuse",
+         "dredge",
+         "hideaway",
+         "exploit",
+         "devour",
+         "evolve",
+         "riot",
+         "fabricate",
+         "afterlife",
+         "extort",
+         "landwalk",
+         "gift",
+         "offspring",
+         "squad",
+         "mobilize",
+         "decayed",
+         "prototype",
+         "read ahead",
+         "backup",
+         "craft",
+         "impending",
+         "exhaust",
+         "soulshift",
+         "outlast",
+         "renown",
+         "spectacle",
+         "surge",
+         "cipher",
+         "transfigure",
+         "vanishing",
+         "fading",
+         "phasing",
+         "banding",
+         "umbra armor"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "keyword": {
+          "enum": [
+           "hexproof",
+           "shroud",
+           "protection",
+           "ward",
+           "flash",
+           "changeling",
+           "partner",
+           "partner with",
+           "companion",
+           "choose a background",
+           "friends forever",
+           "enchant",
+           "split second",
+           "umbra armor",
+           "banding",
+           "phasing",
+           "crew",
+           "reconfigure",
+           "landwalk"
+          ]
+         },
+         "detail": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "keyword",
+         "detail"
+        ],
+        "additionalProperties": false
+       }
+      ]
      }
     },
     "without_keywords": {
      "type": "array",
      "items": {
-      "type": "string"
+      "anyOf": [
+       {
+        "enum": [
+         "flying",
+         "reach",
+         "trample",
+         "vigilance",
+         "haste",
+         "lifelink",
+         "deathtouch",
+         "menace",
+         "first strike",
+         "double strike",
+         "indestructible",
+         "hexproof",
+         "shroud",
+         "defender",
+         "infect",
+         "wither",
+         "fear",
+         "intimidate",
+         "shadow",
+         "horsemanship",
+         "skulk",
+         "prowess",
+         "exalted",
+         "unblockable",
+         "protection",
+         "ward",
+         "flash",
+         "changeling",
+         "myriad",
+         "melee",
+         "battle cry",
+         "training",
+         "dethrone",
+         "annihilator",
+         "toxic",
+         "poisonous",
+         "flanking",
+         "bushido",
+         "rampage",
+         "afflict",
+         "mentor",
+         "persist",
+         "undying",
+         "kicker",
+         "multikicker",
+         "flashback",
+         "cycling",
+         "landcycling",
+         "typecycling",
+         "transmute",
+         "rebound",
+         "cascade",
+         "storm",
+         "convoke",
+         "improvise",
+         "delve",
+         "affinity",
+         "evoke",
+         "buyback",
+         "entwine",
+         "madness",
+         "suspend",
+         "foretell",
+         "escape",
+         "jump-start",
+         "retrace",
+         "unearth",
+         "harmonize",
+         "emerge",
+         "overload",
+         "spree",
+         "dash",
+         "blitz",
+         "prowl",
+         "ninjutsu",
+         "miracle",
+         "split second",
+         "splice",
+         "replicate",
+         "casualty",
+         "offering",
+         "bargain",
+         "plot",
+         "warp",
+         "echo",
+         "cumulative upkeep",
+         "sunburst",
+         "equip",
+         "reconfigure",
+         "crew",
+         "saddle",
+         "station",
+         "level up",
+         "partner",
+         "partner with",
+         "companion",
+         "choose a background",
+         "friends forever",
+         "enchant",
+         "living weapon",
+         "morph",
+         "megamorph",
+         "disguise",
+         "mutate",
+         "bestow",
+         "eternalize",
+         "embalm",
+         "encore",
+         "disturb",
+         "aftermath",
+         "fuse",
+         "dredge",
+         "hideaway",
+         "exploit",
+         "devour",
+         "evolve",
+         "riot",
+         "fabricate",
+         "afterlife",
+         "extort",
+         "landwalk",
+         "gift",
+         "offspring",
+         "squad",
+         "mobilize",
+         "decayed",
+         "prototype",
+         "read ahead",
+         "backup",
+         "craft",
+         "impending",
+         "exhaust",
+         "soulshift",
+         "outlast",
+         "renown",
+         "spectacle",
+         "surge",
+         "cipher",
+         "transfigure",
+         "vanishing",
+         "fading",
+         "phasing",
+         "banding",
+         "umbra armor"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "keyword": {
+          "enum": [
+           "hexproof",
+           "shroud",
+           "protection",
+           "ward",
+           "flash",
+           "changeling",
+           "partner",
+           "partner with",
+           "companion",
+           "choose a background",
+           "friends forever",
+           "enchant",
+           "split second",
+           "umbra armor",
+           "banding",
+           "phasing",
+           "crew",
+           "reconfigure",
+           "landwalk"
+          ]
+         },
+         "detail": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "keyword",
+         "detail"
+        ],
+        "additionalProperties": false
+       }
+      ]
      }
     },
     "with_counters": {
@@ -12260,7 +16011,192 @@
     "keywords": {
      "type": "array",
      "items": {
-      "type": "string"
+      "anyOf": [
+       {
+        "enum": [
+         "flying",
+         "reach",
+         "trample",
+         "vigilance",
+         "haste",
+         "lifelink",
+         "deathtouch",
+         "menace",
+         "first strike",
+         "double strike",
+         "indestructible",
+         "hexproof",
+         "shroud",
+         "defender",
+         "infect",
+         "wither",
+         "fear",
+         "intimidate",
+         "shadow",
+         "horsemanship",
+         "skulk",
+         "prowess",
+         "exalted",
+         "unblockable",
+         "protection",
+         "ward",
+         "flash",
+         "changeling",
+         "myriad",
+         "melee",
+         "battle cry",
+         "training",
+         "dethrone",
+         "annihilator",
+         "toxic",
+         "poisonous",
+         "flanking",
+         "bushido",
+         "rampage",
+         "afflict",
+         "mentor",
+         "persist",
+         "undying",
+         "kicker",
+         "multikicker",
+         "flashback",
+         "cycling",
+         "landcycling",
+         "typecycling",
+         "transmute",
+         "rebound",
+         "cascade",
+         "storm",
+         "convoke",
+         "improvise",
+         "delve",
+         "affinity",
+         "evoke",
+         "buyback",
+         "entwine",
+         "madness",
+         "suspend",
+         "foretell",
+         "escape",
+         "jump-start",
+         "retrace",
+         "unearth",
+         "harmonize",
+         "emerge",
+         "overload",
+         "spree",
+         "dash",
+         "blitz",
+         "prowl",
+         "ninjutsu",
+         "miracle",
+         "split second",
+         "splice",
+         "replicate",
+         "casualty",
+         "offering",
+         "bargain",
+         "plot",
+         "warp",
+         "echo",
+         "cumulative upkeep",
+         "sunburst",
+         "equip",
+         "reconfigure",
+         "crew",
+         "saddle",
+         "station",
+         "level up",
+         "partner",
+         "partner with",
+         "companion",
+         "choose a background",
+         "friends forever",
+         "enchant",
+         "living weapon",
+         "morph",
+         "megamorph",
+         "disguise",
+         "mutate",
+         "bestow",
+         "eternalize",
+         "embalm",
+         "encore",
+         "disturb",
+         "aftermath",
+         "fuse",
+         "dredge",
+         "hideaway",
+         "exploit",
+         "devour",
+         "evolve",
+         "riot",
+         "fabricate",
+         "afterlife",
+         "extort",
+         "landwalk",
+         "gift",
+         "offspring",
+         "squad",
+         "mobilize",
+         "decayed",
+         "prototype",
+         "read ahead",
+         "backup",
+         "craft",
+         "impending",
+         "exhaust",
+         "soulshift",
+         "outlast",
+         "renown",
+         "spectacle",
+         "surge",
+         "cipher",
+         "transfigure",
+         "vanishing",
+         "fading",
+         "phasing",
+         "banding",
+         "umbra armor"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "keyword": {
+          "enum": [
+           "hexproof",
+           "shroud",
+           "protection",
+           "ward",
+           "flash",
+           "changeling",
+           "partner",
+           "partner with",
+           "companion",
+           "choose a background",
+           "friends forever",
+           "enchant",
+           "split second",
+           "umbra armor",
+           "banding",
+           "phasing",
+           "crew",
+           "reconfigure",
+           "landwalk"
+          ]
+         },
+         "detail": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "keyword",
+         "detail"
+        ],
+        "additionalProperties": false
+       }
+      ]
      }
     },
     "has_x": {
@@ -12322,6 +16258,12 @@
     },
     "filter": {
      "$ref": "#/$defs/PermFilter"
+    },
+    "for_each": {
+     "enum": [
+      "opponent",
+      "player"
+     ]
     }
    },
    "required": [
@@ -12398,7 +16340,192 @@
     "keywords": {
      "type": "array",
      "items": {
-      "type": "string"
+      "anyOf": [
+       {
+        "enum": [
+         "flying",
+         "reach",
+         "trample",
+         "vigilance",
+         "haste",
+         "lifelink",
+         "deathtouch",
+         "menace",
+         "first strike",
+         "double strike",
+         "indestructible",
+         "hexproof",
+         "shroud",
+         "defender",
+         "infect",
+         "wither",
+         "fear",
+         "intimidate",
+         "shadow",
+         "horsemanship",
+         "skulk",
+         "prowess",
+         "exalted",
+         "unblockable",
+         "protection",
+         "ward",
+         "flash",
+         "changeling",
+         "myriad",
+         "melee",
+         "battle cry",
+         "training",
+         "dethrone",
+         "annihilator",
+         "toxic",
+         "poisonous",
+         "flanking",
+         "bushido",
+         "rampage",
+         "afflict",
+         "mentor",
+         "persist",
+         "undying",
+         "kicker",
+         "multikicker",
+         "flashback",
+         "cycling",
+         "landcycling",
+         "typecycling",
+         "transmute",
+         "rebound",
+         "cascade",
+         "storm",
+         "convoke",
+         "improvise",
+         "delve",
+         "affinity",
+         "evoke",
+         "buyback",
+         "entwine",
+         "madness",
+         "suspend",
+         "foretell",
+         "escape",
+         "jump-start",
+         "retrace",
+         "unearth",
+         "harmonize",
+         "emerge",
+         "overload",
+         "spree",
+         "dash",
+         "blitz",
+         "prowl",
+         "ninjutsu",
+         "miracle",
+         "split second",
+         "splice",
+         "replicate",
+         "casualty",
+         "offering",
+         "bargain",
+         "plot",
+         "warp",
+         "echo",
+         "cumulative upkeep",
+         "sunburst",
+         "equip",
+         "reconfigure",
+         "crew",
+         "saddle",
+         "station",
+         "level up",
+         "partner",
+         "partner with",
+         "companion",
+         "choose a background",
+         "friends forever",
+         "enchant",
+         "living weapon",
+         "morph",
+         "megamorph",
+         "disguise",
+         "mutate",
+         "bestow",
+         "eternalize",
+         "embalm",
+         "encore",
+         "disturb",
+         "aftermath",
+         "fuse",
+         "dredge",
+         "hideaway",
+         "exploit",
+         "devour",
+         "evolve",
+         "riot",
+         "fabricate",
+         "afterlife",
+         "extort",
+         "landwalk",
+         "gift",
+         "offspring",
+         "squad",
+         "mobilize",
+         "decayed",
+         "prototype",
+         "read ahead",
+         "backup",
+         "craft",
+         "impending",
+         "exhaust",
+         "soulshift",
+         "outlast",
+         "renown",
+         "spectacle",
+         "surge",
+         "cipher",
+         "transfigure",
+         "vanishing",
+         "fading",
+         "phasing",
+         "banding",
+         "umbra armor"
+        ]
+       },
+       {
+        "type": "object",
+        "properties": {
+         "keyword": {
+          "enum": [
+           "hexproof",
+           "shroud",
+           "protection",
+           "ward",
+           "flash",
+           "changeling",
+           "partner",
+           "partner with",
+           "companion",
+           "choose a background",
+           "friends forever",
+           "enchant",
+           "split second",
+           "umbra armor",
+           "banding",
+           "phasing",
+           "crew",
+           "reconfigure",
+           "landwalk"
+          ]
+         },
+         "detail": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "keyword",
+         "detail"
+        ],
+        "additionalProperties": false
+       }
+      ]
      }
     },
     "abilities": {
@@ -12472,7 +16599,11 @@
           "attacking_creatures",
           "equipment_and_auras_attached",
           "number_chosen",
-          "coin_flips_won"
+          "coin_flips_won",
+          "total_power",
+          "permanents_on_battlefield",
+          "commander_identity_colors",
+          "damage_dealt_this_turn"
          ]
         },
         "filter": {
@@ -12505,6 +16636,19 @@
         },
         "max": {
          "type": "integer"
+        },
+        "player": {
+         "enum": [
+          "you",
+          "target_player",
+          "target_opponent",
+          "each_opponent",
+          "each_player",
+          "defending_player",
+          "that_player",
+          "its_controller",
+          "an_opponent"
+         ]
         }
        },
        "required": [
@@ -12593,6 +16737,102 @@
       },
       {
        "const": "X"
+      },
+      {
+       "type": "object",
+       "properties": {
+        "count": {
+         "enum": [
+          "permanents_you_control",
+          "cards_in_hand",
+          "cards_in_graveyard",
+          "cards_in_library",
+          "cards_in_opponent_hand",
+          "devotion",
+          "domain",
+          "converge",
+          "times_kicked",
+          "opponents",
+          "your_life_total",
+          "starting_life_total",
+          "power_of_self",
+          "toughness_of_self",
+          "power_of_that",
+          "greatest_power",
+          "greatest_toughness",
+          "greatest_mana_value",
+          "counters_on_self",
+          "counters_on_that",
+          "colors_among_permanents",
+          "creature_types_among",
+          "spells_cast_this_turn",
+          "cards_drawn_this_turn",
+          "creatures_died_this_turn",
+          "life_gained_this_turn",
+          "damage_dealt_this_way",
+          "life_lost_this_way",
+          "that_much",
+          "mana_value_of_that",
+          "x_paid",
+          "attacking_creatures",
+          "equipment_and_auras_attached",
+          "number_chosen",
+          "coin_flips_won",
+          "total_power",
+          "permanents_on_battlefield",
+          "commander_identity_colors",
+          "damage_dealt_this_turn"
+         ]
+        },
+        "filter": {
+         "$ref": "#/$defs/PermFilter"
+        },
+        "card_filter": {
+         "$ref": "#/$defs/CardFilter"
+        },
+        "colors": {
+         "type": "string",
+         "pattern": "^(?:[WUBRGC]+|any|any_one_color|commander_colors|chosen_color)$"
+        },
+        "kind": {
+         "type": "string"
+        },
+        "times": {
+         "type": "integer"
+        },
+        "plus": {
+         "type": "integer"
+        },
+        "divide": {
+         "type": "integer"
+        },
+        "round": {
+         "enum": [
+          "down",
+          "up"
+         ]
+        },
+        "max": {
+         "type": "integer"
+        },
+        "player": {
+         "enum": [
+          "you",
+          "target_player",
+          "target_opponent",
+          "each_opponent",
+          "each_player",
+          "defending_player",
+          "that_player",
+          "its_controller",
+          "an_opponent"
+         ]
+        }
+       },
+       "required": [
+        "count"
+       ],
+       "additionalProperties": false
       }
      ]
     },
@@ -12804,7 +17044,11 @@
         "attacking_creatures",
         "equipment_and_auras_attached",
         "number_chosen",
-        "coin_flips_won"
+        "coin_flips_won",
+        "total_power",
+        "permanents_on_battlefield",
+        "commander_identity_colors",
+        "damage_dealt_this_turn"
        ]
       },
       "filter": {
@@ -12837,6 +17081,19 @@
       },
       "max": {
        "type": "integer"
+      },
+      "player": {
+       "enum": [
+        "you",
+        "target_player",
+        "target_opponent",
+        "each_opponent",
+        "each_player",
+        "defending_player",
+        "that_player",
+        "its_controller",
+        "an_opponent"
+       ]
       }
      },
      "required": [

@@ -1,0 +1,102 @@
+[
+ {
+  "name": "Long-Term Plans",
+  "mana_cost": "{2}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Search your library for a card, then shuffle and put that card third from the top."
+ },
+ {
+  "name": "Nexus of Fate",
+  "mana_cost": "{5}{U}{U}",
+  "type_line": "Instant",
+  "oracle_text": "Take an extra turn after this one.\nIf Nexus of Fate would be put into a graveyard from anywhere, reveal Nexus of Fate and shuffle it into its owner's library instead."
+ },
+ {
+  "name": "Sword of War and Peace",
+  "mana_cost": "{3}",
+  "type_line": "Artifact — Equipment",
+  "oracle_text": "Equipped creature gets +2/+2 and has protection from red and from white.\nWhenever equipped creature deals combat damage to a player, this Equipment deals damage to that player equal to the number of cards in their hand and you gain 1 life for each card in your hand.\nEquip {2}"
+ },
+ {
+  "name": "The Endstone",
+  "mana_cost": "{7}",
+  "type_line": "Legendary Artifact",
+  "oracle_text": "Whenever you play a land or cast a spell, draw a card.\nAt the beginning of your end step, your life total becomes half your starting life total, rounded up."
+ },
+ {
+  "name": "Approach of the Second Sun",
+  "mana_cost": "{6}{W}",
+  "type_line": "Sorcery",
+  "oracle_text": "If this spell was cast from your hand and you've cast another spell named Approach of the Second Sun this game, you win the game. Otherwise, put Approach of the Second Sun into its owner's library seventh from the top and you gain 7 life."
+ },
+ {
+  "name": "Archfiend of Ifnir",
+  "mana_cost": "{3}{B}{B}",
+  "type_line": "Creature — Demon",
+  "oracle_text": "Flying\nWhenever you cycle or discard another card, put a -1/-1 counter on each creature your opponents control.\nCycling {2} ({2}, Discard this card: Draw a card.)",
+  "power": "5",
+  "toughness": "4"
+ },
+ {
+  "name": "Astral Drift",
+  "mana_cost": "{2}{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever you cycle this card or cycle another card while this enchantment is on the battlefield, you may exile target creature. If you do, return that card to the battlefield under its owner's control at the beginning of the next end step.\nCycling {2}{W} ({2}{W}, Discard this card: Draw a card.)"
+ },
+ {
+  "name": "Deafening Silence",
+  "mana_cost": "{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "Each player can't cast more than one noncreature spell each turn."
+ },
+ {
+  "name": "Grasp of Fate",
+  "mana_cost": "{1}{W}{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "When this enchantment enters, for each opponent, exile up to one target nonland permanent that player controls until this enchantment leaves the battlefield. (Those permanents return under their owners' control.)"
+ },
+ {
+  "name": "Necrodominance",
+  "mana_cost": "{B}{B}{B}",
+  "type_line": "Legendary Enchantment",
+  "oracle_text": "Skip your draw step.\nAt the beginning of your end step, you may pay any amount of life. If you do, draw that many cards.\nYour maximum hand size is five.\nIf a card or token would be put into your graveyard from anywhere, exile it instead."
+ },
+ {
+  "name": "Rule of Law",
+  "mana_cost": "{2}{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "Each player can't cast more than one spell each turn."
+ },
+ {
+  "name": "Solitary Confinement",
+  "mana_cost": "{2}{W}",
+  "type_line": "Enchantment",
+  "oracle_text": "At the beginning of your upkeep, sacrifice this enchantment unless you discard a card.\nSkip your draw step.\nYou have shroud. (You can't be the target of spells or abilities.)\nPrevent all damage that would be dealt to you."
+ },
+ {
+  "name": "Step Through",
+  "mana_cost": "{3}{U}{U}",
+  "type_line": "Sorcery",
+  "oracle_text": "Return two target creatures to their owners' hands.\nWizardcycling {2} ({2}, Discard this card: Search your library for a Wizard card, reveal it, put it into your hand, then shuffle.)"
+ },
+ {
+  "name": "Vedalken Aethermage",
+  "mana_cost": "{1}{U}",
+  "type_line": "Creature — Vedalken Wizard",
+  "oracle_text": "Flash (You may cast this spell any time you could cast an instant.)\nWhen this creature enters, return target Sliver to its owner's hand.\nWizardcycling {3} ({3}, Discard this card: Search your library for a Wizard card, reveal it, put it into your hand, then shuffle.)",
+  "power": "1",
+  "toughness": "2"
+ },
+ {
+  "name": "Cultivate",
+  "mana_cost": "{2}{G}",
+  "type_line": "Sorcery",
+  "oracle_text": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle."
+ },
+ {
+  "name": "Blasphemous Act",
+  "mana_cost": "{8}{R}",
+  "type_line": "Sorcery",
+  "oracle_text": "This spell costs {1} less to cast for each creature on the battlefield.\nBlasphemous Act deals 13 damage to each creature."
+ }
+]

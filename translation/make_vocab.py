@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write translation/prototype/vocabulary.md: every GEF construct with its exact fields and allowed values, generated
+"""Write translation/vocabulary.md: every GEF construct with its exact fields and allowed values, generated
 from translation/gef_schema.py so the translator's reference can't drift from the schema. Required fields end in *.
 
   python3 translation/make_vocab.py
@@ -10,7 +10,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import gef_schema as S                                   # noqa: E402
 
-NAMED = [("Amount", S.AMOUNT), ("Cost", S.COST), ("Mana", S.MANA), ("Target", S.TARGET), ("Token", S.TOKEN),
+NAMED = [("KeywordItem", S.KW_ITEM), ("Keyword", S.KEYWORD), ("Amount", S.AMOUNT), ("Cost", S.COST), ("Mana", S.MANA), ("Target", S.TARGET), ("Token", S.TOKEN),
          ("Player", S.PLAYER), ("Zone", S.ZONE), ("Duration", S.DURATION), ("ColorSet", S.COLORSET), ("ManaCost", S.MANA_COST),
          ("Event", S.EVENT), ("PermFilter", S.PERM_FILTER), ("CardFilter", S.CARD_FILTER)]
 
@@ -43,10 +43,10 @@ def obj_block(title, s, out):
         out.append(f"- `{k}{'*' if k in s.get('required', []) else ''}`: {show(v)}")
 
 def main():
-    out = ["# GEF 0.1 vocabulary (generated from translation/gef_schema.py; do not edit)",
+    out = [f"# GEF {S.VERSION} vocabulary (generated from translation/gef_schema.py; do not edit)",
            "", "Every object is closed: only the fields listed here are allowed. `*` = required. Types refer to the sections below.",
            "Every ability also takes `text` (the Oracle line it translates).",
-           "\n## Card\n", "- `gef`*: '0.1'", "- `name`*: the Oracle name", "- `abilities`: [Ability]  (or `faces`: [{`name`*, `abilities`*}] for cards whose faces both have text)",
+           "\n## Card\n", f"- `gef`*: '{S.VERSION}'", "- `name`*: the Oracle name", "- `abilities`: [Ability]  (or `faces`: [{`name`*, `abilities`*}] for cards whose faces both have text)",
            "- `notes`: string (anything a reviewer should know)", "- `source`: llm | hand | override | parser_export"]
     cases("Abilities", "kind", S.ABILITY_CASES, out)
     cases("Effects", "do", S.EFFECT_CASES, out)
@@ -70,8 +70,11 @@ def main():
     out.append("- Duration: " + ", ".join(S.DURATION["enum"]))
     out.append("- Color set (mana `units`, `colors`): " + S.COLORSET["pattern"] + "  (e.g. \"C\", \"G\", \"WU\" = W or U, \"any\")")
     out.append("- Mana cost strings: " + S.MANA_COST["pattern"] + "  (e.g. \"{2}{U}\", \"{X}{R}\", \"{G/P}\")")
-    out.append("- Keywords (`keyword`): " + ", ".join(S.KEYWORDS))
-    path = os.path.join(HERE, "prototype", "vocabulary.md")
+    out.append("- Keyword: " + ", ".join(S.KEYWORDS))
+    out.append("- KeywordItem (a keyword in `keywords` lists, `grant`): a Keyword, or {`keyword`*, `detail`*} for a silent "
+               "keyword whose quality is part of the text (\"protection from red\" = {\"keyword\": \"protection\", \"detail\": \"red\"})")
+    out.append("- Silent keywords (the only ones that may carry `detail`): " + ", ".join(S.SILENT_KEYWORDS))
+    path = os.path.join(HERE, "vocabulary.md")
     with open(path, "w", encoding="utf-8") as f: f.write("\n".join(out) + "\n")
     print("wrote", os.path.relpath(path, os.path.dirname(HERE)), f"({sum(len(x) for x in out)} chars)")
 

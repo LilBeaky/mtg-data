@@ -1,54 +1,54 @@
 [
- {"gef": "0.1", "name": "Sol Ring", "source": "hand",
+ {"gef": "0.2", "name": "Sol Ring", "source": "hand",
   "abilities": [
    {"kind": "mana", "text": "{T}: Add {C}{C}.", "cost": {"tap": true}, "produce": {"units": ["C", "C"]}}]},
 
- {"gef": "0.1", "name": "Llanowar Elves", "source": "hand",
+ {"gef": "0.2", "name": "Llanowar Elves", "source": "hand",
   "abilities": [
    {"kind": "mana", "text": "{T}: Add {G}.", "cost": {"tap": true}, "produce": {"units": ["G"]}}]},
 
- {"gef": "0.1", "name": "Command Tower", "source": "hand",
+ {"gef": "0.2", "name": "Command Tower", "source": "hand",
   "abilities": [
    {"kind": "mana", "text": "{T}: Add one mana of any color in your commander's color identity.", "cost": {"tap": true},
     "produce": {"units": ["commander_colors"]}}]},
 
- {"gef": "0.1", "name": "Rampant Growth", "source": "hand",
+ {"gef": "0.2", "name": "Rampant Growth", "source": "hand",
   "abilities": [
    {"kind": "spell", "text": "Search your library for a basic land card, put that card onto the battlefield tapped, then shuffle.",
     "effects": [{"do": "tutor", "filter": {"types": ["land"], "supertypes": ["basic"]}, "n": 1, "to": "battlefield_tapped"}]}]},
 
- {"gef": "0.1", "name": "Counterspell", "source": "hand",
+ {"gef": "0.2", "name": "Counterspell", "source": "hand",
   "abilities": [
    {"kind": "spell", "text": "Counter target spell.", "effects": [{"do": "counter_spell"}]}]},
 
- {"gef": "0.1", "name": "Mulldrifter", "source": "hand",
+ {"gef": "0.2", "name": "Mulldrifter", "source": "hand",
   "abilities": [
    {"kind": "keyword", "text": "Flying", "keyword": "flying"},
    {"kind": "triggered", "text": "When this creature enters, draw two cards.", "event": {"on": "enters", "subject": "self"},
     "effects": [{"do": "draw", "n": 2}]},
    {"kind": "keyword", "text": "Evoke {2}{U}", "keyword": "evoke", "cost": "{2}{U}"}]},
 
- {"gef": "0.1", "name": "Krenko, Mob Boss", "source": "hand",
+ {"gef": "0.2", "name": "Krenko, Mob Boss", "source": "hand",
   "abilities": [
    {"kind": "activated", "text": "{T}: Create X 1/1 red Goblin creature tokens, where X is the number of Goblins you control.",
     "cost": {"tap": true},
     "effects": [{"do": "token", "n": {"count": "permanents_you_control", "filter": {"subtypes": ["Goblin"]}},
                  "token": {"types": ["creature"], "subtypes": ["Goblin"], "colors": ["R"], "power": 1, "toughness": 1}}]}]},
 
- {"gef": "0.1", "name": "Skullclamp", "source": "hand",
+ {"gef": "0.2", "name": "Skullclamp", "source": "hand",
   "abilities": [
    {"kind": "static", "text": "Equipped creature gets +1/-1.", "effect": {"static": "attached_bonus", "power": 1, "toughness": -1}},
    {"kind": "triggered", "text": "Whenever equipped creature dies, draw two cards.", "event": {"on": "dies", "subject": "equipped"},
     "effects": [{"do": "draw", "n": 2}]},
    {"kind": "keyword", "text": "Equip {1}", "keyword": "equip", "cost": "{1}"}]},
 
- {"gef": "0.1", "name": "Rhystic Study", "source": "hand",
+ {"gef": "0.2", "name": "Rhystic Study", "source": "hand",
   "abilities": [
    {"kind": "triggered", "text": "Whenever an opponent casts a spell, you may draw a card unless that player pays {1}.",
     "event": {"on": "opponent_casts"}, "optional": true,
     "effects": [{"do": "unless_opponent_pays", "cost": "{1}", "effects": [{"do": "draw", "n": 1}]}]}]},
 
- {"gef": "0.1", "name": "Kiki-Jiki, Mirror Breaker", "source": "hand",
+ {"gef": "0.2", "name": "Kiki-Jiki, Mirror Breaker", "source": "hand",
   "abilities": [
    {"kind": "keyword", "text": "Haste", "keyword": "haste"},
    {"kind": "activated", "text": "{T}: Create a token that's a copy of target nonlegendary creature you control, except it has haste. Sacrifice it at the beginning of the next end step.",
@@ -56,7 +56,7 @@
     "effects": [{"do": "copy_token", "of": {"ref": "target", "filter": {"types": ["creature"], "supertypes": ["nonlegendary"], "controller": "you"}},
                  "n": 1, "haste": true, "at_end_step": "sacrifice"}]}]},
 
- {"gef": "0.1", "name": "Urza's Saga", "source": "hand",
+ {"gef": "0.2", "name": "Urza's Saga", "source": "hand",
   "abilities": [
    {"kind": "chapter", "text": "I — This Saga gains \"{T}: Add {C}.\"", "chapters": [1],
     "effects": [{"do": "grant", "what": {"ref": "self"}, "duration": "permanent",
@@ -73,7 +73,7 @@
    {"kind": "chapter", "text": "III — Search your library for an artifact card with mana cost {0} or {1}, put it onto the battlefield, then shuffle.", "chapters": [3],
     "effects": [{"do": "tutor", "filter": {"types": ["artifact"], "mana_cost_any_of": ["{0}", "{1}"]}, "n": 1, "to": "battlefield"}]}]},
 
- {"gef": "0.1", "name": "Caretaker's Talent", "source": "hand",
+ {"gef": "0.2", "name": "Caretaker's Talent", "source": "hand",
   "abilities": [
    {"kind": "triggered", "text": "Whenever one or more tokens you control enter, draw a card. This ability triggers only once each turn.",
     "event": {"on": "enters", "subject": {"token": true, "controller": "you"}, "one_or_more": true}, "once_per_turn": true,
@@ -86,7 +86,7 @@
     "abilities": [{"kind": "static", "text": "Creature tokens you control get +2/+2.",
                    "effect": {"static": "anthem", "filter": {"types": ["creature"], "token": true, "controller": "you"}, "power": 2, "toughness": 2}}]}]},
 
- {"gef": "0.1", "name": "Yusri, Fortune's Flame", "source": "hand",
+ {"gef": "0.2", "name": "Yusri, Fortune's Flame", "source": "hand",
   "abilities": [
    {"kind": "keyword", "text": "Flying", "keyword": "flying"},
    {"kind": "triggered", "text": "Whenever Yusri attacks, choose a number between 1 and 5. Flip that many coins. For each flip you win, draw a card. For each flip you lose, Yusri deals 2 damage to you. If you won five flips this way, you may cast spells from your hand this turn without paying their mana costs.",
@@ -98,31 +98,31 @@
      {"do": "if", "cond": {"if": "amount_at_least", "amount": {"count": "coin_flips_won"}, "n": 5},
       "then": [{"do": "free_cast_permission", "spells": {"any": true}, "from": "hand", "duration": "end_of_turn"}]}]}]},
 
- {"gef": "0.1", "name": "Astral Slide", "source": "hand",
+ {"gef": "0.2", "name": "Astral Slide", "source": "hand",
   "abilities": [
    {"kind": "triggered", "text": "Whenever a player cycles a card, you may exile target creature. If you do, return that card to the battlefield under its owner's control at the beginning of the next end step.",
     "event": {"on": "cycle", "who": "each_player"}, "optional": true,
     "effects": [{"do": "flicker", "what": {"ref": "target", "filter": {"types": ["creature"]}}, "returns": "next_end_step"}]}]},
 
- {"gef": "0.1", "name": "Gifts Ungiven", "source": "hand",
+ {"gef": "0.2", "name": "Gifts Ungiven", "source": "hand",
   "notes": "Not representable as written: which two cards you keep is an opponent's choice. A goldfish needs a stand-in (for example: they give you the two worst of four); GEF 0.1 has no construct for an opponent's pile or pick, so the line is a format gap.",
   "abilities": [
    {"kind": "unexpressible", "text": "Search your library for up to four cards with different names and reveal them. Target opponent chooses two of those cards. Put the chosen cards into your graveyard and the rest into your hand. Then shuffle.",
     "reason": "an opponent picks which two of the four you keep; needs an opponent-choice stand-in", "scope": "format_gap"}]},
 
- {"gef": "0.1", "name": "Mindslaver", "source": "hand",
+ {"gef": "0.2", "name": "Mindslaver", "source": "hand",
   "notes": "Not representable: a goldfish's opponents take no turns of their own to control.",
   "abilities": [
    {"kind": "unexpressible", "text": "{4}, {T}, Sacrifice Mindslaver: You control target player during that player's next turn.",
     "reason": "controls an opponent's turn; opponents make no decisions in a goldfish", "scope": "out_of_scope"}]},
 
- {"gef": "0.1", "name": "Council's Judgment", "source": "hand",
+ {"gef": "0.2", "name": "Council's Judgment", "source": "hand",
   "notes": "Not representable: the result is decided by the other players' votes.",
   "abilities": [
    {"kind": "unexpressible", "text": "Will of the council — Starting with you, each player votes for a nonland permanent you don't control. Exile each permanent with the most votes or tied for most votes.",
     "reason": "a vote among players decides which opposing permanents are exiled", "scope": "out_of_scope"}]},
 
- {"gef": "0.1", "name": "Karn Liberated", "source": "hand",
+ {"gef": "0.2", "name": "Karn Liberated", "source": "hand",
   "notes": "+4 is hand disruption against an opponent (out of scope); -3 is removal (read, aimed at --blockers); -14 restarts the game, which GEF can't say.",
   "abilities": [
    {"kind": "loyalty", "text": "+4: Target player exiles a card from their hand.", "cost": 4,

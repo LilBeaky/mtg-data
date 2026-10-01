@@ -7,7 +7,7 @@ What is here, and how it was made. The write-up is `docs/TRANSLATION_T2.md`.
 | `cards.json` | The 300 cards, in order, with where each came from (`deck` / `pool`) and the parser's status at selection time. Made by `translation/t2_select.py`. |
 | `batches/batch_NN.json` | Translator input: name, mana cost, type line, Oracle text, P/T, loyalty, faces. No parser readings. |
 | `prompt.md` | The translator instructions (v1), used unchanged for all 12 batches. |
-| `vocabulary.md` | Every construct and allowed value, generated from the schema by `translation/make_vocab.py`. |
+| `vocabulary.md` | Every GEF 0.1 construct and allowed value, as the T2 translators saw it (frozen; `translation/make_vocab.py` now writes the current one to `translation/vocabulary.md`). `prompt.md` is frozen at v1 the same way (v2 is `translation/prompt.md`). |
 | `out/batch_NN.json` | First-pass translations, exactly as the translators wrote them. |
 | `out/retry_01.json` | Retry of the 3 genuine rejects, with the validator's errors in the task. |
 | `compare.json`, `review.md` | `translation/t2_compare.py`: parser reading vs translation per card (status + effect/event/keyword signatures). `review.md` is the side-by-side sheet for the 124 flagged cards. |

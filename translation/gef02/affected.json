@@ -1,0 +1,156 @@
+{
+ "Klauth, Unrivaled Ancient": [
+  "new construct: count total_power (attacking)"
+ ],
+ "Balefire Dragon": [
+  "new construct: filter controller that_player"
+ ],
+ "Blast-Furnace Hellkite": [
+  "0.2 rejects the 0.1 translation: $.abilities[0]: 'detail' is only for silent keywords ('offering' isn't one): say it with filter/card_filter/cost/n, or m",
+  "T2 audit: conservative"
+ ],
+ "Breaching Dragonstorm": [
+  "T2 audit: conservative"
+ ],
+ "Knollspine Dragon": [
+  "new construct: count damage_dealt_this_turn"
+ ],
+ "Mosswort Bridge": [
+  "new construct: count total_power (condition)"
+ ],
+ "Spinerock Knoll": [
+  "new construct: count damage_dealt_this_turn (condition)"
+ ],
+ "Chaos Warp": [
+  "T2 audit: conservative"
+ ],
+ "Commander's Plate": [
+  "0.2 rejects the 0.1 translation: $.abilities[1]: 'detail' is only for silent keywords ('equip' isn't one): say it with filter/card_filter/cost/n, or mark",
+  "T2 audit: freetext"
+ ],
+ "Counterbalance": [
+  "T2 audit: conservative"
+ ],
+ "Edgar, King of Figaro": [
+  "0.2 rejects the 0.1 translation: $.abilities[1].effect.static: 'replacement' is not one of anthem, attached_bonus, grant_abilities, cost_reduction, cost_",
+  "T2 audit: freetext"
+ ],
+ "Ethereal Usher": [
+  "0.2 rejects the 0.1 translation: $.abilities[0].effects[0].keywords[0]: matches none of the allowed forms ($.abilities[0].effects[0].keywords[0]: \"can't ",
+  "T2 audit: freetext"
+ ],
+ "Invert Polarity": [
+  "T2 audit: conservative"
+ ],
+ "Jace, Wielder of Mysteries": [
+  "0.2 rejects the 0.1 translation: $.abilities[0].effect.static: 'replacement' is not one of anthem, attached_bonus, grant_abilities, cost_reduction, cost_",
+  "T2 audit: freetext"
+ ],
+ "Krark's Thumb": [
+  "0.2 rejects the 0.1 translation: $.abilities[0].effect.static: 'replacement' is not one of anthem, attached_bonus, grant_abilities, cost_reduction, cost_",
+  "T2 audit: freetext"
+ ],
+ "Library of Leng": [
+  "0.2 rejects the 0.1 translation: $.abilities[1].effect.static: 'replacement' is not one of anthem, attached_bonus, grant_abilities, cost_reduction, cost_",
+  "T2 audit: freetext"
+ ],
+ "Long-Term Plans": [
+  "new construct: tutor position"
+ ],
+ "Nexus of Fate": [
+  "0.2 rejects the 0.1 translation: $.abilities[1].effect.static: 'replacement' is not one of anthem, attached_bonus, grant_abilities, cost_reduction, cost_",
+  "T2 audit: freetext"
+ ],
+ "Sword of War and Peace": [
+  "0.2 rejects the 0.1 translation: $.abilities[0].effect.keywords[0]: matches none of the allowed forms ($.abilities[0].effect.keywords[0]: 'protection fro"
+ ],
+ "The Endstone": [
+  "new construct: event play_land"
+ ],
+ "Approach of the Second Sun": [
+  "new construct: self_to_library position"
+ ],
+ "Archfiend of Ifnir": [
+  "T2 audit: conservative"
+ ],
+ "Astral Drift": [
+  "T2 audit: wrong",
+  "new construct: T2 misread (cycle trigger from hand)"
+ ],
+ "Deafening Silence": [
+  "0.2 rejects the 0.1 translation: $.abilities[0].effect.static: 'restriction' is not one of anthem, attached_bonus, grant_abilities, cost_reduction, cost_",
+  "T2 audit: freetext"
+ ],
+ "Grasp of Fate": [
+  "T2 audit: wrong",
+  "new construct: target for_each opponent (T2 misread)"
+ ],
+ "Necrodominance": [
+  "0.2 rejects the 0.1 translation: $.abilities[0].effect.static: 'restriction' is not one of anthem, attached_bonus, grant_abilities, cost_reduction, cost_",
+  "T2 audit: freetext"
+ ],
+ "Rule of Law": [
+  "0.2 rejects the 0.1 translation: $.abilities[0].effect.static: 'restriction' is not one of anthem, attached_bonus, grant_abilities, cost_reduction, cost_",
+  "T2 audit: freetext"
+ ],
+ "Solitary Confinement": [
+  "0.2 rejects the 0.1 translation: $.abilities[1].effect.static: 'restriction' is not one of anthem, attached_bonus, grant_abilities, cost_reduction, cost_",
+  "T2 audit: freetext"
+ ],
+ "Step Through": [
+  "0.2 rejects the 0.1 translation: $.abilities[1]: 'detail' is only for silent keywords ('typecycling' isn't one): say it with filter/card_filter/cost/n, o"
+ ],
+ "Vedalken Aethermage": [
+  "0.2 rejects the 0.1 translation: $.abilities[2]: 'detail' is only for silent keywords ('typecycling' isn't one): say it with filter/card_filter/cost/n, o"
+ ],
+ "Cultivate": [
+  "new construct: tutor split"
+ ],
+ "Blasphemous Act": [
+  "new construct: count permanents_on_battlefield"
+ ],
+ "Kodama's Reach": [
+  "new construct: tutor split"
+ ],
+ "Victimize": [
+  "T2 audit: conservative"
+ ],
+ "Roaming Throne": [
+  "new construct: choose_on_enter, type_grant self + add_chosen_type"
+ ],
+ "War Room": [
+  "new construct: count commander_identity_colors"
+ ],
+ "Ponder": [
+  "T2 audit: conservative"
+ ],
+ "Delighted Halfling": [
+  "T2 audit: conservative"
+ ],
+ "Herald's Horn": [
+  "new construct: choose_on_enter"
+ ],
+ "Sink into Stupor // Soporific Springs": [
+  "0.2 rejects the 0.1 translation: $.faces[1].abilities[0].effect.static: 'replacement' is not one of anthem, attached_bonus, grant_abilities, cost_reducti",
+  "T2 audit: freetext"
+ ],
+ "Gemstone Caverns": [
+  "T2 audit: conservative"
+ ],
+ "Boros Charm": [
+  "T2 audit: conservative"
+ ],
+ "Hardened Scales": [
+  "0.2 rejects the 0.1 translation: $.abilities[0].effect.static: 'replacement' is not one of anthem, attached_bonus, grant_abilities, cost_reduction, cost_",
+  "T2 audit: freetext"
+ ],
+ "Akroma's Will": [
+  "0.2 rejects the 0.1 translation: $.abilities[0].effects[0].then[0].modes[1][0].keywords[2]: matches none of the allowed forms ($.abilities[0].effects[0]."
+ ],
+ "Fell the Profane // Fell Mire": [
+  "new construct: enters_tapped unless_pay"
+ ],
+ "Patchwork Banner": [
+  "new construct: choose_on_enter"
+ ]
+}

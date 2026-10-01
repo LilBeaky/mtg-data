@@ -112,3 +112,45 @@ The "today" column uses the validator's engine-support tables, which work per co
 3. **Engine features in greedy order,** each with a unit.
 4. **Fix the 10 parser misreads** in the meantime. They are wrong today whether or not GEF ever ships.
 5. **Translate per deck as decks are built.** Revisit full-pool translation only if the per-deck error rate stays at or below 1% over two or three more decks.
+
+## T3 step 1: GEF 0.2 (session 5)
+
+What changed is in `docs/GOLDFISH_EFFECT_FORMAT.md` ("Changes in 0.2"). The run is in `translation/gef02/` (see its README). Every number below comes from the GEF 0.2 section of `translation/t2_report.py`.
+
+**Exit check: passed.** All 300 T2 cards validate as 0.2, the free-text count is 0 (the free-text statics no longer exist in the schema), and the 18 T1 examples still pass.
+
+**What was re-translated.** 46 cards, chosen by `translation/gef02.py affected`:
+- the 18 whose 0.1 translations 0.2 rejects (free-text statics, non-enum pump keywords, `detail` on equip/typecycling/offering);
+- the cards T2's audit called freetext, conservative or wrong;
+- the gap cards a new construct targets.
+
+The other 254 moved over mechanically: version bump, and `lab_man` renamed. The run is three Sonnet subagents with prompt v2, then a 4-card retry.
+
+**Audit of all 46 by hand:**
+- **First pass: 44 correct, 2 wrong.** Mosswort Bridge and Spinerock Knoll wrote "play the exiled card" as `cast_free` of any card in exile. That loosens the hideaway card to any exiled card, and "play" to "cast".
+- **Two validator changes during the run**, both reported here rather than hidden:
+  - The new lint was too narrow. It rejected Sword of War and Peace's `player` on `cards_in_opponent_hand`, which is the precise reading, so the lint now allows it.
+  - Herald's Horn left `whose` off its upkeep trigger. All 300 T2 cards write it, but nothing required it. A beginning-of-phase event now needs `whose`, and Herald's Horn was the only card that failed.
+- **Retry:** those 4 plus War Room, after `pay_life` became an Amount. All 46 correct after the retry. 0 audit-wrong translations remain in the 0.2 set; T2's three are fixed (Astral Drift, Grasp of Fate) or were already fixed by T2's retry (Requisition Raid).
+- **All 11 over-cautious cards now read** as the T2 audit said they should. Caveat: the format doc's new "Which scope?" section uses those same cards as its examples, as the plan asked, so this isn't a blind test of prompt v2. The 4.3% first-pass misread rate is also not comparable with T2's 1.0%. These 46 were picked for being the hard cards. The next new deck is the first clean measurement.
+
+**Results** (fully read = modeled/held/vacuum/override, or `land`):
+
+| | GEF 0.1 (T2) | GEF 0.2 |
+|---|---|---|
+| Cards with a real format gap | 69 | 57 |
+| Fully read, expressed (all 300) | 213 | 244 |
+| Fully read, today (all 300) | 178 | 180 |
+| Klauth, expressed | 47/73 (64.4%) | 51 (69.9%) |
+| Yusri, expressed | 46/69 (66.7%) | 56 (81.2%) |
+| Zur, expressed | 51/68 (75.0%) | 58 (85.3%) |
+| Klauth / Yusri / Zur, today | 34 / 35 / 44 | 33 / 36 / 41 |
+
+- **Expressed** passes the plan's ≈69% target on all three decks, with 0 audit-wrong reads among those cards. That is still what the engine *would* read once the adapter and features exist (steps 2–3).
+- **Today went down on two decks, and that's the honesty fix, not a regression:**
+  - The validator's support tables now work per field, so 11 lands moved `land` → `land*`: battle lands, Cinder Glade, Mystic Sanctuary, recursion to the library top, Urborg/Yavimaya. That's the "validator optimism" this doc flagged.
+  - Grasp of Fate's 0.1 misread used to count as `modeled`. Its honest read needs an engine feature (a target for each opponent).
+  - Commander's Plate's equip-commander is now a field the engine doesn't run.
+- **Greedy engine ranking for step 3** (deck cards, 0.2): flicker 5, untap 3, conditional enters-tapped 3, recursion to the library top 3, storm 2, put-from-hand 2, coin-flip rule 2, spell limit 2, then coin flips (4 with the coin-flip-won event). The 0.2 constructs and the per-field rows (enters-tapped, library-top recursion) now show up in it. The plan's step-3 order should be re-ranked from this list.
+
+**Parser misreads.** The 20 `t2_misreads` cards are pinned by three unit checks in `tests/goldfish_units.py`, which fail with `t2_misreads` turned off. The parser headline is unchanged: goldfish.py wasn't touched.

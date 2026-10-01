@@ -1,0 +1,47 @@
+[
+ {"gef": "0.2", "name": "Herald's Horn", "source": "llm",
+  "notes": "The upkeep line is a look at one card that keeps it on top unless it is a creature of the chosen type, which goes to hand (revealed); 'you may' is the take.",
+  "abilities": [
+   {"kind": "static", "text": "As this artifact enters, choose a creature type.",
+    "effect": {"static": "choose_on_enter", "choice": "creature_type"}},
+   {"kind": "static", "text": "Creature spells you cast of the chosen type cost {1} less to cast.",
+    "effect": {"static": "cost_reduction", "spells": {"types": ["creature"], "chosen_type": true}, "amount": 1}},
+   {"kind": "triggered", "text": "At the beginning of your upkeep, look at the top card of your library. If it's a creature card of the chosen type, you may reveal it and put it into your hand.",
+    "event": {"on": "upkeep", "whose": "your"},
+    "effects": [{"do": "look", "n": 1, "take": 1, "filter": {"types": ["creature"], "chosen_type": true}, "to": "hand", "rest": "top", "reveal": true}]}]},
+
+ {"gef": "0.2", "name": "Mosswort Bridge", "source": "llm",
+  "notes": "Playing the one card Hideaway exiled has no construct (cast_free of any exiled card would loosen it to any card and skip the land play), so that effect is a format gap; the power condition is kept.",
+  "abilities": [
+   {"kind": "keyword", "text": "Hideaway 4", "keyword": "hideaway", "n": 4},
+   {"kind": "static", "text": "This land enters tapped.", "effect": {"static": "enters_tapped"}},
+   {"kind": "mana", "text": "{T}: Add {G}.", "cost": {"tap": true}, "produce": {"units": ["G"]}},
+   {"kind": "activated", "text": "{G}, {T}: You may play the exiled card without paying its mana cost if creatures you control have total power 10 or greater.",
+    "cost": {"mana": "{G}", "tap": true},
+    "effects": [{"do": "if",
+                 "cond": {"if": "amount_at_least", "amount": {"count": "total_power", "filter": {"types": ["creature"], "controller": "you"}}, "n": 10},
+                 "then": [{"do": "unexpressible", "text": "You may play the exiled card without paying its mana cost.",
+                           "reason": "no construct names the one card exiled by Hideaway, and playing it can be a land play",
+                           "scope": "format_gap"}]}]}]},
+
+ {"gef": "0.2", "name": "Spinerock Knoll", "source": "llm",
+  "notes": "Playing the one card Hideaway exiled has no construct (cast_free of any exiled card would loosen it to any card and skip the land play), so that effect is a format gap; the damage condition is kept.",
+  "abilities": [
+   {"kind": "keyword", "text": "Hideaway 4", "keyword": "hideaway", "n": 4},
+   {"kind": "static", "text": "This land enters tapped.", "effect": {"static": "enters_tapped"}},
+   {"kind": "mana", "text": "{T}: Add {R}.", "cost": {"tap": true}, "produce": {"units": ["R"]}},
+   {"kind": "activated", "text": "{R}, {T}: You may play the exiled card without paying its mana cost if an opponent was dealt 7 or more damage this turn.",
+    "cost": {"mana": "{R}", "tap": true},
+    "effects": [{"do": "if",
+                 "cond": {"if": "amount_at_least", "amount": {"count": "damage_dealt_this_turn", "player": "an_opponent"}, "n": 7},
+                 "then": [{"do": "unexpressible", "text": "You may play the exiled card without paying its mana cost.",
+                           "reason": "no construct names the one card exiled by Hideaway, and playing it can be a land play",
+                           "scope": "format_gap"}]}]}]},
+
+ {"gef": "0.2", "name": "War Room", "source": "llm",
+  "abilities": [
+   {"kind": "mana", "text": "{T}: Add {C}.", "cost": {"tap": true}, "produce": {"units": ["C"]}},
+   {"kind": "activated", "text": "{3}, {T}, Pay life equal to the number of colors in your commanders' color identity: Draw a card.",
+    "cost": {"mana": "{3}", "tap": true, "pay_life": {"count": "commander_identity_colors"}},
+    "effects": [{"do": "draw", "n": 1}]}]}
+]

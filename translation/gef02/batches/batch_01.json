@@ -1,0 +1,109 @@
+[
+ {
+  "name": "Klauth, Unrivaled Ancient",
+  "mana_cost": "{5}{R}{G}",
+  "type_line": "Legendary Creature — Dragon",
+  "oracle_text": "Flying, haste\nWhenever Klauth attacks, add X mana in any combination of colors, where X is the total power of attacking creatures. Spend this mana only to cast spells. Until end of turn, you don't lose this mana as steps and phases end.",
+  "power": "4",
+  "toughness": "4"
+ },
+ {
+  "name": "Balefire Dragon",
+  "mana_cost": "{5}{R}{R}",
+  "type_line": "Creature — Dragon",
+  "oracle_text": "Flying\nWhenever this creature deals combat damage to a player, it deals that much damage to each creature that player controls.",
+  "power": "6",
+  "toughness": "6"
+ },
+ {
+  "name": "Blast-Furnace Hellkite",
+  "mana_cost": "{7}{R}{R}",
+  "type_line": "Creature — Dragon",
+  "oracle_text": "Artifact offering (You may cast this spell as though it had flash by sacrificing an artifact and paying the difference in mana costs between this and the sacrificed artifact. Mana cost includes color.)\nFlying, double strike\nCreatures attacking your opponents have double strike.",
+  "power": "5",
+  "toughness": "5"
+ },
+ {
+  "name": "Breaching Dragonstorm",
+  "mana_cost": "{4}{R}",
+  "type_line": "Enchantment",
+  "oracle_text": "When this enchantment enters, exile cards from the top of your library until you exile a nonland card. You may cast it without paying its mana cost if that spell's mana value is 8 or less. If you don't, put that card into your hand.\nWhen a Dragon you control enters, return this enchantment to its owner's hand."
+ },
+ {
+  "name": "Knollspine Dragon",
+  "mana_cost": "{5}{R}{R}",
+  "type_line": "Creature — Dragon",
+  "oracle_text": "Flying\nWhen this creature enters, you may discard your hand and draw cards equal to the damage dealt to target opponent this turn.",
+  "power": "7",
+  "toughness": "5"
+ },
+ {
+  "name": "Mosswort Bridge",
+  "type_line": "Land",
+  "oracle_text": "Hideaway 4 (When this land enters, look at the top four cards of your library, exile one face down, then put the rest on the bottom in a random order.)\nThis land enters tapped.\n{T}: Add {G}.\n{G}, {T}: You may play the exiled card without paying its mana cost if creatures you control have total power 10 or greater."
+ },
+ {
+  "name": "Spinerock Knoll",
+  "type_line": "Land",
+  "oracle_text": "Hideaway 4 (When this land enters, look at the top four cards of your library, exile one face down, then put the rest on the bottom in a random order.)\nThis land enters tapped.\n{T}: Add {R}.\n{R}, {T}: You may play the exiled card without paying its mana cost if an opponent was dealt 7 or more damage this turn."
+ },
+ {
+  "name": "Chaos Warp",
+  "mana_cost": "{2}{R}",
+  "type_line": "Instant",
+  "oracle_text": "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield."
+ },
+ {
+  "name": "Commander's Plate",
+  "mana_cost": "{1}",
+  "type_line": "Artifact — Equipment",
+  "oracle_text": "Equipped creature gets +3/+3 and has protection from each color that's not in your commander's color identity.\nEquip commander {3}\nEquip {5}"
+ },
+ {
+  "name": "Counterbalance",
+  "mana_cost": "{U}{U}",
+  "type_line": "Enchantment",
+  "oracle_text": "Whenever an opponent casts a spell, you may reveal the top card of your library. If you do, counter that spell if it has the same mana value as the revealed card."
+ },
+ {
+  "name": "Edgar, King of Figaro",
+  "mana_cost": "{4}{U}{U}",
+  "type_line": "Legendary Creature — Human Artificer Noble",
+  "oracle_text": "When Edgar enters, draw a card for each artifact you control.\nTwo-Headed Coin — The first time you flip one or more coins each turn, those coins come up heads and you win those flips.",
+  "power": "4",
+  "toughness": "5"
+ },
+ {
+  "name": "Ethereal Usher",
+  "mana_cost": "{5}{U}",
+  "type_line": "Creature — Spirit",
+  "oracle_text": "{U}, {T}: Target creature can't be blocked this turn.\nTransmute {1}{U}{U} ({1}{U}{U}, Discard this card: Search your library for a card with the same mana value as this card, reveal it, put it into your hand, then shuffle. Transmute only as a sorcery.)",
+  "power": "2",
+  "toughness": "3"
+ },
+ {
+  "name": "Invert Polarity",
+  "mana_cost": "{U}{U}{R}",
+  "type_line": "Instant",
+  "oracle_text": "Choose target spell, then flip a coin. If you win the flip, gain control of that spell and you may choose new targets for it. If you lose the flip, counter that spell."
+ },
+ {
+  "name": "Jace, Wielder of Mysteries",
+  "mana_cost": "{1}{U}{U}{U}",
+  "type_line": "Legendary Planeswalker — Jace",
+  "oracle_text": "If you would draw a card while your library has no cards in it, you win the game instead.\n+1: Target player mills two cards. Draw a card.\n−8: Draw seven cards. Then if your library has no cards in it, you win the game.",
+  "loyalty": "4"
+ },
+ {
+  "name": "Krark's Thumb",
+  "mana_cost": "{2}",
+  "type_line": "Legendary Artifact",
+  "oracle_text": "If you would flip a coin, instead flip two coins and ignore one."
+ },
+ {
+  "name": "Library of Leng",
+  "mana_cost": "{1}",
+  "type_line": "Artifact",
+  "oracle_text": "You have no maximum hand size.\nIf an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard."
+ }
+]

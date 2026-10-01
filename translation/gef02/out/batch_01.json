@@ -1,0 +1,140 @@
+[
+ {"gef": "0.2", "name": "Klauth, Unrivaled Ancient", "source": "llm",
+  "notes": "The mana is read with the total_power count and the cast-only restriction; the sentence that the mana doesn't empty as steps and phases end has no construct, so that clause alone is a format_gap.",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying, haste", "keyword": "flying"},
+   {"kind": "keyword", "text": "Flying, haste", "keyword": "haste"},
+   {"kind": "triggered", "text": "Whenever Klauth attacks, add X mana in any combination of colors, where X is the total power of attacking creatures. Spend this mana only to cast spells. Until end of turn, you don't lose this mana as steps and phases end.",
+    "event": {"on": "attacks", "subject": "self"},
+    "effects": [
+     {"do": "mana", "produce": {"units": ["any"], "amount": {"count": "total_power", "filter": {"attacking": true}}, "any_combination": true, "restrict": "spend this mana only to cast spells"}},
+     {"do": "unexpressible", "text": "Until end of turn, you don't lose this mana as steps and phases end.", "reason": "mana that persists through steps and phases has no construct", "scope": "format_gap"}]}]},
+
+ {"gef": "0.2", "name": "Balefire Dragon", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "triggered", "text": "Whenever this creature deals combat damage to a player, it deals that much damage to each creature that player controls.",
+    "event": {"on": "combat_damage_to_player", "subject": "self"},
+    "effects": [{"do": "damage", "n": {"count": "that_much"}, "to": "each_creature", "source": "self", "filter": {"controller": "that_player"}}]}]},
+
+ {"gef": "0.2", "name": "Blast-Furnace Hellkite", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Artifact offering", "keyword": "offering", "filter": {"types": ["artifact"]}},
+   {"kind": "keyword", "text": "Flying, double strike", "keyword": "flying"},
+   {"kind": "keyword", "text": "Flying, double strike", "keyword": "double strike"},
+   {"kind": "static", "text": "Creatures attacking your opponents have double strike.",
+    "effect": {"static": "anthem", "filter": {"types": ["creature"], "attacking": true}, "keywords": ["double strike"]}}]},
+
+ {"gef": "0.2", "name": "Breaching Dragonstorm", "source": "llm",
+  "notes": "The 'you may cast it' choice is not separate from the else branch: the effect casts it free when its mana value is 8 or less and puts it into hand otherwise; declining to cast (also to hand) is the pilot's choice and isn't modeled.",
+  "abilities": [
+   {"kind": "triggered", "text": "When this enchantment enters, exile cards from the top of your library until you exile a nonland card. You may cast it without paying its mana cost if that spell's mana value is 8 or less. If you don't, put that card into your hand.",
+    "event": {"on": "enters", "subject": "self"},
+    "effects": [
+     {"do": "reveal_until", "filter": {"non_types": ["land"]}, "rest": "exile",
+      "then": [
+       {"do": "if", "cond": {"if": "not", "cond": {"if": "amount_at_least", "amount": {"count": "mana_value_of_that"}, "n": 9}},
+        "then": [{"do": "cast_free", "filter": {"any": true}, "from": "exile"}],
+        "else": [{"do": "recur", "filter": {"any": true}, "n": 1, "to": "hand", "from": "exile"}]}]}]},
+   {"kind": "triggered", "text": "When a Dragon you control enters, return this enchantment to its owner's hand.",
+    "event": {"on": "enters", "subject": {"subtypes": ["Dragon"], "controller": "you"}},
+    "effects": [{"do": "bounce_self"}]}]},
+
+ {"gef": "0.2", "name": "Knollspine Dragon", "source": "llm",
+  "abilities": [
+   {"kind": "keyword", "text": "Flying", "keyword": "flying"},
+   {"kind": "triggered", "text": "When this creature enters, you may discard your hand and draw cards equal to the damage dealt to target opponent this turn.",
+    "event": {"on": "enters", "subject": "self"}, "optional": true,
+    "effects": [
+     {"do": "discard", "n": "hand", "who": "you"},
+     {"do": "draw", "n": {"count": "damage_dealt_this_turn", "player": "target_opponent"}, "who": "you"}]}]},
+
+ {"gef": "0.2", "name": "Mosswort Bridge", "source": "llm",
+  "notes": "The hideaway card is referred to as 'the exiled card' and played, not just cast; expressed as cast_free from exile since the format has no play-from-exile or card-memory construct.",
+  "abilities": [
+   {"kind": "keyword", "text": "Hideaway 4", "keyword": "hideaway", "n": 4},
+   {"kind": "static", "text": "This land enters tapped.", "effect": {"static": "enters_tapped"}},
+   {"kind": "mana", "text": "{T}: Add {G}.", "cost": {"tap": true}, "produce": {"units": ["G"]}},
+   {"kind": "activated", "text": "{G}, {T}: You may play the exiled card without paying its mana cost if creatures you control have total power 10 or greater.",
+    "cost": {"mana": "{G}", "tap": true},
+    "effects": [
+     {"do": "if", "cond": {"if": "amount_at_least", "amount": {"count": "total_power", "filter": {"types": ["creature"]}}, "n": 10},
+      "then": [{"do": "cast_free", "filter": {"any": true}, "from": "exile"}]}]}]},
+
+ {"gef": "0.2", "name": "Spinerock Knoll", "source": "llm",
+  "notes": "The hideaway card is referred to as 'the exiled card' and played, not just cast; expressed as cast_free from exile since the format has no play-from-exile or card-memory construct.",
+  "abilities": [
+   {"kind": "keyword", "text": "Hideaway 4", "keyword": "hideaway", "n": 4},
+   {"kind": "static", "text": "This land enters tapped.", "effect": {"static": "enters_tapped"}},
+   {"kind": "mana", "text": "{T}: Add {R}.", "cost": {"tap": true}, "produce": {"units": ["R"]}},
+   {"kind": "activated", "text": "{R}, {T}: You may play the exiled card without paying its mana cost if an opponent was dealt 7 or more damage this turn.",
+    "cost": {"mana": "{R}", "tap": true},
+    "effects": [
+     {"do": "if", "cond": {"if": "amount_at_least", "amount": {"count": "damage_dealt_this_turn", "player": "an_opponent"}, "n": 7},
+      "then": [{"do": "cast_free", "filter": {"any": true}, "from": "exile"}]}]}]},
+
+ {"gef": "0.2", "name": "Chaos Warp", "source": "llm",
+  "notes": "Tuck; the reveal-and-put-onto-the-battlefield part is the owner's, so it is carried by remove how: tuck.",
+  "abilities": [
+   {"kind": "spell", "text": "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield.",
+    "effects": [{"do": "remove", "how": "tuck", "target": {"ref": "target", "filter": {"types": ["permanent"]}}}]}]},
+
+ {"gef": "0.2", "name": "Commander's Plate", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "Equipped creature gets +3/+3 and has protection from each color that's not in your commander's color identity.",
+    "effect": {"static": "attached_bonus", "power": 3, "toughness": 3,
+               "keywords": [{"keyword": "protection", "detail": "each color that's not in your commander's color identity"}]}},
+   {"kind": "keyword", "text": "Equip commander {3}", "keyword": "equip", "cost": "{3}", "filter": {"commander": true}},
+   {"kind": "keyword", "text": "Equip {5}", "keyword": "equip", "cost": "{5}"}]},
+
+ {"gef": "0.2", "name": "Counterbalance", "source": "llm",
+  "notes": "Only acts to counter an opponent's spell, nothing comes back to you.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Whenever an opponent casts a spell, you may reveal the top card of your library. If you do, counter that spell if it has the same mana value as the revealed card.",
+    "reason": "counters an opponent's spell; nothing comes back to your game", "scope": "out_of_scope"}]},
+
+ {"gef": "0.2", "name": "Edgar, King of Figaro", "source": "llm",
+  "abilities": [
+   {"kind": "triggered", "text": "When Edgar enters, draw a card for each artifact you control.",
+    "event": {"on": "enters", "subject": "self"},
+    "effects": [{"do": "draw", "n": {"count": "permanents_you_control", "filter": {"types": ["artifact"]}}}]},
+   {"kind": "static", "text": "Two-Headed Coin — The first time you flip one or more coins each turn, those coins come up heads and you win those flips.",
+    "effect": {"static": "coin_flip_rule", "rule": "first_flips_each_turn_win"}}]},
+
+ {"gef": "0.2", "name": "Ethereal Usher", "source": "llm",
+  "abilities": [
+   {"kind": "activated", "text": "{U}, {T}: Target creature can't be blocked this turn.",
+    "cost": {"mana": "{U}", "tap": true},
+    "effects": [{"do": "pump", "target": {"ref": "target", "filter": {"types": ["creature"]}}, "keywords": ["unblockable"], "duration": "end_of_turn"}]},
+   {"kind": "keyword", "text": "Transmute {1}{U}{U}", "keyword": "transmute", "cost": "{1}{U}{U}"}]},
+
+ {"gef": "0.2", "name": "Invert Polarity", "source": "llm",
+  "notes": "Only acts on an opponent's spell (gain control or counter it); nothing comes back to your game.",
+  "abilities": [
+   {"kind": "unexpressible", "text": "Choose target spell, then flip a coin. If you win the flip, gain control of that spell and you may choose new targets for it. If you lose the flip, counter that spell.",
+    "reason": "steals or counters an opponent's spell; nothing comes back to your game", "scope": "out_of_scope"}]},
+
+ {"gef": "0.2", "name": "Jace, Wielder of Mysteries", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "If you would draw a card while your library has no cards in it, you win the game instead.",
+    "effect": {"static": "draw_from_empty_library_wins"}},
+   {"kind": "loyalty", "text": "+1: Target player mills two cards. Draw a card.", "cost": 1,
+    "effects": [
+     {"do": "mill", "n": 2, "who": "target_player"},
+     {"do": "draw", "n": 1}]},
+   {"kind": "loyalty", "text": "−8: Draw seven cards. Then if your library has no cards in it, you win the game.", "cost": -8,
+    "effects": [
+     {"do": "draw", "n": 7},
+     {"do": "if", "cond": {"if": "library_empty"}, "then": [{"do": "win_game"}]}]}]},
+
+ {"gef": "0.2", "name": "Krark's Thumb", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "If you would flip a coin, instead flip two coins and ignore one.",
+    "effect": {"static": "coin_flip_rule", "rule": "flip_two_ignore_one"}}]},
+
+ {"gef": "0.2", "name": "Library of Leng", "source": "llm",
+  "abilities": [
+   {"kind": "static", "text": "You have no maximum hand size.", "effect": {"static": "no_max_hand_size"}},
+   {"kind": "static", "text": "If an effect causes you to discard a card, discard it, but you may put it on top of your library instead of into your graveyard.",
+    "effect": {"static": "discard_to_top", "optional": true, "effects_only": true}}]}
+]

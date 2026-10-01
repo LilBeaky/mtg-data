@@ -5,7 +5,7 @@ audited 300 of 300 cards
   parser:      {'approx': 25, 'correct': 265, 'wrong': 10}
   cards with a real format gap: 69
   cross (translation, parser): {('correct', 'approx'): 22, ('correct', 'correct'): 243, ('conservative', 'correct'): 10, ('correct', 'wrong'): 8, ('conservative', 'approx'): 1, ('freetext', 'approx'): 1, ('freetext', 'correct'): 10, ('wrong', 'correct'): 2, ('freetext', 'wrong'): 2, ('wrong', 'approx'): 1}
-  fully read: parser 195, GEF today 178 (freetext demoted 178), GEF expressed 213 (freetext demoted 213)
+  fully read: parser 195, GEF today 178 (freetext demoted, current validator: 166), GEF expressed 213 (freetext demoted, current validator: 213)
   parser statuses: {'modeled': 142, 'partial': 44, 'land*': 28, 'blank': 33, 'held': 47, 'override': 1, 'vacuum': 5}
   GEF today:       {'partial': 61, 'land*': 11, 'modeled': 126, 'blank': 50, 'vacuum': 4, 'land': 17, 'held': 31}
   GEF expressed (freetext demoted): {'partial': 49, 'modeled': 159, 'land*': 10, 'blank': 28, 'vacuum': 4, 'land': 18, 'held': 32}
@@ -15,7 +15,7 @@ audited 300 of 300 cards
   parser:      {'approx': 18, 'correct': 171, 'wrong': 9}
   cards with a real format gap: 48
   cross (translation, parser): {('correct', 'approx'): 15, ('correct', 'correct'): 156, ('conservative', 'correct'): 5, ('correct', 'wrong'): 7, ('conservative', 'approx'): 1, ('freetext', 'approx'): 1, ('freetext', 'correct'): 8, ('wrong', 'correct'): 2, ('freetext', 'wrong'): 2, ('wrong', 'approx'): 1}
-  fully read: parser 105, GEF today 107 (freetext demoted 107), GEF expressed 137 (freetext demoted 137)
+  fully read: parser 105, GEF today 107 (freetext demoted, current validator: 100), GEF expressed 137 (freetext demoted, current validator: 137)
   parser statuses: {'modeled': 82, 'partial': 44, 'land*': 16, 'blank': 33, 'held': 19, 'override': 1, 'vacuum': 3}
   GEF today:       {'partial': 48, 'land*': 5, 'modeled': 81, 'blank': 38, 'vacuum': 2, 'land': 11, 'held': 13}
   GEF expressed (freetext demoted): {'partial': 38, 'modeled': 109, 'land*': 4, 'blank': 19, 'vacuum': 2, 'land': 12, 'held': 14}
@@ -25,7 +25,7 @@ audited 300 of 300 cards
   parser:      {'correct': 94, 'approx': 7, 'wrong': 1}
   cards with a real format gap: 21
   cross (translation, parser): {('correct', 'correct'): 87, ('correct', 'approx'): 7, ('conservative', 'correct'): 5, ('freetext', 'correct'): 2, ('correct', 'wrong'): 1}
-  fully read: parser 90, GEF today 71 (freetext demoted 71), GEF expressed 76 (freetext demoted 76)
+  fully read: parser 90, GEF today 71 (freetext demoted, current validator: 66), GEF expressed 76 (freetext demoted, current validator: 76)
   parser statuses: {'held': 28, 'modeled': 60, 'land*': 12, 'vacuum': 2}
   GEF today:       {'held': 18, 'modeled': 45, 'blank': 12, 'partial': 13, 'land*': 6, 'land': 6, 'vacuum': 2}
   GEF expressed (freetext demoted): {'held': 18, 'modeled': 50, 'blank': 9, 'partial': 11, 'land*': 6, 'land': 6, 'vacuum': 2}
@@ -47,38 +47,134 @@ per deck: cards | parser fully read (of which audit-wrong) | GEF today | GEF exp
   yusri.txt    69 | 36 (52.2%) (4) | 35 (50.7%) | 46 (66.7%) (0) | 17
   zur.txt      68 | 40 (58.8%) (5) | 44 (64.7%) | 51 (75.0%) (2) | 11
 
-engine work to reach 'expressed' (deck): 30 cards blocked only by missing engine features
+engine work to reach 'expressed' [GEF 0.1, as in T2] (deck): 37 cards blocked only by missing engine features
   +effect flicker                   unlocks  5 (cumulative 5)
   +effect untap                     unlocks  3 (cumulative 8)
-  +keyword storm                    unlocks  2 (cumulative 10)
-  +effect put_from_hand             unlocks  2 (cumulative 12)
-  +effect flip_coins                unlocks  1 (cumulative 13)
-  +event coin_flip_won              unlocks  3 (cumulative 16)
-  +cond you_control_commander       unlocks  1 (cumulative 17)
-  +keyword convoke                  unlocks  1 (cumulative 18)
-  +keyword eternalize               unlocks  1 (cumulative 19)
-  +cond x_at_least                  unlocks  1 (cumulative 20)
-  +effect impulse                   unlocks  1 (cumulative 21)
-  +keyword riot                     unlocks  1 (cumulative 22)
-  +cond opponent_state              unlocks  1 (cumulative 23)
-  +effect extra_turn                unlocks  1 (cumulative 24)
-  +keyword improvise                unlocks  1 (cumulative 25)
-  ... 5 more cards need 10 further features
+  +conditional enters-tapped        unlocks  3 (cumulative 11)
+  +recur to library top/bottom      unlocks  3 (cumulative 14)
+  +keyword storm                    unlocks  2 (cumulative 16)
+  +effect put_from_hand             unlocks  2 (cumulative 18)
+  +effect flip_coins                unlocks  1 (cumulative 19)
+  +event coin_flip_won              unlocks  3 (cumulative 22)
+  +cond you_control_commander       unlocks  1 (cumulative 23)
+  +keyword convoke                  unlocks  1 (cumulative 24)
+  +keyword eternalize               unlocks  1 (cumulative 25)
+  +cond x_at_least                  unlocks  1 (cumulative 26)
+  +effect impulse                   unlocks  1 (cumulative 27)
+  +keyword riot                     unlocks  1 (cumulative 28)
+  +cond opponent_state              unlocks  1 (cumulative 29)
+  ... 8 more cards need 13 further features
 
-engine work to reach 'expressed' (all): 35 cards blocked only by missing engine features
+engine work to reach 'expressed' [GEF 0.1, as in T2] (all): 47 cards blocked only by missing engine features
   +effect untap                     unlocks  5 (cumulative 5)
-  +effect flicker                   unlocks  5 (cumulative 10)
-  +cond you_control_commander       unlocks  3 (cumulative 13)
-  +keyword storm                    unlocks  2 (cumulative 15)
-  +effect put_from_hand             unlocks  2 (cumulative 17)
-  +effect flip_coins                unlocks  1 (cumulative 18)
-  +event coin_flip_won              unlocks  3 (cumulative 21)
-  +keyword convoke                  unlocks  1 (cumulative 22)
-  +keyword eternalize               unlocks  1 (cumulative 23)
-  +cond x_at_least                  unlocks  1 (cumulative 24)
-  +effect impulse                   unlocks  1 (cumulative 25)
-  +keyword riot                     unlocks  1 (cumulative 26)
-  +cond opponent_state              unlocks  1 (cumulative 27)
-  +effect extra_turn                unlocks  1 (cumulative 28)
-  +keyword improvise                unlocks  1 (cumulative 29)
-  ... 6 more cards need 11 further features
+  +conditional enters-tapped        unlocks  5 (cumulative 10)
+  +effect flicker                   unlocks  5 (cumulative 15)
+  +recur to library top/bottom      unlocks  4 (cumulative 19)
+  +cond you_control_commander       unlocks  3 (cumulative 22)
+  +keyword storm                    unlocks  2 (cumulative 24)
+  +effect put_from_hand             unlocks  2 (cumulative 26)
+  +land type grant                  unlocks  2 (cumulative 28)
+  +effect flip_coins                unlocks  1 (cumulative 29)
+  +event coin_flip_won              unlocks  3 (cumulative 32)
+  +keyword convoke                  unlocks  1 (cumulative 33)
+  +keyword eternalize               unlocks  1 (cumulative 34)
+  +cond x_at_least                  unlocks  1 (cumulative 35)
+  +effect impulse                   unlocks  1 (cumulative 36)
+  +keyword riot                     unlocks  1 (cumulative 37)
+  ... 10 more cards need 15 further features
+
+
+==== GEF 0.2 (T3 step 1): translation/gef02/t2_cards.json
+  validates: 300/300; T1 examples 18/18; free-text statics: 0
+  re-translated: 46 cards; audit first pass {'correct': 44, 'wrong': 2}; after retry {'correct': 46}
+  translations audit-wrong in the 0.2 set: 0; cards with a real format gap: 57 (T2: 69)
+  all  300: fully read parser 195, GEF 0.1 today 178 -> 0.2 today 180, 0.1 expressed 213 -> 0.2 expressed 244
+  deck 198: fully read parser 105, GEF 0.1 today 107 -> 0.2 today 103, 0.1 expressed 137 -> 0.2 expressed 156
+  pool 102: fully read parser 90, GEF 0.1 today 71 -> 0.2 today 77, 0.1 expressed 76 -> 0.2 expressed 88
+
+  per deck: cards | parser (audit-wrong) | GEF 0.1 today -> 0.2 today | GEF 0.1 expressed -> 0.2 expressed (audit-wrong) | real gaps 0.1 -> 0.2
+  klauth.txt   73 | 37 (50.7%) (0) | 34 (46.6%) -> 33 (45.2%) | 47 (64.4%) -> 51 (69.9%) (0) | 24 -> 22
+  yusri.txt    69 | 36 (52.2%) (4) | 35 (50.7%) -> 36 (52.2%) | 46 (66.7%) -> 56 (81.2%) (0) | 17 -> 14
+  zur.txt      68 | 40 (58.8%) (5) | 44 (64.7%) -> 41 (60.3%) | 51 (75.0%) -> 58 (85.3%) (0) | 11 -> 9
+
+  fully-read changes 0.1 -> 0.2 (44; today, expressed):
+    Academy Ruins                            today land -> land*; expressed land -> land
+    Archfiend of Ifnir                       today partial -> modeled; expressed partial -> modeled
+    Balefire Dragon                          today partial -> partial; expressed partial -> modeled
+    Blasphemous Act                          today partial -> held; expressed partial -> held
+    Blast-Furnace Hellkite                   today partial -> partial; expressed partial -> modeled
+    Boros Charm                              today partial -> modeled; expressed partial -> modeled
+    Breaching Dragonstorm                    today partial -> partial; expressed partial -> modeled
+    Canopy Vista                             today land -> land*; expressed land -> land
+    Chaos Warp                               today blank -> held; expressed blank -> held
+    Cinder Glade                             today land -> land*; expressed land -> land
+    Commander's Plate                        today modeled -> partial; expressed modeled -> modeled
+    Counterbalance                           today blank -> vacuum; expressed blank -> vacuum
+    Cultivate                                today blank -> modeled; expressed blank -> modeled
+    Deafening Silence                        today blank -> blank; expressed blank -> modeled
+    Delighted Halfling                       today partial -> modeled; expressed partial -> modeled
+    Edgar, King of Figaro                    today partial -> partial; expressed partial -> modeled
+    Grasp of Fate                            today modeled -> blank; expressed modeled -> modeled
+    Hall of Heliod's Generosity              today land -> land*; expressed land -> land
+    Hardened Scales                          today blank -> modeled; expressed blank -> modeled
+    Herald's Horn                            today partial -> modeled; expressed partial -> modeled
+    Invert Polarity                          today blank -> vacuum; expressed blank -> vacuum
+    Jace, Wielder of Mysteries               today partial -> partial; expressed partial -> modeled
+    Knollspine Dragon                        today partial -> partial; expressed partial -> modeled
+    Kodama's Reach                           today blank -> modeled; expressed blank -> modeled
+    Krark's Thumb                            today blank -> blank; expressed blank -> modeled
+    Library of Leng                          today partial -> partial; expressed partial -> modeled
+    Long-Term Plans                          today blank -> blank; expressed blank -> modeled
+    Mistveil Plains                          today land -> land*; expressed land -> land
+    Mystic Sanctuary                         today land -> land*; expressed land -> land
+    Necrodominance                           today blank -> partial; expressed partial -> modeled
+    Nexus of Fate                            today blank -> blank; expressed partial -> modeled
+    Patchwork Banner                         today partial -> modeled; expressed partial -> modeled
+    Prairie Stream                           today land -> land*; expressed land -> land
+    Roaming Throne                           today partial -> modeled; expressed partial -> modeled
+    Rule of Law                              today blank -> blank; expressed blank -> modeled
+    Sink into Stupor // Soporific Springs    today partial -> modeled; expressed partial -> modeled
+    Smoldering Marsh                         today land -> land*; expressed land -> land
+    Solitary Confinement                     today partial -> partial; expressed partial -> modeled
+    Sunken Hollow                            today land -> land*; expressed land -> land
+    The Endstone                             today blank -> partial; expressed partial -> modeled
+    Urborg, Tomb of Yawgmoth                 today land -> land*; expressed land -> land
+    Victimize                                today blank -> modeled; expressed blank -> modeled
+    War Room                                 today land* -> land*; expressed land* -> land
+    Yavimaya, Cradle of Growth               today land -> land*; expressed land -> land
+
+engine work to reach 'expressed' [GEF 0.2] (deck): 53 cards blocked only by missing engine features
+  +effect flicker                   unlocks  5 (cumulative 5)
+  +effect untap                     unlocks  3 (cumulative 8)
+  +conditional enters-tapped        unlocks  3 (cumulative 11)
+  +recur to library top/bottom      unlocks  3 (cumulative 14)
+  +keyword storm                    unlocks  2 (cumulative 16)
+  +effect put_from_hand             unlocks  2 (cumulative 18)
+  +static coin_flip_rule            unlocks  2 (cumulative 20)
+  +static spell_limit               unlocks  2 (cumulative 22)
+  +effect flip_coins                unlocks  1 (cumulative 23)
+  +event coin_flip_won              unlocks  3 (cumulative 26)
+  +filter controller that_player    unlocks  1 (cumulative 27)
+  +cond you_control_commander       unlocks  1 (cumulative 28)
+  +effect extra_turn                unlocks  1 (cumulative 29)
+  +static graveyard_replacement     unlocks  1 (cumulative 30)
+  +static skip_step                 unlocks  1 (cumulative 31)
+  ... 22 more cards need 27 further features
+
+engine work to reach 'expressed' [GEF 0.2] (all): 64 cards blocked only by missing engine features
+  +effect untap                     unlocks  5 (cumulative 5)
+  +conditional enters-tapped        unlocks  5 (cumulative 10)
+  +effect flicker                   unlocks  5 (cumulative 15)
+  +recur to library top/bottom      unlocks  4 (cumulative 19)
+  +cond you_control_commander       unlocks  3 (cumulative 22)
+  +keyword storm                    unlocks  2 (cumulative 24)
+  +effect put_from_hand             unlocks  2 (cumulative 26)
+  +static coin_flip_rule            unlocks  2 (cumulative 28)
+  +static spell_limit               unlocks  2 (cumulative 30)
+  +land type grant                  unlocks  2 (cumulative 32)
+  +effect flip_coins                unlocks  1 (cumulative 33)
+  +event coin_flip_won              unlocks  3 (cumulative 36)
+  +filter controller that_player    unlocks  1 (cumulative 37)
+  +effect extra_turn                unlocks  1 (cumulative 38)
+  +static graveyard_replacement     unlocks  1 (cumulative 39)
+  ... 25 more cards need 30 further features
