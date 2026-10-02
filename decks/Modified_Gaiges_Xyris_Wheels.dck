@@ -1,9 +1,8 @@
-# name: Modified Gaige's Xyris Wheels
-# plan: Wheels - win with Impact Tremors effects
-Commander
+[metadata]
+Name=Modified Gaiges Xyris Wheels
+[Commander]
 1 Xyris, the Writhing Storm
-
-Deck
+[Main]
 1 Adrix and Nev, Twincasters
 1 Agate Instigator
 1 An Offer You Can't Refuse
