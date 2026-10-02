@@ -1,0 +1,96 @@
+# name: Coles Niv Combo
+# bracket: 4
+# plan: Combo - convert life gain into cards; Sheoldred, the Apocalypse goes infinite with the commander
+# key: Sheoldred, the Apocalypse; Doctor Doom, Unrivaled; Bolas's Citadel
+Commander
+1 Niv-Mizzet, Ghost Counsel
+
+Deck
+1 Ad Nauseam
+1 Aetherflux Reservoir
+1 Ancient Tomb
+1 Anguished Unmaking
+1 Arcane Signet
+1 Auriok Champion
+1 Black Market Connections
+1 Bleachbone Verge
+1 Blind Obedience
+1 Bloodthirsty Conqueror
+1 Bojuka Bog
+1 Bolas's Citadel
+1 Cavern of Souls
+1 Caves of Koilos
+1 Children of Korlis
+1 Chrome Mox
+1 City of Brass
+1 City of Traitors
+1 Cliffhaven Vampire
+1 Command Tower
+1 Crypt Ghast
+1 Dark Ritual
+1 Deafening Silence
+1 Deep Gnome Terramancer
+1 Demonic Consultation
+1 Demonic Tutor
+1 Doctor Doom, Unrivaled
+1 Drannith Magistrate
+1 Elas il-Kor, Sadistic Pilgrim
+1 Enduring Tenacity
+1 Enlightened Tutor
+1 Esper Sentinel
+1 Exquisite Blood
+1 Farewell
+1 Fetid Heath
+1 Flawless Maneuver
+1 Gemstone Caverns
+1 Godless Shrine
+1 Grand Abolisher
+1 Gray Merchant of Asphodel
+1 Grim Tutor
+1 Heliod, Sun-Crowned
+1 Imperial Seal
+1 Isolated Chapel
+1 Kambal, Consul of Allocation
+1 Karlov of the Ghost Council
+1 Land Tax
+1 Lightning Greaves
+1 Lotus Petal
+1 Malakir Rebirth
+1 Mana Confluence
+1 Marauding Blight-Priest
+1 Marsh Flats
+1 Ocelot Pride
+1 Phyrexian Tower
+7 Plains
+1 Ranger-Captain of Eos
+1 Reanimate
+1 Recruiter of the Guard
+1 Reliquary Tower
+1 Rest in Peace
+1 Sanguine Bond
+1 Scrubland
+1 Sensei's Divining Top
+1 Serra Ascendant
+1 Shadowy Backstreet
+1 Shattered Sanctum
+1 Sheoldred, the Apocalypse
+1 Silence
+1 Smothering Tithe
+1 Sol Ring
+1 Soul Warden
+1 Soul's Attendant
+1 Starscape Cleric
+1 Suture Priest
+6 Swamp
+1 Swords to Plowshares
+1 Tainted Field
+1 Tainted Sigil
+1 Talisman of Hierarchy
+1 Teferi's Protection
+1 The Wind Crystal
+1 Thought Vessel
+1 Urborg, Tomb of Yawgmoth
+1 Vampiric Tutor
+1 Vault of Champions
+1 Vito, Thorn of the Dusk Rose
+1 Voice of Victory
