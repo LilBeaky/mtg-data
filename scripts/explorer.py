@@ -67,8 +67,9 @@ class Edhrec:
                 time.time() - os.path.getmtime(cpath) < CACHE_DAYS * 86400:
             try:
                 with open(cpath, encoding="utf-8") as fh:
-                    self.cached += 1
-                    return json.load(fh)
+                    d = json.load(fh)
+                self.cached += 1
+                return d
             except (OSError, ValueError):
                 pass
         if self.fetched: time.sleep(0.4)     # be polite: one request at a time, spaced
@@ -114,10 +115,16 @@ def front(name):
 
 def tagged(name):
     """Name plus a flag when the local data says it isn't Commander-legal (EDHREC lists
-    some, e.g. Rulebreaker commanders from non-tournament sets)."""
-    k, _ = mtg.find(name)
-    if k is None: return name + " {not in local data}"
-    return name if mtg.legal(k) == "legal" else f"{name} {{{mtg.legal(k).upper()}}}"
+    some, e.g. Rulebreaker commanders from non-tournament sets). Partner pairs
+    ('A + B') are checked per card; only exact or alias matches count."""
+    flags = []
+    for part in name.split(" + "):
+        k, how = mtg.find(part)
+        if k is None or how not in ("exact", "alias"):
+            flags.append(f"{part}: not in local data" if " + " in name else "not in local data")
+        elif mtg.legal(k) != "legal":
+            flags.append((f"{part}: " if " + " in name else "") + mtg.legal(k).upper())
+    return name + (" {" + "; ".join(flags) + "}" if flags else "")
 
 # Scryfall tags about printing trivia, not function; they make noise in tag overlap
 TRIVIA_TAG_RX = re.compile(r"^(unique |supercycle|cycle-)|achievement|reprint")
@@ -360,7 +367,9 @@ def main(argv):
             v = argv[i + 1]
             if a == "--ci": allowed = set(v.upper().replace("C", ""))
             elif a == "--out": outfile = v
-            else: opts[a] = int(v)
+            else:
+                try: opts[a] = int(v)
+                except ValueError: sys.exit(f"option {a} needs a number, got '{v}'")
             i += 2
         else:
             name_parts.append(a); i += 1
