@@ -13,7 +13,7 @@
 //   synergy   how much of the deck the card connects with
 //   playable  cards Forge's AI never casts (AI:RemoveDeck:All, unless fishpond overrides the script) score a tenth on
 //             every layer when fetched to hand or the library top (a card that rots in hand is no plan); onto the
-//             battlefield they count fully
+//             battlefield they count fully, unless all their value is activated abilities (the AI never activates them)
 //   boost     the deck's '# priority:' header, if any
 //   forge     Forge's own pick gets a small edge, so it wins ties and decks the policy knows nothing about
 // Every applied decision is logged ("#FP-POLICY {json}" after the game) with the pick, Forge's pick, the deciding layer and the top scores.
@@ -42,7 +42,7 @@ public final class PilotPolicy {
     public static final class CardIntel {
         List<String> roles = new ArrayList<>(), payoff = new ArrayList<>(), enabler = new ArrayList<>();
         double syn, cmc;
-        boolean flag, cmdr;
+        boolean flag, flag_dead, cmdr;
     }
     public static final class Mech { int enablers, payoffs; double s; }
     public static final class Combo { List<String> cards = new ArrayList<>(); boolean win; }
@@ -204,7 +204,7 @@ public final class PilotPolicy {
             s[SYNERGY] = 60 * ci.syn;
             // Forge's AI never casts an AI:RemoveDeck:All card (unless fishpond overrides it), so fetched to hand or the
             // library top it's a dead card; put onto the battlefield (Zur) it works, the flag only stops casting
-            if (ci.flag && dest != ZoneType.Battlefield) for (int k = 0; k < s.length; k++) s[k] *= 0.1;
+            if (ci.flag && (dest != ZoneType.Battlefield || ci.flag_dead)) for (int k = 0; k < s.length; k++) s[k] *= 0.1;
         }
         s[BOOST] = in.boost.getOrDefault(n, 0.0);
         if (b.field.contains(n) && c.getType().isLegendary()) Arrays.fill(s, 0);   // legend rule: a second copy is useless

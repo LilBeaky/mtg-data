@@ -44,7 +44,7 @@ ENGINE_TAGS = {"draw engine", "repeatable draw", "repeatable card advantage", "r
 # payoff tags that aren't 'synergy-X', mapped to the X they pay off
 PAYOFF_ALIASES = {"cycle-ons-cycling-matters": "cycling", "landfall": "land", "magecraft": "instant-sorcery",
                   "lifegain matters": "lifegain", "draw matters": "draw", "cast trigger-other": "spell",
-                  "death trigger": "creature-dies", "sacrifice outlet": "token"}
+                  "sacrifice outlet": "token"}
 KEYWORDS = {"cycling": r"\b\w*cycling\b", "flying": r"\bflying\b", "haste": r"\bhaste\b", "trample": r"\btrample\b",
             "deathtouch": r"\bdeathtouch\b", "vigilance": r"\bvigilance\b", "menace": r"\bmenace\b",
             "first-strike": r"\bfirst strike\b", "scry": r"\bscry\b", "mill": r"\bmills?\b", "suspend": r"\bsuspend\b",
@@ -117,10 +117,20 @@ def is_enabler(mech, c, tags):
     if mech.startswith("typal-"): return mech[6:] in ty
     if re.search(rf"\b{re.escape(m)}\b", ty): return True
     if mech in KEYWORDS and re.search(KEYWORDS[mech], t): return True
-    return mech in tags or m in tags
+    return mech in tags or m in tags or (mech + "s") in tags
+
+def activated_only(c):
+    """All of the card's value is in activated abilities ('{cost}: effect' and no triggers or statics): Forge's AI never
+    activates a flagged card's abilities either, so it's dead even on the battlefield (Words of Worship)."""
+    t = _text(c)
+    lines = [l for l in t.split("\n") if l.strip()]
+    return bool(lines) and all(re.match(r"^[^:\n]*\{[^}]+\}[^:\n]*:", l) or l.startswith("(") for l in lines)
 
 def payoffs_of(tags):
     out = {t[8:] for t in tags if t.startswith("synergy-")} | {v for k, v in PAYOFF_ALIASES.items() if k in tags}
+    for t in tags:                                    # "coin flips matter" pays off cards tagged "coin flip"
+        m = re.match(r"(.+?)s? matters?$", t)
+        if m and t not in PAYOFF_ALIASES: out.add(m.group(1).strip())
     out |= {t for t in tags if t.startswith("typal-")}
     out -= set(COLORS) | {"typal-creature"}           # "matters for most of the deck" isn't an engine
     return out - {"commander", "color-share", "color-each", "blocker", "blocker-self", "solo-attack", "low-power", "tapped", "modified"}
@@ -167,8 +177,9 @@ def build(d):
         if p and "engine" not in roles: roles.append("engine")
         for r in roles: role_count[r] = role_count.get(r, 0) + 1
         syn = sum(mechs[m]["payoffs"] for m in e) + sum(mechs[m]["enablers"] / 10 for m in p)
+        flag = "All" in d.flags.get(n, [])
         out_cards[fn] = {"roles": roles, "payoff": p, "enabler": e, "syn": syn, "cmc": c.get("cmc", 0) or 0,
-                         "flag": "All" in d.flags.get(n, []), "cmdr": n in d.commanders}
+                         "flag": flag, "flag_dead": flag and activated_only(c), "cmdr": n in d.commanders}
     top = max([v["syn"] for v in out_cards.values()] + [1])
     for v in out_cards.values(): v["syn"] = round(v["syn"] / top, 3)
     # Spellbook combos made only of deck cards, smallest first

@@ -101,6 +101,9 @@ steppe = {"name": "Secluded Steppe", "type_line": "Land", "oracle_text": "Cyclin
 step = {"name": "Step Through", "type_line": "Sorcery", "oracle_text": "Return two target creatures to their owners' hands.\nWizardcycling {2}", "colors": ["U"]}
 bear = {"name": "Grizzly Bears", "type_line": "Creature — Bear", "oracle_text": "", "colors": ["G"]}
 check("policy payoff from synergy tag", po.payoffs_of({"synergy-cycling", "cycle-ons-cycling-matters", "synergy-white"}), {"cycling"})
+check("policy 'X matters' payoff", po.payoffs_of({"coin flips matter", "coin flip"}), {"coin flip"})
+check("policy activated-only card", (po.activated_only({"oracle_text": "{1}: The next time you would draw a card this turn, you gain 5 life instead."}),
+                                     po.activated_only(slide)), (True, False))
 check("policy cycling enablers", [po.is_enabler("cycling", c, set()) for c in (steppe, step, bear)], [True, True, False])
 check("policy typal enabler", po.is_enabler("typal-bear", bear, set()), True)
 check("policy engine strength: specific beats broad", (po.strength(27, 100), po.strength(62, 100)), (1.0, 0.15))
