@@ -470,8 +470,8 @@ def parse_deck_meta(path):
                 if v != d.group(): meta["bracket_text"] = v
         elif k == "pets":
             meta[k] = [x.strip() for x in re.split(r"\s*;\s*|\s+\+\s+", v) if x.strip()]
-        elif k in ("package", "packages", "track"):      # repeatable: one line per package / tracked group
-            meta.setdefault("package" if k != "track" else "track", []).append(v)
+        elif k in ("package", "packages", "track", "priority"):   # repeatable: one line per package / tracked group / priority
+            meta.setdefault({"packages": "package"}.get(k, k), []).append(v)
         else:
             meta[k] = v
     return meta

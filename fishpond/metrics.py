@@ -153,6 +153,12 @@ def extras(games, hero, T):
              "key_left": sum(1 for t in searches if not t["key"] and t["keys_left"])}
     for t in searches:
         if not t["land"]: tutor["by_src"][t["src"]][t["card"]] += 1
+    pol = [p for g in games for p in g.get("policy_log") or (g.get("end") or {}).get("policy_log") or []]
+    mine = [p for p in pol if p.get("seat") == 1]
+    tutor["policy"] = {"on": any((g.get("end") or {}).get("policy") for g in games), "n": len(mine), "opp_n": len(pol) - len(mine),
+                       "agree": sum(1 for p in mine if p["pick"] == p["forge"]), "layers": Counter(p["layer"] for p in mine if p["pick"] != p["forge"]),
+                       "swaps": Counter((p["src"], p["forge"], p["pick"]) for p in mine if p["pick"] != p["forge"] and p["forge"]),
+                       "picks": Counter(p["pick"] for p in mine), "full": sum(1 for p in mine if p.get("mode") == "full-shortlist")}
     ms_all = sorted((g.get("end") or {}).get("ms") or g.get("ms") or 0 for g in games)
     return {"n": n, "results": res, "tutor": tutor, "game_ms": ms_all, "routes": routes, "losses": losses, "draws": draws, "order": dict(order),
             "cast_games": cast_games, "cast_turn": cast_turn, "cast_n": cast_n, "games_with": games_with, "win_with": win_with,

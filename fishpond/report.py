@@ -181,6 +181,18 @@ def print_cards(label, ex, hero, meta, T):
             print("  tutor targets (times fetched, avg per game): " + " | ".join(f"{c} {k / n:.2f}" for c, k in tu["nonland"].most_common(10)))
             top = sorted(tu["by_src"].items(), key=lambda kv: -sum(kv[1].values()))[:4]
             print("  by tutor: " + "; ".join(f"{src}: " + ", ".join(f"{c} {k}" for c, k in picks.most_common(4)) for src, picks in top))
+        po = tu.get("policy") or {}
+        if po.get("n"):
+            print(f"  pilot policy (harness/PilotPolicy.java): {po['n']} of your searches/digs decided, Forge's own pick kept in "
+                  f"{share(po['agree'], po['n'])}" + (f"; {po['full']} by full lookahead among the policy's top 3" if po.get("full") else "")
+                  + (f"; opponents' decisions {po['opp_n']}" if po.get("opp_n") else ""))
+            if po["layers"]:
+                print("  policy overrode Forge because of: " + ", ".join(f"{k} {v}" for k, v in po["layers"].most_common()))
+            if po["swaps"]:
+                print("  biggest changes (tutor: Forge's pick -> policy's pick, times): " + " | ".join(
+                    f"{src}: {f} -> {p} {k}" for (src, f, p), k in po["swaps"].most_common(6)))
+        elif po.get("on") is False and tu.get("games"):
+            pass
         if meta.get("key"):
             print(f"  '# key:' cards fetched in {tu['key_picked']} of {tu['searches']} searches; {tu['key_left']} other searches happened "
                   "while a key card was still in the library (it may not have been a legal target for that tutor)")

@@ -9,7 +9,7 @@ play on until someone wins or the clock runs out; the record stops at the hero's
 import concurrent.futures as cf
 import json, os, random, subprocess, sys, time
 
-from . import decks as dk, forge, logparse as lp
+from . import policy, decks as dk, forge, logparse as lp
 
 CHUNK = 5
 
@@ -111,7 +111,9 @@ def run_cli(builds, pods, games, seed, clock, jobs, run_dir, hero_ai="Default", 
     return records, time.time() - t0
 
 # ---------------------------------------------------------------- engine 'harness' (Phase B)
-HARNESS_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "harness", "ForgeRunner.java")
+HARNESS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "harness")
+HARNESS_SRC = os.path.join(HARNESS_DIR, "ForgeRunner.java")
+def _harness_sources(): return sorted(os.path.join(HARNESS_DIR, f) for f in os.listdir(HARNESS_DIR) if f.endswith(".java"))
 
 def game_seed(seed, i): return seed * 1000003 + i
 
@@ -120,7 +122,7 @@ def harness_available():
 
 def _harness_dir():
     import hashlib
-    h = hashlib.sha1((open(HARNESS_SRC, encoding="utf-8").read() + forge.FORGE_VERSION).encode()).hexdigest()[:12]
+    h = hashlib.sha1(("".join(open(f, encoding="utf-8").read() for f in _harness_sources()) + forge.FORGE_VERSION).encode()).hexdigest()[:12]
     return os.path.join(forge.home(), "fishpond-harness", h)
 
 def harness_classes(quiet=False):
@@ -131,7 +133,7 @@ def harness_classes(quiet=False):
         sys.exit("fishpond: the harness needs javac (python3 -m fishpond setup --jdk), or use --engine cli")
     tmp = f"{d}.tmp{os.getpid()}"                  # compile privately, then rename: parallel runs may compile at once
     os.makedirs(tmp, exist_ok=True)
-    r = subprocess.run(["javac", "-nowarn", "-encoding", "UTF-8", "-cp", forge.jar(), "-d", tmp, HARNESS_SRC], capture_output=True, text=True)
+    r = subprocess.run(["javac", "-nowarn", "-encoding", "UTF-8", "-cp", forge.jar(), "-d", tmp, *_harness_sources()], capture_output=True, text=True)
     if r.returncode or not os.path.exists(os.path.join(tmp, "ForgeRunner.class")):
         sys.exit("fishpond: compiling the harness failed:\n" + "\n".join(l for l in (r.stderr + r.stdout).splitlines() if "Picked up" not in l)[-2000:])
     try: os.rename(tmp, d)
@@ -157,6 +159,7 @@ def plan_harness(builds, pods, first_game, games, seed, cap, timeout, run_dir, h
         fp = os.path.join(deck_dir, fn)
         if not os.path.exists(fp):
             with open(fp, "w", encoding="utf-8") as fh: fh.write(d.dck(d.tag))
+        if not os.path.exists(fp + ".policy.json"): policy.write_for(d, fp)   # the harness's tutor policy (fishpond/policy.py)
         return fn
     plan = []
     for i in range(first_game, first_game + games):
@@ -227,7 +230,7 @@ def collect(run_dir, plan, builds, pods, hero_ai="Default", opp_ai=("Default",) 
             r = lp.parse_game([l for l in block if not l.startswith("#FP")], seat_objs(heroes[e["label"]], opps))
             r.update({"v": 1, "engine": "harness", "forge": forge.FORGE_VERSION, "build": e["label"], "game": e["game"],
                       "seed": e["seed"], "pod": pod_info(opps, opp_ai), "hero_ai": hero_ai, "snaps": snaps, "stop": end.get("stop"),
-                      "end": end, "log": os.path.relpath(lf, run_dir), "log_id": end["id"], "tutors": end.get("tutors", []),
+                      "end": end, "log": os.path.relpath(lf, run_dir), "log_id": end["id"], "tutors": end.get("tutors", []), "policy_log": end.get("policy_log", []),
                       "sim": end.get("sim")})
             if end.get("stop") not in ("natural", "hero_lost") and r["result"] != "loss": r["result"], r["route"] = "draw", None
             r["stopped"] = end.get("stop") in ("timeout",)

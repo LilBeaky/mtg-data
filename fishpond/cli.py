@@ -74,6 +74,8 @@ def cmd_deck(args):
     _print_problems("hero", hero)
     ai = sorted(c for c, f in hero.flags.items() if "All" in f)
     print("  Forge AI can't play well (AI:RemoveDeck:All): " + ("; ".join(ai) if ai else "none"))
+    from . import policy
+    for line in policy.explain(hero): print("  " + line)
     fixed, pool = dk.seat_plan(_opp_specs(args))
     for kind, path in fixed + [("deck", p) for p in (pool or [])]:
         if kind == "dummy": continue
@@ -252,7 +254,7 @@ def reparse(run_dir, meta, records, builds):
         if r["log"] not in logs:
             logs[r["log"]] = lp.split_games(open(os.path.join(run_dir, r["log"]), encoding="utf-8", errors="replace").read())
         keys = ("v", "engine", "forge", "build", "game", "chunk", "seed", "pos", "pod", "hero_ai", "log", "log_game", "log_id", "snaps", "stop", "end",
-                "tutors", "sim")
+                "tutors", "policy_log", "sim")
         keep = {k: r[k] for k in keys if k in r}
         block = _block(logs[keep["log"]], keep)
         r.clear(); r.update(lp.parse_game([l for l in block if not l.startswith("#FP")], seats)); r.update(keep)

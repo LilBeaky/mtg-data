@@ -112,13 +112,15 @@ public class ForgeRunner {
     static final class SafeLobbyPlayerAi extends forge.ai.LobbyPlayerAi {
         final SimFallbacks fb;
         final AIOption mode;
-        SafeLobbyPlayerAi(String name, Set<AIOption> opts, SimFallbacks fb) {
+        final PilotPolicy policy;
+        SafeLobbyPlayerAi(String name, Set<AIOption> opts, SimFallbacks fb, PilotPolicy policy) {
             super(name, opts);
             this.fb = fb;
+            this.policy = policy;
             this.mode = opts == null || opts.isEmpty() ? null : opts.iterator().next();
         }
         SafeControllerAi controllerFor(Player p) {
-            SafeControllerAi c = new SafeControllerAi(p.getGame(), p, this, fb);
+            SafeControllerAi c = new SafeControllerAi(p.getGame(), p, this, fb, policy);
             c.getAi().setUseSimulation(mode);
             return c;
         }
@@ -132,7 +134,49 @@ public class ForgeRunner {
 
     static final class SafeControllerAi extends PlayerControllerAi {
         final SimFallbacks fb;
-        SafeControllerAi(Game g, Player p, forge.LobbyPlayer lp, SimFallbacks fb) { super(g, p, lp); this.fb = fb; }
+        final PilotPolicy policy;
+        SafeControllerAi(Game g, Player p, forge.LobbyPlayer lp, SimFallbacks fb, PilotPolicy policy) { super(g, p, lp); this.fb = fb; this.policy = policy; }
+
+        /** Library searches: the pilot policy picks (PilotPolicy.java); Forge's pick is kept for the log and ties. With full
+         *  lookahead, Forge's simulation chooses among the policy's top three instead of the whole list. */
+        @Override public Card chooseSingleCardForZoneChange(ZoneType destination, List<ZoneType> origin, SpellAbility sa,
+                forge.game.card.CardCollection fetchList, forge.game.player.DelayedReveal delayedReveal, String selectPrompt,
+                boolean isOptional, Player decider) {
+            Player me = getPlayer();
+            if (policy == null || sa == null || sa.getApi() == ApiType.Learn || !PilotPolicy.appliesToSearch(destination, origin, fetchList, decider, me))
+                return super.chooseSingleCardForZoneChange(destination, origin, sa, fetchList, delayedReveal, selectPrompt, isOptional, decider);
+            if (delayedReveal != null) reveal(delayedReveal);
+            Card forgePick = forge.ai.ability.ChangeZoneAi.chooseCardToHiddenOriginChangeZone(destination, origin, sa, fetchList, me, decider);
+            if (forgePick == null && isOptional) return null;             // Forge declines an optional search: respect it
+            var ranked = policy.rank(new ArrayList<>(fetchList), me, sa, destination, forgePick);
+            Card pick = ranked.get(0).getKey();
+            String mode = "policy";
+            if (getAi().usesFullSimulation()) {
+                forge.game.card.CardCollection shortlist = new forge.game.card.CardCollection();
+                for (int i = 0; i < Math.min(3, ranked.size()); i++) shortlist.add(ranked.get(i).getKey());
+                Card sim = getAi().chooseCardToHiddenOriginChangeZone(destination, origin, sa, shortlist, me, decider);
+                if (sim != null) { pick = sim; mode = "full-shortlist"; }
+            }
+            if (me.getGame() == fb.game) policy.note(me, sa, "search", destination, ranked, pick, forgePick, mode);
+            return pick;
+        }
+
+        /** Digs (look at the top N, put some into hand or play): the pilot policy picks; other choices go to Forge. */
+        @Override public <T extends forge.game.GameEntity> T chooseSingleEntityForEffect(forge.util.collect.FCollectionView<T> optionList,
+                forge.game.player.DelayedReveal delayedReveal, SpellAbility sa, String title, boolean isOptional, Player targetedPlayer,
+                Map<String, Object> params) {
+            T forgePick = super.chooseSingleEntityForEffect(optionList, delayedReveal, sa, title, isOptional, targetedPlayer, params);
+            Player me = getPlayer();
+            if (policy == null || (forgePick == null && isOptional) || !PilotPolicy.appliesToDig(sa, optionList, me)) return forgePick;
+            List<Card> cands = new ArrayList<>();
+            for (T o : optionList) cands.add((Card) o);
+            ZoneType dest = "Battlefield".equals(sa.getParam("DestinationZone")) ? ZoneType.Battlefield : ZoneType.Hand;
+            var ranked = policy.rank(cands, me, sa, dest, (Card) forgePick);
+            Card pick = ranked.get(0).getKey();
+            if (me.getGame() == fb.game) policy.note(me, sa, "dig", dest, ranked, pick, (Card) forgePick, "policy");
+            @SuppressWarnings("unchecked") T t = (T) pick;
+            return t;
+        }
 
         static boolean fromSim(Throwable t) {
             for (; t != null; t = t.getCause())
@@ -202,6 +246,7 @@ public class ForgeRunner {
         rules.setAppliedVariants(EnumSet.of(GameType.Commander));
         rules.setGamesPerMatch(1);
         List<RegisteredPlayer> players = new ArrayList<>();
+        List<PilotPolicy> policies = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             String file = f[6 + i];
             Deck d = decks.computeIfAbsent(file, k -> DeckSerializer.fromFile(new File(deckDir, k)));
@@ -209,7 +254,9 @@ public class ForgeRunner {
             String profile = ai[i].equals("Default") ? "" : ai[i];
             Set<AIOption> opts = sims[i].equals("full") ? EnumSet.of(AIOption.USE_FULL_SIMULATION)
                     : sims[i].equals("hybrid") ? EnumSet.of(AIOption.USE_HYBRID_SIMULATION) : EnumSet.noneOf(AIOption.class);
-            SafeLobbyPlayerAi lp = new SafeLobbyPlayerAi("Ai(" + (i + 1) + ")-" + d.getName(), opts, fb);
+            PilotPolicy pol = PilotPolicy.load(deckDir, file);
+            if (pol != null) policies.add(pol);
+            SafeLobbyPlayerAi lp = new SafeLobbyPlayerAi("Ai(" + (i + 1) + ")-" + d.getName(), opts, fb, pol);
             lp.setAiProfile(profile.isEmpty() ? "Default" : profile);
             rp.setPlayer(lp);
             players.add(rp);
@@ -299,6 +346,7 @@ public class ForgeRunner {
         for (GameLogEntry e : log) out.println(e);
         for (String s : w.snaps) out.println("#FP-SNAP " + s);
         for (String s : w.tutors) out.println("#FP-TUTOR " + s);
+        for (PilotPolicy pol : policies) for (String s : pol.log) out.println("#FP-POLICY " + s);
         StringBuilder end = new StringBuilder("{\"id\": " + id + ", \"seed\": " + seed + ", \"stop\": " + js(w.stop == null ? "natural" : w.stop)
                 + ", \"ms\": " + ms + ", \"hero_turns\": " + w.heroTurns + ", \"global_turns\": " + w.globalTurns
                 + (w.trace != null ? ", \"trace\": " + js(w.trace) : "")
@@ -308,6 +356,7 @@ public class ForgeRunner {
                 + ", \"heap_peak_mb\": " + heapPeakMb() + ", \"heap_max_mb\": " + (Runtime.getRuntime().maxMemory() >> 20)
                 + ", \"sim_paused_turns\": " + w.pausedTurns + ", \"sim_pauses\": " + w.pauses
                 + ", \"sim_pause_why\": {" + String.join(", ", w.pauseWhy.entrySet().stream().map(x -> js(x.getKey()) + ": " + x.getValue()).toList()) + "}"
+                + ", \"policy\": " + PilotPolicy.ON + ", \"policy_seats\": " + policies.size()
                 + ", \"sim\": {" + String.join(", ", simOn.entrySet().stream().map(x -> "\"" + x.getKey() + "\": " + js(x.getValue())).toList()) + "}"
                 + ", \"players\": {");
         String winner = null;
