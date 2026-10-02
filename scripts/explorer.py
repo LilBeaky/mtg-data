@@ -112,6 +112,16 @@ def front(name):
     """EDHREC names double-faced cards by their front face."""
     return name.split(" // ")[0].strip().lower()
 
+def tagged(name):
+    """Name plus a flag when the local data says it isn't Commander-legal (EDHREC lists
+    some, e.g. Rulebreaker commanders from non-tournament sets)."""
+    k, _ = mtg.find(name)
+    if k is None: return name + " {not in local data}"
+    return name if mtg.legal(k) == "legal" else f"{name} {{{mtg.legal(k).upper()}}}"
+
+# Scryfall tags about printing trivia, not function; they make noise in tag overlap
+TRIVIA_TAG_RX = re.compile(r"^(unique |supercycle|cycle-)|achievement|reprint")
+
 def pct(n, d):
     if not d: return "?"
     p = 100 * n / d
@@ -241,16 +251,16 @@ def section_commanders(c, ep, ed, ncmd, lim, out):
             sv = find_view(page, c["name"]) if page else None
             opened.append((v["name"], v.get("num_decks", 0), page))
         if i < max(lim, ncmd):
-            out.append(f"    {v['name']}: {v.get('num_decks', 0):,} decks, {pct(v.get('num_decks', 0), v.get('potential_decks'))} inclusion"
+            out.append(f"    {tagged(v['name'])}: {v.get('num_decks', 0):,} decks, {pct(v.get('num_decks', 0), v.get('potential_decks'))} inclusion"
                        + ((f", synergy {syn(sv)}" if sv else ", not on its page (below cutoff)") if page else ""))
     loyal = sorted((v for v in top if v.get("potential_decks", 0) >= 200),
                    key=lambda v: -v.get("num_decks", 0) / v["potential_decks"])[:5]
     out.append("  most committed (highest inclusion, 200+ decks): "
-               + "; ".join(f"{v['name']} {pct(v['num_decks'], v['potential_decks'])}" for v in loyal))
+               + "; ".join(f"{tagged(v['name'])} {pct(v['num_decks'], v['potential_decks'])}" for v in loyal))
     new = lists.get("newcommanders", [])
     if new:
         out.append("  new commanders picking it up: "
-                   + "; ".join(f"{v['name']} {pct(v.get('num_decks', 0), v.get('potential_decks'))}" for v in new))
+                   + "; ".join(f"{tagged(v['name'])} {pct(v.get('num_decks', 0), v.get('potential_decks'))}" for v in new))
     out.append("")
     return opened
 
@@ -309,7 +319,7 @@ def section_build(c, ep, combo_cmds, allowed, lim, out, top_names):
         out.append("  similar cards (EDHREC; redundancy or substitutes): " + "; ".join(sim[:lim]))
     # untapped commanders: share the card's rarer oracle tags, aren't in EDHREC's top list
     by_oid, size = tag_index()
-    mine = [t for t in by_oid.get(c["oracle_id"], []) if 2 <= size.get(t, 0) <= 3000]
+    mine = [t for t in by_oid.get(c["oracle_id"], []) if 2 <= size.get(t, 0) <= 3000 and not TRIVIA_TAG_RX.search(t)]
     if mine:
         n_all = len(mtg.cards())
         want = set(c.get("color_identity", []))
