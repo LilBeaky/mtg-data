@@ -378,6 +378,7 @@ def main():
     if accel_x:
         print(f"      not counted as accelerants (restricted or scaling mana): {'; '.join(accel_x)}")
     print_colors(colr, lists)
+    print(f"  land count and land-for-land swaps that fix these numbers: landbase.py {path}")
 
     # ----- 3. commander on curve -----
     if cmdrs:

@@ -94,7 +94,7 @@ def checks():
                    "Comprehensive Rules file is dated"],
              must_not=["Colors aren't modeled", "Traceback"]),
         dict(name="audit flags", cmd=S("audit.py", DECK, "--no-edhrec", "--no-lists", "--k", "ramp=9", "--bracket", "4"),
-             must=["confirmed overrides: ramp=9", "bracket target 4", "one card away:", "full list: mtg.py near"]),
+             must=["confirmed overrides: ramp=9", "bracket target 4", "one card away:", "full list: mtg.py near", "landbase.py"]),
         dict(name="audit + EDHREC", cmd=S("audit.py", DECK, "--snapshot", "snapshots/yusri-fortunes-flame__all__2026-09-25.txt"),
              must=["## 6. EDHREC", "EDHREC snapshot: Yusri"]),
         # ---- one card away (mtg.py near; Hermit Druid is green, off the Kraum + Tymna identity)
@@ -103,6 +103,14 @@ def checks():
              must_not=["Hermit Druid", "Traceback"]),
         dict(name="near price cap", data=True, cmd=S("mtg.py", "near", DECK, "--max-price", "1"),
              must=["over price"], must_not=["Tainted Pact $"]),
+        # ---- landbase (utility lands are never cut; candidates are plain mana lands only)
+        dict(name="landbase", data=True, cmd=S("landbase.py", DECK, "--max-price", "2", "--swaps", "2"),
+             must=["## 1. Land count", "← current", "recommendation: 35 lands (+4 from now)", "+ Command Tower $",
+                   "never cut (utility lands", "Cavern of Souls", "## 4. Before → after", "cards under their color threshold: 47 →"],
+             must_not=["+ Plaza of Heroes", "→ Shimmering Grotto", "Traceback"]),
+        dict(name="landbase cuts", cmd=S("landbase.py", DECK, "--lands", "29", "--no-swaps"),
+             must=["planning for 29 lands", "cut 2 land(s), and add 2 nonland card(s)", "lands 31 → 29"],
+             must_not=["− Cavern of Souls", "− Mystic Gate", "swaps (", "Traceback"]),
         # ---- stats_math
         dict(name="exact odds", cmd=S("stats_math.py", "99", "10", "7", "1"), must=["= 53.7%"]),
         dict(name="colors per face", cmd=S("stats_math.py", "colors", DECK),

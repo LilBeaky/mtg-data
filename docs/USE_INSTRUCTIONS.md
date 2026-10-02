@@ -17,6 +17,7 @@ Re-clone every session (sandbox resets). Use git, not the GitHub API, for readin
 | Card text, rulings, tags, search, deck check, GCs, combos, combos one card away, rules | `mtg.py` |
 | Draw odds beyond the audit | `stats_math.py` (§6) |
 | Tutor chains / access odds | `tutors.py` (§6) |
+| Land count and land swaps | `landbase.py` (§6) |
 | How a deck plays out (win rate, how it wins and loses, real opponents) | `python3 -m fishpond` (§6 → `docs/FISHPOND.md`) |
 | Fast mana/curve reads, swap ladders, disruption ladder | `goldfish.py` (§6 → `docs/GOLDFISH.md`; frozen legacy, still maintained in smoke) |
 | Goldfish parser coverage / regression diff | `goldfish_coverage.py` (`docs/GOLDFISH_ROADMAP.md`) |
@@ -86,6 +87,11 @@ The user wants audits as thorough as the tooling allows. Every step exists becau
 - ⚠ marks approximations (MV X or less, "shares a type", opponent picks). Flag them when a conclusion rests on one.
 - Report: 1 inventory (dead tutors, shallow pools) · 2 chains · 3 coverage · 4 dependencies (single points of failure) · 5 access odds for `key`/package cards (exact) · 6 package assembly (sampled). A second view sets aside find-anything tutors to expose package structure.
 - NOT FOUND cards are warned about and left out. Odds ignore mana and chain time ("can you get there", not "how fast"). Commander tutoring is shown separately as a ceiling. Not tracked: searching others' libraries, tutoring from graveyard.
+
+**Land base (`landbase.py DECK [--max-price N] [--lands N] [--swaps N] [--no-count] [--no-swaps] [--turn T] [--draw]`)**: run when audit §2 flags colors or the land count is in question.
+- Land count: every count ±4 from now (T mana by T T counting lands, MDFC backs and ramp at MV ≤2; commander on curve; screw; flood; keepable openers). Recommends the smallest count with 3 mana by T3 ≥ 80% and ≤2 lands by T4 ≤ 20% (`--develop`, `--screw`, `--flood`). Adding lands means cutting nonlands: the user picks those.
+- Swaps: greedy, scored on audit §2's color thresholds; untapped beats tapped, cheap beats expensive at equal colors. Candidates are plain mana lands only; utility lands (cycling, Ancient Tomb, Cavern...) are never cut without `--cut-utility`; a suggested fetch counts only the basics it can find. Before → after shows every flagged card.
+- Static draws, lands-only color odds: say so, and present the plan as options, not a cut list.
 
 **Fishpond (`python3 -m fishpond`)** — see `docs/FISHPOND.md` before running it. If the user says "Launch Fishpond", reply with the intake form in `docs/FISHPOND_LAUNCH.md`. Plays the deck on the Forge rules engine (every card scripted) in 4-player pods: 3 opponent seats, each a dummy or a real deck (`--opp`, `gauntlet:NAME`). `setup` once per session, then `deck DECK` to report cards Forge lacks or its AI can't play, then `run`. Lead with the win rate and its interval, wins by route, losses by reason, and the pilot tags (losses the AI caused inside real rules, e.g. `surge_trap`). Say which pod mode produced a number. Budget time: one game is tens of seconds per CPU.
 
