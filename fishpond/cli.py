@@ -9,6 +9,7 @@
   python3 -m fishpond report RUN_DIR [--reparse]   reprint a saved run's report (--reparse: parse its logs again)
   python3 -m fishpond show RUN_DIR GAME [--log]    one game's parsed record (and its Forge log) for hand audits
   python3 -m fishpond puzzles [NAME...] [-v]       AI behaviour tests: board states in fishpond/puzzles/ (pass/fail)
+  python3 -m fishpond compare RUN_A RUN_B          two saved runs side by side (A/B on the same seed and pod: FISHPOND_PILOT=off vs on)
   python3 -m fishpond flags [--smoke] [--unflag]   cards Forge's AI won't cast (AI:RemoveDeck:All) across the repo's decks, with
                                                     their status; --smoke writes+runs a smoke puzzle for each untested one,
                                                     --unflag writes an override (fishpond/forge_card_overrides/) for each that passes
@@ -90,6 +91,10 @@ def cmd_deck(args):
 def cmd_puzzles(args):
     from . import puzzles
     if not puzzles.run_all(args.names, args.verbose): sys.exit(1)
+
+def cmd_compare(args):
+    from . import compare
+    compare.compare(args.a, args.b)
 
 def cmd_flags(args):
     from . import puzzles as pz
@@ -360,9 +365,10 @@ def main(argv=None):
     p = sub.add_parser("report"); p.add_argument("run"); p.add_argument("--turns", type=int, default=0); p.add_argument("--json", action="store_true")
     p.add_argument("--reparse", action="store_true", help="re-run the log parser over the saved logs first")
     z = sub.add_parser("puzzles"); z.add_argument("names", nargs="*"); z.add_argument("-v", "--verbose", action="store_true")
+    c = sub.add_parser("compare"); c.add_argument("a"); c.add_argument("b")
     g = sub.add_parser("flags"); g.add_argument("--smoke", action="store_true"); g.add_argument("--unflag", action="store_true")
     w = sub.add_parser("show"); w.add_argument("run"); w.add_argument("game", type=int); w.add_argument("--build")
     w.add_argument("--log", action="store_true"); w.add_argument("--phases", action="store_true")
     args = ap.parse_args(argv)
     if not args.cmd: ap.print_help(); return
-    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags}[args.cmd](args)
+    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare}[args.cmd](args)
