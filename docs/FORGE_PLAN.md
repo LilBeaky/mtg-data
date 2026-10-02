@@ -194,9 +194,45 @@ Priority order:
 - Forge's AI has an optional lookahead (`forge.ai.simulation`, per player via `AIOption`): `USE_HYBRID_SIMULATION` = the heuristic AI picks, `OnePlaySafetyChecker` simulates each play one move ahead and vetoes it if it scores worse; `USE_FULL_SIMULATION` = plays chosen by `SpellAbilityPicker` search (`SimulationController.DEFAULT_MAX_DEPTH` = 3, a constant, not a setting) and library searches decided by simulating each candidate (`chooseCardToHiddenOriginChangeZone`). No depth or strength knob exists. Ian's rule (none/low/high -> low): **default `--sim hybrid`** for the user's seat and real-deck opponents (`--opp-sim`); dummies always off. The harness reads back each controller's mode and records it per game.
 - The AI timeout also exists as a preference (`MATCH_AI_TIMEOUT`); the harness keeps setting the field directly.
 - Forge 2.0.15's lookahead crashes on prepared cards: `docs/FORGE_ISSUES.md` #1 (pause + replay workaround, both reported).
-- Tutoring: the plain AI picks library-search targets with generic pickers (`ComputerUtilCard.getBestAI`, `getMostExpensivePermanentAI`, `getBestCreatureAI`; Forge's own Demonic Tutor script: "will generally look for the most expensive castable thing"). Hybrid doesn't change that; full does (board-score simulation, so value picks, not combo pieces). Deck-level `AiHints` only drive sideboarding; card hints are global. The harness logs every library search/dig of the user's seat into hand or play (`#FP-TUTOR`: source, card, land, key card, key cards left) and the report prints tutor targets per tutor and key-card fetches. A key/package-driven tutor override for the user's seat is possible (~50 lines, opt-in) but is a pilot change: not built, Ian's call.
+- Tutoring: the plain AI picks library-search targets with generic pickers (`ComputerUtilCard.getBestAI`, `getMostExpensivePermanentAI`, `getBestCreatureAI`; Forge's own Demonic Tutor script: "will generally look for the most expensive castable thing"). Hybrid doesn't change that; full does (board-score simulation, so value picks, not combo pieces). Deck-level `AiHints` only drive sideboarding; card hints are global. The harness logs every library search/dig of the user's seat into hand or play (`#FP-TUTOR`: source, card, land, key card, key cards left) and the report prints tutor targets per tutor and key-card fetches. Superseded 2026-10-02 by "Pilot policy" below (general, on by default, all seats).
 - **Measured (Chulane vacuum, the same 12 seeds, 2026-10-01):** lookahead off won 4 / lost 8 (7 `surge_trap`), median game 77 s, 15 CPU-minutes; hybrid won 8 / lost 3 (3 `surge_trap`) / 1 cut by the then 600 s per-game limit (now 1800 s), median game 152 s, 41 CPU-minutes (about 2.7x). Lookahead paused on 3 of 141 hero turns (prepared cards), 0 fallbacks. Zur vacuum, 8 games, hybrid: won 5, lost 0, 3 at the cap; median game 61 s (about 53 s without). Zur's tutor picks (now logged): Words of Worship 7, Astral Drift 5, Solitary Confinement 5, Rule of Law 5 (defensive or hate pieces that do nothing against dummies): value-blind, as the code says; Solve the Equation fetched Approach of the Second Sun both times.
 - Pilot watch: known blind spots are tagged (`surge_trap`, `oracle_trap`) or listed (win-condition cards cast vs won with, never-cast, AI-flagged, dead cards, tutor targets). Add tags/lines as new ones appear.
+
+## Pilot policy (plan, 2026-10-02; Ian approved the direction, implementation waits until the active sims finish)
+
+**Why.** 25-game Zur runs (same seed and pod: Chulane / Niv / Omnath, hybrid) went 3-22 under both Default and Cautious, every win Approach of the Second Sun. The profile barely matters (18 of 25 paired games ended alike); the pilot does. Zur's tutors fetch by generic "best card" pickers: Grasp of Fate was Default's top Zur fetch (10/25 games), while the deck is built to fetch Astral Slide (the engine) and fire it with its 27 cycling cards (Step Through among them). Zur was cast in only ~75% of games, and the core enchantments are AI-flagged (`AI:RemoveDeck:All`: Astral Slide, Necrodominance, Solitary Confinement, Words of Worship...). Ian's direction: **systematic pilot changes over deck-specific ones**, on by default for every seat, with deck-specific overrides only where the general rules provably miss.
+
+### Part 1: tutor policy in the harness (`fishpond/harness`)
+
+- **Hook.** `SafeControllerAi` already subclasses `PlayerControllerAi`; it also overrides the library-search choice. First step: confirm which controller/AI methods Zur, Solve the Equation, Spellseeker, Wishclaw, Step Through (wizardcycling) and dig effects reach in 2.0.15. Unhooked paths defer to Forge, so nothing breaks.
+- **Static intel, built once per deck in Python** (a JSON file passed to the harness): for every card in the deck, roles from Scryfall oracle tags (`data/oracle-tags-*.jsonl`: `draw engine`, `removal-*`, `pillowfort`, `synergy-cycling`, `tutor-*`...), mechanic counts (how many deck cards each card pays off: Astral Slide sees 27 cyclers), Commander Spellbook combos restricted to the deck (`data/spellbook_combos.json.gz`; Zur has 3 complete ones, all Approach + a tutor, and 10 one-card-away), the Forge AI flag, and optional `# package:` / `# key:` header boosts.
+- **Dynamic scoring in Java** per candidate, highest layer wins, ties fall through:
+  1. completes a Spellbook combo with cards in hand or on the battlefield;
+  2. survival: facing lethal or a board that's beating you raises removal, wipes, fogs, protection;
+  3. **engine graph**: a payoff whose enablers are dense in the deck ranks high until one is on the battlefield; then enablers that fire it rise (Zur: Astral Slide first, then cyclers like Step Through). Spellbook doesn't list engines like Slide + cycling (0 entries), so this layer is the one that has to carry decks like Zur;
+  4. role gap: what the board lacks against what the deck is built around (mana, card flow, answers, win-con);
+  5. deck synergy count;
+  6. playability: AI-flagged cards discounted until Part 2 fixes their mechanic (otherwise the policy just fetches cards that rot in hand);
+  7. Forge's own pick as the tiebreak.
+- **Deck overrides** (`# priority:` header, later if needed): only when an audit shows the general layers miss a line on purpose. Zur is the acid test: if the engine graph doesn't fetch Slide then fire it, fix the layer before reaching for an override.
+- **Audit log.** Every decision prints `#FP-POLICY`: source, chosen card, Forge's pick, deciding layer and reason. The report gets "policy vs Forge" counts and the top disagreements.
+- **Cost.** Scoring is table lookups plus one pass over the board per candidate: well under a millisecond, the same order as Forge's own pickers and negligible next to hybrid's per-play simulation. It's far cheaper than `--sim full`'s per-candidate simulation; full mode could use the policy to shortlist 2-3 candidates and simulate only those, which would speed it up.
+- **Acceptance.** Same seeds and pods, policy vs no policy: Zur, Chulane, Yusri (tutor-heavy) plus one low-tutor control deck that must not move. Hand-audit 10 decisions per deck. On by default for all seats once accepted; keep an internal switch for A/B runs only.
+
+### Part 2: AI fixes by mechanic (Forge patches and card-script overrides)
+
+1. **Measure:** rank AI-flagged cards across every deck in the repo and the gauntlets by frequency x damage (left in hand, never cast, cast rate). Some flags may be overcautious.
+2. **Group by mechanic**, not card: optional life/discard upkeep costs (Solitary Confinement), draw replacement and skipping draws (Necrodominance, Words of Worship), cycling-triggered flicker (Astral Slide/Drift), and so on. One fix per decision pattern.
+3. **Cheapest fix first:** card-script AI hints (`AILogic`, SVars) shipped as override files in `fishpond/forge_card_overrides/`, applied at setup like `forge_patches/`; Java patches to the AI classes only when hints can't express it.
+4. **Tests are Forge puzzles** (`.pzl` board states): "Slide on the battlefield, a cycler in hand at end of an opponent's turn: does the AI cycle with a creature to flicker?" Fast, deterministic, re-run on every Forge bump.
+5. **Upstream:** Forge (Card-Forge/forge, GPL-3) takes contributions. Before sending anything: read its CONTRIBUTING notes and any stance on AI-assisted code, open an issue or discussion first, keep PRs small with puzzle tests, and disclose that Claude helped write them. Ian submits under his account and owns the review. Accepted patches drop out of our patch set.
+
+### Order
+
+1. Instrumentation: `#FP-POLICY`-style log of every library search with Forge's pick and the candidate list; flagged-card ranking for Part 2.
+2. Static intel builder (Python) + layers 1, 3 and 7 (combos, engine graph, fallback); Zur and Chulane A/B.
+3. Layers 2, 4-6; full acceptance; flip on by default.
+4. Part 2 in ranked order, each with puzzles; remove the layer-6 discount per fixed mechanic.
 
 ## Acceptance log
 
@@ -218,7 +254,7 @@ Fishpond works end to end but isn't "set". In priority order:
 3. **Re-baseline with lookahead on.** The acceptance numbers (Chulane vacuum 26%, 0/20 into the gauntlet) were measured with lookahead off. Re-run Chulane, and each of Yusri, Zur, Klauth as the hero (vacuum + gauntlet), which also completes the 3-deck goldfish cross-check.
 4. **A headline block** at the top of the report (5-6 lines: win rate and interval, how it wins, how it loses, pilot-error share, the user's field-9 questions answered), with the tables below as detail. Combined report when a run uses both a vacuum and a gauntlet pod.
 5. **Validate `--variant` at scale** (code path exists, never run on a real swap question).
-6. **Pilot modes** (Ian: "later"): hybrid vs full and the AI profiles, on Zur (tutoring) and Chulane. Then decide on the opt-in key/package tutor override.
+6. **Pilot modes:** profiles measured on Zur 2026-10-02 (Default vs Cautious, 25 games each: no real difference, see "Pilot policy"); `--sim full` runs in progress in another session. Next: the pilot policy plan.
 7. **Gauntlet growth:** tester decks by bracket beyond Ian's own lists (Phase D 5).
 8. **Leftovers:** stranded and cycled columns, combo/line detection, card impact beyond association; Forge version-bump procedure (re-test FORGE_ISSUES entries).
 
