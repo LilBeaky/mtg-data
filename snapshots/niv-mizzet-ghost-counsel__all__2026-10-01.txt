@@ -1,0 +1,281 @@
+# commander: Niv-Mizzet, Ghost Counsel
+# variant: all
+# url: https://edhrec.com/commanders/niv-mizzet-ghost-counsel
+# decks: 2618
+# fetched: 2026-10-01
+# note: /optimized had only 120 decks (user-set brackets only), so the all-decks page is the baseline per USE_INSTRUCTIONS §9
+# note: EDHREC now shows "lift" (inclusion / baseline) instead of synergy %; synergy below = inclusion - inclusion/lift, rounded
+Liliana the Faultless|51|41
+Gleaming Splendor|28|18
+Ajani Resolute|25|20
+Enlightened Confidant|22|17
+The Queen of Dale|15|6
+Words of Worship|28|24
+Healing Salve|7.4|6
+Chaplain's Blessing|15|13
+Doctor Doom, Unrivaled|25|22
+Union of the Third Path|10|9
+Confessor|5.6|5
+Ivory Tower|9.4|8
+Venser's Journal|17|15
+Starving Revenant|11|9
+Peace of Mind|6.1|5
+Swords to Plowshares|83|19
+Soul Warden|81|55
+Authority of the Consuls|75|48
+Soul's Attendant|75|54
+Kambal, Consul of Allocation|70|49
+Path to Exile|67|15
+Dark Ritual|66|33
+Vito, Thorn of the Dusk Rose|61|36
+Sheoldred, the Apocalypse|61|48
+Blind Obedience|58|37
+Smothering Tithe|40|19
+Bolas's Citadel|33|17
+Demonic Tutor|30|14
+Vampiric Tutor|25|12
+Teferi's Protection|23|9
+Ancient Tomb|20|12
+Enlightened Tutor|20|9
+Orcish Bowmasters|14|8
+Mana Vault|14|10
+Chrome Mox|13|9
+Enduring Tenacity|57|38
+Lotho, Corrupt Shirriff|50|25
+Elas il-Kor, Sadistic Pilgrim|49|14
+Serra Ascendant|47|35
+Children of Korlis|46|37
+Suture Priest|46|28
+Marauding Blight-Priest|45|28
+Gray Merchant of Asphodel|44|30
+Psychosis Crawler|43|37
+Bloodthirsty Conqueror|42|28
+Crypt Ghast|41|30
+Rhox Faithmender|39|30
+Starscape Cleric|38|25
+Karlov of the Ghost Council|37|28
+Creeping Bloodsucker|37|28
+Blood Artist|36|6
+Esper Sentinel|36|17
+Sorin of House Markov|33|24
+Haliya, Guided by Light|33|22
+Auriok Champion|32|24
+Archivist of Oghma|30|21
+Grand Abolisher|29|17
+Archangel of Thune|28|20
+Heliod, Sun-Crowned|26|19
+Guide of Souls|23|15
+Sunscorch Regent|22|16
+Voice of Victory|22|13
+Witch Enchanter|22|5
+Moseo, Vein's New Dean|21|15
+Elenda's Hierophant|21|9
+Kambal, Profiteering Mayor|18|5
+Exemplar of Light|17|7
+Daxos, Blessed by the Sun|17|10
+Astarion, the Decadent|17|10
+Ocelot Pride|17|10
+Mother of Runes|16|6
+Charismatic Conqueror|16|4
+Skirge Familiar|16|14
+Scheming Silvertongue|15|5
+Cliffhaven Vampire|15|9
+Ranger-Captain of Eos|14|10
+Twilight Prophet|14|5
+Zulaport Cutthroat|13|-6
+Vizkopa Guildmage|13|6
+Tataru Taru|13|8
+Amalia Benavides Aguirre|13|6
+Ob Nixilis, the Ascended|12|9
+Lunarch Veteran|12|7
+Voice of the Blessed|11|6
+The Gaffer|11|7
+Anguished Unmaking|52|9
+Flawless Maneuver|34|21
+Despark|33|6
+Restoration Magic|30|22
+Deadly Rollick|29|14
+Beacon of Immortality|27|21
+Inkshield|27|2
+Fracture|23|2
+Silence|23|16
+Generous Gift|22|4
+Cabal Ritual|22|16
+Fell the Profane|21|5
+Reprieve|20|9
+Heliod's Intervention|19|13
+Culling the Weak|19|10
+Malakir Rebirth|17|3
+Dawn's Truce|17|8
+Mortify|16|-2
+Riot Control|14|11
+Imp's Mischief|12|7
+Orim's Chant|12|8
+Bilbo's Gambit|12|7
+Light of Hope|12|10
+Snuff Out|12|8
+Erode|11|4
+Angel's Grace|11|7
+Stroke of Midnight|11|0
+Revitalize|10|8
+Flare of Fortitude|9.3|1
+Rebuff the Wicked|8.9|5
+Akroma's Will|8.1|1
+Infernal Grasp|7.6|3
+Entomb|7.6|1
+Mana Tithe|7.2|4
+Clever Concealment|6.8|0
+Utter End|6.5|-1
+Ad Nauseam|6.5|4
+Dismember|6.4|4
+Exsanguinate|52|33
+Approach of the Second Sun|43|37
+Toxic Deluge|42|20
+Reanimate|38|17
+Damn|34|3
+Debt to the Deathless|32|19
+Fumigate|19|11
+Night's Whisper|13|-6
+Diabolic Intent|12|1
+Vindicate|11|1
+Imperial Seal|11|8
+Sign in Blood|11|-5
+Sevinne's Reclamation|11|1
+Beseech the Mirror|10|6
+Feed the Swarm|9.2|2
+Farewell|8.8|1
+Revival // Revenge|8.2|3
+Victimize|7.9|-8
+Grim Tutor|7.7|3
+Damnation|7.6|4
+Kaya's Wrath|7.5|2
+Austere Command|7.4|-5
+Agadeem's Awakening|7.3|2
+Fix What's Broken|7|2
+Aetherflux Reservoir|55|41
+The Wind Crystal|49|36
+Alhammarret's Archive|43|34
+Lightning Greaves|40|19
+Swiftfoot Boots|27|4
+Tainted Sigil|23|18
+Jet Medallion|18|10
+Pearl Medallion|17|8
+Archaeomancer's Map|13|6
+The Darkness Crystal|13|8
+Sensei's Divining Top|13|9
+Tablet of the Guilds|12|10
+Bontu's Monument|11|6
+Wishclaw Talisman|11|7
+The One Ring|11|5
+Whip of Erebos|10|6
+Wayfarer's Bauble|10|1
+Elixir of Immortality|9.1|7
+Well of Lost Dreams|8.1|2
+Spellbook|7.9|7
+Caduceus, Staff of Hermes|7.4|5
+Cosmos Elixir|7.3|5
+Phyrexian Altar|6.6|-4
+Sanguine Bond|48|27
+Exquisite Blood|42|25
+Cleric Class|35|25
+Black Market Connections|34|8
+Land Tax|25|8
+Ghostly Prison|18|2
+The Meathook Massacre|16|5
+Ajani's Welcome|16|11
+Phyrexian Arena|15|-6
+Lunar Convocation|15|5
+Bloodchief Ascension|14|8
+Font of Agonies|12|10
+Monologue Tax|11|6
+Animate Dead|10|-2
+Leyline of Hope|8.3|5
+Necropotence|8|2
+Test of Endurance|7.7|6
+Bastion of Remembrance|7.4|-11
+Life Insurance|7.1|4
+Boon Reflection|7|5
+Case of the Uneaten Feast|6.9|3
+Glasswing Grace|6.8|-2
+Bitterblossom|5.9|-3
+Trouble in Pairs|5.6|0
+Ajani, Strength of the Pride|11|8
+Sorin, Vengeful Bloodlord|7.6|3
+Reliquary Tower|63|38
+Urborg, Tomb of Yawgmoth|43|20
+Bojuka Bog|40|-4
+Vault of the Archangel|35|3
+Cabal Coffers|25|13
+Radiant Fountain|23|17
+Adventurer's Inn|19|15
+Phyrexian Tower|17|0
+Takenuma, Abandoned Mire|15|3
+Urza's Saga|14|8
+Eiganjo, Seat of the Empire|13|2
+High Market|11|-3
+Nykthos, Shrine to Nyx|9.3|5
+Command Beacon|9.2|5
+Emergence Zone|9|7
+City of Traitors|5.4|4
+Sol Ring|90|8
+Arcane Signet|89|8
+Talisman of Hierarchy|72|17
+Orzhov Signet|59|10
+Thought Vessel|56|40
+Fellwar Stone|38|14
+Pristine Talisman|33|25
+The Soul Stone|18|10
+Decanter of Endless Water|16|13
+Mind Stone|16|-2
+Lotus Petal|15|10
+The Mind Stone|13|7
+Mox Diamond|10|7
+Mox Opal|9.1|7
+Mox Amber|8.1|4
+Charcoal Diamond|7.7|3
+Marble Diamond|7.4|3
+Commander's Sphere|7.3|-1
+Grim Monolith|5.6|4
+Command Tower|87|0
+Godless Shrine|76|18
+Isolated Chapel|69|0
+Caves of Koilos|65|0
+Vault of Champions|60|20
+Shattered Sanctum|58|5
+Marsh Flats|52|20
+Fetid Heath|47|0
+Bleachbone Verge|46|15
+Shadowy Backstreet|40|13
+Tainted Field|39|-4
+Brightclimb Pathway|32|5
+Turbulent Moor|31|10
+Scrubland|30|15
+Eclipsed Steppe|30|9
+Shineshadow Snarl|29|-12
+Exotic Orchard|27|0
+Silent Clearing|27|9
+Scoured Barrens|25|4
+Orzhov Basilica|23|-10
+Bloodstained Mire|18|9
+Polluted Delta|18|10
+Temple of Silence|17|-17
+Flooded Strand|17|9
+Windswept Heath|17|9
+City of Brass|17|11
+Desolate Mire|16|-7
+Concealed Courtyard|16|-7
+Fabled Passage|16|-2
+Mana Confluence|16|11
+Arid Mesa|16|8
+Verdant Catacombs|14|7
+Reflecting Pool|13|7
+Gemstone Caverns|12|9
+Prismatic Vista|11|5
+Fisk Tower|11|7
+Foot Headquarters|10|6
+Cavern of Souls|10|5
+Evolving Wilds|10|-4
+Myriad Landscape|9.3|-2
+Terramorphic Expanse|8.6|-4
+Boggart Trawler|8.5|0
+Umbral Expanse|8.4|0
