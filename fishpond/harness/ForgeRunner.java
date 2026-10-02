@@ -254,7 +254,8 @@ public class ForgeRunner {
             String profile = ai[i].equals("Default") ? "" : ai[i];
             Set<AIOption> opts = sims[i].equals("full") ? EnumSet.of(AIOption.USE_FULL_SIMULATION)
                     : sims[i].equals("hybrid") ? EnumSet.of(AIOption.USE_HYBRID_SIMULATION) : EnumSet.noneOf(AIOption.class);
-            PilotPolicy pol = PilotPolicy.load(deckDir, file);
+            String ps = System.getProperty("fishpond.pilotSeats", "all");    // seats that get the pilot (default all)
+            PilotPolicy pol = ps.equals("all") || Arrays.asList(ps.split(",")).contains(String.valueOf(i + 1)) ? PilotPolicy.load(deckDir, file) : null;
             if (pol != null) policies.add(pol);
             SafeLobbyPlayerAi lp = new SafeLobbyPlayerAi("Ai(" + (i + 1) + ")-" + d.getName(), opts, fb, pol);
             lp.setAiProfile(profile.isEmpty() ? "Default" : profile);

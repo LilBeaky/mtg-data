@@ -58,6 +58,9 @@ Fishpond runs stock Forge plus the fixes in `fishpond/forge_patches/*.patch` (un
 | `04-aicache-bounded` | `forge-ai/.../ai/AiCache.java` | #3 |
 | `05-pilot-cycling-payoffs` | `forge-ai/.../ai/ability/DrawAi.java` | AI play: cycles at useful moments with a cycling payoff out (puzzle `astral_slide_cycle`) |
 | `06-pilot-blink-attackers` | `forge-ai/.../ai/ability/ChangeZoneAi.java` | AI play: blinks opponents' attackers out of combat (puzzle `astral_slide_cycle`) |
+| `07-pilot-seat-overrides` | `forge-ai/.../ai/AiController.java` | `--pilot-seats you`: seats outside the pilot treat fishpond's un-flagged cards as still flagged |
+
+The `-pilot-` patches act only for the pilot seats (`-Dfishpond.pilotSeats`, default all; the helper lives in patch 05's `DrawAi`, which 06 and 07 use).
 
 `-pilot-` patches improve play rather than fix crashes; `FISHPOND_PILOT=off` leaves them out (with the tutor policy and card overrides) for A/B runs.
 

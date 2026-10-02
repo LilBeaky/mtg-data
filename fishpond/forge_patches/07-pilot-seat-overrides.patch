@@ -1,0 +1,14 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1565,7 +1565,9 @@
+         saList.removeIf(spellAbility -> {
+             // don't include removedAI cards if somehow the AI can play the ability or gain control of unsupported card
+             // TODO allow when experimental profile?
+-            return spellAbility.isLandAbility() || (spellAbility.getHostCard() != null && ComputerUtilCard.isCardRemAIDeck(spellAbility.getHostCard()));
++            return spellAbility.isLandAbility() || (spellAbility.getHostCard() != null && (ComputerUtilCard.isCardRemAIDeck(spellAbility.getHostCard())
++                    // fishpond patch 07: a card fishpond un-flagged stays flagged for seats outside the pilot seats
++                    || (!forge.ai.ability.DrawAi.pilotSeat(player) && forge.ai.ability.DrawAi.pilotOverridden(spellAbility.getHostCard().getName()))));
+         });
+         //removed skipped SA
+         skipped = saList.stream().filter(SpellAbility::isSkip).collect(Collectors.toList());

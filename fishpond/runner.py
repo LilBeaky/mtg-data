@@ -184,6 +184,20 @@ def load_plan(run_dir):
     p = os.path.join(run_dir, "plan.json")
     return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else None
 
+def _pilot_seat_props(run_dir):
+    """JVM properties for --pilot-seats you: only seat 1 gets the policy and the '-pilot-' patches, and the other seats treat
+    fishpond's un-flagged cards as still flagged (patch 07 reads the list from a file in the run)."""
+    seats = os.environ.get("FISHPOND_PILOT_SEATS", "all")
+    if seats == "all" or not forge.pilot_on(): return []
+    import re as _re
+    names = []
+    for f in forge.override_files():
+        m = _re.search(r"^Name:(.+)$", open(f, encoding="utf-8").read(), _re.M)
+        if m: names.append(m.group(1).strip())
+    p = os.path.join(run_dir, "overridden.txt")
+    with open(p, "w", encoding="utf-8") as fh: fh.write("\n".join(names) + "\n")
+    return [f"-Dfishpond.pilotSeats={seats}", f"-Dfishpond.overriddenFile={os.path.abspath(p)}"]
+
 def execute(entries, jobs, run_dir, session, quiet=False):
     """Run plan entries on `jobs` harness JVMs; each writes logs/worker_<session>_<j>.log, one game at a time (a cut-off
     session keeps every finished game). Returns wall seconds."""
@@ -202,7 +216,7 @@ def execute(entries, jobs, run_dir, session, quiet=False):
         with open(pf, "w", encoding="utf-8") as fh: fh.write("\n".join(e["line"] for e in chunk) + "\n")
         lf = os.path.join(log_dir, f"worker_{session}_{j}.log")
         cmd = ["java", f"-Xmx{xmx_for(jobs, uses_full(entries))}m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
-               *([] if forge.pilot_on() else ["-Dfishpond.policy=off"]),
+               *([] if forge.pilot_on() else ["-Dfishpond.policy=off"]), *_pilot_seat_props(run_dir),
                "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "ForgeRunner", os.path.join(deck_dir, ""), pf]
         fh = open(lf, "w", encoding="utf-8")
         procs.append((subprocess.Popen(cmd, cwd=forge.run_home(quiet=True), stdout=fh, stderr=subprocess.STDOUT), fh, lf))

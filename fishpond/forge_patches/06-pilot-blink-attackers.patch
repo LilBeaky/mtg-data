@@ -7,21 +7,22 @@ diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java b/forge-a
                          if (blink) {
 -                            return c.isToken();
 +                            // blinking an opponent's creature that is attacking the AI takes it out of combat (fishpond patch 06)
-+                            return c.isToken() || attacksAi(ai, c);
++                            return c.isToken() || (DrawAi.pilotSeat(ai) && attacksAi(ai, c));
                          }
                          return c.isToken() || c.getCMC() > 0;
                      });
-@@ -1095,7 +1096,8 @@
+@@ -1095,7 +1096,9 @@
          if (origin.contains(ZoneType.Battlefield)
                  && destination.equals(ZoneType.Exile)
                  && (subApi == ApiType.DelayedTrigger || (subApi == ApiType.ChangeZone  && subAffected.equals("Remembered")))
 -                && !(game.getPhaseHandler().is(PhaseType.COMBAT_DECLARE_ATTACKERS) || sa.isAbility())) {
-+                && !(game.getPhaseHandler().is(PhaseType.COMBAT_DECLARE_ATTACKERS) || game.getPhaseHandler().is(PhaseType.COMBAT_DECLARE_BLOCKERS)
++                && !(game.getPhaseHandler().is(PhaseType.COMBAT_DECLARE_ATTACKERS)
++                        || (DrawAi.pilotSeat(ai) && game.getPhaseHandler().is(PhaseType.COMBAT_DECLARE_BLOCKERS))
 +                        || sa.isAbility())) {
              return false;
          }
  
-@@ -2175,4 +2177,14 @@
+@@ -2175,4 +2178,14 @@
  
          return super.willPayUnlessCost(payer, sa, cost, alreadyPaid, payers);
      }

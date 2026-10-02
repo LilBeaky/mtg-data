@@ -10,10 +10,38 @@ diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/
  import forge.util.MyRandom;
  import forge.util.collect.FCollectionView;
  
-@@ -118,8 +120,52 @@
+@@ -118,8 +120,80 @@
       * forge.game.spellability.SpellAbility, forge.game.cost.Cost,
       * forge.game.card.Card)
       */
++    // ---- Fishpond pilot seats: -Dfishpond.pilotSeats=all (default) or a comma list of seat numbers (the "N" in a player
++    // name "Ai(N)-..."); fishpond's '-pilot-' patches only change decisions for those seats, so an A/B run can give the
++    // improvements to one seat. Shared by patches 06 and 07.
++    private static java.util.Set<String> pilotSeats;
++    private static java.util.Set<String> overridden;
++
++    public static boolean pilotSeat(Player p) {
++        if (pilotSeats == null) {
++            String v = System.getProperty("fishpond.pilotSeats", "all");
++            pilotSeats = v.equals("all") ? null : new java.util.HashSet<>(java.util.Arrays.asList(v.split(",")));
++            if (pilotSeats == null) return true;
++        }
++        return p != null && pilotSeats.contains(p.getName().replaceAll("^Ai\\((\\d+)\\).*", "$1"));
++    }
++
++    /** Cards fishpond un-flagged (forge_card_overrides; -Dfishpond.overriddenFile, one name per line): for a seat outside
++     *  the pilot seats the AI treats them as still flagged (patch 07). */
++    public static boolean pilotOverridden(String name) {
++        if (overridden == null) {
++            overridden = new java.util.HashSet<>();
++            String f = System.getProperty("fishpond.overriddenFile");
++            if (f != null) {
++                try { overridden.addAll(java.nio.file.Files.readAllLines(java.nio.file.Paths.get(f))); } catch (java.io.IOException e) { /* none */ }
++            }
++        }
++        return overridden.contains(name);
++    }
++
 +    /** Does the player control a permanent that triggers when a card is cycled? */
 +    static boolean hasCyclingPayoff(Player ai) {
 +        for (Card c : ai.getCardsIn(ZoneType.Battlefield)) {
@@ -56,20 +84,20 @@ diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/
      @Override
      protected boolean willPayCosts(Player payer, SpellAbility sa, Cost cost, Card source) {
 +        // With a cycling payoff out, cycling a land or any card while the hand has spares is fine (fishpond patch 05)
-+        if (sa.isCycling() && hasCyclingPayoff(payer)
++        if (sa.isCycling() && pilotSeat(payer) && hasCyclingPayoff(payer)
 +                && (source.isLand() || payer.getCardsIn(ZoneType.Hand).size() >= 3 || ComputerUtil.isWorseThanDraw(payer, source))) {
 +            return true;
 +        }
          if (!ComputerUtilCost.checkCreatureSacrificeCost(payer, cost, source, sa)) {
              return false;
          }
-@@ -160,6 +206,11 @@
+@@ -160,6 +234,11 @@
       */
      @Override
      protected boolean checkPhaseRestrictions(Player ai, SpellAbility sa, PhaseHandler ph) {
 +        // Cycling with a cycling payoff out (Astral Slide, Drift Wraith-style triggers): cycle at the moments the payoff
 +        // matters instead of holding draws for main 2 (fishpond patch 05).
-+        if (sa.isCycling() && hasCyclingPayoff(ai)) {
++        if (sa.isCycling() && pilotSeat(ai) && hasCyclingPayoff(ai)) {
 +            return cyclingWindow(ai, ph);
 +        }
          // Sacrificing a creature in response to something dangerous is generally good in any phase

@@ -30,6 +30,8 @@ run options:
   --track "Label=REGEX"  first turn a matching card is cast or enters (repeatable; '# track:' header lines are added)
   --variant "Label|Out=>In;Out=>In"  also run a swapped build on the same seeds and pods (repeatable)
   --commander NAME       when the list has no Commander section
+  --pilot-seats you|all  who gets the pilot improvements (tutor policy, AI patches, card overrides; default all). 'you' keeps
+                         the opponents on stock Forge AI, to separate "my deck plays better" from "the table got tougher"
   --engine E             harness (default when javac is available: one JVM per worker, every game reseeded, stops when
                          you've lost or at --cap, per-turn snapshots) or cli (Forge's stock sim; no javac needed)
   --cap N                harness: end a game after your turn N as unfinished (default 20)
@@ -140,6 +142,7 @@ def cmd_save(args):
 def cmd_run(args):
     if args.resume: return cmd_resume(args)
     if not args.deck: sys.exit("fishpond: run needs a deck file (or --resume RUN_DIR)")
+    os.environ["FISHPOND_PILOT_SEATS"] = "1" if args.pilot_seats == "you" else "all"
     args.trials = 20 if args.trials is None else args.trials
     if args.trials < 1: sys.exit("fishpond: --trials must be at least 1")
     if args.turns < 1: sys.exit("fishpond: --turns must be at least 1")
@@ -181,7 +184,8 @@ def cmd_run(args):
             "track": hero.meta.get("track", []), "extra_track": args.track, "key": _keys(hero),
             "variants": args.variant, "opp": _opp_specs(args), "fixed_pod": args.fixed_pod, "run_dir": _rel(run_dir),
             "commander_opt": args.commander, "complete": False, "pilot": forge.pilot_on(),
-            "pilot_patches": [os.path.basename(f) for f in forge.patch_files() if "-pilot-" in f], "overrides": len(forge.override_files())}
+            "pilot_patches": [os.path.basename(f) for f in forge.patch_files() if "-pilot-" in f], "overrides": len(forge.override_files()),
+            "pilot_seats": args.pilot_seats}
     runner.save(run_dir, meta, [])                  # written first: a cut-off run can be reported on and resumed
     if engine == "harness":
         if not args.quiet: print(f"fishpond: if this session ends early: python3 -m fishpond run --resume {_rel(run_dir)}", file=sys.stderr)
@@ -202,6 +206,7 @@ def cmd_resume(args):
     """Finish a cut-off harness run (replaying unfinished games from their seeds) and/or add --trials more games to it."""
     run_dir = os.path.abspath(args.resume)  # the JVM runs from Forge's home, so relative paths break
     meta = json.load(open(os.path.join(run_dir, "meta.json"), encoding="utf-8"))
+    os.environ["FISHPOND_PILOT_SEATS"] = "1" if meta.get("pilot_seats") == "you" else "all"
     if meta.get("engine") != "harness": sys.exit("fishpond: --resume needs a harness run (the cli engine chains games and can't resume)")
     plan = runner.load_plan(run_dir)
     if plan is None: sys.exit(f"fishpond: {run_dir} has no plan.json (made before resume support); start a new run")
@@ -359,6 +364,7 @@ def main(argv=None):
     r.add_argument("--sim", choices=runner.SIM_MODES, default="hybrid"); r.add_argument("--opp-sim", choices=runner.SIM_MODES, default="hybrid")
     r.add_argument("--track", action="append", default=[]); r.add_argument("--variant", action="append", default=[])
     r.add_argument("--commander"); r.add_argument("--clock", type=int, default=120); r.add_argument("--jobs", type=int, default=0)
+    r.add_argument("--pilot-seats", choices=["all", "you"], default="all", help="who gets the pilot improvements (A/B: 'you' keeps the opponents on stock Forge AI)")
     r.add_argument("--engine", choices=["auto", "harness", "cli"], default="auto"); r.add_argument("--cap", type=int, default=20)
     r.add_argument("--timeout", type=int, default=None, help="per-game wall-clock limit in seconds (default 1800; 7200 with full lookahead)"); r.add_argument("--out"); r.add_argument("--json", action="store_true")
     r.add_argument("--quiet", action="store_true")
