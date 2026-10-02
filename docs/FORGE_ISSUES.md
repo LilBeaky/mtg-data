@@ -42,6 +42,17 @@ Fixes Fishpond makes to Forge itself are listed under **Patches** below; everyth
 - **Fix:** patches `02-devadvance-stop-on-game-over` (stop advancing when the game is over or the stack couldn't be cleared; the second case prints `devAdvanceToPhase: stopped ...` to the worker log) and `03-combat-sim-resolve-with-copy-players`.
 - **Verified (2026-10-02):** partly. No `Stack isn't empty` and no `devAdvanceToPhase: stopped` line in any patched run (full: seed 5 games 0-2; hybrid: seed 4 games 0-7). But the patched AI plays differently, and the evidence game had not yet reached a lethal drain turn when this was written, so the patch has not yet been seen handling the case.
 
+## 5. Full lookahead can run for hours on one decision — patched (capped)
+
+- **Forge:** 2.0.15. **When:** `--sim full`, a busy board.
+- **What:** the search has no size or time limit. Each decision simulates every candidate play, then every follow-up, to depth 3 (`SimulationController.DEFAULT_MAX_DEPTH`), and every position is a full copy of the 4-player game. Card choices multiply it again: a tutor or sacrifice inside a simulated play tries every distinct card name (`SpellAbilityChoicesIterator.chooseCard`), so a library search is one simulation per name at every level.
+- **Evidence (2026-10-02):** seed 5, full on Niv: games 0 and 2 never finished in two runs (table turns 16 and 15, then silence for up to 55 min). A replay of game 2 stalled on table turn 11; six thread dumps 20 s apart were all 2-4 levels deep in `SpellAbilityPicker.evaluateSa` with no card choice on the stack, so that hang is breadth times depth over ordinary plays.
+- **Fix:** two caps on what the search considers. It always finishes on full lookahead and never falls back to hybrid or to no lookahead. Both count work, not time, so a seed replays exactly.
+  - `06-sim-node-budget`: after 1000 simulated plays in one decision (`-Dfishpond.simMaxNodes`, 0 = no limit), the search stops going deeper. Every play left is still simulated once and scored.
+  - `05-sim-card-choice-cap`: a card choice inside a simulated play tries at most the 6 best distinct cards by a static score (`-Dfishpond.simMaxCardChoices`, 0 = all): creatures by Forge's creature evaluation, other cards by mana value, lands last, names to break ties.
+- **Logged:** each search prints `#FP-SEARCH` to the worker log: seat, turn, phase, positions tried, time, whether the budget cut it, the play chosen and the line Forge planned after it, and every top-level option with its score and depth (`full`, `partial` = the budget ran out inside it, `shallow` = only scored one play ahead). Game records keep a per-seat summary and every real choice (2+ options); the report prints how many of your searches the budget cut and your 5 biggest decisions: chosen play, runner-up, planned line, and what the budget cut.
+- **Verified (2026-10-02), in progress:** with a 1500 budget, seed 5 game 0 (never finished before) completed in 14 min and game 1 in 2 min, 0 search fallbacks, peak heap 2.2 GB; game 2 passed its old stall but its searches ran about 300 ms a position (one decision: 5 options, 1514 positions, 7.5 min), so the default came down to 1000. The rerun of games 0-2 at 1000 is still going.
+
 ## Harness safety net (not a fix)
 
 Anything still thrown from Forge's lookahead inside a decision is caught by the harness's controller (`ForgeRunner.SafeControllerAi`): that one decision is made again with lookahead off, and the game goes on with it back on. Every one is logged (`#FP-SIMFB` in the worker log, `sim_decision_log` in the game record: turn, phase, seat, stack, exception, where it was thrown, what was played instead) and summarised in the report's lookahead lines. It should stay at zero: a nonzero count is a new Forge bug to root out, not a result to live with. A crash outside a decision still replays the game from its seed with lookahead off (`sim_fallback`) and prints `#FP-DIAG` lines (exception, turn, departed players, orphaned objects, combat) to the worker log.
@@ -56,6 +67,8 @@ Fishpond runs stock Forge plus the fixes in `fishpond/forge_patches/*.patch` (un
 | `02-devadvance-stop-on-game-over` | `forge-game/.../game/phase/PhaseHandler.java` | #4 |
 | `03-combat-sim-resolve-with-copy-players` | `forge-ai/.../ai/simulation/GameStateEvaluator.java` | #4 |
 | `04-aicache-bounded` | `forge-ai/.../ai/AiCache.java` | #3 |
+| `05-sim-card-choice-cap` | `forge-ai/.../ai/simulation/SpellAbilityChoicesIterator.java` | #5 |
+| `06-sim-node-budget` | `forge-ai/.../ai/simulation/SimulationController.java`, `SpellAbilityPicker.java` | #5 |
 
 None of these is reported upstream yet (searched Card-Forge/forge issues and PRs 2026-10-02).
 

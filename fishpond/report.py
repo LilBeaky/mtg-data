@@ -67,6 +67,26 @@ def print_header(meta, records, ex):
         print(f"lookahead: paused in {pg} game(s), {pt} of {ht} of your turns ({whys}; docs/FORGE_ISSUES.md); "
               f"{dfb} decision(s) in {dfg} game(s) remade without lookahead after Forge's search threw; "
               f"{fb} game(s) replayed without lookahead after a crash in Forge's simulation code")
+        srch = {"n": 0, "capped": 0, "games": 0, "max_nodes": 0, "max_ms": 0}
+        for r_ in records:
+            hs = [v for k, v in ((r_.get("end") or {}).get("searches") or {}).items() if k.startswith("Ai(1)-")]
+            for v in hs:
+                srch["n"] += v["n"]; srch["capped"] += v["capped"]; srch["games"] += bool(v["capped"])
+                srch["max_nodes"] = max(srch["max_nodes"], v["max_nodes"]); srch["max_ms"] = max(srch["max_ms"], v["max_ms"])
+        if srch["n"]:
+            print(f"  your searches: {srch['n']}, {srch['capped']} cut by the position budget (in {srch['games']} game(s); "
+                  f"-Dfishpond.simMaxNodes, docs/FORGE_ISSUES.md #5); largest {srch['max_nodes']} positions, longest {srch['max_ms'] / 1000:.0f}s")
+            dec = [(r_.get("game"), d) for r_ in records for k, v in ((r_.get("end") or {}).get("searches") or {}).items()
+                   if k.startswith("Ai(1)-") for d in v.get("decisions") or []]
+            for g, d in sorted(dec, key=lambda x: -x[1]["positions"])[:5]:      # the biggest decisions, each in full
+                b, ru = d["best"], d["runner_up"]
+                print(f"  game {g} table turn {d['t']} {d['phase']}: {d['positions']} positions, {d['ms'] / 1000:.0f}s"
+                      + (" (budget hit)" if d["capped"] else ""))
+                print(f"    chose {d['chosen']} ({b['score']}); runner-up {ru['play']} ({ru['score']})")
+                if len(d["line"]) > 1: print(f"    planned line: {' -> '.join(d['line'])}")
+                for o in d["cut"]:
+                    print(f"    cut by the budget: {o['play']} ({o['score']}, {o['depth']}: "
+                          + ("searched partway" if o["depth"] == "partial" else "scored one play ahead only") + ")")
         kinds = {}
         for r_ in records:
             for d in (r_.get("end") or {}).get("sim_decision_log") or []:

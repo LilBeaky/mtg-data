@@ -1,0 +1,103 @@
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/SimulationController.java b/forge-ai/src/main/java/forge/ai/simulation/SimulationController.java
+index b27998c..acf9ec6 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/SimulationController.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/SimulationController.java
+@@ -56,8 +56,24 @@ public class SimulationController {
+         return scoreStack.size() - 1;
+     }
+ 
++    // Fishpond: Forge's search has no size limit (every position is a full copy of the game, and a busy board can mean
++    // hours for one decision). Past this many simulated plays (-Dfishpond.simMaxNodes, default 1000; 0 = no limit) a
++    // decision stops looking deeper: the plays left are still each simulated once and scored, so the search narrows
++    // instead of falling back. Counts plays, not time, so a seed replays the same.
++    static final int MAX_NODES = Integer.getInteger("fishpond.simMaxNodes", 1000);
++    private int simulations = 0;
++
++    public void countSimulation() {
++        simulations++;
++    }
++
++    public int getSimulations() {
++        return simulations;
++    }
++
+     public boolean shouldRecurse() {
+-        return !GameStateEvaluator.isWinning(bestScore.value) && getRecursionDepth() < maxDepth;
++        return !GameStateEvaluator.isWinning(bestScore.value) && getRecursionDepth() < maxDepth
++                && (MAX_NODES <= 0 || simulations < MAX_NODES);
+     }
+ 
+     public Plan.Decision getLastDecision() {
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/SpellAbilityPicker.java b/forge-ai/src/main/java/forge/ai/simulation/SpellAbilityPicker.java
+index 3239426..d2bed8a 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/SpellAbilityPicker.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/SpellAbilityPicker.java
+@@ -25,6 +25,17 @@ public class SpellAbilityPicker {
+     private Game game;
+     private Player player;
+     private Score bestScore;
++    private final List<Object[]> searched = new ArrayList<>();   // Fishpond: {play, score, depth, positions} per top-level option
++
++    private static String js(Object o) {
++        StringBuilder b = new StringBuilder("\"");
++        for (char c : String.valueOf(o).toCharArray()) {
++            if (c == '"' || c == '\\') b.append('\\').append(c);
++            else if (c < 0x20) b.append(' ');
++            else b.append(c);
++        }
++        return b.append('"').toString();
++    }
+     private boolean printOutput = false;
+     private SpellAbilityChoicesIterator interceptor;
+ 
+@@ -107,7 +118,26 @@ public class SpellAbilityPicker {
+ 
+     private Plan formulatePlanWithPhase(Score origGameScore, List<SpellAbility> candidateSAs, PhaseType phase) {
+         SimulationController controller = new SimulationController(origGameScore);
++        long t0 = System.currentTimeMillis();
+         SpellAbility sa = chooseSpellAbilityToPlayImpl(controller, candidateSAs, origGameScore, phase);
++        // Fishpond: one line per search (parsed from the worker log): its size, the play chosen and the line Forge planned
++        // after it, and every option it weighed with its score and how deep the budget let it look (patch 06)
++        StringBuilder opts = new StringBuilder();
++        for (Object[] o : searched) {
++            if (opts.length() > 0) opts.append(", ");
++            opts.append("{\"play\": ").append(js(o[0])).append(", \"score\": ").append(o[1])
++                .append(", \"depth\": ").append(js(o[2])).append(", \"positions\": ").append(o[3]).append('}');
++        }
++        StringBuilder line = new StringBuilder();
++        Plan best = sa != null ? controller.getBestPlan() : null;
++        if (best != null) for (Plan.Decision d : best.getDecisions()) { if (line.length() > 0) line.append(", "); line.append(js(d)); }
++        System.out.println("#FP-SEARCH {\"seat\": " + js(player.getName()) + ", \"turn\": " + game.getPhaseHandler().getTurn()
++                + ", \"phase\": " + js(game.getPhaseHandler().getPhase()) + ", \"candidates\": " + candidateSAs.size()
++                + ", \"nodes\": " + controller.getSimulations()
++                + ", \"capped\": " + (SimulationController.MAX_NODES > 0 && controller.getSimulations() >= SimulationController.MAX_NODES)
++                + ", \"ms\": " + (System.currentTimeMillis() - t0) + ", \"base\": " + origGameScore.value
++                + ", \"chosen\": " + js(sa == null ? "(pass)" : abilityToString(sa)) + ", \"line\": [" + line + "]"
++                + ", \"options\": [" + opts + "]}");
+         if (sa != null) {
+             return controller.getBestPlan();
+         }
+@@ -168,8 +198,15 @@ public class SpellAbilityPicker {
+         SpellAbility bestSa = null;
+         Score bestSaValue = origGameScore;
+         print("Evaluating... (orig score = " + origGameScore +  ")");
++        searched.clear();
+         for (int i = 0; i < candidateSAs.size(); i++) {
++            int before = controller.getSimulations();
+             Score value = evaluateSa(controller, phase, candidateSAs, i);
++            // Fishpond: "full" = searched to depth; "partial" = the budget ran out inside it; "shallow" = it was only
++            // scored one play ahead because the budget had already run out
++            String depth = SimulationController.MAX_NODES <= 0 || controller.getSimulations() < SimulationController.MAX_NODES ? "full"
++                    : before < SimulationController.MAX_NODES ? "partial" : "shallow";
++            searched.add(new Object[] {abilityToString(candidateSAs.get(i)), value.value, depth, controller.getSimulations() - before});
+             if (value.value > bestSaValue.value) {
+                 bestSaValue = value;
+                 bestSa = candidateSAs.get(i);
+@@ -358,6 +395,7 @@ public class SpellAbilityPicker {
+             GameSimulator simulator = new GameSimulator(controller, game, player, phase);
+             simulator.setInterceptor(choicesIterator);
+             // I feel like something here is making a wrong assumption about what the target is
++            controller.countSimulation();
+             lastScore = simulator.simulateSpellAbility(sa);
+             numSimulations++;
+             if (lastScore.value > bestScore.value) {
