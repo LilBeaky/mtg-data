@@ -22,13 +22,14 @@ Re-clone every session (sandbox resets). Use git, not the GitHub API, for readin
 | Fast mana/curve reads, swap ladders, disruption ladder | `goldfish.py` (§6 → `docs/GOLDFISH.md`; frozen legacy, still maintained in smoke) |
 | Goldfish parser coverage / regression diff | `goldfish_coverage.py` (`docs/GOLDFISH_ROADMAP.md`) |
 | EDHREC comparison | `edhrec_diff.py` (§9); audit runs it if a snapshot exists |
+| One card: who plays it, combos, strategies, build-arounds (not part of audits) | `explorer.py "Card"` (`docs/EXPLORER.md`) |
 | Data refresh | automatic (§12); `trim.py` is the manual fallback |
 
 Custom queries only when no tool answers; respect §7. Suggest folding useful ones into a tool.
 
 ## 3. Layout
 
-`scripts/` (code) · `fishpond/` (Forge-backed simulator; `fishpond/opponents/` holds opponent gauntlets) · `data/` (bulk data + `aliases.txt`, `goldfish_overrides.json`; `data/fishpond/` = saved runs, gitignored) · `docs/` · `snapshots/` (EDHREC transcriptions) · `tests/` (edge-case test deck, goldfish and Fishpond fixtures, `goldfish_units.py`, `fishpond_units.py` + `smoke.py`; run `python3 tests/smoke.py` after changing any script, before pushing). Scripts pick the newest dated rulings/tags/rules files automatically.
+`scripts/` (code) · `fishpond/` (Forge-backed simulator; `fishpond/opponents/` holds opponent gauntlets) · `data/` (bulk data + `aliases.txt`, `goldfish_overrides.json`; `data/fishpond/` = saved runs, `data/explorer_cache/` = EDHREC responses, both gitignored) · `docs/` · `snapshots/` (EDHREC transcriptions) · `tests/` (edge-case test deck, goldfish and Fishpond fixtures, `goldfish_units.py`, `fishpond_units.py` + `smoke.py`; run `python3 tests/smoke.py` after changing any script, before pushing). Scripts pick the newest dated rulings/tags/rules files automatically.
 
 ## 4. mtg.py and deck files
 

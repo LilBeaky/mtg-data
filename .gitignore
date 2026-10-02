@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 translation/out/
 data/fishpond/
+data/explorer_cache/

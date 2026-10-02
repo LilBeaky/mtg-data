@@ -288,6 +288,15 @@ def checks():
         dict(name="goldfish food trace", cmd=S("goldfish.py", FOOD, "--trials", "2", "--trace", "2", "--disruption", "off"),
              must=["opponent 1's turn (", "activate Ragost, Deft Gastronaut (sacrifice ", "Ragost, Deft Gastronaut untaps",
                    "Ragost, Deft Gastronaut: 3 to each opponent"]),
+        # ---- explorer.py: offline only (EDHREC is live and changes daily; CI must not depend on it)
+        dict(name="explorer offline", cmd=S("explorer.py", "Blood Artist", "--offline", "--ci", "BG", "--limit", "3"),
+             must=["=== EXPLORER: Blood Artist", "include it inside BG", "== 5 BUILD-AROUND", "blood artist ability",
+                   "offline: EDHREC sections skipped", "== 6 PROMPT", "Reason on Blood Artist"],
+             must_not=["EDHREC: ", "! EDHREC"]),
+        dict(name="explorer offline (data)", data=True, cmd=S("explorer.py", "Blood Artist", "--offline", "--limit", "3"),
+             must=["Tombstone Stairwell + Blood Artist", "Junji, the Midnight Sky"]),
+        dict(name="explorer not found", cmd=S("explorer.py", "Totally Fake Card Name", "--offline"), expect_rc=1,
+             must=["NOT FOUND: Totally Fake Card Name"]),
         # ---- Fishpond (Forge-backed simulator). The parser units run on saved Forge logs, no Forge needed.
         dict(name="fishpond units", cmd=["tests/fishpond_units.py"], must=["units: all"]),
         dict(name="fishpond help", cmd=["-m", "fishpond"], must=["python3 -m fishpond run DECK", "gauntlet:NAME"]),
