@@ -18,7 +18,8 @@ OPTIONS
   --no-lists           hide the card list under each role (default: shown)
 
 SECTIONS
-  1 Legality & bracket  mtg.py deck + GC allowance, 2-card combos, extra-turn / MLD flags
+  1 Legality & bracket  mtg.py deck + GC allowance, 2-card combos, extra-turn / MLD flags,
+                        combos one card away (top 5; full list: mtg.py near DECK)
   2 Mana base           lands, tapped lands, MDFCs, ramp, opening-hand odds, colors: sources
                         per color and every card's odds of having its colors on curve
                         (flagged under 90% for the commander and package pieces, 80% otherwise)
@@ -299,6 +300,17 @@ def main():
               f"GCs {len(gcs)}, two-card combos {len(two)}, extra turns {len(xturn)}, MLD flags {len(mld)}")
         if xturn: print(f"  extra-turn cards: {'; '.join(xturn)}")
         if mld: print(f"  possible MLD — review: {'; '.join(mld)}")
+
+    # one card away: combos a single addition would complete (mtg.py near)
+    nts, near, _ = mtg.near_combos([n for q, n, c, t in lib] + [c["name"] for c in comp_cards],
+                                   [c["name"] for c in cmdrs], set().union(*(c.get("color_identity", []) for c in cmdrs)) if cmdrs else None)
+    if near:
+        ntwo = [r for r in near if r["two"]]
+        print(f"  one card away: {len(near)} card(s) would complete a Spellbook combo, {len(ntwo)} of them a 2-card combo"
+              + (" — adding one changes the bracket read above" if ntwo and bracket and bracket <= 3 else ""))
+        if lists:
+            for r in near[:5]: print("    " + mtg.near_line(r, bracket))
+        print(f"    full list: mtg.py near {path}")
 
     # ----- colors + packages (stats_math): computed up front, printed in 2, 3 and 4b -----
     cmd_over = o.get("commander")

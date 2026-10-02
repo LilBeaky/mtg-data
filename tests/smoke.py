@@ -94,9 +94,15 @@ def checks():
                    "Comprehensive Rules file is dated"],
              must_not=["Colors aren't modeled", "Traceback"]),
         dict(name="audit flags", cmd=S("audit.py", DECK, "--no-edhrec", "--no-lists", "--k", "ramp=9", "--bracket", "4"),
-             must=["confirmed overrides: ramp=9", "bracket target 4"]),
+             must=["confirmed overrides: ramp=9", "bracket target 4", "one card away:", "full list: mtg.py near"]),
         dict(name="audit + EDHREC", cmd=S("audit.py", DECK, "--snapshot", "snapshots/yusri-fortunes-flame__all__2026-09-25.txt"),
              must=["## 6. EDHREC", "EDHREC snapshot: Yusri"]),
+        # ---- one card away (mtg.py near; Hermit Druid is green, off the Kraum + Tymna identity)
+        dict(name="near combos", data=True, cmd=S("mtg.py", "near", DECK, "--limit", "60"),
+             must=["Tainted Pact $", "completes a 2-card combo ⚠ above target B3", "CI BRUW"],
+             must_not=["Hermit Druid", "Traceback"]),
+        dict(name="near price cap", data=True, cmd=S("mtg.py", "near", DECK, "--max-price", "1"),
+             must=["over price"], must_not=["Tainted Pact $"]),
         # ---- stats_math
         dict(name="exact odds", cmd=S("stats_math.py", "99", "10", "7", "1"), must=["= 53.7%"]),
         dict(name="colors per face", cmd=S("stats_math.py", "colors", DECK),

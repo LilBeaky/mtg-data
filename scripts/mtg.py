@@ -26,6 +26,11 @@ COMMANDS
   gc                            list all Game Changers
   combos NAME [NAME ...]        Spellbook combos using ALL named cards
                                 (--bracket N: only tag >= N; --limit N)
+  near   DECKLIST.txt           cards one away from completing a Spellbook combo with
+                                this deck: legal, in CI, grouped by the missing card,
+                                most popular first; flags 2-card completions and combos
+                                above the '# bracket:' target
+         [--commander NAME] [--bracket N] [--max-price N] [--limit N]
   rule   702.62 | --grep WORD   Comprehensive Rules by number or keyword
 
 SEARCH FILTERS (combine freely)
@@ -744,6 +749,80 @@ def deck_combos(deck_names):
     dn = {n.lower() for n in deck_names}
     return ts, [v for v in vs if v.get("cards") and {x.lower() for x in v["cards"]} <= dn]
 
+def near_combos(deck_names, cmd_names, ci, max_price=None):
+    """Combos exactly one card short of complete, grouped by the missing card.
+    The missing card must be Commander-legal and inside ci (a set of colors; None skips the check);
+    a combo that needs a card as commander ('cmdr') counts only if that card is one of cmd_names,
+    and is never completed by adding it to the 99. Returns (ts, rows, skipped) or (None, None, None).
+    rows: [{"card": card dict, "combos": [variant...], "pop": summed popularity, "two": completes a
+    2-card combo with no generic 'requires' piece, "bracket": highest Spellbook tag bracket}], most popular first."""
+    ts, vs = combos()
+    if vs is None: return None, None, None
+    dn = {n.lower() for n in deck_names} | {n.lower() for n in cmd_names}
+    cn = {n.lower() for n in cmd_names}
+    by_missing, skipped = {}, Counter()
+    for v in vs:
+        cs = v.get("cards") or []
+        if len(cs) < 2: continue
+        out = [x for x in cs if x.lower() not in dn]
+        if len(out) != 1: continue
+        if ci is not None and not set(v.get("ci", "")) - {"C"} <= ci: continue
+        need_cmd = {x.lower() for x in v.get("cmdr") or []}
+        if need_cmd and (not need_cmd <= cn or out[0].lower() in need_cmd): continue
+        by_missing.setdefault(out[0], []).append(v)
+    rows = []
+    for name, vlist in by_missing.items():
+        c, how = find(name)
+        if not c or how == "partial": skipped["not found"] += 1; continue
+        if legal(c) != "legal": skipped["not legal"] += 1; continue
+        if ci is not None and not set(c.get("color_identity", [])) <= ci: skipped["off-identity"] += 1; continue
+        if max_price is not None and (price(c) is None or price(c) > max_price): skipped["over price"] += 1; continue
+        vlist.sort(key=lambda v: (len(v["cards"]), -(v.get("pop") or 0)))
+        rows.append({"card": c, "combos": vlist, "pop": sum(v.get("pop") or 0 for v in vlist),
+                     "two": any(len(v["cards"]) == 2 and not v.get("templates") for v in vlist),
+                     "bracket": max(v.get("bracket") or 0 for v in vlist)})
+    rows.sort(key=lambda r: (-r["pop"], -len(r["combos"]), r["card"]["name"]))
+    return ts, rows, skipped
+
+def near_line(r, target=None):
+    """One summary line for a near_combos row."""
+    c = r["card"]
+    flags = (" ⚠ completes a 2-card combo" if r["two"] else "") + \
+            (f" ⚠ above target B{target}" if target and r["bracket"] > target else "") + \
+            (" [GC]" if c.get("game_changer") else "")
+    return (f"{c['name']} {price_str(c) or '(no price)'} → {len(r['combos'])} combo(s), "
+            f"Spellbook bracket up to {r['bracket'] or '?'} | pop {r['pop']}{flags}")
+
+def cmd_near(args):
+    o = parse_opts(args[1:])
+    path = args[0]
+    entries = parse_deck(path)
+    main_names = [n for s, q, n in entries if s not in ("sideboard", "maybeboard", "considering", "commander", "commanders")]
+    cmd_in = [o["--commander"]] if "--commander" in o else [n for s, q, n in entries if s in ("commander", "commanders")]
+    cmd_cards = [c for c in (find(n)[0] for n in cmd_in) if c]
+    deck = [c["name"] for c in (find(n)[0] for n in main_names) if c]
+    ci = set().union(*(c.get("color_identity", []) for c in cmd_cards)) if cmd_cards else None
+    target = parse_deck_meta(path).get("bracket")
+    if "--bracket" in o: target = int(o["--bracket"])
+    mp = float(o["--max-price"]) if "--max-price" in o else None
+    ts, rows, skipped = near_combos(deck, [c["name"] for c in cmd_cards], ci, mp)
+    if rows is None: return print("no spellbook_combos file in repo")
+    lim = int(o.get("--limit", 15))
+    two = [r for r in rows if r["two"]]
+    print(f"{len(rows)} card(s) would each complete at least one Spellbook combo "
+          f"({len(two)} complete a 2-card combo) | CI {''.join(sorted(ci)) if ci else '? (no commander: not filtered)'}"
+          f"{f' | target B{target}' if target else ''} | {combo_age_note(ts)}")
+    if skipped: print("  left out: " + ", ".join(f"{k} {v}" for k, v in skipped.items()))
+    for r in rows[:lim]:
+        print("  " + near_line(r, target))
+        for v in r["combos"][:3]: print("      " + combo_line(v))
+        if len(r["combos"]) > 3: print(f"      + {len(r['combos']) - 3} more")
+    if len(rows) > lim: print(f"  ... {len(rows) - lim} more cards (--limit N)")
+    rest = [r for r in two if r not in rows[:lim]]
+    if rest:
+        print("  also completes a 2-card combo (bracket risk if added): " + "; ".join(r["card"]["name"] for r in rest))
+    print("note: Spellbook popularity, not a recommendation. Check 'requires' and prerequisites before adding.")
+
 def cmd_gc(args):
     g = sorted((c for c in cards() if c.get("game_changer")), key=lambda c: c["name"])
     print(f"{len(g)} Game Changers")
@@ -770,7 +849,7 @@ def cmd_rule(args):
         if len(out) > 40: print(f"... {len(out) - 40} more")
 
 CMDS = {"card": cmd_card, "rulings": cmd_rulings, "tags": cmd_tags, "search": cmd_search,
-        "deck": cmd_deck, "gc": cmd_gc, "combos": cmd_combos, "rule": cmd_rule}
+        "deck": cmd_deck, "gc": cmd_gc, "combos": cmd_combos, "near": cmd_near, "rule": cmd_rule}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in CMDS:

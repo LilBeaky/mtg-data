@@ -14,7 +14,7 @@ Re-clone every session (sandbox resets). Use git, not the GitHub API, for readin
 | Task | Tool |
 |---|---|
 | Deck audit (always first) | `audit.py DECK` (§5) |
-| Card text, rulings, tags, search, deck check, GCs, combos, rules | `mtg.py` |
+| Card text, rulings, tags, search, deck check, GCs, combos, combos one card away, rules | `mtg.py` |
 | Draw odds beyond the audit | `stats_math.py` (§6) |
 | Tutor chains / access odds | `tutors.py` (§6) |
 | How a deck plays out (win rate, how it wins and loses, real opponents) | `python3 -m fishpond` (§6 → `docs/FISHPOND.md`) |
@@ -31,7 +31,7 @@ Custom queries only when no tool answers; respect §7. Suggest folding useful on
 
 ## 4. mtg.py and deck files
 
-**Commands:** `card NAME...` · `card -f FILE [--brief]` · `rulings NAME [--grep WORD]` · `tags NAME` · `search [filters] [--full]` · `deck FILE [--all-combos]` · `combos NAME... [--bracket N]` (combos containing all named cards) · `gc` · `rule 702.62a` / `rule --grep WORD`.
+**Commands:** `card NAME...` · `card -f FILE [--brief]` · `rulings NAME [--grep WORD]` · `tags NAME` · `search [filters] [--full]` · `deck FILE [--all-combos]` · `combos NAME... [--bracket N]` (combos containing all named cards) · `near DECK [--max-price N] [--limit N]` (cards one away from completing a combo: legal, in CI, 2-card completions and over-target brackets flagged; audit §1 shows the top 5) · `gc` · `rule 702.62a` / `rule --grep WORD`.
 
 **Search filters:** `--ci UBR` (subset; `C` = colorless) `--text/--type/--name REGEX` `--cmc 3|2-4` `--tag LABEL` `--gc/--no-gc` `--max-price/--min-price N` `--sort price` `--all` (include non-legal) `--limit N`. Default output is names only: search → shortlist → `card`.
 
