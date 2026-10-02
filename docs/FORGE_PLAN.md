@@ -225,7 +225,7 @@ Fishpond works end to end but isn't "set". In priority order:
 ## Open questions for Ian
 
 - The brackets, plans and key cards of the saved decks (decks/Ians_Yusri_Omni, Ians_Zur_Cycling, Ians_Klauth_Dragons). Reports print "bracket ?" until they carry headers. Ians Ragost Burn: list not in the repo yet.
-- Klauth's list has 101 cards (mtg.py agrees). Fix the list, or keep it as is for testing?
+- ~~Klauth's list has 101 cards.~~ Fixed 2026-10-02: Vorinclex, Voice of Hunger out (d190686).
 
 - Which decks form the first real-opponent gauntlet, and at what bracket?
 - Should tagged pilot-error losses be excluded from the headline win rate or only shown beside it?

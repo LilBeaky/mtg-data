@@ -302,7 +302,7 @@ def fishpond_live():
     return [
         dict(name="fishpond deck", cmd=["-m", "fishpond", "deck", "tests/forge/chulane.txt", "--opp", "gauntlet:own"],
              must=["hero: Chulane, Teller of Tales | 100 cards | bracket 3", "Selvala, Explorer Returned; Sungrass Prairie",
-                   "Klauth, Unrivaled Ancient: 101 cards"]),
+                   "Klauth_Dragons.txt) | 100 cards"], must_not=["Klauth, Unrivaled Ancient: 101 cards"]),
         dict(name="fishpond run (2 games, live Forge)", cmd=["-m", "fishpond", "run", "tests/forge/chulane.txt", "--trials", "2",
                                                              "--cap", "3", "--turns", "3", "--jobs", "2", "--quiet", "--out", os.path.join(TMP, "fp")],
              must=["=== FISHPOND: Chulane, Teller of Tales", "vacuum: 3 dummies", "dummies: never cast or attacked", "## base: combat and damage"],
