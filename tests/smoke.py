@@ -94,7 +94,7 @@ def checks():
                    "Comprehensive Rules file is dated"],
              must_not=["Colors aren't modeled", "Traceback"]),
         dict(name="audit flags", cmd=S("audit.py", DECK, "--no-edhrec", "--no-lists", "--k", "ramp=9", "--bracket", "4"),
-             must=["confirmed overrides: ramp=9", "bracket target 4", "one card away:", "full list: mtg.py near", "landbase.py"]),
+             must=["confirmed overrides: ramp=9", "bracket target 4", "one card away:", "full list: mtg.py near", "land base (landbase.py", "recommendation: ", "cards under their color threshold"]),
         dict(name="audit + EDHREC", cmd=S("audit.py", DECK, "--snapshot", "snapshots/yusri-fortunes-flame__all__2026-09-25.txt"),
              must=["## 6. EDHREC", "EDHREC snapshot: Yusri"]),
         # ---- one card away (mtg.py near; Hermit Druid is green, off the Kraum + Tymna identity)

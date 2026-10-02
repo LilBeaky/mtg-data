@@ -16,11 +16,13 @@ OPTIONS
   --min N / --limit N  passed to edhrec_diff.py diff
   --all-combos         passed to mtg.py deck
   --no-lists           hide the card list under each role (default: shown)
+  --no-landbase        skip the landbase.py summary in section 2 (it adds ~3s, ~20s for 3+ colors)
 
 SECTIONS
   1 Legality & bracket  mtg.py deck + GC allowance, 2-card combos, extra-turn / MLD flags,
                         combos one card away (top 5; full list: mtg.py near DECK)
-  2 Mana base           lands, tapped lands, MDFCs, ramp, opening-hand odds, colors: sources
+  2 Mana base           lands, tapped lands, MDFCs, ramp, opening-hand odds, landbase.py's land
+                        count and swap plan (summary), colors: sources
                         per color and every card's odds of having its colors on curve
                         (flagged under 90% for the commander and package pieces, 80% otherwise)
   3 Commander on curve  lands-only floor, with 1-MV accelerants, and its colors
@@ -105,7 +107,7 @@ def parse_args(argv):
             else:
                 o[a[2:]] = v
             continue
-        if a in ("--draw", "--no-edhrec", "--all-combos", "--no-lists"):
+        if a in ("--draw", "--no-edhrec", "--all-combos", "--no-lists", "--no-landbase"):
             o[a[2:]] = True; i += 1; continue
         pos.append(a); i += 1
     if not pos:
@@ -169,6 +171,28 @@ def print_packages(r, on_play):
     if r["extra_combos"]:
         print(f"  +{r['extra_combos']} more combo(s) not shown (list them with: mtg.py deck DECK --all-combos)")
     print("  direct library tutors only; for tutor chains, dependencies and commander paths run: tutors.py DECK")
+
+def print_landbase(path, o, lists):
+    """landbase.py's recommendation, plan and headline before -> after, run with the audit's options."""
+    if o.get("no-landbase"):
+        print(f"  land count and swaps: skipped (--no-landbase); run landbase.py {path}"); return
+    cmd = [sys.executable, os.path.join(ROOT, "landbase.py"), path]
+    if o.get("commander"): cmd += ["--commander", o["commander"]]
+    if o.get("draw"): cmd += ["--draw"]
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if r.returncode != 0:
+        print(f"  ! landbase.py failed: {(r.stderr.strip().splitlines() or ['?'])[-1]}"); return
+    out, sec = [], None
+    for line in r.stdout.splitlines():
+        if line.startswith("## "): sec = line[3:5]; continue
+        if sec == "1." and re.match(r"\s+(recommendation|no count|⚠ flood)", line): out.append(line.strip())
+        elif sec == "3." and line.strip() and not line.lstrip().startswith("never cut"): out.append(line.strip())
+        elif sec == "4." and re.match(r"\s+(lands \d+ → |cards under)", line): out.append(line.strip())
+    print("  land base (landbase.py; full table and every card's odds: landbase.py " + path + "):")
+    for line in out:
+        if not lists and line.startswith(("+ ", "− ")) : continue
+        print("    " + line)
+
 
 # ---------- main ----------
 def main():
@@ -378,7 +402,7 @@ def main():
     if accel_x:
         print(f"      not counted as accelerants (restricted or scaling mana): {'; '.join(accel_x)}")
     print_colors(colr, lists)
-    print(f"  land count and land-for-land swaps that fix these numbers: landbase.py {path}")
+    print_landbase(path, o, lists)
 
     # ----- 3. commander on curve -----
     if cmdrs:

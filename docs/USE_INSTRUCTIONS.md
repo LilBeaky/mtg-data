@@ -71,9 +71,9 @@ The user wants audits as thorough as the tooling allows. Every step exists becau
 9. Verify every card from EDHREC or memory with `mtg.py card` before recommending it.
 10. Write-up order: findings (interactions, nonbos), then numbers, then a separate EDHREC section. Challenge pets/plan with questions, not cut lists. Push new snapshots/aliases.
 
-**audit.py flags:** `--bracket N` `--k ROLE=N` (repeatable) `--draw` `--commander` `--snapshot PATH` / `--no-edhrec` `--min N` / `--limit N` (EDHREC diff) `--all-combos` `--no-lists` (re-runs).
+**audit.py flags:** `--no-landbase` (skip the land-base run) `--bracket N` `--k ROLE=N` (repeatable) `--draw` `--commander` `--snapshot PATH` / `--no-edhrec` `--min N` / `--limit N` (EDHREC diff) `--all-combos` `--no-lists` (re-runs).
 
-**Output sections:** 1 legality/bracket (commanders, size, GCs, 2-card combos, extra turns, possible MLD) · 2 mana (lands, tapped lands, reducers, ramp, MDFC backs, colors: sources, pip odds, cards under 90%/80% on-curve with fixes; restricted-mana lands listed, not counted; multi-face cards judged by their easiest castable face) · 3 commander on curve · 4 role odds (+ custom tags) · 4b packages (with-tutor odds are a **ceiling**: ignores mana and turns) · 5 density/flood/screw · 6 EDHREC diff · 7 manual checklist.
+**Output sections:** 1 legality/bracket (commanders, size, GCs, 2-card combos, extra turns, possible MLD, combos one card away) · 2 mana (landbase.py summary: recommended land count, swap plan, before → after; lands, tapped lands, reducers, ramp, MDFC backs, colors: sources, pip odds, cards under 90%/80% on-curve with fixes; restricted-mana lands listed, not counted; multi-face cards judged by their easiest castable face) · 3 commander on curve · 4 role odds (+ custom tags) · 4b packages (with-tutor odds are a **ceiling**: ignores mana and turns) · 5 density/flood/screw · 6 EDHREC diff · 7 manual checklist.
 
 ## 6. Analysis tools
 
