@@ -1,0 +1,78 @@
+# name: Coles Omnath Big Mana
+# plan: Big mana - win with combat damage and accrued value
+Commander
+1 Omnath, Locus of Mana
+
+Deck
+1 Allosaurus Shepherd
+1 Apex Devastator
+1 Archdruid's Charm
+1 Asceticism
+1 Ashaya, Soul of the Wild
+1 Azusa, Lost but Seeking
+1 Bear Umbra
+1 Bighorner Rancher
+1 Burgeoning
+1 Castle Garenbrig
+1 Cavern of Souls
+1 Circle of Dreams Druid
+1 Concordant Crossroads
+1 Craterhoof Behemoth
+1 Crop Rotation
+1 Cultivator Colossus
+1 Doubling Cube
+1 Exploration
+1 Fanatic of Rhonas
+1 Finale of Devastation
+29 Forest
+1 Gaea's Cradle
+1 Garruk's Uprising
+1 Genesis Wave
+1 Ghalta, Stampede Tyrant
+1 Green Sun's Zenith
+1 Heroic Intervention
+1 Hunter's Insight
+1 Karametra's Acolyte
+1 Kogla, the Titan Ape
+1 Krosan Grip
+1 Last March of the Ents
+1 Lotus Cobra
+1 Mana Reflection
+1 Marvin, Murderous Mimic
+1 Mosswort Bridge
+1 Natural Order
+1 Nykthos, Shrine to Nyx
+1 Nyxbloom Ancient
+1 Overwhelming Stampede
+1 Pathbreaker Ibex
+1 Regrowth
+1 Reliquary Tower
+1 Reshape the Earth
+1 Return of the Wildspeaker
+1 Return to Nature
+1 Rishkar's Expertise
+1 Rogue's Passage
+1 Seedborn Muse
+1 Selvala, Heart of the Wilds
+1 Smuggler's Surprise
+1 Sol Ring
+1 Soul's Majesty
+1 Staff of Domination
+1 Surrak and Goreclaw
+1 Swiftfoot Boots
+1 Sword of Feast and Famine
+1 The Great Henge
+1 Three Visits
+1 Triumph of the Hordes
+1 Umbral Mantle
+1 Unnatural Growth
+1 Vigor
+1 Virtue of Strength
+1 Vorinclex, Voice of Hunger
+1 Wear Down
+1 Whispersilk Cloak
+1 Wilderness Reclamation
+1 Worldly Tutor
+1 Worldspine Wurm
+1 Yavimaya, Cradle of Growth
+1 Yeva, Nature's Herald
