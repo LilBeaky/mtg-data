@@ -94,6 +94,24 @@ check("outcome generals", lp.outcome_kind("has lost due to accumulation of 21 da
 check("outcome opp alt", lp.outcome_kind("has lost because an opponent has won by spell 'Approach of the Second Sun'"),
       ("lost", "opponent alternate win", "Approach of the Second Sun"))
 
+# ---- pilot policy intel (fishpond/policy.py): pure functions, no Forge needed
+from fishpond import policy as po  # noqa: E402
+slide = {"name": "Astral Slide", "type_line": "Enchantment", "oracle_text": "Whenever a player cycles a card, you may exile target creature."}
+steppe = {"name": "Secluded Steppe", "type_line": "Land", "oracle_text": "Cycling {W} ({W}, Discard this card: Draw a card.)", "colors": []}
+step = {"name": "Step Through", "type_line": "Sorcery", "oracle_text": "Return two target creatures to their owners' hands.\nWizardcycling {2}", "colors": ["U"]}
+bear = {"name": "Grizzly Bears", "type_line": "Creature — Bear", "oracle_text": "", "colors": ["G"]}
+check("policy payoff from synergy tag", po.payoffs_of({"synergy-cycling", "cycle-ons-cycling-matters", "synergy-white"}), {"cycling"})
+check("policy cycling enablers", [po.is_enabler("cycling", c, set()) for c in (steppe, step, bear)], [True, True, False])
+check("policy typal enabler", po.is_enabler("typal-bear", bear, set()), True)
+check("policy engine strength: specific beats broad", (po.strength(27, 100), po.strength(62, 100)), (1.0, 0.15))
+check("policy roles from tags", po.roles_of(slide, {"protection", "repeatable crime"}), ["engine", "protection"])
+check("policy roles from text", po.roles_of({"name": "x", "type_line": "Sorcery", "oracle_text": "Search your library for a card"}, set()), ["tutor"])
+check("policy priority header", po.priority_list({"priority": ["Astral Slide > Step Through", "Necrodominance; Approach of the Second Sun"]}),
+      ["Astral Slide", "Step Through", "Necrodominance", "Approach of the Second Sun"])
+_s, _e = lp.harness_lines(['#FP-POLICY {"seat": 1, "gt": 9, "kind": "search", "src": "Zur the Enchanter", "pick": "Astral Slide", "forge": "Grasp of Fate", "layer": "engine", "mode": "policy", "top": []}',
+                           '#FP-END {"id": 0, "seed": 1, "stop": "cap", "ms": 1, "hero_turns": 3, "global_turns": 12, "players": {}, "hand": [], "lib": 50}'])
+check("policy log parsed", [(p["pick"], p["layer"]) for p in _e["policy_log"]], [("Astral Slide", "engine")])
+
 for f in fails: print("FAIL", f)
 print(f"units: {'all ' if not fails else ''}{count - len(fails)} of {count} passed" if fails else f"units: all {count} passed")
 sys.exit(1 if fails else 0)

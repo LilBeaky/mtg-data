@@ -52,6 +52,17 @@ class Deck:
         lines += [f"{q} {self.forge[n]}" for q, n in self.main if n in self.forge]
         return "\n".join(lines) + "\n"
 
+_OVR = None
+def _overridden():
+    """Card names fishpond/forge_card_overrides/ replaces: their AI:RemoveDeck flag no longer applies."""
+    global _OVR
+    if _OVR is None:
+        _OVR = set()
+        for f in forge.override_files():
+            m = re.search(r"^Name:(.+)$", open(f, encoding="utf-8").read(), re.M)
+            if m: _OVR.add(m.group(1).strip())
+    return _OVR
+
 def tag_for(label):
     first = re.split(r"[,\s]", label.strip())[0] if label.strip() else "Deck"
     return re.sub(r"[^A-Za-z0-9]", "", first) or "Deck"
@@ -78,6 +89,7 @@ def load(path, kind="hero", idx=None, commander=None):
         fn, flags = forge.forge_name(c, idx)
         if not fn: d.not_forge.append(c["name"]); return None
         d.forge[c["name"]] = fn
+        if fn in _overridden(): flags = [f for f in flags if f != "All"]   # fishpond replaces the script (forge_card_overrides)
         if flags: d.flags[c["name"]] = flags
         if c.get("produced_mana"): d.produced[fn] = "".join(x for x in c["produced_mana"] if x in "WUBRG")
         return c["name"]

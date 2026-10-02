@@ -1,0 +1,15 @@
+# title: Necrodominance: at its end step the AI pays a sensible amount of life to draw
+# card: Necrodominance
+# turns: 2
+# expect: triggered Necrodominance
+# expect: Life: Ai\(1\)-P1 30 > (2[0-7])\b
+p0life=30
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Necrodominance;Swamp;Swamp;Swamp;Swamp
+p0hand=Swamp
+p0library=Swamp;Island;Swamp;Island;Swamp;Island;Swamp;Island;Swamp;Island;Swamp;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest

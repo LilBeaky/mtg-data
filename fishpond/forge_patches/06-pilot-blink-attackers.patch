@@ -1,0 +1,38 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+--- a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+@@ -1056,7 +1056,8 @@
+                             return aura.getController().isOpponentOf(ai);
+                         }
+                         if (blink) {
+-                            return c.isToken();
++                            // blinking an opponent's creature that is attacking the AI takes it out of combat (fishpond patch 06)
++                            return c.isToken() || attacksAi(ai, c);
+                         }
+                         return c.isToken() || c.getCMC() > 0;
+                     });
+@@ -1095,7 +1096,8 @@
+         if (origin.contains(ZoneType.Battlefield)
+                 && destination.equals(ZoneType.Exile)
+                 && (subApi == ApiType.DelayedTrigger || (subApi == ApiType.ChangeZone  && subAffected.equals("Remembered")))
+-                && !(game.getPhaseHandler().is(PhaseType.COMBAT_DECLARE_ATTACKERS) || sa.isAbility())) {
++                && !(game.getPhaseHandler().is(PhaseType.COMBAT_DECLARE_ATTACKERS) || game.getPhaseHandler().is(PhaseType.COMBAT_DECLARE_BLOCKERS)
++                        || sa.isAbility())) {
+             return false;
+         }
+ 
+@@ -2175,4 +2177,14 @@
+ 
+         return super.willPayUnlessCost(payer, sa, cost, alreadyPaid, payers);
+     }
++
++    /** Is c attacking the AI or a planeswalker/battle it controls right now? (fishpond patch 06) */
++    static boolean attacksAi(final Player ai, final Card c) {
++        final forge.game.combat.Combat combat = ai.getGame().getCombat();
++        if (combat == null || !combat.isAttacking(c)) {
++            return false;
++        }
++        final forge.game.GameEntity d = combat.getDefenderByAttacker(c);
++        return ai.equals(d) || (d instanceof Card && ((Card) d).getController().equals(ai));
++    }
+ }

@@ -8,6 +8,10 @@
                                                     and/or add N more games to it; results accumulate in the same run
   python3 -m fishpond report RUN_DIR [--reparse]   reprint a saved run's report (--reparse: parse its logs again)
   python3 -m fishpond show RUN_DIR GAME [--log]    one game's parsed record (and its Forge log) for hand audits
+  python3 -m fishpond puzzles [NAME...] [-v]       AI behaviour tests: board states in fishpond/puzzles/ (pass/fail)
+  python3 -m fishpond flags [--smoke] [--unflag]   cards Forge's AI won't cast (AI:RemoveDeck:All) across the repo's decks, with
+                                                    their status; --smoke writes+runs a smoke puzzle for each untested one,
+                                                    --unflag writes an override (fishpond/forge_card_overrides/) for each that passes
 
 run options:
   --trials N (--games)   games per build (default 20)
@@ -83,6 +87,38 @@ def cmd_deck(args):
         print(f"opponent: {d.label} ({os.path.relpath(path)}) | {d.size} cards | bracket {d.bracket or '?'}")
         _print_problems(d.label, d)
 
+def cmd_puzzles(args):
+    from . import puzzles
+    if not puzzles.run_all(args.names, args.verbose): sys.exit(1)
+
+def cmd_flags(args):
+    from . import puzzles as pz
+    forge.ensure(quiet=True)
+    fl = pz.flagged_cards()
+    rows = sorted(fl.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    print(f"Forge AI:RemoveDeck:All cards in the repo's decks: {len(rows)} (Forge's AI never casts or activates these unless overridden)")
+    for card, where in rows:
+        print(f"  {pz.status(card):12} {card} ({len(where)} deck(s): {', '.join(os.path.basename(w) for w in where[:3])}{'...' if len(where) > 3 else ''})")
+    if not args.smoke: return
+    todo = [c for c, _ in rows if pz.status(c) == "untested"]
+    # Forge's AI never casts a flagged card, so test each one unflagged: write trial overrides for all of them (one card zip
+    # rebuild), run every smoke puzzle, then keep the overrides that passed (--unflag) and delete the rest.
+    trial = {c: forge.write_unflag_override(c, "trial (fishpond flags --smoke)") for c in todo}
+    passed = []
+    try:
+        for c in todo:
+            f = pz.write_smoke(c)
+            ok, meta, lines, fails = pz.run_one(f)
+            print(f"{'PASS' if ok else 'FAIL'}  smoke {c}" + ("" if ok else ": " + "; ".join(fails)), flush=True)
+            if ok: passed.append(c)
+    finally:
+        for c, p in trial.items():
+            if args.unflag and c in passed:
+                forge.write_unflag_override(c, "smoke puzzle passes: fishpond/puzzles/" + os.path.basename(pz.write_smoke(c)))
+                print("  override kept: " + os.path.relpath(p, dk.REPO))
+            elif os.path.exists(p):
+                os.remove(p)
+
 def cmd_save(args):
     """Save a list into decks/ as NAME.txt (source, headers kept) + NAME.dck (Forge-ready)."""
     forge.ensure()
@@ -139,7 +175,8 @@ def cmd_run(args):
             "opp_ai": opp_ai, "sim": args.sim if engine == "harness" else "off", "opp_sim": args.opp_sim if engine == "harness" else "off",
             "track": hero.meta.get("track", []), "extra_track": args.track, "key": _keys(hero),
             "variants": args.variant, "opp": _opp_specs(args), "fixed_pod": args.fixed_pod, "run_dir": _rel(run_dir),
-            "commander_opt": args.commander, "complete": False}
+            "commander_opt": args.commander, "complete": False, "pilot": forge.pilot_on(),
+            "pilot_patches": [os.path.basename(f) for f in forge.patch_files() if "-pilot-" in f], "overrides": len(forge.override_files())}
     runner.save(run_dir, meta, [])                  # written first: a cut-off run can be reported on and resumed
     if engine == "harness":
         if not args.quiet: print(f"fishpond: if this session ends early: python3 -m fishpond run --resume {_rel(run_dir)}", file=sys.stderr)
@@ -322,8 +359,10 @@ def main(argv=None):
     r.add_argument("--quiet", action="store_true")
     p = sub.add_parser("report"); p.add_argument("run"); p.add_argument("--turns", type=int, default=0); p.add_argument("--json", action="store_true")
     p.add_argument("--reparse", action="store_true", help="re-run the log parser over the saved logs first")
+    z = sub.add_parser("puzzles"); z.add_argument("names", nargs="*"); z.add_argument("-v", "--verbose", action="store_true")
+    g = sub.add_parser("flags"); g.add_argument("--smoke", action="store_true"); g.add_argument("--unflag", action="store_true")
     w = sub.add_parser("show"); w.add_argument("run"); w.add_argument("game", type=int); w.add_argument("--build")
     w.add_argument("--log", action="store_true"); w.add_argument("--phases", action="store_true")
     args = ap.parse_args(argv)
     if not args.cmd: ap.print_help(); return
-    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show}[args.cmd](args)
+    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags}[args.cmd](args)

@@ -56,6 +56,14 @@ Fishpond runs stock Forge plus the fixes in `fishpond/forge_patches/*.patch` (un
 | `02-devadvance-stop-on-game-over` | `forge-game/.../game/phase/PhaseHandler.java` | #4 |
 | `03-combat-sim-resolve-with-copy-players` | `forge-ai/.../ai/simulation/GameStateEvaluator.java` | #4 |
 | `04-aicache-bounded` | `forge-ai/.../ai/AiCache.java` | #3 |
+| `05-pilot-cycling-payoffs` | `forge-ai/.../ai/ability/DrawAi.java` | AI play: cycles at useful moments with a cycling payoff out (puzzle `astral_slide_cycle`) |
+| `06-pilot-blink-attackers` | `forge-ai/.../ai/ability/ChangeZoneAi.java` | AI play: blinks opponents' attackers out of combat (puzzle `astral_slide_cycle`) |
+
+`-pilot-` patches improve play rather than fix crashes; `FISHPOND_PILOT=off` leaves them out (with the tutor policy and card overrides) for A/B runs.
+
+## Card overrides
+
+`fishpond/forge_card_overrides/*.txt` are full card scripts that replace the release's (`forge.run_home()` builds a mirror of the install whose `res/cardsfolder/cardsfolder.zip` has them swapped in; Forge reads only the zip). Each so far is the release script minus `AI:RemoveDeck:All`: with that hint, `AiController` drops all of a card's spells and abilities, so the AI never casts it. An override is kept only when a puzzle (`fishpond/puzzles/`) shows the AI plays the card sensibly once unflagged; `python3 -m fishpond flags` shows every flagged card in the repo's decks and its status.
 
 None of these is reported upstream yet (searched Card-Forge/forge issues and PRs 2026-10-02).
 
@@ -65,5 +73,6 @@ Forge releases every 6-8 weeks (2.0.11 on 2026-03-02 through 2.0.15 on 2026-09-2
 
 1. Set `FORGE_VERSION` in `fishpond/forge.py` and run `python3 -m fishpond setup`. It downloads the release, builds the patches, and stops naming any patch that no longer applies.
 2. For each patch: if upstream fixed the bug (compare the file on the new tag), delete the patch and its entry here; if the code moved, regenerate the patch against the new tag (`git diff --no-index` of the release file and your edited copy, with paths `a/<repo path>` and `b/<repo path>`).
-3. Re-test every entry above on its evidence seed (seeds replay exactly) and remove the entries the release fixed. Then a smoke run per mode (`--sim off`, `hybrid`, `full`) and the hand-audit decks; the report's lookahead lines should show no `sim_fallback` and no search fallbacks.
-4. Note the bump and the re-test results in the commit.
+3. Run `python3 -m fishpond puzzles`: every `-pilot-` patch and card override has a puzzle; a failure means the new release changed that AI path (re-derive the override from the new script with `forge.write_unflag_override`, or drop it if upstream fixed the card). A `known_gap` puzzle that now passes means upstream fixed it.
+4. Re-test every entry above on its evidence seed (seeds replay exactly) and remove the entries the release fixed. Then a smoke run per mode (`--sim off`, `hybrid`, `full`) and the hand-audit decks; the report's lookahead lines should show no `sim_fallback` and no search fallbacks.
+5. Note the bump and the re-test results in the commit.

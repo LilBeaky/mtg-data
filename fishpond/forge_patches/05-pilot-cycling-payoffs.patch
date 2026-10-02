@@ -1,0 +1,77 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+--- a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+@@ -32,6 +32,8 @@
+ import forge.game.player.*;
+ import forge.game.spellability.SpellAbility;
+ import forge.game.zone.ZoneType;
++import forge.game.trigger.Trigger;
++import forge.game.trigger.TriggerType;
+ import forge.util.MyRandom;
+ import forge.util.collect.FCollectionView;
+ 
+@@ -118,8 +120,52 @@
+      * forge.game.spellability.SpellAbility, forge.game.cost.Cost,
+      * forge.game.card.Card)
+      */
++    /** Does the player control a permanent that triggers when a card is cycled? */
++    static boolean hasCyclingPayoff(Player ai) {
++        for (Card c : ai.getCardsIn(ZoneType.Battlefield)) {
++            for (Trigger t : c.getTriggers()) {
++                if (t.getMode() == TriggerType.Cycled) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
++    static int cyclersInHand(Player ai) {
++        int n = 0;
++        for (Card c : ai.getCardsIn(ZoneType.Hand)) {
++            for (SpellAbility s : c.getSpellAbilities()) {
++                if (s.isCycling()) { n++; break; }
++            }
++        }
++        return n;
++    }
++
++    /** When cycling is worth it with a payoff out: during an opponent's combat once attackers are declared (a flicker or
++     *  damage payoff answers an attacker), at the end of the turn before the AI's own or in its own main 2 while it holds a
++     *  spare cycler (one is kept for the next combat), or any time its life is in danger. */
++    static boolean cyclingWindow(Player ai, PhaseHandler ph) {
++        if (ComputerUtil.aiLifeInDanger(ai, false, 0)) {
++            return true;
++        }
++        if (!ph.isPlayerTurn(ai)) {
++            if ((ph.is(PhaseType.COMBAT_DECLARE_ATTACKERS) || ph.is(PhaseType.COMBAT_DECLARE_BLOCKERS))
++                    && ph.getCombat() != null && !ph.getCombat().getAttackersOf(ai).isEmpty()) {
++                return true;
++            }
++            return ph.getNextTurn().equals(ai) && ph.is(PhaseType.END_OF_TURN) && cyclersInHand(ai) >= 2;
++        }
++        return ph.is(PhaseType.MAIN2) && cyclersInHand(ai) >= 2;   // keep one for the opponents' combats
++    }
++
+     @Override
+     protected boolean willPayCosts(Player payer, SpellAbility sa, Cost cost, Card source) {
++        // With a cycling payoff out, cycling a land or any card while the hand has spares is fine (fishpond patch 05)
++        if (sa.isCycling() && hasCyclingPayoff(payer)
++                && (source.isLand() || payer.getCardsIn(ZoneType.Hand).size() >= 3 || ComputerUtil.isWorseThanDraw(payer, source))) {
++            return true;
++        }
+         if (!ComputerUtilCost.checkCreatureSacrificeCost(payer, cost, source, sa)) {
+             return false;
+         }
+@@ -160,6 +206,11 @@
+      */
+     @Override
+     protected boolean checkPhaseRestrictions(Player ai, SpellAbility sa, PhaseHandler ph) {
++        // Cycling with a cycling payoff out (Astral Slide, Drift Wraith-style triggers): cycle at the moments the payoff
++        // matters instead of holding draws for main 2 (fishpond patch 05).
++        if (sa.isCycling() && hasCyclingPayoff(ai)) {
++            return cyclingWindow(ai, ph);
++        }
+         // Sacrificing a creature in response to something dangerous is generally good in any phase
+         boolean isSacCost = false;
+         if (sa.getPayCosts() != null && sa.getPayCosts().hasSpecificCostType(CostSacrifice.class)) {

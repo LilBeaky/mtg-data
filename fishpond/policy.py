@@ -21,7 +21,6 @@ import glob, gzip, json, os, re
 from . import decks as dk
 
 DATA = os.path.join(dk.REPO, "data")
-OVERRIDE_DIR = os.path.join(dk.HERE, "forge_card_overrides")
 POLICY_VERSION = 1
 ENGINE_MIN = 6            # enablers in the deck before a payoff's mechanic counts as an engine
 MAX_COMBOS = 300
@@ -133,14 +132,6 @@ def strength(enablers, deck_size):
     spec = 1.0 if frac <= 0.3 else max(0.15, (0.6 - frac) / 0.3)
     return round(min(1.0, enablers / 15) * spec, 3)
 
-def overridden_cards():
-    """Forge names whose card script fishpond replaces (the policy stops discounting them)."""
-    out = set()
-    for f in glob.glob(os.path.join(OVERRIDE_DIR, "*.txt")):
-        m = re.search(r"^Name:(.+)$", open(f, encoding="utf-8").read(), re.M)
-        if m: out.add(m.group(1).strip())
-    return out
-
 def priority_list(meta):
     """'# priority:' header lines -> card names in order (support for deck-specific overrides; none ship)."""
     v = meta.get("priority") or []
@@ -153,7 +144,7 @@ def build(d):
     """Policy intel for a fishpond Deck (decks.load) as a JSON-safe dict, or None for a dummy."""
     if d.kind == "dummy": return None
     import mtg
-    tagdb, fixed = _tags(), overridden_cards()
+    tagdb = _tags()
     names = list(d.commanders) + [n for _, n in d.main]
     cards = {}
     for n in names:
@@ -177,7 +168,7 @@ def build(d):
         for r in roles: role_count[r] = role_count.get(r, 0) + 1
         syn = sum(mechs[m]["payoffs"] for m in e) + sum(mechs[m]["enablers"] / 10 for m in p)
         out_cards[fn] = {"roles": roles, "payoff": p, "enabler": e, "syn": syn, "cmc": c.get("cmc", 0) or 0,
-                         "flag": "All" in d.flags.get(n, []) and fn not in fixed, "cmdr": n in d.commanders}
+                         "flag": "All" in d.flags.get(n, []), "cmdr": n in d.commanders}
     top = max([v["syn"] for v in out_cards.values()] + [1])
     for v in out_cards.values(): v["syn"] = round(v["syn"] / top, 3)
     # Spellbook combos made only of deck cards, smallest first

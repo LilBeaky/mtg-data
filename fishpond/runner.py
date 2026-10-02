@@ -85,7 +85,7 @@ def run_cli(builds, pods, games, seed, clock, jobs, run_dir, hero_ai="Default", 
     def go(p):
         with open(p["log"], "w", encoding="utf-8") as fh:
             try:
-                subprocess.run(p["cmd"], cwd=forge.home(), stdout=fh, stderr=subprocess.STDOUT, timeout=p["n"] * (clock + 60) + 180)
+                subprocess.run(p["cmd"], cwd=forge.run_home(quiet=True), stdout=fh, stderr=subprocess.STDOUT, timeout=p["n"] * (clock + 60) + 180)
             except subprocess.TimeoutExpired:
                 fh.write("\nfishpond: JVM timed out\n")
         return p
@@ -159,7 +159,7 @@ def plan_harness(builds, pods, first_game, games, seed, cap, timeout, run_dir, h
         fp = os.path.join(deck_dir, fn)
         if not os.path.exists(fp):
             with open(fp, "w", encoding="utf-8") as fh: fh.write(d.dck(d.tag))
-        if not os.path.exists(fp + ".policy.json"): policy.write_for(d, fp)   # the harness's tutor policy (fishpond/policy.py)
+        if forge.pilot_on() and not os.path.exists(fp + ".policy.json"): policy.write_for(d, fp)   # the harness's tutor policy (fishpond/policy.py)
         return fn
     plan = []
     for i in range(first_game, first_game + games):
@@ -202,9 +202,10 @@ def execute(entries, jobs, run_dir, session, quiet=False):
         with open(pf, "w", encoding="utf-8") as fh: fh.write("\n".join(e["line"] for e in chunk) + "\n")
         lf = os.path.join(log_dir, f"worker_{session}_{j}.log")
         cmd = ["java", f"-Xmx{xmx_for(jobs, uses_full(entries))}m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
+               *([] if forge.pilot_on() else ["-Dfishpond.policy=off"]),
                "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "ForgeRunner", os.path.join(deck_dir, ""), pf]
         fh = open(lf, "w", encoding="utf-8")
-        procs.append((subprocess.Popen(cmd, cwd=forge.home(), stdout=fh, stderr=subprocess.STDOUT), fh, lf))
+        procs.append((subprocess.Popen(cmd, cwd=forge.run_home(quiet=True), stdout=fh, stderr=subprocess.STDOUT), fh, lf))
     last = -1
     while any(p.poll() is None for p, *_ in procs):
         time.sleep(3)

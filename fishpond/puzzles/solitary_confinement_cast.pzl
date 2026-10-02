@@ -1,0 +1,15 @@
+# title: Solitary Confinement: facing lethal-sized attackers, the AI casts it and keeps it by discarding
+# card: Solitary Confinement
+# turns: 3
+# expect: cast Solitary Confinement
+# forbid: Life: Ai\(1\)-P1 8 > \d
+p0life=8
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains
+p0hand=Solitary Confinement;Plains;Island;Island;Plains
+p0library=Plains;Island;Plains;Island;Plains;Island;Plains;Island
+p1battlefield=Craterhoof Behemoth;Grizzly Bears;Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest

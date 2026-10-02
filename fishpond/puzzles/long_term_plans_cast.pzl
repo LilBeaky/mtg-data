@@ -1,0 +1,14 @@
+# title: Long-Term Plans: with mana up and a win-con in the library, the AI casts the tutor
+# card: Long-Term Plans
+# turns: 2
+# expect: cast Long-Term Plans
+p0life=20
+p1life=20
+turn=1
+activeplayer=p1
+activephase=MAIN2
+p0battlefield=Island;Island;Island;Island;Island
+p0hand=Long-Term Plans;Island
+p0library=Island;Island;Island;Island;Laboratory Maniac;Island;Island;Island;Island;Island;Craterhoof Behemoth;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest

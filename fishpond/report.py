@@ -50,6 +50,9 @@ def print_header(meta, records, ex):
     sim = f", lookahead {meta.get('sim', 'off')}" if meta.get("engine") == "harness" else ", no lookahead (cli engine)"
     osim = f"; real opponents' lookahead {meta.get('opp_sim', 'off')}" if any(p["kind"] != "dummy" for r_ in records for p in r_["pod"]) else ""
     print(pod_line(records, meta.get("engine", "harness")) + f"  (you: seat 1, AI {meta.get('hero_ai', 'Default')}{sim}{osim}; every player at 40 life)")
+    if "pilot" in meta:
+        print("pilot: " + (f"on (tutor policy, {len(meta.get('pilot_patches') or [])} AI patch(es), {meta.get('overrides', 0)} card override(s); docs/FORGE_PLAN.md 'Pilot policy')"
+                           if meta["pilot"] else "off (FISHPOND_PILOT=off: stock Forge AI, for A/B runs)"))
     if meta.get("engine") == "harness" and meta.get("sim", "off") != "off":
         pt = sum((r_.get("end") or {}).get("sim_paused_turns", 0) for r_ in records)
         pg = sum(1 for r_ in records if (r_.get("end") or {}).get("sim_pauses"))

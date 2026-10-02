@@ -1,0 +1,17 @@
+# title: Astral Slide on the battlefield: the AI cycles and uses Slide's trigger
+# card: Astral Slide
+# turns: 3
+# expect: Astral Slide
+# expect: triggered Astral Slide targeting \[Craterhoof Behemoth
+# forbid: Craterhoof Behemoth \(\d+\) deals \d+ combat damage to Ai\(1\)
+p0life=20
+p1life=20
+turn=1
+activeplayer=p1
+activephase=MAIN1
+p0battlefield=Astral Slide;Plains;Plains;Plains;Plains;Island;Island
+p0hand=Secluded Steppe;Lonely Sandbar;Drifting Meadow;Forsake the Worldly
+p0library=Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island
+p1battlefield=Craterhoof Behemoth;Grizzly Bears;Forest;Forest;Forest;Forest
+p1hand=
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

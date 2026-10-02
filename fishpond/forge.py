@@ -3,7 +3,7 @@
 Forge (https://github.com/Card-Forge/forge, GPL-3.0) is downloaded at runtime and never vendored into the repo.
 Bump FORGE_VERSION deliberately: new sets arrive with new releases, and every report prints the version it ran on.
 """
-import json, os, re, shutil, subprocess, sys, tarfile, zipfile
+import glob, json, os, re, shutil, subprocess, sys, tarfile, zipfile
 
 FORGE_VERSION = "2.0.15"
 FORGE_URL = "https://github.com/Card-Forge/forge/releases/download/forge-{v}/forge-installer-{v}.tar.bz2"
@@ -52,10 +52,16 @@ def ensure(version=FORGE_VERSION, quiet=False):
 PATCH_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "forge_patches")
 FORGE_SRC_URL = "https://raw.githubusercontent.com/Card-Forge/forge/forge-{v}/{path}"
 
+def pilot_on():
+    """The pilot improvements (tutor policy, '-pilot-' AI patches, card overrides) are always on; FISHPOND_PILOT=off turns them
+    all off so an A/B run can measure them against stock Forge AI. Crash-fix patches stay on either way."""
+    return os.environ.get("FISHPOND_PILOT", "on").lower() != "off"
+
 def patch_files():
-    """The repo's fixes to Forge (fishpond/forge_patches/*.patch, unified diffs against the pinned release's source)."""
-    import glob
-    return sorted(glob.glob(os.path.join(PATCH_DIR, "*.patch")))
+    """The repo's fixes to Forge (fishpond/forge_patches/*.patch, unified diffs against the pinned release's source).
+    '-pilot-' patches improve the AI's play (docs/FORGE_PLAN.md, "Pilot policy"); the rest fix crashes."""
+    fs = sorted(glob.glob(os.path.join(PATCH_DIR, "*.patch")))
+    return fs if pilot_on() else [f for f in fs if "-pilot-" not in os.path.basename(f)]
 
 def patched_classes(version=FORGE_VERSION, quiet=False):
     """Build the patched Forge classes once per (version, patches): fetch each patched file from the release tag on GitHub,
@@ -96,6 +102,77 @@ def patched_classes(version=FORGE_VERSION, quiet=False):
     try: os.replace(out, d)
     except OSError: pass                                   # another run got there first
     shutil.rmtree(tmp, ignore_errors=True)
+    return d
+
+OVERRIDE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "forge_card_overrides")
+
+def override_files():
+    """Fishpond's replacement card scripts (fishpond/forge_card_overrides/*.txt, each a full Forge card script)."""
+    return sorted(glob.glob(os.path.join(OVERRIDE_DIR, "*.txt"))) if pilot_on() else []
+
+def card_script(name, version=FORGE_VERSION):
+    """A card's script text from the pinned release (exact Name: match), or None."""
+    with zipfile.ZipFile(cards_zip(version)) as z:
+        for fn in z.namelist():
+            if not fn.endswith(".txt"): continue
+            txt = z.read(fn).decode("utf-8", "replace")
+            m = re.search(r"^Name:(.+)$", txt, re.M)
+            if m and m.group(1).strip() == name: return txt
+    return None
+
+def write_unflag_override(name, why, version=FORGE_VERSION):
+    """Write fishpond/forge_card_overrides/<name>.txt: the release's script without AI:RemoveDeck:All. Forge's AI never casts or
+    activates a card with that hint (AiController drops its abilities), so this is how a card the AI turns out to play
+    acceptably (checked by a puzzle) becomes playable. Returns the path."""
+    txt = card_script(name, version)
+    if txt is None: sys.exit(f"fishpond: Forge {version} has no card named {name!r}")
+    body = "\n".join(l for l in txt.splitlines() if not l.startswith("AI:RemoveDeck:All")) + "\n"
+    os.makedirs(OVERRIDE_DIR, exist_ok=True)
+    p = os.path.join(OVERRIDE_DIR, re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") + ".txt")
+    header = f"# fishpond override (Forge {version} script minus AI:RemoveDeck:All): {why}\n"
+    open(p, "w", encoding="utf-8").write(header + body)
+    return p
+
+def run_home(version=FORGE_VERSION, quiet=False):
+    """The directory Forge runs from (its cwd: it reads res/ relative to it). Without card overrides that's the install;
+    with them, a mirror of the install whose res/cardsfolder/cardsfolder.zip has the overridden scripts swapped in
+    (Forge reads only the zip when it exists). Built once per (version, overrides); everything else is symlinked."""
+    import hashlib
+    files = override_files()
+    if not files: return home(version)
+    h = hashlib.sha1((version + "".join(open(f, encoding="utf-8").read() for f in files)).encode()).hexdigest()[:12]
+    d = os.path.join(home(version), "fishpond-cards", h)
+    if os.path.exists(os.path.join(d, "ok")): return d
+    tmp = f"{d}.tmp{os.getpid()}"
+    shutil.rmtree(tmp, ignore_errors=True); os.makedirs(os.path.join(tmp, "res", "cardsfolder"))
+    src = home(version)
+    for e in os.listdir(src):
+        if e not in ("res", "fishpond-cards", "fishpond-harness", "fishpond-patched"): os.symlink(os.path.join(src, e), os.path.join(tmp, e))
+    for e in os.listdir(os.path.join(src, "res")):
+        if e != "cardsfolder": os.symlink(os.path.join(src, "res", e), os.path.join(tmp, "res", e))
+    repl = {}
+    for f in files:
+        txt = open(f, encoding="utf-8").read()
+        m = re.search(r"^Name:(.+)$", txt, re.M)
+        if not m: sys.exit(f"fishpond: card override {f} has no Name: line")
+        repl[m.group(1).strip()] = txt
+    found = set()
+    with zipfile.ZipFile(cards_zip(version)) as zin, zipfile.ZipFile(os.path.join(tmp, "res", "cardsfolder", "cardsfolder.zip"), "w", zipfile.ZIP_DEFLATED) as zout:
+        for info in zin.infolist():
+            data = zin.read(info.filename)
+            if info.filename.endswith(".txt"):
+                m = re.search(rb"^Name:(.+)$", data, re.M)
+                name = m.group(1).decode("utf-8", "replace").strip() if m else None
+                if name in repl:
+                    data = repl[name].encode("utf-8"); found.add(name)
+            zout.writestr(info, data)
+    missing = set(repl) - found
+    if missing: sys.exit(f"fishpond: card overrides name cards Forge {version} doesn't have: {sorted(missing)}")
+    _say(f"fishpond: card overrides applied ({len(repl)}): {', '.join(sorted(repl))}", quiet)
+    open(os.path.join(tmp, "ok"), "w").write("\n".join(sorted(repl)))
+    shutil.rmtree(d, ignore_errors=True)
+    try: os.replace(tmp, d)
+    except OSError: shutil.rmtree(tmp, ignore_errors=True)
     return d
 
 def latest_release(timeout=10):

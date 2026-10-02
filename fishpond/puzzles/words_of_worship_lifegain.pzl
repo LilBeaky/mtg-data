@@ -1,0 +1,15 @@
+# title: Words of Worship: at low life the AI trades draws for 5 life (known gap: Forge has no AI for it; the card stays flagged)
+# known_gap: yes
+# card: Words of Worship
+# turns: 2
+# expect: activated Words of Worship
+p0life=4
+p1life=20
+turn=1
+activeplayer=p1
+activephase=MAIN2
+p0battlefield=Words of Worship;Plains;Plains;Plains;Plains
+p0hand=Plains;Plains;Plains
+p0library=Plains;Island;Plains;Island;Plains;Island;Plains;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest

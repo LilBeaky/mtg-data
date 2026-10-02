@@ -1,0 +1,14 @@
+# title: Filter lands: the AI uses Cascade Bluffs to make {U}{U} for a double-blue spell
+# card: Cascade Bluffs
+# turns: 2
+# expect: cast Counsel of the Soratami
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Cascade Bluffs;Island;Mountain
+p0hand=Counsel of the Soratami
+p0library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest
