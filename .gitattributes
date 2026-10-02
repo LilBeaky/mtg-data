@@ -1,0 +1,2 @@
+# Forge patches are applied with git apply to Forge's LF sources: keep them LF on every checkout
+fishpond/forge_patches/*.patch text eol=lf
