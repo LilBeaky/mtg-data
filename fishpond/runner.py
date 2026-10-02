@@ -186,7 +186,7 @@ def load_plan(run_dir):
 
 def _pilot_seat_props(run_dir):
     """JVM properties for --pilot-seats you: only seat 1 gets the policy and the '-pilot-' patches, and the other seats treat
-    fishpond's un-flagged cards as still flagged (patch 07 reads the list from a file in the run)."""
+    fishpond's un-flagged cards as still flagged (patch 09 reads the list from a file in the run)."""
     seats = os.environ.get("FISHPOND_PILOT_SEATS", "all")
     if seats == "all" or not forge.pilot_on(): return []
     import re as _re

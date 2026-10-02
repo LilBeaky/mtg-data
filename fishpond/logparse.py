@@ -63,10 +63,14 @@ def split_games(text):
             games.append(cur); cur = []
     return games
 
+def _play(s):
+    """Forge's printout of a play, without card ids: 'Imperial Seal (4) -> Search your...' -> 'Imperial Seal -> Search your...'."""
+    return re.sub(r" \(\d+\)", "", s).replace(" -> <$> - ", " - ")
+
 def harness_lines(lines):
     """The harness's own lines in a game block: (snaps {hero turn: {'main': {...}, 'end': {...}}}, end info or None)."""
     import json
-    snaps, end, tutors, policy = {}, None, [], []
+    snaps, end, tutors, searches, policy = {}, None, [], {}, []
     for line in lines:
         if line.startswith("#FP-SNAP "):
             s = json.loads(line[9:])
@@ -75,11 +79,27 @@ def harness_lines(lines):
             tutors.append(json.loads(line[10:]))
         elif line.startswith("#FP-POLICY "):
             policy.append(json.loads(line[11:]))
+        elif line.startswith("#FP-SEARCH "):             # one lookahead search (patch 06): size, time, whether the budget cut it
+            q = json.loads(line[11:])
+            a = searches.setdefault(q.get("seat", "?"), {"n": 0, "capped": 0, "max_nodes": 0, "ms": 0, "max_ms": 0})
+            a["n"] += 1; a["capped"] += bool(q.get("capped")); a["ms"] += q["ms"]
+            a["max_nodes"] = max(a["max_nodes"], q["nodes"]); a["max_ms"] = max(a["max_ms"], q["ms"])
+            for o in q.get("options") or []: o["play"] = _play(o["play"])
+            q["chosen"] = _play(q.get("chosen") or ""); q["line"] = [_play(re.sub(r"^\[initScore=\S+(?: \(available [^)]*\))? ", "", x).rstrip("]"))
+                                                        for x in q.get("line") or []]
+            opts = sorted(q.get("options") or [], key=lambda o: -o["score"])
+            if len(opts) >= 2:                              # a real choice: keep what it picked, the runner-up, and what the budget cut
+                a.setdefault("decisions", []).append({
+                    "t": q["turn"], "phase": q["phase"], "positions": q["nodes"], "capped": q["capped"], "ms": q["ms"],
+                    "chosen": q["chosen"], "line": q.get("line") or [], "base": q.get("base"),
+                    "best": opts[0], "runner_up": opts[1],
+                    "cut": [o for o in opts if o["depth"] != "full"]})
         elif line.startswith("#FP-END "):
             end = json.loads(line[8:])
         elif line.startswith("#FP-ERROR "):
             end = dict(json.loads(line[10:]), stop="error")
     if end is not None: end["policy_log"] = policy      # pilot policy decisions, every seat (harness/PilotPolicy.java)
+    if end is not None: end["searches"] = searches       # per seat name
     if end is not None: end["tutors"] = tutors      # the hero's library searches and digs into hand or play
     return snaps, end
 

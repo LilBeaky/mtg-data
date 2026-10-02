@@ -16,7 +16,7 @@ diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/
       */
 +    // ---- Fishpond pilot seats: -Dfishpond.pilotSeats=all (default) or a comma list of seat numbers (the "N" in a player
 +    // name "Ai(N)-..."); fishpond's '-pilot-' patches only change decisions for those seats, so an A/B run can give the
-+    // improvements to one seat. Shared by patches 06 and 07.
++    // improvements to one seat. Shared by patches 08 and 09.
 +    private static java.util.Set<String> pilotSeats;
 +    private static java.util.Set<String> overridden;
 +
@@ -30,7 +30,7 @@ diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/
 +    }
 +
 +    /** Cards fishpond un-flagged (forge_card_overrides; -Dfishpond.overriddenFile, one name per line): for a seat outside
-+     *  the pilot seats the AI treats them as still flagged (patch 07). */
++     *  the pilot seats the AI treats them as still flagged (patch 09). */
 +    public static boolean pilotOverridden(String name) {
 +        if (overridden == null) {
 +            overridden = new java.util.HashSet<>();
@@ -83,7 +83,7 @@ diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/
 +
      @Override
      protected boolean willPayCosts(Player payer, SpellAbility sa, Cost cost, Card source) {
-+        // With a cycling payoff out, cycling a land or any card while the hand has spares is fine (fishpond patch 05)
++        // With a cycling payoff out, cycling a land or any card while the hand has spares is fine (fishpond patch 07)
 +        if (sa.isCycling() && pilotSeat(payer) && hasCyclingPayoff(payer)
 +                && (source.isLand() || payer.getCardsIn(ZoneType.Hand).size() >= 3 || ComputerUtil.isWorseThanDraw(payer, source))) {
 +            return true;
@@ -96,7 +96,7 @@ diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/
      @Override
      protected boolean checkPhaseRestrictions(Player ai, SpellAbility sa, PhaseHandler ph) {
 +        // Cycling with a cycling payoff out (Astral Slide, Drift Wraith-style triggers): cycle at the moments the payoff
-+        // matters instead of holding draws for main 2 (fishpond patch 05).
++        // matters instead of holding draws for main 2 (fishpond patch 07).
 +        if (sa.isCycling() && pilotSeat(ai) && hasCyclingPayoff(ai)) {
 +            return cyclingWindow(ai, ph);
 +        }

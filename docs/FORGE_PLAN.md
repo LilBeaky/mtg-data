@@ -227,7 +227,13 @@ Priority order:
 4. **Tests are Forge puzzles** (`.pzl` board states): "Slide on the battlefield, a cycler in hand at end of an opponent's turn: does the AI cycle with a creature to flicker?" Fast, deterministic, re-run on every Forge bump.
 5. **Upstream:** Forge (Card-Forge/forge, GPL-3) takes contributions. Before sending anything: read its CONTRIBUTING notes and any stance on AI-assisted code, open an issue or discussion first, keep PRs small with puzzle tests, and disclose that Claude helped write them. Ian submits under his account and owns the review. Accepted patches drop out of our patch set.
 
-### Order
+### Status (2026-10-02, built)
+
+- Part 1 built: `fishpond/policy.py` (intel), `harness/PilotPolicy.java` (layers combo, survival, engine, role, synergy, boost, forge; playability discounts flagged cards fetched to hand x0.1), `#FP-POLICY` log, report lines, `fishpond deck` summary, `fishpond compare`. All seats by default.
+- Part 2 built: puzzles (`fishpond puzzles`, `harness/PuzzleRunner.java`), pilot patches 07 (cycling payoffs), 08 (blink attackers out of combat), 09 (per-seat overrides), card overrides (`fishpond/forge_card_overrides/`, 26 cards; `fishpond flags`). Key finding: Forge's AI never casts `AI:RemoveDeck:All` cards (AiController drops them), which made Necrodominance, Solitary Confinement and Cole's Omnath commander dead cards. Known gaps kept flagged: Biorhythm, City of Traitors, Words of Worship; 9 cards untested.
+- A/B (pilot at all seats vs stock, seed 1): Zur 2-23 vs 3-22 (25 games), Yusri 1-14 vs 4-11, Chulane 0-15 both (15 games). Zur's tutoring moved as intended (Grasp of Fate 10 -> 0 fetches, Astral Drift 4 -> 13, Escape Protocol 1 -> 7); Niv's pod wins rose (72 -> 80% in Zur's pod, 47 -> 73% in Yusri's), since the pilot strengthens every seat. Yusri's combo layer fetched the still-flagged Squee's Revenge (fixed: playability now covers every layer). `--pilot-seats you` (pilot for the hero only) added to separate the two effects; those runs were in progress at the merge.
+
+### Order (as planned)
 
 1. Instrumentation: `#FP-POLICY`-style log of every library search with Forge's pick and the candidate list; flagged-card ranking for Part 2.
 2. Static intel builder (Python) + layers 1, 3 and 7 (combos, engine graph, fallback); Zur and Chulane A/B.

@@ -7,7 +7,7 @@ diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/ma
              // TODO allow when experimental profile?
 -            return spellAbility.isLandAbility() || (spellAbility.getHostCard() != null && ComputerUtilCard.isCardRemAIDeck(spellAbility.getHostCard()));
 +            return spellAbility.isLandAbility() || (spellAbility.getHostCard() != null && (ComputerUtilCard.isCardRemAIDeck(spellAbility.getHostCard())
-+                    // fishpond patch 07: a card fishpond un-flagged stays flagged for seats outside the pilot seats
++                    // fishpond patch 09: a card fishpond un-flagged stays flagged for seats outside the pilot seats
 +                    || (!forge.ai.ability.DrawAi.pilotSeat(player) && forge.ai.ability.DrawAi.pilotOverridden(spellAbility.getHostCard().getName()))));
          });
          //removed skipped SA

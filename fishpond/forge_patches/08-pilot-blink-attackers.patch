@@ -6,7 +6,7 @@ diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java b/forge-a
                          }
                          if (blink) {
 -                            return c.isToken();
-+                            // blinking an opponent's creature that is attacking the AI takes it out of combat (fishpond patch 06)
++                            // blinking an opponent's creature that is attacking the AI takes it out of combat (fishpond patch 08)
 +                            return c.isToken() || (DrawAi.pilotSeat(ai) && attacksAi(ai, c));
                          }
                          return c.isToken() || c.getCMC() > 0;
@@ -27,7 +27,7 @@ diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java b/forge-a
          return super.willPayUnlessCost(payer, sa, cost, alreadyPaid, payers);
      }
 +
-+    /** Is c attacking the AI or a planeswalker/battle it controls right now? (fishpond patch 06) */
++    /** Is c attacking the AI or a planeswalker/battle it controls right now? (fishpond patch 08) */
 +    static boolean attacksAi(final Player ai, final Card c) {
 +        final forge.game.combat.Combat combat = ai.getGame().getCombat();
 +        if (combat == null || !combat.isAttacking(c)) {
