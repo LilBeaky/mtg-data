@@ -83,7 +83,7 @@ def harness_lines(lines):
             a["n"] += 1; a["capped"] += bool(q.get("capped")); a["ms"] += q["ms"]
             a["max_nodes"] = max(a["max_nodes"], q["nodes"]); a["max_ms"] = max(a["max_ms"], q["ms"])
             for o in q.get("options") or []: o["play"] = _play(o["play"])
-            q["chosen"] = _play(q["chosen"]); q["line"] = [_play(re.sub(r"^\[initScore=\S+(?: \(available [^)]*\))? ", "", x).rstrip("]"))
+            q["chosen"] = _play(q.get("chosen") or ""); q["line"] = [_play(re.sub(r"^\[initScore=\S+(?: \(available [^)]*\))? ", "", x).rstrip("]"))
                                                         for x in q.get("line") or []]
             opts = sorted(q.get("options") or [], key=lambda o: -o["score"])
             if len(opts) >= 2:                              # a real choice: keep what it picked, the runner-up, and what the budget cut
