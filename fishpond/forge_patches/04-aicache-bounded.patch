@@ -1,0 +1,29 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiCache.java b/forge-ai/src/main/java/forge/ai/AiCache.java
+index b98f7de..4525426 100644
+--- a/forge-ai/src/main/java/forge/ai/AiCache.java
++++ b/forge-ai/src/main/java/forge/ai/AiCache.java
+@@ -13,6 +13,7 @@ import java.util.function.Supplier;
+ public class AiCache {
+ 
+     // stores result + args as vector
++    private static final int MAX_ENTRIES = Integer.getInteger("forge.ai.cacheMaxEntries", 128);
+     private final static Multimap<String, List<Object>> dataMap = Multimaps.synchronizedMultimap(ArrayListMultimap.create());
+ 
+     public static boolean identity(Object a, Object b) {
+@@ -40,7 +41,15 @@ public class AiCache {
+         T result = func.get();
+         List<Object> cached = Lists.newArrayList(result);
+         cached.addAll(Arrays.asList(args));
+-        dataMap.put(key, cached);
++        synchronized (dataMap) {
++            // Entries hold the Players/Game they were computed for, and the cache is only cleared when a real AI decision
++            // starts. A full-simulation decision scores thousands of game copies, which would all stay reachable through
++            // here until the heap runs out, so start over once the cache is this big (lookups are linear scans anyway).
++            if (dataMap.size() >= MAX_ENTRIES) {
++                dataMap.clear();
++            }
++            dataMap.put(key, cached);
++        }
+         return result;
+     }
+ 

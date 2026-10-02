@@ -1,0 +1,89 @@
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+index abb04f5..d7474b8 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+@@ -119,6 +119,21 @@ public class GameCopier {
+             playerMap.put(origPlayer, newPlayer);
+         }
+ 
++        // Players who already left a multiplayer game are still registered in the copy (it is built from the match's
++        // players), so take them out of it the way Game.onPlayerLost does, and map them: objects can still point at them
++        // (their effect cards moved to another player's command zone, a combat declared before they died).
++        for (Player origPlayer : origGame.getLostPlayers()) {
++            Player newPlayer = newGame.getPlayer(origPlayer.getId());
++            if (newPlayer == null) {
++                continue;
++            }
++            newPlayer.getStats().setOutcome(origPlayer.getOutcome());    // isInGame()/hasLost() read the outcome
++            newPlayer.setHasLost(true);
++            newGame.getPlayers().remove(newPlayer);
++            newGame.getLostPlayers().add(newPlayer);
++            playerMap.put(origPlayer, newPlayer);
++        }
++
+         PhaseHandler origPhaseHandler = origGame.getPhaseHandler();
+         Player newPlayerTurn = playerMap.get(origPhaseHandler.getPlayerTurn());
+         newGame.getPhaseHandler().devModeSet(origPhaseHandler.getPhase(), newPlayerTurn, origPhaseHandler.getTurn());
+@@ -130,8 +145,13 @@ public class GameCopier {
+         copyGameState(newGame, aiPlayer);
+ 
+         for (Player origPlayer : playerMap.keySet()) {
++            if (!origPlayer.isInGame()) {
++                continue;    // a departed player's commanders and effect cards left the game with them (CR 800.4a)
++            }
+             Player newPlayer = playerMap.get(origPlayer);
+-            origPlayer.copyCommandersToSnapshot(newPlayer, gameObjectMap::map);
++            // copyCommandersToSnapshot skips commanders the mapper returns null for ("ceased to exist"), e.g. the commander
++            // damage a player took from a departed player's commander; find() throws instead
++            origPlayer.copyCommandersToSnapshot(newPlayer, c -> c == null ? null : findCardOrNull(c));
+             origPlayer.copyEffectCardsToSnapshot(newPlayer, gameObjectMap::map);
+             ((PlayerZoneBattlefield) newPlayer.getZone(ZoneType.Battlefield)).setTriggers(true);
+         }
+@@ -351,6 +371,10 @@ public class GameCopier {
+         // TODO ExiledWith
+ 
+         Player zoneOwner = owner;
++        // a card can sit in another player's zone (e.g. a departed player's effect cards in the next player's command zone)
++        if (c.getZone() != null && c.getZone().getPlayer() != null && playerMap.containsKey(c.getZone().getPlayer())) {
++            zoneOwner = playerMap.get(c.getZone().getPlayer());
++        }
+         // everything the CreatureEvaluator checks must be set here
+         if (zone == ZoneType.Battlefield) {
+             // TODO: Controllers' list with timestamps should be copied.
+@@ -494,6 +518,19 @@ public class GameCopier {
+         }
+     }
+ 
++    private Card findCardOrNull(Card c) {
++        Card result = cardMap.get(c);
++        if (result != null) {
++            return result;
++        }
++        for (Map.Entry<Card, Card> e : cardMap.entrySet()) {
++            if (e.getKey().getId() == c.getId()) {
++                return e.getValue();
++            }
++        }
++        return null;
++    }
++
+     public <T extends GameObject> T find(T o) {
+         if (origGame.EXPERIMENTAL_RESTORE_SNAPSHOT) {
+             return (T) snapshot.find(o);
+@@ -501,12 +538,13 @@ public class GameCopier {
+ 
+         T result = null;
+         if (o instanceof Card) {
+-            result = (T) cardMap.get(o);
++            // A zone change makes a new Card object with the same id, and some state (e.g. a combat whose defending
++            // battle was defeated and exiled) can still hold the old one: findCardOrNull maps it by id.
++            result = (T) findCardOrNull((Card) o);
+             if (result != null) {
+                 return result;
+-            } else {
+-                System.out.println("Couldn't map " + o + "/" + System.identityHashCode(o));
+             }
++            System.out.println("Couldn't map " + o + "/" + System.identityHashCode(o));
+         } else if (o instanceof Player) {
+             result = (T) playerMap.get(o);
+             if (result != null)

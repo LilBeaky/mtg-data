@@ -48,6 +48,13 @@ def cmd_setup(args):
     print(f"java {jv or 'MISSING'} | javac {jc or 'not installed (only the harness needs it: setup --jdk)'}")
     print(f"memory available {forge.memory_mb()} MB | CPUs {os.cpu_count()} | default --jobs {runner.default_jobs()}")
     if not jv: sys.exit("fishpond: install Java 17+ (the Forge runtime)")
+    pd = forge.patched_classes() if jc else None
+    print(f"Forge patches: {len(forge.patch_files())} applied ({pd})" if pd else "Forge patches: none built (needs javac)")
+    latest = forge.latest_release()
+    if latest is None: print("Forge release check: offline, skipped")
+    elif forge._vkey(latest) > forge._vkey(forge.FORGE_VERSION):
+        print(f"Forge release check: {latest} is out (pinned {forge.FORGE_VERSION}); to move up, follow docs/FORGE_ISSUES.md 'Bumping Forge'")
+    else: print(f"Forge release check: {forge.FORGE_VERSION} is the latest release")
 
 def _opp_specs(args):
     specs = list(args.opp or [])
@@ -113,7 +120,8 @@ def cmd_run(args):
         vd, vp = dk.swapped(hero, pairs, idx=idx)
         if vp: sys.exit("fishpond: --variant " + v + ": " + "; ".join(vp))
         builds.append((label or f"variant {len(builds)}", vd))
-    jobs = args.jobs or runner.default_jobs()
+    jobs = args.jobs or runner.default_jobs(full="full" in (args.sim, args.opp_sim))
+    if args.timeout is None: args.timeout = 7200 if "full" in (args.sim, args.opp_sim) else 1800
     engine = args.engine
     if engine == "auto":
         engine = "harness" if runner.harness_available() or forge.install_jdk(quiet=True) else "cli"
@@ -159,7 +167,7 @@ def cmd_resume(args):
     new = []
     if args.trials:
         first_game, first_id = max(e["game"] for e in plan) + 1, max(e["id"] for e in plan) + 1
-        new = runner.plan_harness(builds, pods, first_game, args.trials, meta["seed"], meta["cap"], meta.get("timeout", args.timeout), run_dir,
+        new = runner.plan_harness(builds, pods, first_game, args.trials, meta["seed"], meta["cap"], meta.get("timeout", args.timeout or 1800), run_dir,
                                   meta.get("hero_ai", "Default"), meta.get("opp_ai", ["Default"] * 3), meta.get("sim", "hybrid"),
                                   meta.get("opp_sim", "hybrid"), meta.get("key") or [], first_id)
         plan += new
@@ -169,10 +177,11 @@ def cmd_resume(args):
     todo = missing + new
     import glob
     session = f"s{len({os.path.basename(f).split('_')[1] for f in glob.glob(os.path.join(run_dir, 'logs', 'plan_*_*.tsv'))}) + 1}"
-    wall = runner.execute(todo, args.jobs or runner.default_jobs(), run_dir, session, args.quiet)
+    full = "full" in (meta.get("sim"), meta.get("opp_sim"))
+    wall = runner.execute(todo, args.jobs or runner.default_jobs(full), run_dir, session, args.quiet)
     records, missing = runner.collect(run_dir, plan, builds, pods, meta.get("hero_ai", "Default"), meta.get("opp_ai", ["Default"] * 3))
     meta.update(wall=meta.get("wall", 0) + wall, trials=len({e["game"] for e in plan}), complete=not missing,
-                jobs=args.jobs or runner.default_jobs())
+                jobs=args.jobs or runner.default_jobs(full))
     runner.save(run_dir, meta, records)
     _report(meta, records, builds, args.json, run_dir)
 
@@ -305,7 +314,7 @@ def main(argv=None):
     r.add_argument("--track", action="append", default=[]); r.add_argument("--variant", action="append", default=[])
     r.add_argument("--commander"); r.add_argument("--clock", type=int, default=120); r.add_argument("--jobs", type=int, default=0)
     r.add_argument("--engine", choices=["auto", "harness", "cli"], default="auto"); r.add_argument("--cap", type=int, default=20)
-    r.add_argument("--timeout", type=int, default=1800); r.add_argument("--out"); r.add_argument("--json", action="store_true")
+    r.add_argument("--timeout", type=int, default=None, help="per-game wall-clock limit in seconds (default 1800; 7200 with full lookahead)"); r.add_argument("--out"); r.add_argument("--json", action="store_true")
     r.add_argument("--quiet", action="store_true")
     p = sub.add_parser("report"); p.add_argument("run"); p.add_argument("--turns", type=int, default=0); p.add_argument("--json", action="store_true")
     p.add_argument("--reparse", action="store_true", help="re-run the log parser over the saved logs first")

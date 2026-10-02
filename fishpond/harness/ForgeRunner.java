@@ -16,6 +16,7 @@
 import com.google.common.eventbus.Subscribe;
 import forge.GuiDesktop;
 import forge.ai.AIOption;
+import forge.ai.AiController;
 import forge.ai.PlayerControllerAi;
 import forge.game.ability.ApiType;
 import forge.ai.ComputerUtilMana;
@@ -41,7 +42,6 @@ import forge.game.spellability.SpellAbility;
 import forge.game.zone.ZoneType;
 import forge.gui.GuiBase;
 import forge.model.FModel;
-import forge.player.GamePlayerUtil;
 import forge.util.MyRandom;
 
 import java.io.File;
@@ -85,6 +85,104 @@ public class ForgeRunner {
         System.exit(0);
     }
 
+    /** Safety net for Forge's lookahead throwing inside its own search, where the harness can't see or pause (copies of
+     *  copies). The known cases are fixed in fishpond/forge_patches (docs/FORGE_ISSUES.md #2, #4); anything still thrown
+     *  would end the real game, so that one decision is made again with lookahead off, logged (#FP-SIMFB, sim_decision_log),
+     *  and the game goes on with lookahead back on. It should stay at zero: each one is a Forge bug to root out.
+     *  Deterministic: the same seed throws at the same point. */
+    static final class SimFallbacks { int n = 0; String first = null; Game game; final List<String> log = new ArrayList<>(); }
+
+    /** The frames that say where Forge threw: from the throw point down to the AI's entry, Forge frames only. */
+    static String where(Throwable e) {
+        StringBuilder b = new StringBuilder();
+        int k = 0;
+        for (StackTraceElement el : e.getStackTrace()) {
+            String c = el.getClassName();
+            if (c.startsWith("ForgeRunner") || c.equals("forge.ai.PlayerControllerAi")) break;
+            if (!c.startsWith("forge.")) continue;
+            if (b.length() > 0) b.append(" < ");
+            b.append(c.substring(6)).append('.').append(el.getMethodName()).append(':').append(el.getLineNumber());
+            if (++k >= 14) break;
+        }
+        return b.toString();
+    }
+
+    /** LobbyPlayerAi that gives its in-game players a SafeControllerAi (a controller can only be assigned once). Forge's game
+     *  copier reuses this lobby player for its copies, whose controllers rethrow so the real game's decision handles it. */
+    static final class SafeLobbyPlayerAi extends forge.ai.LobbyPlayerAi {
+        final SimFallbacks fb;
+        final AIOption mode;
+        SafeLobbyPlayerAi(String name, Set<AIOption> opts, SimFallbacks fb) {
+            super(name, opts);
+            this.fb = fb;
+            this.mode = opts == null || opts.isEmpty() ? null : opts.iterator().next();
+        }
+        SafeControllerAi controllerFor(Player p) {
+            SafeControllerAi c = new SafeControllerAi(p.getGame(), p, this, fb);
+            c.getAi().setUseSimulation(mode);
+            return c;
+        }
+        @Override public Player createIngamePlayer(Game game, int id) {
+            Player p = new Player(getName(), game, id);
+            p.setFirstController(controllerFor(p));
+            return p;
+        }
+        @Override public forge.game.player.PlayerController createMindSlaveController(Player master, Player slave) { return controllerFor(slave); }
+    }
+
+    static final class SafeControllerAi extends PlayerControllerAi {
+        final SimFallbacks fb;
+        SafeControllerAi(Game g, Player p, forge.LobbyPlayer lp, SimFallbacks fb) { super(g, p, lp); this.fb = fb; }
+
+        static boolean fromSim(Throwable t) {
+            for (; t != null; t = t.getCause())
+                for (StackTraceElement el : t.getStackTrace()) if (el.getClassName().startsWith("forge.ai.simulation.")) return true;
+            return false;
+        }
+
+        @Override public List<SpellAbility> chooseSpellAbilityToPlay() {
+            try {
+                return super.chooseSpellAbilityToPlay();
+            } catch (RuntimeException e) {
+                AiController a = getAi();
+                AIOption m = a.usesFullSimulation() ? AIOption.USE_FULL_SIMULATION : a.usesHybridSimulation() ? AIOption.USE_HYBRID_SIMULATION : null;
+                if (m == null || !fromSim(e) || getPlayer().getGame() != fb.game) throw e;
+                fb.n++;
+                if (fb.first == null) {
+                    StringBuilder tr = new StringBuilder(e.toString());
+                    for (StackTraceElement el : e.getStackTrace()) {
+                        tr.append(" < ").append(el.getClassName().replaceAll("^forge\\.", "")).append('.').append(el.getMethodName()).append(':').append(el.getLineNumber());
+                        if (tr.length() > 1200) break;
+                    }
+                    fb.first = tr.toString();
+                }
+                Game g = getPlayer().getGame();
+                var ph = g.getPhaseHandler();
+                StringBuilder stack = new StringBuilder();
+                for (var si : g.getStack()) { if (stack.length() > 0) stack.append(" | "); stack.append(si.getSpellAbility()); }
+                a.setUseSimulation(null);
+                List<SpellAbility> played = null;
+                try { played = super.chooseSpellAbilityToPlay(); return played; }
+                finally {
+                    a.setUseSimulation(m);
+                    String entry = "{\"t\": " + ph.getTurn() + ", \"phase\": " + js(String.valueOf(ph.getPhase())) + ", \"seat\": " + js(getPlayer().getName())
+                            + ", \"active\": " + js(ph.getPlayerTurn() == null ? "" : ph.getPlayerTurn().getName()) + ", \"mode\": " + js(m.name())
+                            + ", \"stack\": " + js(stack.toString()) + ", \"exc\": " + js(String.valueOf(e)) + ", \"at\": " + js(where(e))
+                            + ", \"played\": " + js(played == null || played.isEmpty() ? "(pass)" : String.valueOf(played)) + "}";
+                    fb.log.add(entry);
+                    out.println("#FP-SIMFB " + entry);
+                }
+            }
+        }
+    }
+
+    static long heapPeakMb() {
+        long b = 0;
+        for (var pool : java.lang.management.ManagementFactory.getMemoryPoolMXBeans())
+            if (pool.getType() == java.lang.management.MemoryType.HEAP && pool.getPeakUsage() != null) b += pool.getPeakUsage().getUsed();
+        return b >> 20;
+    }
+
     /** fallbackTrace != null: this is a replay with lookahead off after Forge's simulation code crashed on the first try. */
     static void runGame(String[] f, String deckDir, Map<String, Deck> decks, String fallbackTrace) throws Exception {
         int id = Integer.parseInt(f[0]);
@@ -99,6 +197,7 @@ public class ForgeRunner {
         if (f.length > 12) for (String k : f[12].split("\\|")) if (!k.isBlank()) keys.add(k);
 
         MyRandom.setRandom(new Random(seed));
+        SimFallbacks fb = new SimFallbacks();
         GameRules rules = new GameRules(GameType.Commander);
         rules.setAppliedVariants(EnumSet.of(GameType.Commander));
         rules.setGamesPerMatch(1);
@@ -110,12 +209,15 @@ public class ForgeRunner {
             String profile = ai[i].equals("Default") ? "" : ai[i];
             Set<AIOption> opts = sims[i].equals("full") ? EnumSet.of(AIOption.USE_FULL_SIMULATION)
                     : sims[i].equals("hybrid") ? EnumSet.of(AIOption.USE_HYBRID_SIMULATION) : EnumSet.noneOf(AIOption.class);
-            rp.setPlayer(GamePlayerUtil.createAiPlayer("Ai(" + (i + 1) + ")-" + d.getName(), i, i, opts, profile));
+            SafeLobbyPlayerAi lp = new SafeLobbyPlayerAi("Ai(" + (i + 1) + ")-" + d.getName(), opts, fb);
+            lp.setAiProfile(profile.isEmpty() ? "Default" : profile);
+            rp.setPlayer(lp);
             players.add(rp);
         }
         Match match = new Match(rules, players, "Fishpond");
         Game game = match.createGame();
         game.setNoGUIUser();
+        fb.game = game;
         // Forge's AI gives up on a decision after Game.AI_TIMEOUT seconds (5, no setter). A timeout makes the result depend on
         // machine load, so raise it (-Dfishpond.aiTimeout, default 120); any timeout left is counted by the log parser.
         try {
@@ -143,6 +245,8 @@ public class ForgeRunner {
             }
         game.subscribeToEvents(w);
 
+        for (var pool : java.lang.management.ManagementFactory.getMemoryPoolMXBeans())   // peak heap per game, for sizing -Xmx
+            if (pool.getType() == java.lang.management.MemoryType.HEAP) pool.resetPeakUsage();
         long t0 = System.currentTimeMillis();
         ExecutorService ex = Executors.newSingleThreadExecutor();
         Future<?> fut = ex.submit(() -> match.startGame(game));
@@ -160,6 +264,25 @@ public class ForgeRunner {
                 if (tr.length() > 1500) break;
             }
             w.trace = tr.toString();
+            if (w.trace.contains("ai.simulation")) {    // what the lookahead's game copy couldn't map
+                Set<Player> in = new HashSet<>(game.getPlayers());
+                Throwable cause = e.getCause();
+                out.println("#FP-DIAG crash " + cause.getClass().getName() + ": " + cause.getMessage() + " | stack depth " + cause.getStackTrace().length);
+                out.println("#FP-DIAG crash turn " + game.getPhaseHandler().getTurn() + " " + game.getPhaseHandler().getPhase()
+                        + " | in game " + in.size() + "/" + game.getRegisteredPlayers().size()
+                        + " | lost " + game.getRegisteredPlayers().stream().filter(p -> !in.contains(p)).map(Player::getName).toList());
+                for (Card c : game.getCardsInGame())
+                    if (!in.contains(c.getOwner()) || !in.contains(c.getController()))
+                        out.println("#FP-DIAG orphan " + c + " zone " + c.getZone() + " owner " + c.getOwner().getName() + " controller " + c.getController().getName());
+                var cb = game.getPhaseHandler().getCombat();
+                if (cb != null) {
+                    out.println("#FP-DIAG combat defenders " + cb.getDefenders() + " attackers " + cb.getAttackers() + " blockers " + cb.getAllBlockers());
+                    List<Card> cs = new ArrayList<>(cb.getAttackers()); cs.addAll(cb.getAllBlockers());
+                    for (var d : cb.getDefenders()) if (d instanceof Card c) cs.add(c);
+                    for (Card a : cb.getAttackers()) if (cb.getDefenderByAttacker(a) instanceof Card c) cs.add(c);
+                    for (Card c : cs) out.println("#FP-DIAG combat card " + c + " zone " + c.getZone() + " live " + (c.getZone() != null && game.findById(c.getId()) == c));
+                }
+            }
         }
         ex.shutdownNow();
         if (!game.isGameOver()) game.setGameOver(GameEndReason.Draw);
@@ -180,7 +303,11 @@ public class ForgeRunner {
                 + ", \"ms\": " + ms + ", \"hero_turns\": " + w.heroTurns + ", \"global_turns\": " + w.globalTurns
                 + (w.trace != null ? ", \"trace\": " + js(w.trace) : "")
                 + (fallbackTrace != null ? ", \"sim_fallback\": " + js(fallbackTrace) : "")
+                + ", \"sim_decision_fallbacks\": " + fb.n + (fb.first != null ? ", \"sim_decision_trace\": " + js(fb.first) : "")
+                + ", \"sim_decision_log\": [" + String.join(", ", fb.log) + "]"
+                + ", \"heap_peak_mb\": " + heapPeakMb() + ", \"heap_max_mb\": " + (Runtime.getRuntime().maxMemory() >> 20)
                 + ", \"sim_paused_turns\": " + w.pausedTurns + ", \"sim_pauses\": " + w.pauses
+                + ", \"sim_pause_why\": {" + String.join(", ", w.pauseWhy.entrySet().stream().map(x -> js(x.getKey()) + ": " + x.getValue()).toList()) + "}"
                 + ", \"sim\": {" + String.join(", ", simOn.entrySet().stream().map(x -> "\"" + x.getKey() + "\": " + js(x.getValue())).toList()) + "}"
                 + ", \"players\": {");
         String winner = null;
@@ -228,26 +355,32 @@ public class ForgeRunner {
         int lastLib = 0;
         volatile String stop = null;
         String trace = null;                            // Java stack of a crash inside Forge, for the report
-        // Forge's lookahead copies the game, and its copier can't copy a prepared card's "may cast a copy" permission (crash in
-        // StaticAbilityContinuous, Forge 2.0.15): lookahead is paused while any prepared card is on the battlefield.
+        // Forge's lookahead copies the game (ai.simulation.GameCopier), and in Forge 2.0.15 the copy crashes on a prepared card
+        // (its "may cast a copy" permission crashes StaticAbilityContinuous), so lookahead is paused while one is on the
+        // battlefield (docs/FORGE_ISSUES.md #1). The copier's other crashes are fixed in fishpond/forge_patches (#2).
         final Map<PlayerControllerAi, AiControllerSim> simmers = new HashMap<>();
         boolean paused = false;
         int pauses = 0, pausedTurns = 0;
+        final Map<String, Integer> pauseWhy = new TreeMap<>();
 
-        void checkPrepared() {
+        String unsafeForSim() {
+            for (Player p : g.getPlayers())
+                for (Card c : p.getCardsIn(ZoneType.Battlefield)) if (c.isPrepared()) return "prepared";
+            return null;
+        }
+
+        void checkSimSafe() {
             if (simmers.isEmpty()) return;
-            boolean any = false;
-            for (Player p : g.getPlayers()) {
-                for (Card c : p.getCardsIn(ZoneType.Battlefield)) if (c.isPrepared()) { any = true; break; }
-                if (any) break;
-            }
+            String why = unsafeForSim();
+            boolean any = why != null;
             if (any == paused) return;
             paused = any;
-            if (any) pauses++;
+            if (any) { pauses++; pauseWhy.merge(why, 1, Integer::sum); }
             for (Map.Entry<PlayerControllerAi, AiControllerSim> e : simmers.entrySet())
                 e.getKey().getAi().setUseSimulation(any ? null : e.getValue().option);
         }
         final List<String> snaps = new ArrayList<>();
+        final long t0 = System.currentTimeMillis();
 
         Watcher(Game g, Player hero, int cap, String colors, boolean playOut) {
             this.g = g; this.hero = hero; this.cap = cap; this.colors = colors; this.playOut = playOut;
@@ -261,6 +394,7 @@ public class ForgeRunner {
 
         @Subscribe public void onTurn(GameEventTurnBegan e) {
             globalTurns++;
+            out.println("#FP-TURN " + globalTurns + " " + (System.currentTimeMillis() - t0) / 1000 + "s");   // progress, for watching slow games
             Player p = g.getPhaseHandler().getPlayerTurn();
             if (paused && p == hero) pausedTurns++;
             if (hero.hasLost()) {
@@ -312,7 +446,7 @@ public class ForgeRunner {
         }
 
         @Subscribe public void any(GameEvent e) {
-            checkPrepared();
+            checkSimSafe();
             if (stop == null && !playOut && hero.hasLost()) halt("hero_lost");
         }
 

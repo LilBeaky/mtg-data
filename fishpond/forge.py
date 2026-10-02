@@ -37,10 +37,9 @@ def ensure(version=FORGE_VERSION, quiet=False):
     _say(f"fishpond: unpacking Forge {version}", quiet)
     tmp = home(version) + ".tmp"
     shutil.rmtree(tmp, ignore_errors=True); os.makedirs(tmp)
-    if shutil.which("tar"):
-        r = subprocess.run(["tar", "-xjf", tarball, "-C", tmp])
-        if r.returncode: sys.exit(f"fishpond: could not unpack {tarball} (tar exit {r.returncode}); delete it and retry")
-    else:
+    r = subprocess.run(["tar", "-xjf", tarball, "-C", tmp]) if shutil.which("tar") else None
+    if r is None or r.returncode:  # no tar, or a Windows tar that can't read bz2: Python's tarfile can
+        shutil.rmtree(tmp, ignore_errors=True); os.makedirs(tmp)
         with tarfile.open(tarball, "r:bz2") as t: t.extractall(tmp)
     shutil.rmtree(home(version), ignore_errors=True)
     os.replace(tmp, home(version))
@@ -49,6 +48,94 @@ def ensure(version=FORGE_VERSION, quiet=False):
     return home(version)
 
 # ---------------------------------------------------------------- Java
+# ---------------------------------------------------------------- Forge patches
+PATCH_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "forge_patches")
+FORGE_SRC_URL = "https://raw.githubusercontent.com/Card-Forge/forge/forge-{v}/{path}"
+
+def patch_files():
+    """The repo's fixes to Forge (fishpond/forge_patches/*.patch, unified diffs against the pinned release's source)."""
+    import glob
+    return sorted(glob.glob(os.path.join(PATCH_DIR, "*.patch")))
+
+def patched_classes(version=FORGE_VERSION, quiet=False):
+    """Build the patched Forge classes once per (version, patches): fetch each patched file from the release tag on GitHub,
+    apply the patches, compile against the release jar. The class dir goes ahead of the jar on the classpath, so only these
+    classes change. Forge stays downloaded at run time, never vendored; a patch that no longer applies after a version bump
+    stops here with the file named (docs/FORGE_ISSUES.md, "Patches")."""
+    import hashlib, urllib.request
+    pf = patch_files()
+    if not pf: return None
+    h = hashlib.sha1((version + "".join(open(f, encoding="utf-8").read() for f in pf)).encode()).hexdigest()[:12]
+    d = os.path.join(home(version), "fishpond-patched", h)
+    if os.path.exists(os.path.join(d, "ok")): return d
+    paths = []
+    for f in pf:
+        for line in open(f, encoding="utf-8"):
+            if line.startswith("+++ b/"): paths.append(line[6:].strip())
+    tmp = f"{d}.tmp{os.getpid()}"
+    shutil.rmtree(tmp, ignore_errors=True)
+    src = os.path.join(tmp, "src"); out = os.path.join(tmp, "classes")
+    _say(f"fishpond: building {len(pf)} Forge patch(es) for {version}", quiet)
+    for p in sorted(set(paths)):
+        dst = os.path.join(src, *p.split("/")); os.makedirs(os.path.dirname(dst), exist_ok=True)
+        url = FORGE_SRC_URL.format(v=version, path=p)
+        try:
+            with urllib.request.urlopen(url) as resp, open(dst, "wb") as fh: fh.write(resp.read())
+        except Exception as e: sys.exit(f"fishpond: could not fetch Forge source {url}: {e}")
+    for f in pf:
+        r = subprocess.run(["git", "apply", "--whitespace=nowarn", f], cwd=src, capture_output=True, text=True)
+        if r.returncode:
+            sys.exit(f"fishpond: Forge patch {os.path.basename(f)} does not apply to Forge {version}:\n{(r.stderr or r.stdout).strip()}\n"
+                     "Re-check it against the new release (docs/FORGE_ISSUES.md, Patches): fixed upstream -> delete it; moved -> regenerate it.")
+    os.makedirs(out, exist_ok=True)
+    javas = [os.path.join(src, *p.split("/")) for p in sorted(set(paths))]
+    r = subprocess.run(["javac", "-nowarn", "-encoding", "UTF-8", "-cp", jar(version), "-d", out, *javas], capture_output=True, text=True)
+    if r.returncode: sys.exit("fishpond: compiling the Forge patches failed:\n" + (r.stderr + r.stdout)[-2000:])
+    open(os.path.join(out, "ok"), "w").write("\n".join(os.path.basename(f) for f in pf))
+    shutil.rmtree(d, ignore_errors=True)
+    try: os.replace(out, d)
+    except OSError: pass                                   # another run got there first
+    shutil.rmtree(tmp, ignore_errors=True)
+    return d
+
+def latest_release(timeout=10):
+    """The newest Forge release tag on GitHub ("2.0.16"), or None offline. Releases come every 6-8 weeks."""
+    import urllib.request
+    try:
+        req = urllib.request.Request("https://api.github.com/repos/Card-Forge/forge/releases/latest", headers={"Accept": "application/vnd.github+json"})
+        with urllib.request.urlopen(req, timeout=timeout) as r: tag = json.load(r).get("tag_name", "")
+        return tag[len("forge-"):] if tag.startswith("forge-") else None
+    except Exception: return None
+
+def _vkey(v): return tuple(int(x) for x in re.findall(r"\d+", v))
+
+def _java_ok(exe):
+    """True for a Java 17+ that is not the 32-bit Client VM (which can't reserve Forge's multi-GB heap)."""
+    try: r = subprocess.run([exe, "-version"], capture_output=True, text=True, timeout=20)
+    except (OSError, subprocess.SubprocessError): return False
+    out = r.stderr + r.stdout
+    m = re.search(r'version "(\d+)', out)
+    return bool(m) and int(m.group(1)) >= 17 and "Client VM" not in out
+
+def prefer_modern_java():
+    """An old 32-bit java first on PATH (Windows keeps one in Common Files\Oracle\Java\java8path) fails Forge with
+    'Could not reserve enough space for object heap'. If PATH's java isn't usable, put a JDK/JRE 17+ bin first on PATH."""
+    exe = "java.exe" if os.name == "nt" else "java"
+    if shutil.which("java") and _java_ok("java"): return
+    import glob
+    roots = [os.environ.get("JAVA_HOME", "")]
+    for base in (os.environ.get("LOCALAPPDATA", "") + "/Programs/Eclipse Adoptium", "C:/Program Files/Eclipse Adoptium",
+                 "C:/Program Files/Java", "C:/Program Files/Microsoft", "C:/Program Files/Zulu", "C:/Program Files/Amazon Corretto",
+                 "/usr/lib/jvm"):
+        roots += sorted(glob.glob(base + "/*"), reverse=True)
+    for root in roots:
+        bindir = os.path.join(root, "bin")
+        if root and os.path.exists(os.path.join(bindir, exe)) and _java_ok(os.path.join(bindir, exe)):
+            os.environ["PATH"] = bindir + os.pathsep + os.environ.get("PATH", "")
+            return
+
+prefer_modern_java()
+
 def java_major(exe="java"):
     """Major version of `java` (or `javac`) on PATH, or 0 when it's missing."""
     if not shutil.which(exe): return 0
@@ -70,11 +157,19 @@ def install_jdk(quiet=False):
     return bool(java_major("javac"))
 
 def memory_mb():
-    """Available memory in MB (Linux /proc/meminfo; a conservative 4096 elsewhere)."""
+    """Available memory in MB (Linux /proc/meminfo, Windows GlobalMemoryStatusEx; a conservative 4096 elsewhere)."""
     try:
         for line in open("/proc/meminfo"):
             if line.startswith("MemAvailable:"): return int(line.split()[1]) // 1024
     except OSError: pass
+    if os.name == "nt":
+        import ctypes
+        class MEMORYSTATUSEX(ctypes.Structure):
+            _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong), ("ullTotalPhys", ctypes.c_ulonglong),
+                        ("ullAvailPhys", ctypes.c_ulonglong), ("ullTotalPageFile", ctypes.c_ulonglong), ("ullAvailPageFile", ctypes.c_ulonglong),
+                        ("ullTotalVirtual", ctypes.c_ulonglong), ("ullAvailVirtual", ctypes.c_ulonglong), ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
+        st = MEMORYSTATUSEX(); st.dwLength = ctypes.sizeof(st)
+        if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(st)): return int(st.ullAvailPhys // (1024 * 1024))
     return 4096
 
 # ---------------------------------------------------------------- card names

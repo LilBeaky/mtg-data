@@ -1,0 +1,20 @@
+diff --git a/forge-game/src/main/java/forge/game/phase/PhaseHandler.java b/forge-game/src/main/java/forge/game/phase/PhaseHandler.java
+index 838c73f..8d59c79 100644
+--- a/forge-game/src/main/java/forge/game/phase/PhaseHandler.java
++++ b/forge-game/src/main/java/forge/game/phase/PhaseHandler.java
+@@ -1192,6 +1192,15 @@ public class PhaseHandler implements java.io.Serializable, IHasForgeLog {
+             if (resolver != null) {
+                 resolver.run();
+             }
++            // The resolver stops when the game ends with triggers still on the stack (e.g. a simulated drain killing
++            // the last opponent); stop advancing then instead of throwing from onPhaseEnd().
++            if (game.isGameOver()) {
++                return false;
++            }
++            if (!game.getStack().isEmpty()) {
++                System.err.println("devAdvanceToPhase: stopped before " + targetPhase + ", stack not empty: " + game.getStack().peekAbility());
++                return false;
++            }
+             onPhaseEnd();
+             advanceToNextPhase();
+             onPhaseBegin();

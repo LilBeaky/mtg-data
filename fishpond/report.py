@@ -55,8 +55,30 @@ def print_header(meta, records, ex):
         pg = sum(1 for r_ in records if (r_.get("end") or {}).get("sim_pauses"))
         fb = sum(1 for r_ in records if (r_.get("end") or {}).get("sim_fallback"))
         ht = sum(r_.get("hero_turns", 0) for r_ in records)
-        print(f"lookahead: paused in {pg} game(s), {pt} of {ht} of your turns (a prepared card was on the battlefield; "
-              f"docs/FORGE_ISSUES.md #1); {fb} game(s) replayed without lookahead after a crash in Forge's simulation code")
+        why = {}
+        for r_ in records:
+            for k, v in ((r_.get("end") or {}).get("sim_pause_why") or {}).items(): why[k] = why.get(k, 0) + v
+        labels = {"prepared": "a prepared card on the battlefield, #1",      # older runs also paused for #2 (now patched)
+                  "eliminated_owner": "an eliminated player's leftover object, #2", "eliminated_in_combat": "a combat naming an eliminated player, #2",
+                  "stale_combat_card": "a combat holding a card that has moved, #2"}
+        whys = "; ".join(f"{labels.get(k, k)}: {v}" for k, v in sorted(why.items())) or "Forge states its lookahead can't copy"
+        dfb = sum((r_.get("end") or {}).get("sim_decision_fallbacks", 0) for r_ in records)
+        dfg = sum(1 for r_ in records if (r_.get("end") or {}).get("sim_decision_fallbacks"))
+        print(f"lookahead: paused in {pg} game(s), {pt} of {ht} of your turns ({whys}; docs/FORGE_ISSUES.md); "
+              f"{dfb} decision(s) in {dfg} game(s) remade without lookahead after Forge's search threw; "
+              f"{fb} game(s) replayed without lookahead after a crash in Forge's simulation code")
+        kinds = {}
+        for r_ in records:
+            for d in (r_.get("end") or {}).get("sim_decision_log") or []:
+                at = (d.get("at") or "").split(" < ")
+                key = (d.get("exc", "").split(":")[0].split(".")[-1] + " at " + (at[0] if at else "?"))
+                k = kinds.setdefault(key, {"n": 0, "seats": {}, "ex": d, "game": r_.get("game")})
+                k["n"] += 1; k["seats"][d.get("seat", "?")] = k["seats"].get(d.get("seat", "?"), 0) + 1
+        for key, k in sorted(kinds.items(), key=lambda x: -x[1]["n"]):
+            eg = k["ex"]
+            seats = ", ".join(f"{s.split('-', 1)[-1]} {n}" for s, n in k["seats"].items())
+            print(f"  search fallback x{k['n']} ({seats}): {key}; e.g. game {k['game']} table turn {eg.get('t')} {eg.get('phase')}, "
+                  f"stack [{eg.get('stack') or 'empty'}], played {eg.get('played')}")
     gm = [m / 1000 for m in ex["game_ms"] if m]
     if gm:
         print(f"game time (one CPU per game): median {sr.q(gm, .5):.0f}s, P90 {sr.q(gm, .9):.0f}s, max {max(gm):.0f}s; "

@@ -1,0 +1,15 @@
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/GameStateEvaluator.java b/forge-ai/src/main/java/forge/ai/simulation/GameStateEvaluator.java
+index 3adfd9e..fd06f8e 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/GameStateEvaluator.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/GameStateEvaluator.java
+@@ -52,7 +52,9 @@ public class GameStateEvaluator {
+         GameCopier copier = new GameCopier(evalGame);
+         Game gameCopy = copier.makeCopy(null, aiPlayer);
+ 
+-        gameCopy.getPhaseHandler().devAdvanceToPhase(PhaseType.COMBAT_DAMAGE, () -> GameSimulator.resolveStack(gameCopy, aiPlayer.getWeakestOpponent()));
++        // resolve with the copy's players: aiPlayer belongs to evalGame, and resolveStack swaps the given player's controller
++        Player aiPlayerCopy = copier.find(aiPlayer);
++        gameCopy.getPhaseHandler().devAdvanceToPhase(PhaseType.COMBAT_DAMAGE, () -> GameSimulator.resolveStack(gameCopy, aiPlayerCopy.getWeakestOpponent()));
+         CombatSimResult result = new CombatSimResult();
+         result.copier = copier;
+         return result;

@@ -15,11 +15,17 @@ CHUNK = 5
 
 def chunk_seed(seed, c): return seed * 1000003 + c
 
-def default_jobs():
-    return max(1, min(os.cpu_count() or 1, forge.memory_mb() // 1700, 8))
+# Full lookahead holds a few full game copies per search level (peak ~1.6 GB a game measured on the Niv pod with the
+# AiCache patch), so it gets a bigger heap and fewer workers per GB than off/hybrid.
+def default_jobs(full=False):
+    return max(1, min(os.cpu_count() or 1, forge.memory_mb() // (3400 if full else 1700), 8))
 
-def xmx_for(jobs):
-    return max(1200, min(3000, forge.memory_mb() // max(1, jobs) - 400))
+def xmx_for(jobs, full=False):
+    if os.environ.get("FISHPOND_XMX"): return int(os.environ["FISHPOND_XMX"])
+    return max(3000 if full else 1200, min(4000 if full else 3000, forge.memory_mb() // max(1, jobs) - 400))
+
+def uses_full(entries):
+    return any("full" in e["line"].split("	")[11].split(",") for e in entries if len(e["line"].split("	")) > 11)
 
 class Pods:
     """Opponent seats per chunk: fixed seats + gauntlet samples (seeded), decks loaded once per path."""
@@ -181,6 +187,7 @@ def execute(entries, jobs, run_dir, session, quiet=False):
     if not entries: return 0.0
     forge.ensure(quiet=quiet)
     classes = harness_classes(quiet)
+    patched = forge.patched_classes(quiet=quiet)       # Forge fixes (fishpond/forge_patches), ahead of the jar
     deck_dir = os.path.join(run_dir, "decks"); log_dir = os.path.join(run_dir, "logs")
     os.makedirs(log_dir, exist_ok=True)
     nb = len({e["build"] for e in entries})
@@ -191,8 +198,8 @@ def execute(entries, jobs, run_dir, session, quiet=False):
         pf = os.path.join(log_dir, f"plan_{session}_{j}.tsv")
         with open(pf, "w", encoding="utf-8") as fh: fh.write("\n".join(e["line"] for e in chunk) + "\n")
         lf = os.path.join(log_dir, f"worker_{session}_{j}.log")
-        cmd = ["java", f"-Xmx{xmx_for(jobs)}m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
-               "-cp", os.pathsep.join([forge.jar(), classes]), "ForgeRunner", os.path.join(deck_dir, ""), pf]
+        cmd = ["java", f"-Xmx{xmx_for(jobs, uses_full(entries))}m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
+               "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "ForgeRunner", os.path.join(deck_dir, ""), pf]
         fh = open(lf, "w", encoding="utf-8")
         procs.append((subprocess.Popen(cmd, cwd=forge.home(), stdout=fh, stderr=subprocess.STDOUT), fh, lf))
     last = -1
