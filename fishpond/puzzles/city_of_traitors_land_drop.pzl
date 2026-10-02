@@ -1,0 +1,16 @@
+# title: City of Traitors: the AI doesn't play another land while City is out (known gap: Forge plays one and loses City; stays flagged)
+# card: City of Traitors
+# known_gap: yes
+# turns: 3
+# expect: played City of Traitors
+# forbid: Resolve Stack: When you play another land, sacrifice City of Traitors
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp
+p0hand=City of Traitors;Swamp;Swamp;Island
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,7 @@
+# fishpond override (Forge 2.0.15 script minus AI:RemoveDeck:All): smoke puzzle passes: fishpond/puzzles/smoke_fire_lit_thicket.pzl
+Name:Fire-Lit Thicket
+ManaCost:no cost
+Types:Land
+A:AB$ Mana | Cost$ T | Produced$ C | SpellDescription$ Add {C}.
+A:AB$ Mana | Cost$ RG T | Produced$ Combo R G | Amount$ 2 | SpellDescription$ Add {R}{R}, {R}{G}, or {G}{G}.
+Oracle:{T}: Add {C}.\n{R/G}, {T}: Add {R}{R}, {R}{G}, or {G}{G}.

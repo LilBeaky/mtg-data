@@ -1,0 +1,16 @@
+# title: Ad Nauseam: with an expensive library, the AI stops before it puts itself in danger
+# card: Ad Nauseam
+# turns: 1
+# expect: cast Ad Nauseam
+# forbid: Life: Ai\(1\)-P1 \d+ > ([0-7])$
+# forbid: Ai\(1\)-P1 has lost
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p0hand=Ad Nauseam
+p0library=Griselbrand;Sheoldred, the Apocalypse;Swamp;Ob Nixilis Reignited;Massacre Wurm;Swamp;Dark Ritual;Grave Titan;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest

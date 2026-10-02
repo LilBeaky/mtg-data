@@ -1,0 +1,16 @@
+# title: Magus of the Wheel: unflagged, the AI uses it and doesn't hurt itself (smoke test)
+# card: Magus of the Wheel
+# turns: 3
+# expect: Ai\(1\)-P1 (cast|activated) Magus\ of\ the\ Wheel
+# forbid: Ai\(1\)-P1 (has lost|loses the game)
+# forbid: Life: Ai\(1\)-P1 \d+ > (-?\d)$
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p0hand=Magus of the Wheel;Mountain;Mountain
+p0library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1battlefield=Forest;Forest;Mountain
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

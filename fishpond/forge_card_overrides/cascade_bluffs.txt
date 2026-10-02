@@ -1,0 +1,7 @@
+# fishpond override (Forge 2.0.15 script minus AI:RemoveDeck:All): smoke puzzle passes: fishpond/puzzles/smoke_cascade_bluffs.pzl
+Name:Cascade Bluffs
+ManaCost:no cost
+Types:Land
+A:AB$ Mana | Cost$ T | Produced$ C | SpellDescription$ Add {C}.
+A:AB$ Mana | Cost$ UR T | Produced$ Combo U R | Amount$ 2 | SpellDescription$ Add {U}{U}, {U}{R}, or {R}{R}.
+Oracle:{T}: Add {C}.\n{U/R}, {T}: Add {U}{U}, {U}{R}, or {R}{R}.

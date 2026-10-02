@@ -1,0 +1,16 @@
+# title: Overflowing Basin: unflagged, the AI uses it and doesn't hurt itself (smoke test)
+# card: Overflowing Basin
+# turns: 3
+# expect: Ai\(1\)-P1 played Overflowing\ Basin
+# forbid: Ai\(1\)-P1 (has lost|loses the game)
+# forbid: Life: Ai\(1\)-P1 \d+ > (-?\d)$
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Island;Forest
+p0hand=Overflowing Basin;Forest;Island
+p0library=Forest;Island;Forest;Island;Forest;Island;Forest;Island;Forest;Island;Forest;Island;Forest;Island
+p1battlefield=Forest;Forest;Mountain
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

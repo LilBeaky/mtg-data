@@ -1,0 +1,16 @@
+# title: Skycloud Expanse: unflagged, the AI uses it and doesn't hurt itself (smoke test)
+# card: Skycloud Expanse
+# turns: 3
+# expect: Ai\(1\)-P1 played Skycloud\ Expanse
+# forbid: Ai\(1\)-P1 (has lost|loses the game)
+# forbid: Life: Ai\(1\)-P1 \d+ > (-?\d)$
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Plains;Island
+p0hand=Skycloud Expanse;Island;Plains
+p0library=Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains
+p1battlefield=Forest;Forest;Mountain
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

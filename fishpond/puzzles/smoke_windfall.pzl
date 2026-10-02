@@ -1,0 +1,16 @@
+# title: Windfall: unflagged, the AI uses it and doesn't hurt itself (smoke test)
+# card: Windfall
+# turns: 3
+# expect: Ai\(1\)-P1 (cast|activated) Windfall
+# forbid: Ai\(1\)-P1 (has lost|loses the game)
+# forbid: Life: Ai\(1\)-P1 \d+ > (-?\d)$
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Island;Island
+p0hand=Windfall;Island;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Mountain
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

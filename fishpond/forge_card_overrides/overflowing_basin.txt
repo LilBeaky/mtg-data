@@ -1,0 +1,6 @@
+# fishpond override (Forge 2.0.15 script minus AI:RemoveDeck:All): smoke puzzle passes: fishpond/puzzles/smoke_overflowing_basin.pzl
+Name:Overflowing Basin
+ManaCost:no cost
+Types:Land
+A:AB$ Mana | Cost$ 1 T | Produced$ G U | SpellDescription$ Add {G}{U}.
+Oracle:{1}, {T}: Add {G}{U}.
