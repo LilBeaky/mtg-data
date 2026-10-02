@@ -126,7 +126,7 @@ def cmd_run(args):
     if engine == "auto":
         engine = "harness" if runner.harness_available() or forge.install_jdk(quiet=True) else "cli"
         if engine == "cli": print("fishpond: no javac, so using --engine cli (setup --jdk enables the faster harness)", file=sys.stderr)
-    run_dir = args.out or os.path.join(dk.REPO, "data", "fishpond", time.strftime("%Y%m%d-%H%M%S") + "-" + hero.tag)
+    run_dir = os.path.abspath(args.out) if args.out else os.path.join(dk.REPO, "data", "fishpond", time.strftime("%Y%m%d-%H%M%S") + "-" + hero.tag)
     os.makedirs(run_dir, exist_ok=True)
     if not args.quiet:
         print(f"fishpond: {len(builds)} build(s) x {args.trials} games, {jobs} JVM(s), engine {engine}; saving to {run_dir}",
@@ -156,7 +156,7 @@ def _pods_from_meta(meta, idx):
 
 def cmd_resume(args):
     """Finish a cut-off harness run (replaying unfinished games from their seeds) and/or add --trials more games to it."""
-    run_dir = args.resume
+    run_dir = os.path.abspath(args.resume)  # the JVM runs from Forge's home, so relative paths break
     meta = json.load(open(os.path.join(run_dir, "meta.json"), encoding="utf-8"))
     if meta.get("engine") != "harness": sys.exit("fishpond: --resume needs a harness run (the cli engine chains games and can't resume)")
     plan = runner.load_plan(run_dir)
@@ -201,6 +201,8 @@ def _keys(hero):
 
 def _report(meta, records, builds, as_json, run_dir):
     by = [(label, [r for r in records if r["build"] == label], deck) for label, deck in builds]
+    if not records:
+        sys.exit(f"fishpond: no games completed; check the worker logs in {_rel(os.path.join(run_dir, 'logs'))}")
     if as_json:
         from . import metrics as mx
         import sim_report as sr
