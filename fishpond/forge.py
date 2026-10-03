@@ -133,10 +133,19 @@ def write_unflag_override(name, why, version=FORGE_VERSION):
     open(p, "w", encoding="utf-8").write(header + body)
     return p
 
+def _link(src, dst):
+    """Mirror src at dst without copying. Symlinks elsewhere; on Windows a symlink needs admin or Developer Mode, so
+    directories become junctions and files hard links (neither needs a privilege; the cache is on one volume)."""
+    if os.name != "nt": return os.symlink(src, dst)
+    if os.path.isdir(src):
+        import _winapi
+        return _winapi.CreateJunction(src, dst)
+    os.link(src, dst)
+
 def run_home(version=FORGE_VERSION, quiet=False):
     """The directory Forge runs from (its cwd: it reads res/ relative to it). Without card overrides that's the install;
     with them, a mirror of the install whose res/cardsfolder/cardsfolder.zip has the overridden scripts swapped in
-    (Forge reads only the zip when it exists). Built once per (version, overrides); everything else is symlinked."""
+    (Forge reads only the zip when it exists). Built once per (version, overrides); everything else is linked (_link)."""
     import hashlib
     files = override_files()
     if not files: return home(version)
@@ -147,9 +156,9 @@ def run_home(version=FORGE_VERSION, quiet=False):
     shutil.rmtree(tmp, ignore_errors=True); os.makedirs(os.path.join(tmp, "res", "cardsfolder"))
     src = home(version)
     for e in os.listdir(src):
-        if e not in ("res", "fishpond-cards", "fishpond-harness", "fishpond-patched"): os.symlink(os.path.join(src, e), os.path.join(tmp, e))
+        if e not in ("res", "fishpond-cards", "fishpond-harness", "fishpond-patched"): _link(os.path.join(src, e), os.path.join(tmp, e))
     for e in os.listdir(os.path.join(src, "res")):
-        if e != "cardsfolder": os.symlink(os.path.join(src, "res", e), os.path.join(tmp, "res", e))
+        if e != "cardsfolder": _link(os.path.join(src, "res", e), os.path.join(tmp, "res", e))
     repl = {}
     for f in files:
         txt = open(f, encoding="utf-8").read()
