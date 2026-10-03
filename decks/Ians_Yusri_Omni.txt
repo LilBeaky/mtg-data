@@ -1,4 +1,7 @@
 # name: Ians Yusri Omni
+# bracket: 4
+# plan: Stack Yusri's coin odds to win all 5 flips (free spells), then win at once with one of the deck's lines
+# key: Krark's Thumb; Edgar, King of Figaro; Enter the Infinite; Thassa's Oracle
 Commander
 1 Yusri, Fortune's Flame
 

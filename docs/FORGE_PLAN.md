@@ -251,6 +251,14 @@ Phase A/B acceptance, 2026-10-01, Claude Code container (4 CPUs), Forge 2.0.15, 
 - **Cross-check with goldfish** (Chulane only so far; the plan asks for 3 decks): lands agree at the median on every turn T1-T8; all colors close (T3 81% vs 72%, T4 91.5% vs 92%); Forge's mana estimate runs 1-2 higher from T3; **the commander comes about a turn later on Forge** (goldfish 62.5% by T4 / 91% by T5; Forge 36% / 68%): Forge's AI doesn't prioritise the commander the way goldfish's pilot does. Spells cast by T8: median 13 vs 10. **Zur** (16 vacuum games vs goldfish 1,000; goldfish leaves 18 of 61 nonland cards blank): lands within one at the median (T8 6 vs 7), commander again about a turn later on Forge (25% by T4 / 56% by T5 vs goldfish 57% / 78%). Fishpond Zur: won 9 (56%), lost 0, 7 hit the turn cap (slow combat into 120 life); wins 5 combat, 4 Approach of the Second Sun. The commander-timing gap is consistent across both decks: treat it as a known pilot difference, not a bug. Third deck still to do.
 - **Stock CLI engine** (10 vacuum games, chunks of 5): same picture (6 of 10 lost to `surge_trap`); about 70 s per game per JVM because the dummies play on to the clock after the hero dies. 5 real-pod games: 11 AI decision timeouts under load, which is what led to the harness raising the limit.
 
+- **Yusri vacuum, after patches 10-11 (2026-10-03):** 25 games, 3 dummies, hybrid, `--cap 12`, seed 1 (7 min on 4 workers). Won 17 (68%, CI 48-83%), lost 2, 6 hit the cap. Wins median T10 (P10 T7). Routes: combat 6, Toad 3, Laboratory Maniac 3, noncombat 3, Jace 2. Yusri cast median T4. The 6 capped games were mostly mana screw (game 18 stuck on 2 lands T3-T7; game 21 never cast Yusri). Both losses were pilot errors (Yusri follow-ups below).
+
+### Yusri follow-ups (open; from the 2026-10-03 vacuum run)
+
+1. **Yusri's coin count.** Forge's script is `AILogic$ Max` (always 5). Ian plays it the same way: always 5 unless the flips can kill him outright, so the only change wanted is a buffer of 1: choose 5 unless 2 x (flips lost in the worst case) >= life (at 11 life, flip 5; at 10, take fewer). Krark's Thumb doesn't change the worst case. Game 20 (seed 1000023) died to 5 flips at 8 life on T8.
+2. **Enter the Infinite -> Thassa's Oracle.** Game 16 (seed 1000019, T11): won 5 flips, cast Enter the Infinite free *after* the Toad's attack trigger, never cast Thassa's Oracle, then cast Edgar and decked to his enter-the-battlefield draw. Ian: Enter the Infinite is right even without the win in hand, since drawing the library finds the Oracle; the miss is sequencing. To check: was the Oracle the card Enter the Infinite put back on top (Forge's choice of card to put back), or did patch 10's hold-the-Oracle check refuse a winning cast? Then: never put back a win card, cast the Oracle before any further draw, and don't cast a forced draw into an empty library with no win card out. `--sim full` likely won't fix it (its search scores board value; it doesn't value an empty library with the Oracle in hand and doesn't make the put-back choice).
+3. **Mystical Tutor: Enter the Infinite -> Show and Tell (3 times).** Show and Tell was cast in 5 games and won 4; it put out big threats (Ancient Silver Dragon in game 0) and led into wide attacks. Ian prefers Enter the Infinite unless Show and Tell sets up a play now. Options: a combo-layer rule (Show and Tell only when the hand holds a big permanent), or a `# priority: Enter the Infinite` header (cheap, but it would also move early tutors off ramp).
+
 ## Roadmap (2026-10-01, after the merge to main)
 
 Fishpond works end to end but isn't "set". In priority order:
@@ -267,7 +275,7 @@ Fishpond works end to end but isn't "set". In priority order:
 
 ## Open questions for Ian
 
-- The brackets, plans and key cards of the saved decks (decks/Ians_Yusri_Omni, Ians_Zur_Cycling, Ians_Klauth_Dragons). Reports print "bracket ?" until they carry headers. Ians Ragost Burn: list not in the repo yet.
+- The brackets, plans and key cards of the saved decks (~~decks/Ians_Yusri_Omni~~ done 2026-10-03; Ians_Zur_Cycling, Ians_Klauth_Dragons). Reports print "bracket ?" until they carry headers. Ians Ragost Burn: list not in the repo yet.
 - ~~Klauth's list has 101 cards.~~ Fixed 2026-10-02: Vorinclex, Voice of Hunger out (d190686).
 
 - Which decks form the first real-opponent gauntlet, and at what bracket?
