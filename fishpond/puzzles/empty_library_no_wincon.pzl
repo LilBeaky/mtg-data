@@ -1,0 +1,15 @@
+# title: No win condition: the AI does not draw its own library out with Enter the Infinite
+# card: Enter the Infinite
+# turns: 1
+# sim: hybrid
+# forbid: cast Enter the Infinite
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p0hand=Enter the Infinite;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

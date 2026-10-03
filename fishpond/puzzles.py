@@ -8,6 +8,7 @@ regex does.
   # title: Astral Slide: the AI cycles with Slide out and exiles an attacker
   # turns: 2            (turns to play after the state is loaded, default 2)
   # seed: 1
+  # sim: hybrid         (seat 1's lookahead: off, the default, or hybrid as in a run)
   # expect: REGEX       (repeatable)
   # forbid: REGEX       (repeatable)
   # card: NAME          (the card or mechanic under test, for the summary)
@@ -22,7 +23,7 @@ from . import forge, runner
 PUZZLE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "puzzles")
 
 def load(path):
-    meta = {"title": os.path.basename(path), "turns": 2, "seed": 1, "expect": [], "forbid": [], "card": ""}
+    meta = {"title": os.path.basename(path), "turns": 2, "seed": 1, "sim": "off", "expect": [], "forbid": [], "card": ""}
     state = []
     for line in open(path, encoding="utf-8"):
         line = line.rstrip("\n")
@@ -45,7 +46,7 @@ def run_one(path, quiet=True):
     open(sf, "w", encoding="utf-8").write("\n".join(state) + "\n")
     cmd = ["java", "-Xmx1500m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
            "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "PuzzleRunner", os.path.abspath(sf),
-           str(meta["turns"]), str(meta["seed"])]
+           str(meta["turns"]), str(meta["seed"]), meta["sim"]]
     try:
         r = subprocess.run(cmd, cwd=forge.run_home(quiet=quiet), capture_output=True, text=True, timeout=400)
         out = r.stdout

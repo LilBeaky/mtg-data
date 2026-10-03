@@ -1,0 +1,18 @@
+# title: Yusri with Edgar: five won flips make spells free, and the AI casts Enter the Infinite then Thassa's Oracle to win
+# card: Yusri, Fortune's Flame
+# turns: 1
+# sim: hybrid
+# expect: cast Enter the Infinite
+# expect: cast Thassa's Oracle
+# expect: Ai\(1\)-P1 has won
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+removesummoningsickness=true
+p0battlefield=Yusri, Fortune's Flame;Edgar, King of Figaro;Island;Island;Mountain;Mountain
+p0hand=Enter the Infinite;Thassa's Oracle
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

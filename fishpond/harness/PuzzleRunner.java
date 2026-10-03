@@ -2,7 +2,8 @@
 // for a few turns, and prints the game log. fishpond/puzzles.py checks the log against the puzzle's expect/forbid lines.
 // Used to test the AI on one mechanic at a time (docs/FORGE_PLAN.md, "Pilot policy", Part 2).
 //
-// usage: java -cp <jar>:<dir> PuzzleRunner STATE_FILE TURNS SEED   (cwd = the Forge install)
+// usage: java -cp <jar>:<dir> PuzzleRunner STATE_FILE TURNS SEED [SIM]   (cwd = the Forge install; SIM = off (default) or
+//   hybrid: seat 1's lookahead, as in a run)
 // STATE_FILE: GameState lines (p0... = seat 1, the player under test; p1... = seat 2), e.g. p0battlefield=Astral Slide;Plains
 
 import java.io.File;
@@ -30,6 +31,7 @@ public class PuzzleRunner {
         List<String> lines = Files.readAllLines(new File(args[0]).toPath(), StandardCharsets.UTF_8);
         int turns = Integer.parseInt(args[1]);
         long seed = Long.parseLong(args[2]);
+        boolean hybrid = args.length > 3 && args[3].equals("hybrid");
         ForgeRunner.out = new java.io.PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.out), true, "UTF-8");
         GuiBase.setInterface(new GuiDesktop());
         FModel.initialize(null, null);
@@ -43,7 +45,7 @@ public class PuzzleRunner {
             Deck d = new Deck("Puzzle" + (i + 1));
             d.getMain().add("Wastes", 40);
             RegisteredPlayer rp = new RegisteredPlayer(d);
-            ForgeRunner.SafeLobbyPlayerAi lp = new ForgeRunner.SafeLobbyPlayerAi("Ai(" + (i + 1) + ")-P" + (i + 1), EnumSet.noneOf(forge.ai.AIOption.class), fb, null);
+            ForgeRunner.SafeLobbyPlayerAi lp = new ForgeRunner.SafeLobbyPlayerAi("Ai(" + (i + 1) + ")-P" + (i + 1), i == 0 && hybrid ? EnumSet.of(forge.ai.AIOption.USE_HYBRID_SIMULATION) : EnumSet.noneOf(forge.ai.AIOption.class), fb, null);
             rp.setPlayer(lp);
             players.add(rp);
         }

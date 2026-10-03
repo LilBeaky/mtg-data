@@ -189,11 +189,20 @@ def _pilot_seat_props(run_dir):
     fishpond's un-flagged cards as still flagged (patch 09 reads the list from a file in the run)."""
     seats = os.environ.get("FISHPOND_PILOT_SEATS", "all")
     if seats == "all" or not forge.pilot_on(): return []
-    import re as _re
-    names = []
+    import re as _re, zipfile as _zip
+    names = set()
     for f in forge.override_files():
         m = _re.search(r"^Name:(.+)$", open(f, encoding="utf-8").read(), _re.M)
-        if m: names.append(m.group(1).strip())
+        if m: names.add(m.group(1).strip())
+    # only the overrides that un-flag a card: an override that adds an AI hint to a card Forge plays (Thassa's Oracle)
+    # must not make the other seats treat that card as flagged
+    flagged = set()
+    with _zip.ZipFile(forge.cards_zip()) as z:
+        for fn in z.namelist():
+            txt = z.read(fn).decode("utf-8", "replace") if fn.endswith(".txt") else ""
+            m = _re.search(r"^Name:(.+)$", txt, _re.M)
+            if m and m.group(1).strip() in names and _re.search(r"^AI:RemoveDeck:All", txt, _re.M): flagged.add(m.group(1).strip())
+    names = sorted(flagged)
     p = os.path.join(run_dir, "overridden.txt")
     with open(p, "w", encoding="utf-8") as fh: fh.write("\n".join(names) + "\n")
     return [f"-Dfishpond.pilotSeats={seats}", f"-Dfishpond.overriddenFile={os.path.abspath(p)}"]

@@ -1,0 +1,300 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiAttackController.java b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+index 97375e1..eba00cd 100644
+--- a/forge-ai/src/main/java/forge/ai/AiAttackController.java
++++ b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+@@ -403,7 +403,7 @@ public class AiAttackController {
+             int lastAcceptableBaselineLife = 0;
+             if (pilotsNonAggroDeck) {
+                 lastAcceptableBaselineLife = ComputerUtil.predictNextCombatsRemainingLife(ai, playAggro, pilotsNonAggroDeck, 0, notNeededAsBlockers);
+-                if (!ai.isCardInPlay("Laboratory Maniac")) {
++                if (!ComputerUtil.winsOnEmptyLibraryDraw(ai)) {
+                     // AI is getting milled out
+                     thresholdMod += 3 - Math.min(ai.getCardsIn(ZoneType.Library).size(), 3);
+                 }
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 8d08574..cd7b21b 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -961,6 +961,14 @@ public class AiController {
+ 
+     private AiPlayDecision saSideEffects(final Card card, final SpellAbility sa) {
+         if (usesHybridSimulation()) {
++            // fishpond patch 10: a card's own "only when" hint (NeedsToPlay, NeedsToPlayVar: hold Thassa's Oracle until it
++            // wins) still applies; a one-move simulation can't see why a card should wait
++            if (sa.isSpell() && forge.ai.ability.DrawAi.pilotSeat(player)) {
++                final AiPlayDecision needs = ComputerUtilCard.checkNeedsToPlayReqs(card, sa);
++                if (needs != AiPlayDecision.WillPlay) {
++                    return needs;
++                }
++            }
+             return OnePlaySafetyChecker.isAcceptable(player, sa) ? AiPlayDecision.WillPlay : AiPlayDecision.HybridSimRejected;
+         }
+ 
+@@ -1805,7 +1813,7 @@ public class AiController {
+             }
+             return Expressions.compare(left, comparator, compareTo);
+         } else if (effect.isKeyword(Keyword.DREDGE)) {
+-            return player.getCardsIn(ZoneType.Library).size() > 8 || player.isCardInPlay("Laboratory Maniac");
++            return player.getCardsIn(ZoneType.Library).size() > 8 || ComputerUtil.winsOnEmptyLibraryDraw(player);
+         } else return sa != null && doTrigger(sa, false);
+     }
+ 
+@@ -1875,7 +1883,7 @@ public class AiController {
+             return Math.min(chosenMax, cardsInPlay);
+         } else if ("OptionalDraw".equals(logic)) {
+             int cardsInLib = player.getCardsIn(ZoneType.Library).size();
+-            if (cardsInLib >= max && player.isCardInPlay("Laboratory Maniac")) {
++            if (cardsInLib >= max && ComputerUtil.winsOnEmptyLibraryDraw(player)) {
+                 return max;
+             }
+             int cardsInHand = player.getCardsIn(ZoneType.Hand).size();
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index 47fea13..33467a7 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -1302,6 +1302,28 @@ public class ComputerUtil {
+         return false;
+     }
+ 
++    /**
++     * Whether p has an effect that makes it win instead of drawing from an empty library (Laboratory Maniac, Jace, Wielder
++     * of Mysteries, ...). Read from the replacement effects on p's battlefield, not a card name (fishpond patch 10).
++     */
++    public static boolean winsOnEmptyLibraryDraw(final Player p) {
++        if (p == null || p.cantWin()) {
++            return false;
++        }
++        for (final Card c : p.getCardsIn(ZoneType.Battlefield)) {
++            for (final ReplacementEffect re : c.getReplacementEffects()) {
++                if (re.getMode() != ReplacementType.Draw || !re.hasParam("ReplaceWith")) {
++                    continue;
++                }
++                final SpellAbility rsa = re.ensureAbility();
++                if (rsa != null && rsa.getApi() == ApiType.WinsGame) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
+     public static boolean castSpellInMain1(final Player ai, final SpellAbility sa) {
+         final Card source = sa.getHostCard();
+         final SpellAbility sub = sa.getSubAbility();
+@@ -2615,7 +2637,7 @@ public class ComputerUtil {
+             if (opponent && !controller.cantLoseCheck(GameLossReason.Milled)) {
+                 int numQuill = votes.get(quill).size();
+                 if (numQuill + 1 >= controller.getCardsIn(ZoneType.Library).size()) {
+-                    return controller.isCardInPlay("Laboratory Maniac") ? feather : quill;
++                    return ComputerUtil.winsOnEmptyLibraryDraw(controller) ? feather : quill;
+                 }
+             }
+             // is it can't receive counters, choose +1/+1 ones
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DiscardAi.java b/forge-ai/src/main/java/forge/ai/ability/DiscardAi.java
+index 5cdd783..2361a39 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DiscardAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DiscardAi.java
+@@ -254,7 +254,7 @@ public class DiscardAi extends SpellAbilityAi {
+                 // check to not deck yourself
+                 int libSize = payer.getCardsIn(ZoneType.Library).size();
+                 if (amount >= libSize - 3) {
+-                    if (payer.isCardInPlay("Laboratory Maniac") && !payer.cantWin()) {
++                    if (ComputerUtil.winsOnEmptyLibraryDraw(payer) && !payer.cantWin()) {
+                         return true;
+                     }
+                     // Don't deck yourself
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+index ed8f329..1ccd274 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+@@ -120,6 +120,81 @@ public class DrawAi extends SpellAbilityAi {
+      * forge.game.spellability.SpellAbility, forge.game.cost.Cost,
+      * forge.game.card.Card)
+      */
++    // ---- Fishpond patch 10: a self-decking draw is fine when it wins this turn. Forge's AI allowed one only with
++    // Laboratory Maniac out (now ComputerUtil.winsOnEmptyLibraryDraw, any such effect); this also covers drawing the
++    // library out to then cast an ETB win card (Enter the Infinite into Thassa's Oracle) or to attack with a creature that
++    // wins with a full hand (Twenty-Toed Toad). Only for the pilot seats.
++    public static boolean selfDeckWins(final Player ai, final SpellAbility sa) {
++        if (!pilotSeat(ai) || ai.cantWin() || sa.usesTargeting() || sa.hasParam("Defined") && !"You".equals(sa.getParam("Defined"))) {
++            return false;
++        }
++        final Card source = sa.getHostCard();
++        final int lib = ai.getCardsIn(ZoneType.Library).size();
++        final int numCards = sa.hasParam("NumCards") ? AbilityUtils.calculateAmount(source, sa.getParam("NumCards"), sa) : 1;
++        if (numCards < lib - 3) {
++            return false;                                  // not a self-decking draw: the normal rules apply
++        }
++        if (ComputerUtil.winsOnEmptyLibraryDraw(ai)) {
++            return true;
++        }
++        int back = 0;                                      // cards then put from hand onto the library (Enter the Infinite)
++        for (SpellAbility sub = sa.getSubAbility(); sub != null; sub = sub.getSubAbility()) {
++            if (sub.getApi() == ApiType.ChangeZone && "Hand".equals(sub.getParam("Origin")) && "Library".equals(sub.getParam("Destination"))) {
++                back += sub.hasParam("ChangeNum") ? AbilityUtils.calculateAmount(source, sub.getParam("ChangeNum"), sub) : 1;
++            }
++        }
++        final int drawn = Math.min(numCards, lib);
++        final int libAfter = lib - drawn + back;
++        int handAfter = ai.getCardsIn(ZoneType.Hand).size() + drawn - back;
++        if (sa.isSpell() && source.isInZone(ZoneType.Hand)) {
++            handAfter--;
++        }
++        final PhaseHandler ph = ai.getGame().getPhaseHandler();
++        // a creature that wins when it attacks with a full hand, able to attack this turn
++        if (ph.isPlayerTurn(ai) && ph.getPhase() != null && ph.getPhase().isBefore(PhaseType.COMBAT_DECLARE_ATTACKERS) && handAfter >= 20) {
++            for (final Card c : ai.getCreaturesInPlay()) {
++                if (hasWinTrigger(c, TriggerType.Attacks) && forge.game.combat.CombatUtil.canAttack(c)) {
++                    return true;
++                }
++            }
++        }
++        // a card in hand that wins when it enters with the library this small, castable after this one
++        if (libAfter <= 1) {
++            final int cost = castFree(ai, source) || sa.getPayCosts() == null ? 0 : sa.getPayCosts().getTotalMana().getCMC();
++            final int manaLeft = ComputerUtilMana.getAvailableManaEstimate(ai, false) - cost;
++            for (final Card c : ai.getCardsIn(ZoneType.Hand)) {
++                if (c != source && hasWinTrigger(c, TriggerType.ChangesZone) && (castFree(ai, c) || c.getManaCost().getCMC() <= manaLeft)) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
++    private static boolean castFree(final Player ai, final Card c) {
++        for (final forge.game.card.CardPlayOption o : c.mayPlay(ai)) {
++            if (o.getPayManaCost() == forge.game.card.CardPlayOption.PayManaCost.NO) {
++                return true;
++            }
++        }
++        return false;
++    }
++
++    /** A trigger of this mode (for ChangesZone: entering the battlefield) whose ability can win the game. */
++    private static boolean hasWinTrigger(final Card c, final TriggerType mode) {
++        for (final Trigger t : c.getTriggers()) {
++            if (t.getMode() != mode || mode == TriggerType.ChangesZone && !"Battlefield".equals(t.getParam("Destination"))) {
++                continue;
++            }
++            for (SpellAbility a = t.ensureAbility(); a != null; a = a.getSubAbility()) {
++                if (a.getApi() == ApiType.WinsGame) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
+     // ---- Fishpond pilot seats: -Dfishpond.pilotSeats=all (default) or a comma list of seat numbers (the "N" in a player
+     // name "Ai(N)-..."); fishpond's '-pilot-' patches only change decisions for those seats, so an A/B run can give the
+     // improvements to one seat. Shared by patches 08 and 09.
+@@ -245,6 +320,9 @@ public class DrawAi extends SpellAbilityAi {
+             isSacCost = true;
+         }
+ 
++        if (selfDeckWins(ai, sa)) {
++            return super.checkPhaseRestrictions(ai, sa, ph);  // fishpond patch 10: the win may need main 1
++        }
+         // Don't use draw abilities before main 2 if possible
+         if (ph.getPhase().isBefore(PhaseType.MAIN2) && !sa.hasParam("ActivationPhases")
+                 && !ComputerUtil.castSpellInMain1(ai, sa) && !isSacCost) {
+@@ -394,6 +472,9 @@ public class DrawAi extends SpellAbilityAi {
+         if ("YawgmothsBargain".equals(logic)) {
+             return SpecialCardAi.YawgmothsBargain.consider(ai, sa);
+         }
++        if (selfDeckWins(ai, sa)) {
++            return true;                                   // fishpond patch 10
++        }
+ 
+         // Generic logic for all cards that do not need any special handling
+ 
+@@ -418,7 +499,7 @@ public class DrawAi extends SpellAbilityAi {
+             for (Player oppA : opps) {
+                 if (sa.isCurse() && ai.canDraw() && oppA.canLoseLife()) { // Risk Factor
+                     if (numCards >= computerLibrarySize - 3) {
+-                        if (ai.isCardInPlay("Laboratory Maniac")) {
++                        if (ComputerUtil.winsOnEmptyLibraryDraw(ai)) {
+                             sa.getTargets().add(oppA);
+                             return true;
+                         }
+@@ -437,7 +518,7 @@ public class DrawAi extends SpellAbilityAi {
+                 if (numCards >= oppA.getCardsIn(ZoneType.Library).size()) {
+                     // but only it he doesn't have Laboratory Maniac
+                     // also disable it for other checks later too
+-                    if (oppA.isCardInPlay("Laboratory Maniac")) {
++                    if (ComputerUtil.winsOnEmptyLibraryDraw(oppA)) {
+                         continue;
+                     }
+ 
+@@ -502,7 +583,7 @@ public class DrawAi extends SpellAbilityAi {
+                             // not drawing anything, so don't do it
+                             return false;
+                         }
+-                    } else if (!ai.isCardInPlay("Laboratory Maniac")) {
++                    } else if (!ComputerUtil.winsOnEmptyLibraryDraw(ai)) {
+                         aiTarget = false;
+                     }
+                 }
+@@ -532,7 +613,7 @@ public class DrawAi extends SpellAbilityAi {
+             }
+ 
+             if (aiTarget) {
+-                if (!ai.isCardInPlay("Laboratory Maniac") && computerHandSize + numCards > computerMaxHandSize && game.getPhaseHandler().isPlayerTurn(ai)) {
++                if (!ComputerUtil.winsOnEmptyLibraryDraw(ai) && computerHandSize + numCards > computerMaxHandSize && game.getPhaseHandler().isPlayerTurn(ai)) {
+                     if (xPaid) {
+                         numCards = computerMaxHandSize - computerHandSize;
+                         if (source.isInZone(ZoneType.Hand)) {
+@@ -565,7 +646,7 @@ public class DrawAi extends SpellAbilityAi {
+ 
+                 // ally would draw more than it can
+                 if (numCards >= ally.getCardsIn(ZoneType.Library).size()) {
+-                    if (!ally.isCardInPlay("Laboratory Maniac")) {
++                    if (!ComputerUtil.winsOnEmptyLibraryDraw(ally)) {
+                         continue;
+                     }
+                 }
+@@ -614,7 +695,7 @@ public class DrawAi extends SpellAbilityAi {
+             }
+ 
+             if (numCards >= computerLibrarySize - 3) {
+-                if (ai.isCardInPlay("Laboratory Maniac") && !ai.cantWin()) {
++                if (ComputerUtil.winsOnEmptyLibraryDraw(ai) && !ai.cantWin()) {
+                     return true;
+                 }
+                 // Don't deck yourself
+@@ -657,7 +738,7 @@ public class DrawAi extends SpellAbilityAi {
+         if (numCards < player.getZone(ZoneType.Library).size())
+             return true;
+         // except it has Laboratory Maniac
+-        return player.isCardInPlay("Laboratory Maniac");
++        return ComputerUtil.winsOnEmptyLibraryDraw(player);
+     }
+ 
+     @Override
+diff --git a/forge-ai/src/main/java/forge/ai/ability/ManifestBaseAi.java b/forge-ai/src/main/java/forge/ai/ability/ManifestBaseAi.java
+index 9bd519a..263c940 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/ManifestBaseAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/ManifestBaseAi.java
+@@ -102,7 +102,7 @@ public abstract class ManifestBaseAi extends SpellAbilityAi {
+                 return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+ 
+             // try not to mill himself with Manifest
+-            if (library.size() < 5 && !ai.isCardInPlay("Laboratory Maniac")) {
++            if (library.size() < 5 && !ComputerUtil.winsOnEmptyLibraryDraw(ai)) {
+                 return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+             }
+ 
+diff --git a/forge-ai/src/main/java/forge/ai/ability/TokenAi.java b/forge-ai/src/main/java/forge/ai/ability/TokenAi.java
+index 76caeb4..035c10a 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/TokenAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/TokenAi.java
+@@ -481,7 +481,7 @@ public class TokenAi extends SpellAbilityAi {
+                 CostDraw draw = cost.getCostPartByType(CostDraw.class);
+                 // try to deck out opponent
+                 if (draw.getPotentialPlayers(payer, sa).contains(p) && p.getCardsIn(ZoneType.Library).size() < 5) {
+-                    if (!p.isCardInPlay("Laboratory Maniac") || p.cantWin()) {
++                    if (!ComputerUtil.winsOnEmptyLibraryDraw(p) || p.cantWin()) {
+                         return true;
+                     }
+                 }

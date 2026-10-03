@@ -1,0 +1,17 @@
+# title: Twenty-Toed Toad out: the AI casts Enter the Infinite before combat, then attacks with 20+ cards in hand and wins
+# card: Twenty-Toed Toad
+# turns: 1
+# sim: hybrid
+# expect: cast Enter the Infinite
+# expect: Ai\(1\)-P1 has won
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+removesummoningsickness=true
+p0battlefield=Twenty-Toed Toad;Grizzly Bears;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p0hand=Enter the Infinite
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

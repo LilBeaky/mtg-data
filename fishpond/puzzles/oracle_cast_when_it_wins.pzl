@@ -1,0 +1,16 @@
+# title: Thassa's Oracle with a two-card library: the AI casts it and wins
+# card: Thassa's Oracle
+# turns: 1
+# sim: hybrid
+# expect: cast Thassa's Oracle
+# expect: Ai\(1\)-P1 has won
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island
+p0hand=Thassa's Oracle
+p0library=Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

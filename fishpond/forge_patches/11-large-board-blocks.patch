@@ -1,0 +1,272 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiAttackController.java b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+index eba00cd..a618e67 100644
+--- a/forge-ai/src/main/java/forge/ai/AiAttackController.java
++++ b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+@@ -415,35 +415,52 @@ public class AiAttackController {
+             // try to use strongest as attacker first
+             CardLists.sortByPowerDesc(blockers);
+ 
++            // fishpond patch 11: release the candidates in groups, so a big board costs at most about
++            // -Dfishpond.maxReleaseSteps (default 12; 0 = one at a time, as before) predictions instead of one per creature;
++            // each prediction plans every opponent's blocks. A group that would be lethal is retried one creature at a time.
++            final List<Card> candidates = new ArrayList<>();
+             for (Card c : blockers) {
+-                if (vigilantes.contains(c)) {
++                if (!vigilantes.contains(c)) {
+                     // TODO predict the chance it might die if attacking
+-                    continue;
++                    candidates.add(c);
+                 }
+-                notNeededAsBlockers.add(c);
++            }
++            final int steps = Integer.getInteger("fishpond.maxReleaseSteps", 12);
++            int step = steps <= 0 ? 1 : Math.max(1, (candidates.size() + steps - 1) / steps);
++            for (int i = 0; i < candidates.size(); ) {
++                final List<Card> group = new ArrayList<>(candidates.subList(i, Math.min(candidates.size(), i + step)));
++                notNeededAsBlockers.addAll(group);
+                 int currentBaselineLife = ComputerUtil.predictNextCombatsRemainingLife(ai, playAggro, pilotsNonAggroDeck, 0, notNeededAsBlockers);
+                 // AI doesn't know from what it will lose, so it might still keep an unnecessary blocker back sometimes
+                 if (currentBaselineLife == Integer.MIN_VALUE) {
+-                    notNeededAsBlockers.remove(c);
++                    notNeededAsBlockers.removeAll(group);
++                    if (group.size() > 1) {
++                        step = 1;                          // find the last creature of this group that can still go
++                        continue;
++                    }
+                     break;
+                 }
++                i += group.size();
+ 
+                 // in Aggro Decks AI wants to deal as much damage as it can
+                 if (pilotsNonAggroDeck) {
+-                    int ownAttackerDmg = c.getNetCombatDamage();
+-                    // TODO maybe add performance switch to skip these predictions?
+-                    if (c.toughnessAssignsDamage()) {
+-                        ownAttackerDmg += ComputerUtilCombat.predictToughnessBonusOfAttacker(c, null, null, true);
+-                    } else {
+-                        ownAttackerDmg += ComputerUtilCombat.predictPowerBonusOfAttacker(c, null, null, true);
+-                    }
+-                    if (c.hasDoubleStrike()) {
+-                        ownAttackerDmg *= 2;
++                    int ownAttackerDmg = 0;
++                    for (Card c : group) {
++                        int dmg = c.getNetCombatDamage();
++                        // TODO maybe add performance switch to skip these predictions?
++                        if (c.toughnessAssignsDamage()) {
++                            dmg += ComputerUtilCombat.predictToughnessBonusOfAttacker(c, null, null, true);
++                        } else {
++                            dmg += ComputerUtilCombat.predictPowerBonusOfAttacker(c, null, null, true);
++                        }
++                        if (c.hasDoubleStrike()) {
++                            dmg *= 2;
++                        }
++                        ownAttackerDmg += dmg + thresholdMod;
+                     }
+-                    ownAttackerDmg += thresholdMod;
+                     // bail if it would cause AI more life loss from counterattack than the damage it provides as attacker
+                     if (Math.abs(currentBaselineLife - lastAcceptableBaselineLife) > ownAttackerDmg) {
+-                        notNeededAsBlockers.remove(c);
++                        notNeededAsBlockers.removeAll(group);
+                         // try find more
+                         continue;
+                     } else if (Math.abs(currentBaselineLife - lastAcceptableBaselineLife) == ownAttackerDmg) {
+diff --git a/forge-ai/src/main/java/forge/ai/AiBlockController.java b/forge-ai/src/main/java/forge/ai/AiBlockController.java
+index 8258436..27d180b 100644
+--- a/forge-ai/src/main/java/forge/ai/AiBlockController.java
++++ b/forge-ai/src/main/java/forge/ai/AiBlockController.java
+@@ -976,6 +976,47 @@ public class AiBlockController {
+         }
+     }
+ 
++    /**
++     * Fishpond patch 11: on a huge board (token swarms: Scute Swarm, Field of the Dead) every pass of the block planner
++     * costs attackers x blockers expensive checks, and the AI predicts blocks many times per decision (which opponent to
++     * attack, is my life in danger, the lookahead's combat preview), so one turn could take half an hour. Past
++     * -Dfishpond.maxBlockPairs (default 400, e.g. 20 x 20; 0 turns it off) plan blocks only for the biggest attackers with
++     * the best blockers: the other attackers count as unblocked (a cautious estimate of the damage) and the other
++     * blockers stay back. Boards under the limit are planned exactly as before.
++     */
++    private void limitBoardSize() {
++        final int limit = Integer.getInteger("fishpond.maxBlockPairs", 400);
++        final int a = attackersLeft.size(), b = blockersLeft.size();
++        if (limit <= 0 || (long) a * b <= limit) {
++            return;
++        }
++        final int side = Math.max(1, (int) Math.sqrt(limit));
++        int keepA, keepB;
++        if (a >= b) {
++            keepB = Math.min(b, side);
++            keepA = Math.min(a, Math.max(1, limit / keepB));
++        } else {
++            keepA = Math.min(a, side);
++            keepB = Math.min(b, Math.max(1, limit / keepA));
++        }
++        if (keepA < a) {
++            final Map<Card, Integer> dmg = new HashMap<>();
++            for (final Card c : attackersLeft) {
++                dmg.put(c, ComputerUtilCombat.damageIfUnblocked(c, ai, null, false));
++            }
++            attackersLeft.sort((x, y) -> Integer.compare(dmg.get(y), dmg.get(x)));
++            attackersLeft = new ArrayList<>(attackersLeft.subList(0, keepA));
++        }
++        if (keepB < b) {
++            final Map<Card, Integer> val = new HashMap<>();
++            for (final Card c : blockersLeft) {
++                val.put(c, ComputerUtilCard.evaluateCreature(c));
++            }
++            blockersLeft.sort((x, y) -> Integer.compare(val.get(y), val.get(x)));
++            blockersLeft = new ArrayList<>(blockersLeft.subList(0, keepB));
++        }
++    }
++
+     private void clearBlockers(final Combat combat, final List<Card> possibleBlockers) {
+         for (final Card blocker : CardLists.filterControlledBy(combat.getAllBlockers(), ai)) {
+             // don't touch other player's blockers
+@@ -1062,6 +1103,8 @@ public class AiBlockController {
+             }
+         }
+ 
++        limitBoardSize();
++
+         // Begin with the weakest blockers
+         CardLists.sortByPowerAsc(blockersLeft);
+ 
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index 33467a7..eb5c895 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -3225,15 +3225,35 @@ public class ComputerUtil {
+             boolean thisCombat = ai.getGame().getPhaseHandler().isPlayerTurn(opp) && ai.getGame().getPhaseHandler().getPhase().isBefore(PhaseType.COMBAT_BEGIN);
+ 
+             // TODO !thisCombat should include cards that will phase in
++            final List<Card> potential = new ArrayList<>();
+             for (Card att : opp.getCreaturesInPlay()) {
+                 // TODO should be limited based on how much getAttackCost the opp can pay
+                 if ((thisCombat && CombatUtil.canAttack(att, ai)) || (!thisCombat && ComputerUtilCombat.canAttackNextTurn(att, ai))) {
+-                    // TODO need to copy the card
+-                    // att = ComputerUtilCombat.applyPotentialAttackCloneTriggers(att);
+-                    combat.addAttacker(att, ai);
+-                    containsAttacker = true;
++                    potential.add(att);
+                 }
+             }
++            // fishpond patch 11: on a huge board each check below costs about attackers x cards, and this runs many times
++            // per decision. Past -Dfishpond.maxPredictAttackers (default 20; 0 = all) only the biggest attackers join the
++            // predicted combat; the rest count as unblocked damage (a cautious estimate, poison and abilities left out).
++            int unplanned = 0;
++            final int maxAttackers = Integer.getInteger("fishpond.maxPredictAttackers", 20);
++            if (maxAttackers > 0 && potential.size() > maxAttackers) {
++                final Map<Card, Integer> dmg = new HashMap<>();
++                for (Card att : potential) {
++                    dmg.put(att, Math.max(0, att.getNetCombatDamage()));
++                }
++                potential.sort((x, y) -> Integer.compare(dmg.get(y), dmg.get(x)));
++                for (Card att : potential.subList(maxAttackers, potential.size())) {
++                    unplanned += dmg.get(att);
++                }
++                potential.subList(maxAttackers, potential.size()).clear();
++            }
++            for (Card att : potential) {
++                // TODO need to copy the card
++                // att = ComputerUtilCombat.applyPotentialAttackCloneTriggers(att);
++                combat.addAttacker(att, ai);
++                containsAttacker = true;
++            }
+             if (!containsAttacker) {
+                 continue;
+             }
+@@ -3246,16 +3266,16 @@ public class ComputerUtil {
+             // examples : Black Vise, The Rack, known direct damage spells in enemy hand, etc
+             // If added, might need a parameter to define whether we want to check all threats or combat threats.
+ 
+-            if (serious && ComputerUtilCombat.lifeInSeriousDanger(ai, combat, payment)) {
++            if (serious && ComputerUtilCombat.lifeInSeriousDanger(ai, combat, payment + unplanned)) {
+                 return Integer.MIN_VALUE;
+             }
+-            if (!serious && ComputerUtilCombat.lifeInDanger(ai, combat, payment)) {
++            if (!serious && ComputerUtilCombat.lifeInDanger(ai, combat, payment + unplanned)) {
+                 return Integer.MIN_VALUE;
+             }
+ 
+             if (checkDiff && !ai.cantLoseForZeroOrLessLife()) {
+                 // find out the worst possible outcome
+-                remainingLife = Math.min(ComputerUtilCombat.lifeThatWouldRemain(ai, combat), remainingLife);
++                remainingLife = Math.min(ComputerUtilCombat.lifeThatWouldRemain(ai, combat) - unplanned, remainingLife);
+             }
+         }
+         return remainingLife;
+diff --git a/forge-game/src/main/java/forge/game/combat/CombatUtil.java b/forge-game/src/main/java/forge/game/combat/CombatUtil.java
+index 0e45a5d..72000d5 100644
+--- a/forge-game/src/main/java/forge/game/combat/CombatUtil.java
++++ b/forge-game/src/main/java/forge/game/combat/CombatUtil.java
+@@ -331,18 +331,40 @@ public class CombatUtil {
+     }
+ 
+     public static Cost getBlockCost(Game game, Card blocker, Card attacker) {
+-        Cost blockCost = new Cost(ManaCost.ZERO, true);
+-        // Sort abilities to apply them in proper order
+-        boolean noCost = true;
++        return getBlockCost(blockCostStatics(game), blocker, attacker);
++    }
++
++    /**
++     * The static abilities that can make blocking cost something (CantBlockUnless), in the order getBlockCost applies
++     * them. Callers that check many attackers collect them once: scanning every card's static abilities per attacker made
++     * one can-block check cost attackers x cards on a big board (fishpond patch 11).
++     */
++    public static List<StaticAbility> blockCostStatics(final Game game) {
++        final List<StaticAbility> statics = new java.util.ArrayList<>();
+         for (Card card : game.getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES)) {
+             for (final StaticAbility stAb : card.getStaticAbilities()) {
+-                Cost c1 = stAb.getBlockCost(blocker, attacker);
+-                if (c1 != null) {
+-                    blockCost.add(c1);
+-                    noCost = false;
++                if (stAb.checkMode(forge.game.staticability.StaticAbilityMode.CantBlockUnless)) {
++                    statics.add(stAb);
+                 }
+             }
+         }
++        return statics;
++    }
++
++    public static Cost getBlockCost(final List<StaticAbility> statics, Card blocker, Card attacker) {
++        if (statics.isEmpty()) {
++            return null;
++        }
++        Cost blockCost = new Cost(ManaCost.ZERO, true);
++        // Sort abilities to apply them in proper order
++        boolean noCost = true;
++        for (final StaticAbility stAb : statics) {
++            Cost c1 = stAb.getBlockCost(blocker, attacker);
++            if (c1 != null) {
++                blockCost.add(c1);
++                noCost = false;
++            }
++        }
+ 
+         if (noCost) {
+             return null;
+@@ -748,11 +770,12 @@ public class CombatUtil {
+         }
+ 
+         final CardCollectionView attackers = combat.getAttackers();
++        final List<StaticAbility> costStatics = blockCostStatics(blocker.getGame());
+ 
+         final CardCollection requirementCards = new CardCollection();
+         final Player defender = blocker.getController();
+         for (final Card attacker : attackers) {
+-            if (getBlockCost(blocker.getGame(), blocker, attacker) != null) {
++            if (getBlockCost(costStatics, blocker, attacker) != null) {
+                 continue;
+             }
+ 
+@@ -778,7 +801,7 @@ public class CombatUtil {
+         }
+ 
+         for (final Card attacker : blocker.getMustBlockCards()) {
+-            if (getBlockCost(blocker.getGame(), blocker, attacker) != null) {
++            if (getBlockCost(costStatics, blocker, attacker) != null) {
+                 continue;
+             }
+ 

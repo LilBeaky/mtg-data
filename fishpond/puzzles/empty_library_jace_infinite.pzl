@@ -1,0 +1,16 @@
+# title: Jace, Wielder of Mysteries out: the AI casts Enter the Infinite (Forge's AI only knew Laboratory Maniac by name), then wins on a draw
+# card: Jace, Wielder of Mysteries
+# turns: 3
+# sim: hybrid
+# expect: cast Enter the Infinite
+# expect: Ai\(1\)-P1 has won
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Jace, Wielder of Mysteries|Counters:LOYALTY=4;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p0hand=Enter the Infinite
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
