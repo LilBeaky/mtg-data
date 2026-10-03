@@ -195,7 +195,7 @@ def _java_ok(exe):
     return bool(m) and int(m.group(1)) >= 17 and "Client VM" not in out
 
 def prefer_modern_java():
-    """An old 32-bit java first on PATH (Windows keeps one in Common Files\Oracle\Java\java8path) fails Forge with
+    r"""An old 32-bit java first on PATH (Windows keeps one in Common Files\Oracle\Java\java8path) fails Forge with
     'Could not reserve enough space for object heap'. If PATH's java isn't usable, put a JDK/JRE 17+ bin first on PATH."""
     exe = "java.exe" if os.name == "nt" else "java"
     if shutil.which("java") and _java_ok("java"): return

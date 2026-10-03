@@ -256,6 +256,7 @@ Phase A/B acceptance, 2026-10-01, Claude Code container (4 CPUs), Forge 2.0.15, 
 Fishpond works end to end but isn't "set". In priority order:
 
 1. **Run it where Ian runs it.** Everything so far ran in a 4-CPU Claude Code container. The chat sandbox has 1 CPU, ~4 GB and no javac by default: test `setup --jdk`, memory with lookahead, and a real "Launch Fishpond" form round trip there.
+   - *Chat sandbox, 2026-10-02:* `setup --jdk` works (65 s: Forge download, JDK install, 9 patches built). Hybrid lookahead at every real seat runs about 10 min per 4-player game on 1 CPU (Zur vs Chulane/Niv/Omnath, game 1: 590 s, 13 hero turns), so a 25-game read is ~4 h: fine for small checks, home machine for A/B batches. Background runs must be started with `setsid nohup ... < /dev/null &` or they die when the tool call returns; `--resume` picks them back up.
 2. ~~Resumable runs~~ Done 2026-10-01: `run --resume RUN_DIR [--trials N]` replays cut-off games from their seeds and adds new ones; `report` shows partial runs. Mulligan line added to the report.
 3. **Re-baseline with lookahead on.** The acceptance numbers (Chulane vacuum 26%, 0/20 into the gauntlet) were measured with lookahead off. Re-run Chulane, and each of Yusri, Zur, Klauth as the hero (vacuum + gauntlet), which also completes the 3-deck goldfish cross-check.
 4. **A headline block** at the top of the report (5-6 lines: win rate and interval, how it wins, how it loses, pilot-error share, the user's field-9 questions answered), with the tables below as detail. Combined report when a run uses both a vacuum and a gauntlet pod.
@@ -270,4 +271,4 @@ Fishpond works end to end but isn't "set". In priority order:
 - ~~Klauth's list has 101 cards.~~ Fixed 2026-10-02: Vorinclex, Voice of Hunger out (d190686).
 
 - Which decks form the first real-opponent gauntlet, and at what bracket?
-- Should tagged pilot-error losses be excluded from the headline win rate or only shown beside it?
+- ~~Pilot-error losses in the headline?~~ Ian, 2026-10-02: show them beside the headline win rate, never excluded, and say which game and which turn each one happened (so it can be replayed by seed).
