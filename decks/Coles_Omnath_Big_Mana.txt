@@ -1,4 +1,5 @@
 # name: Coles Omnath Big Mana
+# bracket: 4
 # plan: Big mana - win with combat damage and accrued value
 Commander
 1 Omnath, Locus of Mana
