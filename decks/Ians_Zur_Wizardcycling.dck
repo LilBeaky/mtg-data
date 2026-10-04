@@ -1,8 +1,8 @@
-# name: Ians Zur Cycling
-Commander
+[metadata]
+Name=Ians Zur Wizardcycling
+[Commander]
 1 Zur the Enchanter
-
-Deck
+[Main]
 1 Adarkar Wastes
 1 Aether Channeler
 1 Approach of the Second Sun
@@ -21,12 +21,9 @@ Deck
 1 Choked Estuary
 1 Command Tower
 1 Complicate
-1 Contaminated Landscape
 1 Counterbalance
 1 Cyclonic Rift
 1 Dark Ritual
-1 Deafening Silence
-1 Desert of the Glorified
 1 Desert of the Mindful
 1 Desert of the True
 1 Deserted Beach
@@ -41,49 +38,53 @@ Deck
 1 Exotic Orchard
 1 Feed the Swarm
 1 Fetid Pools
+1 Flickering Hound
+1 Flooded Strand
+1 Floodfarm Verge
 1 Fluctuator
 1 Forsake the Worldly
 1 Ghostway
 1 Glen Elendra Archmage
+1 Gloomlake Verge
 1 Grasp of Fate
 1 Greater Auramancy
 1 Hall of Heliod's Generosity
+1 Hallowed Fountain
 1 Irrigated Farmland
 5 Island
+1 Kindred Judgment
 1 Land Tax
-1 Locust Spray
 1 Lonely Sandbar
 1 Long-Term Plans
 1 Mage's Attendant
+1 Magus of the Abyss
+1 Mana Sculpt
 1 Miscalculation
-1 Mistveil Plains
+1 Monument to Endurance
 1 Mystical Tutor
 1 Naban, Dean of Iteration
 1 Necrodominance
 1 Neutralize
-1 New Perspectives
-1 Obscura Storefront
 1 Path of Ancestry
 1 Patron Wizard
 1 Personal Tutor
 1 Pest Control
 3 Plains
 1 Polluted Mire
-1 Prairie Stream
+1 Raffine's Tower
 1 Remote Isle
-1 Requisition Raid
 1 Rule of Law
 1 Scheming Symmetry
 1 Secluded Steppe
+1 Shattered Sanctum
+1 Silent Clearing
 1 Skycloud Expanse
 1 Sol Ring
 1 Solitary Confinement
 1 Solve the Equation
 1 Spellseeker
 1 Step Through
-1 Sunken Hollow
-2 Swamp
-1 Talisman of Dominance
+1 Swamp
 1 Talisman of Progress
 1 Tribute Mage
 1 Triskaidekaphile
