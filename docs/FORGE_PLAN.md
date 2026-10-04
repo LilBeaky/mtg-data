@@ -265,11 +265,12 @@ Phase A/B acceptance, 2026-10-01, Claude Code container (4 CPUs), Forge 2.0.15, 
 
 **Results** (single-winner games won / decided; 25% is par): B2 Wilson 7/15, Erebos 6/15, Jarad 3/16, Araumi 2/15, Ragost 1/15. B3 Zhulodok 16/30, Heliod 14/28, Klauth 5/28, Balancer 3/23, Chulane 2/28, Zur 1/27. B4 Niv 9/16, Xyris 5/16, Lumra 3/16, Omnath 2/16, Yusri 1/16.
 
-**Read.** Zhulodok, Heliod, Niv, Wilson and Erebos win on lines the AI plays well (big creatures, lifegain plus combat, damage triggers), mostly with their own kills. Ragost and Araumi look genuinely weak in their bracket (no stranded key cards). Pilot failures:
+**Read.** Zhulodok, Heliod, Niv, Wilson and Erebos win on lines the AI plays well (big creatures, lifegain plus combat, damage triggers), mostly with their own kills. Ragost looks genuinely weak in its bracket (no stranded key cards). Pilot failures:
 - **Balancer:** assembles its infinite and never cashes it in (#8). Its rate is a floor.
 - **Zur:** attacked with Zur on 79 of 372 turns (21%), so its engine rarely fires; 2 kills in 40 games; Approach of the Second Sun cast 9 times, won once.
 - **Chulane:** attacked on 14 of 306 turns; Primal Surge cast 5 times in 40 games and in hand at game end in half its hero games.
 - **Yusri:** Enter the Infinite cast 0 times in 16 games (in hand at game end in 75% of its hero games), even after patch 10.
+- **Araumi:** the commander was never cast in 16 games: Araumi of the Dead Tide is `AI:RemoveDeck:All` in Forge 2.0.15, so the deck never encored anything (its whole plan). Its self-mill ran (Ripples of Undeath 46 triggers, Hedron Crab, Riverchurn Monument) with nothing to cash it in; Rakshasa Debaser's printed encore was considered 8 times, never paid. Its 2 wins were long games won with Archon of Cruelty. Also flagged in the list: Dakmor Salvage, Darkwater Catacombs, Lim-Dûl's Vault, Toxic Deluge.
 - **Omnath:** one 21-minute game with 33 failed casts of Return of the Wildspeaker (the known hybrid "AI failed to play" noise); a drag, not the whole story.
 
 **Upgrade plan, in order:**
@@ -290,6 +291,7 @@ Phase A/B acceptance, 2026-10-01, Claude Code container (4 CPUs), Forge 2.0.15, 
    - *Also check* why `AiAttackController` kept Zur (21% of turns) and Chulane (5%) home in the study.
    - *Puzzles:* commander into three boards that can kill it (stays home); into one safe opponent (attacks that one); blocks the small attacker, not the lethal one; must chump because unblocked is lethal; Zur attacks into risk for a fetch; Zur stays home when the swing back kills its controller.
 5. **Finisher misses:** Primal Surge (held now? check whether the `surge_trap` handling over-corrected), Enter the Infinite (0 casts after patch 10: replay a Yusri hero game where it rotted in hand), Approach of the Second Sun's second cast. One puzzle each.
+5a. **Araumi encore:** (1) un-flag override `araumi_of_the_dead_tide.txt` plus puzzles: Araumi out with a full graveyard and Gray Merchant / Archon of Cruelty / Gyruda in it, enough mana (activates at sorcery speed, encores the best enter- or leave-the-battlefield creature it can pay for); one where it can't pay the encore (doesn't activate). (2) If the un-flagged AI misplays it, a pilot patch: pick the target by the creature's ETB/LTB value per opponent within the mana left, and make sure encore costs get paid (Rakshasa Debaser's printed encore was never paid either). (3) Rank the deck's other flags (Dakmor Salvage, Lim-Dûl's Vault, Toxic Deluge) under Pilot policy Part 2. (4) Re-run Araumi's 4 B2 pods.
 6. **`fishpond study` command:** automate this run: pods by bracket, chunked so no process outlives Claude's 2-hour background-task limit (this run's driver was killed at 24/25 pods). Long studies are meant to run locally from Ian's own terminal (no limit) as runs get longer; the command prints the line to run and Claude reads the results folder afterwards. It must be resumable and print a per-deck table (wins over decided games, undecided, kills, deaths, how it won). Win attribution must use the single surviving winner; on draws, cap and timeout games Forge marks every seat "has won", which the first count of this study got wrong.
 7. **Re-run** the 15 B3 pods after 1-2 (Balancer's real rate), then the whole study at 8 games a pod for tighter numbers.
 
