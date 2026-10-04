@@ -1,0 +1,95 @@
+# name: Ians Araumi Reanimator
+# bracket: 2
+# plan: Self-mill and reanimator toolbox, like Zur but from the graveyard instead of the library. Different options for different situations, haymakers, and a few ritual-style effects to get them out. Araumi of the Dead Tide multiplies punishing ETB/LTB effects (Gyruda, Junji, Gray Merchant, Archon of Cruelty). Xiahou Dun gets Mortal Combat back from the graveyard if it is milled, and can be a repeatable engine. Win: combat or ETB effects through Araumi's encore, Mortal Combat, Gray Merchant.
+# key: Traumatize; Cut Your Losses; Riverchurn Monument; Mortal Combat
+Commander
+1 Araumi of the Dead Tide
+
+Deck
+1 Academy Ruins
+1 Accursed Marauder
+1 Agent of Treachery
+1 Arcane Signet
+1 Archaeomancer
+1 Archon of Cruelty
+1 Ashiok, Dream Render
+1 Buried Alive
+1 Choked Estuary
+1 Chronic Flooding
+1 Clearwater Pathway
+1 Cloud of Faeries
+1 Command Tower
+1 Convergence of Dominion
+1 Cut Your Losses
+1 Dakmor Salvage
+1 Dark Ritual
+1 Darkwater Catacombs
+1 Deranged Assistant
+1 Dismal Backwater
+1 Dread Return
+1 Drownyard Temple
+1 Evolving Wilds
+1 Exhibition Tidecaller
+1 Fallaji Archaeologist
+1 Floating-Dream Zubera
+1 Frantic Search
+1 Glimpse the Unthinkable
+1 Gorging Vulture
+1 Gray Merchant of Asphodel
+1 Gyruda, Doom of Depths
+1 Hedron Crab
+9 Island
+1 Junji, the Midnight Sky
+1 Jwar Isle Refuge
+1 Kairi, the Swirling Sky
+1 Lim-Dûl's Vault
+1 Lively Dirge
+1 Lonely Sandbar
+1 Massacre Wurm
+1 Millikin
+1 Mire Triton
+1 Mortal Combat
+1 Mystic Sanctuary
+1 Nephalia Drownyard
+1 Nimbleclaw Adept
+1 Omen Hawker
+1 Oriq Loremage
+1 Oversold Cemetery
+1 Panharmonicon
+1 Pemmin's Aura
+1 Peregrine Drake
+1 Plaguecrafter
+1 Rakshasa Debaser
+1 Ramirez DePietro, Pillager
+1 Reef Worm
+1 Ripples of Undeath
+1 Riverchurn Monument
+1 Singularity Rupture
+1 Sol Ring
+1 Solemn Simulacrum
+1 Songs of the Damned
+1 Soul Manipulation
+1 Sphinx Ambassador
+1 Spymaster's Vault
+1 Starfield Vocalist
+1 Stargaze
+1 Stitcher's Supplier
+1 Sunken Hollow
+5 Swamp
+1 Swiftfoot Boots
+1 Talisman of Dominance
+1 Temple of Deceit
+1 Terramorphic Expanse
+1 Toxic Deluge
+1 Traumatize
+1 Treno, Dark City
+1 Undercity Dire Rat
+1 Underground River
+1 Vile Entomber
+1 Vindictive Lich
+1 Waterfront District
+1 Watery Grave
+1 Wishclaw Talisman
+1 Wonder
+1 Wurmcoil Engine
+1 Xiahou Dun, the One-Eyed
