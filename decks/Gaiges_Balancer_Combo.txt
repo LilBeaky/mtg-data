@@ -1,5 +1,5 @@
 # name: Gaiges Balancer Combo
-# bracket: 4
+# bracket: 3
 # plan: Creature affinity. Reduce the cost of enormous spells massively through board presence, cast high mana value spells, and win through overwhelming value or an infinite. Sprout Swarm goes infinite with Witherbloom if there are 5 creatures in play.
 # key: Sprout Swarm; Torment of Hailfire
 Commander
