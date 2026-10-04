@@ -1,0 +1,94 @@
+# name: Ians Ragost Burn
+# bracket: 2
+# plan: Put lifelink on Ragost, make fodder (Food), and activate him as often as possible. Alternate win: Test of Endurance.
+# key: Nuka-Cola Vending Machine; Descent into Avernus; Caduceus, Staff of Hermes; Basilisk Collar; Bender's Waterskin
+Commander
+1 Ragost, Deft Gastronaut
+
+Deck
+1 Academy Manufactor
+1 Adventurer's Inn
+1 Ancient Den
+1 Arcane Signet
+1 Basilisk Collar
+1 Battlefield Forge
+1 Bender's Waterskin
+1 Caduceus, Staff of Hermes
+1 Chaos Warp
+1 City on Fire
+1 Clifftop Retreat
+1 Cloud Key
+1 Colossus of the Blood Age
+1 Command Tower
+1 Curse of Opulence
+1 Descent into Avernus
+1 Exotic Orchard
+1 Experimental Synthesizer
+1 Fateful Showdown
+1 Forgotten Cave
+1 Foundry Inspector
+1 Furnace of Rath
+1 Furycalm Snarl
+1 Goblin Welder
+1 Great Furnace
+1 Humble Defector
+1 Ichor Wellspring
+1 Illusionist's Bracers
+1 Illustrious Wanderglyph
+1 Inspiring Vantage
+1 Ishgard, the Holy See
+1 Junk Diver
+1 Lembas
+1 Lifelink
+1 Lightning Greaves
+1 Loxodon Warhammer
+1 Loyal Apprentice
+1 Magus of the Wheel
+1 Mines of Moria
+1 Molten Psyche
+1 Monologue Tax
+1 Monumental Henge
+9 Mountain
+1 Mycosynth Wellspring
+1 Myr Retriever
+1 Needleverge Pathway
+1 Neheb, the Eternal
+1 Nuka-Cola Vending Machine
+1 Ornithopter
+1 Piggy Bank
+6 Plains
+1 Prized Statue
+1 Radiant Summit
+1 Ratchet, Field Medic
+1 Roadside Reliquary
+1 Ruby Medallion
+1 Rugged Prairie
+1 Rustvale Bridge
+1 Scourge of the Nobilis
+1 Scrap Trawler
+1 Seething Song
+1 Servo Schematic
+1 Sheltered by Ghosts
+1 Skrelv's Hive
+1 Sol Ring
+1 Solemn Simulacrum
+1 Spire of Industry
+1 Spirit Loop
+1 Stridehangar Automaton
+1 Sunscorched Divide
+1 Swiftfoot Boots
+1 Temple of Triumph
+1 Test of Endurance
+1 The Battle of Bywater
+1 The Underworld Cookbook
+1 Thopter Assembly
+1 Toggo, Goblin Weaponsmith
+1 Treasure Nabber
+1 Treasure Vault
+1 Treat Trolley
+1 Vandalblast
+1 Vibrant Cityscape
+1 Visions of Phyrexia
+1 Wake the Past
+1 Weapons Manufacturing
+1 Well of Lost Dreams
