@@ -1,93 +1,90 @@
-# name: Modified Gaiges Xyris Wheels
-# plan: Wheels - win with Impact Tremors effects
-Commander
+[metadata]
+Name=Gaiges Xyris Wheels
+[Commander]
 1 Xyris, the Writhing Storm
-
-Deck
+[Main]
 1 Adrix and Nev, Twincasters
 1 Agate Instigator
-1 An Offer You Can't Refuse
-1 Arcane Denial
 1 Arcane Signet
-1 Banner of Kinship
+1 Archdruid's Charm
 1 Beast Within
-1 Beastmaster Ascension
 1 Birds of Paradise
-1 Blasphemous Act
 1 Botanical Sanctum
+1 Breeding Pool
 1 Cascade Bluffs
-1 Chain Reaction
 1 Chaos Warp
 1 Chord of Calling
-1 Chromatic Lantern
-1 Combine Chrysalis
+1 Cinder Glade
 1 Command Tower
+1 Commit // Memory
 1 Consecrated Sphinx
 1 Copperline Gorge
-1 Counterspell
-1 Craterhoof Behemoth
 1 Cryptolith Rite
-1 Cultivate
-1 Curiosity Crafter
-1 Day's Undoing
 1 Doubling Season
+1 Echo of Eons
 1 Exotic Orchard
-1 Ezuri, Claw of Progress
 1 Farseek
-1 Ferrous Lake
-1 Fire-Lit Thicket
 1 Flooded Grove
-5 Forest
-1 Frontier Bivouac
+1 Forced Fruition
+7 Forest
 1 Gamble
-1 Game Plan
-1 Gifts Ungiven
+1 Goblin Bombardment
 1 Growing Rites of Itlimoc
-1 Harvest Season
+1 Gruul Signet
 1 Hinterland Harbor
-1 Howling Mine
 1 Impact Tremors
-5 Island
+4 Island
+1 Izzet Signet
 1 Jace's Archivist
-1 Kami of the Crescent Moon
-1 Kaseto, Orochi Archmage
 1 Kessig Wolf Run
 1 Lightning Greaves
 1 Magus of the Wheel
 1 Mikokoro, Center of the Sea
+1 Molten Gatekeeper
 1 Molten Psyche
 1 Mossfire Valley
-1 Mosswort Bridge
-5 Mountain
-1 Negate
-1 Ohran Frostfang
+6 Mountain
+1 Mystical Tutor
+1 Naktamun Lorespinner
+1 Nature's Lore
 1 Oran-Rief, the Vastwood
 1 Overflowing Basin
+1 Parallel Lives
 1 Pongify
-1 Proft's Eidetic Memory
 1 Purphoros, God of the Forge
 1 Rampant Growth
-1 Rapid Hybridization
+1 Razorkin Needlehead
 1 Reforge the Soul
-1 Reliquary Tower
 1 Rogue's Passage
 1 Rootbound Crag
-1 Shared Animosity
-1 Shelldock Isle
+1 Second Harvest
+1 Shared Summons
+1 Simic Signet
 1 Skullclamp
+1 Sodden Verdure
 1 Sol Ring
-1 Spinerock Knoll
+1 Solve the Equation
 1 Spirebluff Canal
-1 Spirit Water Revival
+1 Steam Vents
+1 Stomping Ground
 1 Sulfur Falls
 1 Swiftfoot Boots
+1 Talisman of Creativity
+1 Talisman of Curiosity
+1 Talisman of Impulse
 1 Teferi's Puzzle Box
-1 The Unagi of Kyoshi Island
+1 The Locust God
 1 Thought Vessel
-1 Tower Winder
-1 Vandalblast
+1 Three Visits
+1 Time of Need
+1 Time Reversal
+1 Utopia Sprawl
+1 Weftstalker Ardent
+1 Wheel of Misfortune
 1 Whirlpool Warrior
+1 Wild Growth
 1 Windfall
+1 Winds of Change
 1 Witty Roastmaster
 1 Worldly Tutor
 1 Xenagos, the Reveler

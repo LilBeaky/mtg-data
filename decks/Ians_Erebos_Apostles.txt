@@ -1,6 +1,6 @@
 # name: Ians Erebos Apostles
 # bracket: 2
-# plan: Shadowborn Apostle pile (any number allowed) with Thrumming Stone. Combo: Secret Salvage puts Apostles in the graveyard, Bloodline Bidding brings them back out.
+# plan: Shadowborn Apostle pile (any number allowed) without Thrumming Stone. Combo: Secret Salvage puts Apostles in the graveyard, Bloodline Bidding brings them back out.
 # key: Razaketh, the Foulblooded; Valgavoth, Terror Eater
 Commander
 1 Erebos, God of the Dead
