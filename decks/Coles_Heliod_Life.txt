@@ -1,0 +1,81 @@
+# name: Coles Heliod Life
+# bracket: 3
+# notes: not Ian's list; 5 cuts chosen by assistant to reach 100 (Healer's Hawk, Prism Ring, Sun Droplet, Dusk Legion Duelist, Martyr of Sands). The Ozolith was listed under its Secret Lair name, Adamantium Bonding Tank.
+# key: Heliod, Sun-Crowned; Walking Ballista; Triskelion; Archangel of Thune
+# plan: Play defensively, pad the life total, and use lifegain payoffs to accrue value until it can perform a combo.
+Commander
+1 Heliod, Sun-Crowned
+
+Deck
+1 The Ozolith
+1 Aerith Gainsborough
+1 Aetherflux Reservoir
+1 Ajani Resolute
+1 Ajani, Strength of the Pride
+1 Ajani's Pridemate
+1 Ajani's Welcome
+1 Alhammarret's Archive
+1 Altar of the Pantheon
+1 Angel of Destiny
+1 Archangel of Thune
+1 Archivist of Oghma
+1 Ashes of the Abhorrent
+1 Auriok Champion
+1 Authority of the Consuls
+1 Bond of Discipline
+1 Boon Reflection
+1 Caduceus, Staff of Hermes
+1 Cavern of Souls
+1 Cleric Class
+1 Cosmos Elixir
+1 Dawn of Hope
+1 Daxos, Blessed by the Sun
+1 Elenda's Hierophant
+1 Enlightened Tutor
+1 Envoy of the Ancestors
+1 Ephemerate
+1 Esper Sentinel
+1 Essence Channeler
+1 Exemplar of Light
+1 Felidar Sovereign
+1 Fumigate
+1 Grand Abolisher
+1 Guide of Souls
+1 Haliya, Guided by Light
+1 Heliod's Intervention
+1 Kabira Crossroads
+1 Knight of the White Orchid
+1 Land Tax
+1 Light of Promise
+1 Linden, the Steadfast Queen
+1 Lunarch Veteran
+1 Mangara, the Diplomat
+1 Mistveil Plains
+1 Nykthos Paragon
+1 Nykthos, Shrine to Nyx
+1 Path to Exile
+1 Pearl Medallion
+28 Plains
+1 Radiant Fountain
+1 Ranger of Eos
+1 Rebuff the Wicked
+1 Rhox Faithmender
+1 Righteous Valkyrie
+1 Serra Ascendant
+1 Sigarda's Splendor
+1 Sol Ring
+1 Soul Warden
+1 Soul's Attendant
+1 Speaker of the Heavens
+1 Sun Titan
+1 Sunscorch Regent
+1 Suture Priest
+1 Swords to Plowshares
+1 Test of Endurance
+1 The Book of Exalted Deeds
+1 The Wind Crystal
+1 Triskelion
+1 Twinblade Paladin
+1 Voice of the Blessed
+1 Walking Ballista
+1 Well of Lost Dreams
