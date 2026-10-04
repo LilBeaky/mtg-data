@@ -1,0 +1,91 @@
+# name: Gaiges Jarad Graveyard
+# bracket: 2
+# plan: Ramp, cast or reanimate giant creatures, and sacrifice them to Jarad, Golgari Lich Lord for direct damage.
+# key: Colossal Grave-Reaver
+Commander
+1 Jarad, Golgari Lich Lord
+
+Deck
+1 Animate Dead
+1 Arcane Signet
+1 Assassin's Trophy
+1 Beast Within
+1 Blooming Marsh
+1 Boneyard Wurm
+1 Buried Alive
+1 Colossal Grave-Reaver
+1 Command Tower
+1 Cultivate
+1 Deadbridge Chant
+1 Deathcap Cultivator
+1 Diabolic Tutor
+1 Dread Return
+1 Elvish Mystic
+1 Eternal Witness
+1 Evolving Wilds
+1 Exotic Orchard
+11 Forest
+1 Genesis
+1 Ghalta, Primal Hunger
+1 Golgari Charm
+1 Golgari Grave-Troll
+1 Golgari Rot Farm
+1 Golgari Signet
+1 Golgari Thug
+1 Greater Good
+1 Grim Backwoods
+1 Grisly Salvage
+1 Honest Rutstein
+1 Izoni, Thousand-Eyed
+1 Jarad's Orders
+1 Journey to Eternity
+1 Jungle Hollow
+1 Krosan Grip
+1 Lightning Greaves
+1 Living Death
+1 Llanowar Elves
+1 Llanowar Wastes
+1 Lord of Extinction
+1 Memorial to Folly
+1 Moldervine Reclamation
+1 Mortivore
+1 Mortuary Mire
+1 Necroblossom Snarl
+1 Necrogoyf
+1 Nighthowler
+1 Nyx Weaver
+1 Old Stickfingers
+1 Perpetual Timepiece
+1 Putrefy
+1 Ramunap Excavator
+1 Reanimate
+1 Rise of the Witch-king
+1 Rishkar's Expertise
+1 Rogue's Passage
+1 Rushed Rebirth
+1 Sakura-Tribe Elder
+1 Satyr Wayfinder
+1 Skull Prophet
+1 Skullclamp
+1 Sol Ring
+1 Souls of the Lost
+1 Splinterfright
+1 Stinkweed Imp
+1 Stitcher's Supplier
+1 Svogthos, the Restless Tomb
+7 Swamp
+1 Swiftfoot Boots
+1 Tainted Wood
+1 Talisman of Resilience
+1 Temple of Malady
+1 Terramorphic Expanse
+1 The Gitrog, Ravenous Ride
+1 Toxic Deluge
+1 Twilight Mire
+1 Underrealm Lich
+1 Victimize
+1 Viridescent Bog
+1 Wight of the Reliquary
+1 Woodland Cemetery
+1 World Shaper
+1 Yargle and Multani
