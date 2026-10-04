@@ -1,6 +1,6 @@
 # name: Ians Araumi Reanimator
 # bracket: 2
-# plan: Self-mill and reanimator toolbox, like Zur but from the graveyard instead of the library. Different options for different situations, haymakers, and a few ritual-style effects to get them out. Araumi of the Dead Tide multiplies punishing ETB/LTB effects (Gyruda, Junji, Gray Merchant, Archon of Cruelty). Xiahou Dun gets Mortal Combat back from the graveyard if it is milled, and can be a repeatable engine. Win: combat or ETB effects through Araumi's encore, Mortal Combat, Gray Merchant.
+# plan: Self-mill and reanimator toolbox (the Traumatize effects always target yourself), like Zur but from the graveyard instead of the library. Different options for different situations, haymakers, and a few ritual-style effects to get them out. Araumi of the Dead Tide multiplies punishing ETB/LTB effects (Gyruda, Junji, Gray Merchant, Archon of Cruelty). Xiahou Dun gets Mortal Combat back from the graveyard if it is milled, and can be a repeatable engine. Win: combat or ETB effects through Araumi's encore, Mortal Combat, Gray Merchant.
 # key: Traumatize; Cut Your Losses; Riverchurn Monument; Mortal Combat
 Commander
 1 Araumi of the Dead Tide
