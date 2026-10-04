@@ -259,6 +259,40 @@ Phase A/B acceptance, 2026-10-01, Claude Code container (4 CPUs), Forge 2.0.15, 
 2. **Enter the Infinite -> Thassa's Oracle.** Game 16 (seed 1000019, T11): won 5 flips, cast Enter the Infinite free *after* the Toad's attack trigger, never cast Thassa's Oracle, then cast Edgar and decked to his enter-the-battlefield draw. Ian: Enter the Infinite is right even without the win in hand, since drawing the library finds the Oracle; the miss is sequencing. To check: was the Oracle the card Enter the Infinite put back on top (Forge's choice of card to put back), or did patch 10's hold-the-Oracle check refuse a winning cast? Then: never put back a win card, cast the Oracle before any further draw, and don't cast a forced draw into an empty library with no win card out. `--sim full` likely won't fix it (its search scores board value; it doesn't value an empty library with the Oracle in hand and doesn't make the put-back choice).
 3. **Mystical Tutor: Enter the Infinite -> Show and Tell (3 times).** Show and Tell was cast in 5 games and won 4; it put out big threats (Ancient Silver Dragon in game 0) and led into wide attacks. Ian prefers Enter the Infinite unless Show and Tell sets up a play now. Options: a combo-layer rule (Show and Tell only when the hand holds a big permanent), or a `# priority: Enter the Infinite` header (cheap, but it would also move early tutors off ramp).
 
+## Pilot study 2026-10-04 (draft; Ian: plan only, no patches yet)
+
+**What ran.** Every 4-deck pod within each bracket of the 16 bracketed lists in `decks/`, 4 games a pod, hybrid at every seat, Default AI, `--cap 20`: B2 5 pods, B3 15, B4 5 = 100 games (`data/fishpond/pilot_study_20261004/`, `pods.json`; seeds 7319044 + 100 x pod index). Seat 1 rotated across pods. 89 games ended with a single winner. 11 didn't: 5 timeouts and 1 out-of-memory crash, all from the Balancer loop (FORGE_ISSUES #8); 3 games voided when that crash killed the worker's JVM; 1 NPE (#9); 1 at the turn cap.
+
+**Results** (single-winner games won / decided; 25% is par): B2 Wilson 7/15, Erebos 6/15, Jarad 3/16, Araumi 2/15, Ragost 1/15. B3 Zhulodok 16/30, Heliod 14/28, Klauth 5/28, Balancer 3/23, Chulane 2/28, Zur 1/27. B4 Niv 9/16, Xyris 5/16, Lumra 3/16, Omnath 2/16, Yusri 1/16.
+
+**Read.** Zhulodok, Heliod, Niv, Wilson and Erebos win on lines the AI plays well (big creatures, lifegain plus combat, damage triggers), mostly with their own kills. Ragost and Araumi look genuinely weak in their bracket (no stranded key cards). Pilot failures:
+- **Balancer:** assembles its infinite and never cashes it in (#8). Its rate is a floor.
+- **Zur:** attacked with Zur on 79 of 372 turns (21%), so its engine rarely fires; 2 kills in 40 games; Approach of the Second Sun cast 9 times, won once.
+- **Chulane:** attacked on 14 of 306 turns; Primal Surge cast 5 times in 40 games and in hand at game end in half its hero games.
+- **Yusri:** Enter the Infinite cast 0 times in 16 games (in hand at game end in 75% of its hero games), even after patch 10.
+- **Omnath:** one 21-minute game with 33 failed casts of Return of the Wildspeaker (the known hybrid "AI failed to play" noise); a drag, not the whole story.
+
+**Upgrade plan, in order:**
+
+1. **Loop shortcut (Comprehensive Rules "Taking Shortcuts" and "Handling Infinite Loops"), fixes #8.** Ian's idea: once a loop starts and nobody responds, let it run many times without re-checking the board each time.
+   - *Detect:* a pilot seat casts or activates the same ability from the same card 3 times in one priority sequence, the stack resolves empty between, and the card returns to where it started (Sprout Swarm back to hand).
+   - *Offer the response window once:* every other seat gets one real priority pass, with its normal AI and lookahead, as the shortcut rules allow ("accept the shortcut or say where you'll stop it").
+   - *Run it fast:* if nobody responds, the next iterations run with lookahead off for every seat, opponents auto-pass, and the looping AI skips its decision step (the harness casts the same ability directly). Each iteration still really resolves, so triggers stay correct (Soul Warden, Parallel Lives, Suture Priest); that costs milliseconds, not the seconds each hybrid check costs now.
+   - *Stop:* when a cheap goal check passes (opponents' total life covered by the looping seat's attack power with a margin for blockers, or by a drain counter), or at a cap (`-Dfishpond.loopMax`, default 1000, Ian 2026-10-04). Then mark the ability done for the turn so the AI moves on to combat. Log `#FP-LOOP`: seat, card, iterations, stop reason. The report counts them.
+   - *Not doing:* applying N iterations in one bulk step (making 1000 tokens at once). That skips triggers and differs per card; real iterations without lookahead are fast enough.
+   - *Tests:* puzzles `sprout_swarm_loop` (Witherbloom + Sprout Swarm + enough mana: loops, stops, attacks for lethal) and `sprout_swarm_loop_soul_warden` (triggers counted), plus a guard puzzle where a looping seat can't win and must stop at the cap and pass. Acceptance: replay the 6 #8 seeds; all finish well under the 30-minute limit, deterministic on replay.
+2. **Harness hardening** (FORGE_ISSUES "Harness safety net" gaps): unwrap `ExecutionException` in `SafeControllerAi` so lookahead exceptions are remade without lookahead; restart a worker's JVM after `OutOfMemoryError` and replay its remaining games from their seeds.
+3. **#9 root cause:** replay seed 7320765962232, find the null-source card state, fix the copy in Forge.
+4. **Commander combat safety (Ian's rules, 2026-10-04),** a pilot patch in `AiAttackController` / `AiBlockController`, pilot seats only:
+   - *Attack* with the commander only into a player whose untapped potential blockers can't kill it (first strike, deathtouch, and pump or removal the AI can see count as able to kill it). If every opponent can kill it, it stays home. Indestructible, protection and similar count as survivable.
+   - *Block* with the commander only an attacker that won't kill it. If every incoming attacker would kill it, don't block with it, unless the damage left unblocked would be lethal to its controller (life or commander damage); then block as Forge would.
+   - *Exception, attack triggers:* a commander whose value is an attack trigger (Zur and similar; Chulane is not one; read from the card's `Attacks` triggers) attacks even when it might die, as long as the trigger is worth it now (Zur has a target to fetch). It still picks the opponent least able to kill it, and stays home if attacking would leave its controller dead on the swing back.
+   - *Also check* why `AiAttackController` kept Zur (21% of turns) and Chulane (5%) home in the study.
+   - *Puzzles:* commander into three boards that can kill it (stays home); into one safe opponent (attacks that one); blocks the small attacker, not the lethal one; must chump because unblocked is lethal; Zur attacks into risk for a fetch; Zur stays home when the swing back kills its controller.
+5. **Finisher misses:** Primal Surge (held now? check whether the `surge_trap` handling over-corrected), Enter the Infinite (0 casts after patch 10: replay a Yusri hero game where it rotted in hand), Approach of the Second Sun's second cast. One puzzle each.
+6. **`fishpond study` command:** automate this run: pods by bracket, chunked so no process outlives Claude's 2-hour background-task limit (this run's driver was killed at 24/25 pods). Long studies are meant to run locally from Ian's own terminal (no limit) as runs get longer; the command prints the line to run and Claude reads the results folder afterwards. It must be resumable and print a per-deck table (wins over decided games, undecided, kills, deaths, how it won). Win attribution must use the single surviving winner; on draws, cap and timeout games Forge marks every seat "has won", which the first count of this study got wrong.
+7. **Re-run** the 15 B3 pods after 1-2 (Balancer's real rate), then the whole study at 8 games a pod for tighter numbers.
+
 ## Roadmap (2026-10-01, after the merge to main)
 
 Fishpond works end to end but isn't "set". In priority order:

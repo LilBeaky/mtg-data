@@ -70,9 +70,33 @@ Fixes Fishpond makes to Forge itself are listed under **Patches** below; everyth
 - **Fix:** patch `11-large-board-blocks`: `CombatUtil.blockCostStatics` collects the block-cost statics once per check (same results, any board); past `-Dfishpond.maxPredictAttackers` (20) only the biggest attackers join a predicted combat and the rest count as unblocked damage; past `-Dfishpond.maxBlockPairs` (400 attacker x blocker pairs) the block planner plans the biggest attackers with the best blockers; `notNeededAsBlockers` releases candidates in at most `-Dfishpond.maxReleaseSteps` (12) groups, retrying a lethal group one by one. Each limit at 0 restores stock behavior; boards under the limits plan exactly as before.
 - **Verified (2026-10-03):** the 120-a-side puzzle (`big_board_blocks`) plays both turns in 52 s. All puzzles pass.
 
+## 8. The AI never stops an infinite loop — open (draft, not patched)
+
+- **Forge:** 2.0.15. **Cards:** Witherbloom, the Balancer + Sprout Swarm (`decks/Gaiges_Balancer_Combo.txt`): each Saproling convokes the next copy (Witherbloom gives instants and sorceries affinity for creatures), buyback returns it to hand, so the loop is free and unbounded. Any similar free loop would behave the same way.
+- **When:** any lookahead mode; hybrid makes it much worse.
+- **What:** the AI casts the loop spell every time it has priority and the spell is castable. Nothing in `AiController` knows the loop is redundant or that the board is already lethal, so it never stops to attack or pass. Each cast also re-runs the hybrid safety check (`OnePlaySafetyChecker`, a full game copy) on an ever-bigger board, and every opponent gets priority with its own lookahead on each copy, so iterations get slower and the heap grows. Lifegain triggers multiply it (Soul Warden, Soul's Attendant and Suture Priest triggered once per Saproling when Heliod was in the pod).
+- **Evidence (2026-10-04):** 6 games, all with Balancer in the pod, none finished:
+  - Zhulodok run (`data/fishpond/20261004-133453-Zhulodok`), game 0, seed 2066828939468217: Sprout Swarm cast 280 times on one turn (about 290 Saprolings), 30-minute timeout on table turn 28, peak heap 3.6 GB (3 GB heap).
+  - Pilot study (`data/fishpond/pilot_study_20261004`), timeouts: `B3_05` g3 seed 7319565958635 (with Soul Warden), `B3_06` g1 seed 7319665958933 (Suture Priest, 128 triggers), `B3_08` g0 seed 7319865959532, `B3_09` g2 seed 7319965959834, `B3_16` g1 seed 7320665961933 (peak heap 4.2 GB).
+  - `B3_18` g0 seed 7320865962532: `OutOfMemoryError` on table turn 44 mid-loop. The worker's JVM died with it, so games 1-3 in that pod recorded the same error at table turn 0 (see Harness safety net).
+- **Effect on results:** Balancer finished 23 of 40 B3 games with a single winner, so its 3/23 win rate is a floor. Those games probably were Balancer wins.
+- **Fishpond's workaround:** none yet. Fix plan: `docs/FORGE_PLAN.md`, "Pilot study 2026-10-04", item 1 (loop shortcut).
+
+## 9. Hybrid lookahead crashes copying a cascaded, copied spell — open (draft, not patched)
+
+- **Forge:** 2.0.15. **Cards:** Zhulodok, Void Gorger (copies a colorless spell with mana value 7+) and Flayer of Loyalties (cascade), `decks/Gaiges_Zhulodok_Eldrazi.txt`. Exactly which object it is still needs confirming on replay.
+- **When:** hybrid lookahead, while the AI decides on a play with the cascade/copy triggers on the stack.
+- **What:** `OnePlaySafetyChecker.isAcceptable` -> `GameSimulator.simulateSpellAbility:206` -> `Game.copyLastState` -> `Zone.getLKICopy` -> `CardCopyService.getLKICopy:264` -> `CardState.copyFrom:861`: `NullPointerException: Cannot invoke "forge.game.card.CardState.getName()" because "source" is null`. A card in some zone has a state with no source; likely the copy of a cast-from-cascade spell (a copy's state isn't mapped back to a card). The exception came through `AiController.chooseSpellAbilityToPlayFromList:1696` (the AI's timeout `FutureTask`) as an `ExecutionException` and **ended the game**. The harness safety net did not catch it (see below).
+- **Evidence (2026-10-04):** pilot study `B3_17_Gaiges_Balancer_Combo` game 0, seed 7320765962232, table turn 33: Zhulodok had triggered Flayer of Loyalties' cascade and annihilator repeatedly just before.
+- **Next:** replay from the seed with a breakpoint at `CardState.copyFrom` and find the null-source state; then fix `getLKICopy` (or the copier), not the harness.
+
 ## Harness safety net (not a fix)
 
 Anything still thrown from Forge's lookahead inside a decision is caught by the harness's controller (`ForgeRunner.SafeControllerAi`): that one decision is made again with lookahead off, and the game goes on with it back on. Every one is logged (`#FP-SIMFB` in the worker log, `sim_decision_log` in the game record: turn, phase, seat, stack, exception, where it was thrown, what was played instead) and summarised in the report's lookahead lines. It should stay at zero: a nonzero count is a new Forge bug to root out, not a result to live with. A crash outside a decision still replays the game from its seed with lookahead off (`sim_fallback`) and prints `#FP-DIAG` lines (exception, turn, departed players, orphaned objects, combat) to the worker log.
+
+Gaps found 2026-10-04 (draft, harness fixes not made yet):
+- An exception wrapped by the AI's timeout `FutureTask` (`ExecutionException` from `AiController.chooseSpellAbilityToPlayFromList`) gets past `SafeControllerAi` and ends the game as `error: java.lang.NullPointerException` instead of being remade without lookahead (#9).
+- An `OutOfMemoryError` kills the worker's JVM, and every remaining game in that worker's queue is recorded as the same error at table turn 0 (`B3_18`, 3 games lost). The worker should restart its JVM and replay those games from their seeds.
 
 ## Patches
 
