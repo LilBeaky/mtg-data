@@ -2,16 +2,16 @@
 
 Working doc for Claude (chat or Claude Code) implementing this. Not user-facing (that's `docs/FISHPOND.md`). Update the Status table as work lands. Written 2026-10-01.
 
-**Name and layout (Ian, 2026-10-01):** the tool is **Fishpond**, a folder `fishpond/` run as `python3 -m fishpond`. The `forge_setup.py` / `forge_deck.py` / `forge_sim.py` names below are the original plan; the "Architecture" section maps them to the real files.
+**Name and layout (user, 2026-10-01):** the tool is **Fishpond**, a folder `fishpond/` run as `python3 -m fishpond`. The `forge_setup.py` / `forge_deck.py` / `forge_sim.py` names below are the original plan; the "Architecture" section maps them to the real files.
 
 ## Start here (fresh session, no prior chat context needed)
 
-This doc is self-contained. Everything learned in the feasibility chat is below; don't ask Ian to re-explain it.
+This doc is self-contained. Everything learned in the feasibility chat is below; don't ask the user to re-explain it.
 
 1. Clone the repo and read `docs/USE_INSTRUCTIONS.md` once (it's the general workflow), then this file. You don't need GOLDFISH.md, GOLDFISH_ROADMAP.md, UPGRADE_PLAN.md or the TRANSLATION_* docs; they describe the frozen legacy path. Read `scripts/goldfish.py` lines ~6000–6320 (stats + report printers) only when you do the `sim_report.py` extraction.
 2. Set up the environment exactly as in "Environment recipe" below.
-3. Work the Status table top to bottom. Phases A and B are built; Phase C/D items are next. Acceptance runs use `tests/forge/chulane.txt` (Ian's Chulane list, 100 cards, B3, plan Primal Surge, keys Shrieking Drake / Primal Surge / Thassa's Oracle).
-4. Push straight to main, one commit per step; run `python3 tests/smoke.py` before each push. The GitHub token is in the project instructions, not in the repo. Never commit it. (A Claude Code session pinned to a branch pushes there instead; Ian merges.)
+3. Check the Status table, then work **"Pilot study 2026-10-04" → upgrade plan** in order (that's the active plan; the 2026-10-01 Roadmap below is kept for its open leftovers). Phases A/B, pilot policy and patches 01-11 are built. Acceptance runs use `tests/forge/chulane.txt` (the user's Chulane list, 100 cards, B3, plan Primal Surge, keys Shrieking Drake / Primal Surge / Thassa's Oracle).
+4. Push straight to main, one commit per step; run `python3 tests/smoke.py` before each push. The GitHub token is in the project instructions, not in the repo. Never commit it. (A Claude Code session pinned to a branch pushes there instead; the user merges.)
 
 ### Environment recipe (all verified 2026-10-01 in the chat sandbox unless marked untested)
 
@@ -19,7 +19,7 @@ Now automated: `python3 -m fishpond setup [--jdk]` downloads and unpacks the pin
 - The JVM must run with **cwd = the Forge install dir**: Forge reads `res/` relative to the working directory (from elsewhere it crashes on the missing language bundle).
 - `sim -D <absolute dir>/` loads decks by file name (`-d hero.dck ...`) in Commander too, so runs keep their `.dck` files in the run folder instead of `~/.forge/decks/commander/`.
 - The mono-W dummy (Isamaru, Hound of Konda + 99 Wastes) **verified**: it loads and never casts or attacks (checked in every run).
-- Real-deck opponents **verified**; Forge's sim does **not** enforce 100 cards (Ian's Klauth list has 101 and plays).
+- Real-deck opponents **verified**; Forge's sim does **not** enforce 100 cards (the user's Klauth list has 101 and plays).
 
 ```bash
 # Forge (pinned). ~1 min download, ~600 MB unpacked; outside the repo.
@@ -39,15 +39,15 @@ java -Xmx3500m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -jar ~/forge/forge
 - Dummy actually tested: `Kozilek, Butcher of Truth` + 99 Wastes. Bad choice (castable on turn 10). The planned replacement (mono-W legendary + 99 Wastes) is **untested**: verify it loads and never casts.
 - **Untested:** real-deck opponents; deck names with spaces in `-d` (quote them, or use slug names); whether Forge enforces 100-card/color-identity legality in sim; per-game wall time in 4p pods.
 
-### Governance (Ian's standing rule, 2026-10-01)
+### Governance (the user's standing rule, 2026-10-01)
 
-Ian is tired of structural rewrites of the simulator. No change to the engine choice or the overall architecture without (1) a written case, (2) a cheap test with evidence, and (3) Ian's go-ahead. Before building any new capability, check first whether an existing tool already does it. Iteration inside this plan (parsers, reports, harness) is fine.
+The user is tired of structural rewrites of the simulator. No change to the engine choice or the overall architecture without (1) a written case, (2) a cheap test with evidence, and (3) the user's go-ahead. Before building any new capability, check first whether an existing tool already does it. Iteration inside this plan (parsers, reports, harness) is fine.
 
 ## Why
 
-Ian's goal: analyze decks *while he builds them*. The tool must read and play **any** deck mechanically; the pilot may be imperfect. The goldfish engine can't get there: ~44% of the pool fully read, every mechanic hand-built, and GEF only moves the problem into "build the engine feature". Forge is a mature GPL-3.0 rules engine with ~34k card scripts and a headless sim mode. Decision (Ian, 2026-10-01): **Forge is the primary simulator.** Ian expects to rarely use goldfish.py. What he wants to keep is **goldfish's report format**, plus the new data in Phase D.
+The user's goal: analyze decks *while they build them*. The tool must read and play **any** deck mechanically; the pilot may be imperfect. The goldfish engine can't get there: ~44% of the pool fully read, every mechanic hand-built, and GEF only moves the problem into "build the engine feature". Forge is a mature GPL-3.0 rules engine with ~34k card scripts and a headless sim mode. Decision (user, 2026-10-01): **Forge is the primary simulator.** The user expects to rarely use goldfish.py. What he wants to keep is **goldfish's report format**, plus the new data in Phase D.
 
-- goldfish.py is **frozen** (legacy). No new engine features, no GEF work, no parser work. It stays in the repo, still working and still in smoke, as a fast cross-check and for quick "what-if" ladders. Don't delete it unless Ian asks.
+- goldfish.py is **frozen** (legacy). No new engine features, no GEF work, no parser work. It stays in the repo, still working and still in smoke, as a fast cross-check and for quick "what-if" ladders. Don't delete it unless the user asks.
 - Mark GEF/T3 and the goldfish parser roadmap frozen in GOLDFISH_ROADMAP.md and UPGRADE_PLAN.md when Phase A lands.
 - **Report layer = goldfish's layout.** Extract goldfish's stats/report code (`pct`, `q`, `mean`, `by_turn`, `summary`, `print_report`, `print_combat`, and the variant side-by-side) into `scripts/sim_report.py`; goldfish imports it back unchanged, so its output stays byte-identical (check with smoke plus a diff of a seeded run before/after). forge_sim.py fills the same `res` bundle (`rec[metric][turn]` lists, `cmd_first`, `first`, `finals` with `deaths`/`won`/`how`, `attr`, `tut`, `trigs`, `dsrc`, `kept`, `mulliganed`, ...) from Forge data, then appends its new sections. A metric Forge computes differently from goldfish keeps its row but gets a `≈` marker and a footnote; a metric Forge can't produce is omitted, never faked.
 
@@ -78,14 +78,14 @@ Ian's goal: analyze decks *while he builds them*. The tool must read and play **
 ## First-run findings (Chulane, the reason this plan exists)
 
 - 1v1 vs dummy, seed 7, 5 games: 3 combat wins, 1 Thassa's Oracle win, 1 loss by drawing from an empty library.
-- 4p game: Chulane cast on its 5th turn, went off on its 8th (~400 events), Primal Surge resolved correctly, then the AI cast Thassa's Oracle **from hand** with Chulane + Beast Whisperer out. The cast triggers (CR 601.2i) drew from an empty library before Oracle could enter (603.6a), so it lost (704.5b). This is a **pilot error inside a real rules trap**: a human stops Surge early (it's a "may") or removes the draw triggers first. If Surge *flips* Oracle, its ETB is ordered with the other triggers (603.3b) and wins. Ian confirmed this line.
+- 4p game: Chulane cast on its 5th turn, went off on its 8th (~400 events), Primal Surge resolved correctly, then the AI cast Thassa's Oracle **from hand** with Chulane + Beast Whisperer out. The cast triggers (CR 601.2i) drew from an empty library before Oracle could enter (603.6a), so it lost (704.5b). This is a **pilot error inside a real rules trap**: a human stops Surge early (it's a "may") or removes the draw triggers first. If Surge *flips* Oracle, its ETB is ordered with the other triggers (603.3b) and wins. The user confirmed this line.
 - Lesson for every report: **separate "rules outcome" from "pilot decision"**, and tag known AI traps.
 
 ## Problems to design around
 
 1. **4-player games don't end** when the hero dies: dummies play on until the clock. Fix in Phase B by ending the game on hero loss (`setGameOver`). Phase A workaround: a short `-c` clock plus parsing the hero's loss line as the real end; never fall back to 1v1. With real opponents, the hero losing still ends *our* measurement (record who/what killed the hero), but the pod result is kept too.
 2. **Dummies must never act.** Kozilek + 99 Wastes is wrong: Kozilek is castable on turn 10. Use a commander the deck can't cast: a mono-W legendary (e.g. Isamaru, Hound of Konda) + 99 Wastes. Wastes make only {C}; the identity is legal. Check that no dummy `Add To Stack` lines exist in any run.
-3. **Opponent model (DECIDED by Ian 2026-10-01): always 3 opponents, 4-player pod, 40 life each.** No 1v1 mode as a default and no "1 dummy at 120" shortcut. Each of the 3 seats is independently either a **dummy** (vacuum) or a **real deck** (Ian's own lists, tester lists we build, or anything else). Mixed pods (e.g. 1 real + 2 dummies) must work. This is a hard requirement: **never simplify the opponent seats down to dummies-only**, in any phase, tool, flag or default. Ian will test both "into a vacuum" and "into real lists"; every metric and report must work in both modes and say which mode produced it.
+3. **Opponent model (DECIDED by the user 2026-10-01): always 3 opponents, 4-player pod, 40 life each.** No 1v1 mode as a default and no "1 dummy at 120" shortcut. Each of the 3 seats is independently either a **dummy** (vacuum) or a **real deck** (the user's own lists, tester lists we build, or anything else). Mixed pods (e.g. 1 real + 2 dummies) must work. This is a hard requirement: **never simplify the opponent seats down to dummies-only**, in any phase, tool, flag or default. The user will test both "into a vacuum" and "into real lists"; every metric and report must work in both modes and say which mode produced it.
 4. **Startup cost.** 15 s per JVM. Phase A batches with `-n N` in one invocation. Phase B runs every game in one JVM.
 5. **AI quality.** Forge AI is decent at fair Magic and weak at combo sequencing. Never present a win rate without the loss-reason breakdown and the AI-flag list.
 6. **Version drift.** New sets land in Forge releases. Pin `FORGE_VERSION` in `forge_setup.py`, bump deliberately, and log the version in every report.
@@ -109,7 +109,7 @@ tests/fishpond_units.py + tests/fishpond/*.log   offline parser checks on real F
 data/fishpond/<run>/            (gitignored; plan: data/forge/) meta.json, games.jsonl, report.txt, decks/, logs/
 ```
 
-Decisions made while building (iteration inside the plan, flagged for Ian):
+Decisions made while building (iteration inside the plan, flagged for the user):
 - `--cap` (default 20 hero turns) is separate from the report horizon `--turns` (default 10): with one flag, Chulane's typical T12-T19 wins would all read "unfinished".
 - Harness lands are counted at end of turn and mana/colors at the start of main phase plus that turn's land drop, to match goldfish's sense ("after the land drop").
 - The harness raises Forge's AI decision timeout (see Verified facts) so results don't depend on machine load.
@@ -125,7 +125,7 @@ Reuse `mtg.py`'s deck parsing (headers: `bracket`, `plan`, `key`, `track`, `pack
 3. `forge_sim.py run DECK --games N --seed S [--opp SPEC]x3`: always a 4-player pod; invokes the CLI, captures stdout, splits it per game on `Game Result:`. Opponent decks go into `~/.forge/decks/commander/` under unique names (avoid name collisions with the hero).
 4. Log parser -> per game JSON: winner, reason (normalized: `combat`, `alt_win:<card>`, `decked`, `life`, `poison`, `cmdr_dmg`, `draw/clock`), hero's turn count, per hero-turn: lands played, spells cast (names), triggers, damage dealt, life totals; first turn each `track`/`key` card is cast or enters; commander casts; mulligans.
 5. Report via `sim_report.py` (goldfish layout first, then the new sections): win %, kill-turn P10/median/P90, wins by route, losses by reason, commander turn distribution, tracked/key card turns, top cast cards, AI-flag list, Forge version, seeds, games, wall time.
-6. Acceptance (deck: `tests/forge/chulane.txt`): Chulane 50 games in a vacuum (3 dummies) **and** 20 games into 3 real lists (Ian's own decks are fine as the first gauntlet); numbers reproduce with the same seed; dummies never cast; hand-audit 3 game logs against the parsed JSON, including at least one with real opponents.
+6. Acceptance (deck: `tests/forge/chulane.txt`): Chulane 50 games in a vacuum (3 dummies) **and** 20 games into 3 real lists (the user's own decks are fine as the first gauntlet); numbers reproduce with the same seed; dummies never cast; hand-audit 3 game logs against the parsed JSON, including at least one with real opponents.
 
 ## Phase B: Java harness (target: 1–2 sessions)
 
@@ -134,7 +134,7 @@ Reuse `mtg.py`'s deck parsing (headers: `bracket`, `plan`, `key`, `track`, `pack
 - Subscribe to events; at each hero `TurnBegan` / main phase snapshot: lands, untapped mana sources and producible mana (best effort: count untapped lands + creatures/artifacts with mana abilities), hand size, library size, graveyard size, board creatures/power, commander zone and tax. Record mana actually spent from `Mana:`/ManaPool events.
 - End the game on hero loss or all opponents dead; turn cap (`--turns`, default 10 hero turns) ends the game as "unfinished" (not a draw).
 - Output: one JSONL line per game.
-- Acceptance: parity with Phase A results on the same seeds (win/route/turns within noise); throughput measured and logged (target ≥ 4 games/min on 1 CPU, ≥ 30/min on Ian's desktop with parallel JVMs).
+- Acceptance: parity with Phase A results on the same seeds (win/route/turns within noise); throughput measured and logged (target ≥ 4 games/min on 1 CPU, ≥ 30/min on the user's desktop with parallel JVMs).
 
 ## Phase C: goldfish parity metrics
 
@@ -154,11 +154,11 @@ Map each goldfish report section to Forge data:
 ## Phase D: new data Forge makes possible
 
 Priority order:
-1. **Win routes and loss reasons** (already in Phase A). Losses by own action (decking, Oracle trap, life paid) are the most useful thing Ian has never had.
+1. **Win routes and loss reasons** (already in Phase A). Losses by own action (decking, Oracle trap, life paid) are the most useful thing the user has never had.
 2. **Card impact:** per card, the cast rate, average cast turn, win rate in games it resolved vs not (confounded: label it "association"), and dead-card rate (in hand at game end, never castable).
 3. **Combo/line detection:** sequences that preceded wins (e.g. Surge -> Oracle ETB). Count how often each key package assembles and fires.
 4. **Known-AI-trap tagging:** pattern rules over the log, e.g. `oracle_trap` = Oracle cast from hand while library ≤ pending cast-draw triggers. Report "losses attributable to pilot error" separately and offer an "excluding tagged pilot errors" win rate.
-5. **Real-opponent analysis** (the seats already support real decks from Phase A; this item is the *reporting*): win rate by pod and by opponent deck, which opponent killed the hero and how, the turn the hero's plan was first disrupted (removal/counter/wipe hitting the hero's key cards), and how the hero's interaction was spent. Build tester gauntlets in `decks/opponents/` by bracket (Ian's own decks first, then purpose-built testers, e.g. "B3 interaction-heavy", "B3 fast combo", "B2 battlecruiser"). This replaces the goldfish disruption ladder with real interaction; keep the ladder in goldfish.py for fast what-ifs.
+5. **Real-opponent analysis** (the seats already support real decks from Phase A; this item is the *reporting*): win rate by pod and by opponent deck, which opponent killed the hero and how, the turn the hero's plan was first disrupted (removal/counter/wipe hitting the hero's key cards), and how the hero's interaction was spent. Build tester gauntlets in `decks/opponents/` by bracket (the user's own decks first, then purpose-built testers, e.g. "B3 interaction-heavy", "B3 fast combo", "B2 battlecruiser"). This replaces the goldfish disruption ladder with real interaction; keep the ladder in goldfish.py for fast what-ifs.
 6. **AI-profile sensitivity:** run Default vs Reckless/Cautious; if results swing a lot, the deck is pilot-sensitive (that's a finding).
 7. **Mana analysis:** flood/screw rate by turn, color-screw (castable-in-hand vs held), commander-tax cost over a game.
 8. **Interaction stats** (with real opponents): how often the deck's removal/counters were used, and what they hit.
@@ -170,7 +170,9 @@ Priority order:
 - **Sampling error:** report counts with 95% intervals; a win rate from 200 games is ±~7 pts, from 1,000 games ±~3 pts.
 - **Pilot error:** report the tagged-trap share. If more than ~20% of losses are tagged, say the deck is pilot-sensitive and treat the win rate as a floor.
 
-## Docs and housekeeping
+## Docs and housekeeping (done)
+
+All done; the user-facing doc is `docs/FISHPOND.md` (not `FORGE.md`), the tool row is in USE_INSTRUCTIONS §2, `data/fishpond/` is gitignored, and the frozen notes are in place.
 
 - When Phase A lands: add `docs/FORGE.md` (user-facing usage, like GOLDFISH.md), a row in USE_INSTRUCTIONS §2 ("How a deck plays out → forge_sim.py; fast mana/curve/variants → goldfish.py"), and a smoke test that runs 2 seeded games if Forge is cached (skip cleanly if not).
 - Mark GEF/T3 frozen in GOLDFISH_ROADMAP.md and UPGRADE_PLAN.md, with a pointer here.
@@ -188,19 +190,24 @@ Priority order:
 | Phase B (harness) | Built 2026-10-01: per-game seeds (same seed = identical game mid-JVM, verified), hero-loss end (plays on with real opponents left), turn cap, snapshots |
 | Phase C | Partly: development (lands, mana, colors, cmdr out, casts), card flow (extra draws, hand, graveyard), combat tables filled from snapshots + log; `--variant` works (paired by seed and pod). Not yet: mana spent, stranded, discarded, recursion |
 | Phase D | Partly: win routes/loss reasons with killer seat (1), cast rates + association win rates + never-cast (2, partial), pilot tags self_decked/surge_trap/oracle_trap (4), real-opponent pods (5, reporting partial) |
+| Resumable runs, Windows support | Done 2026-10-01 / 2026-10-03 (`run --resume`; override home via junctions/hard links) |
+| Pilot policy Part 1 + Part 2 (patches 07-09, card overrides, puzzles) | Built 2026-10-02 (see "Pilot policy") |
+| Patches 10 (empty-library wins) and 11 (large-board blocks) | Built 2026-10-03 (FORGE_ISSUES #6, #7) |
+| Pilot study (16 bracketed decks, 100 games) | Done 2026-10-04; its upgrade plan is **next** (items 1-7, none started) |
+| Landbase tempo validation logging | Planned: `docs/LANDBASE_TEMPO_PLAN.md` step 3 |
 
-## Lookahead and tutoring (2026-10-01, Ian: enable lookahead, moderate/low setting)
+## Lookahead and tutoring (2026-10-01, the user: enable lookahead, moderate/low setting)
 
-- Forge's AI has an optional lookahead (`forge.ai.simulation`, per player via `AIOption`): `USE_HYBRID_SIMULATION` = the heuristic AI picks, `OnePlaySafetyChecker` simulates each play one move ahead and vetoes it if it scores worse; `USE_FULL_SIMULATION` = plays chosen by `SpellAbilityPicker` search (`SimulationController.DEFAULT_MAX_DEPTH` = 3, a constant, not a setting) and library searches decided by simulating each candidate (`chooseCardToHiddenOriginChangeZone`). No depth or strength knob exists. Ian's rule (none/low/high -> low): **default `--sim hybrid`** for the user's seat and real-deck opponents (`--opp-sim`); dummies always off. The harness reads back each controller's mode and records it per game.
+- Forge's AI has an optional lookahead (`forge.ai.simulation`, per player via `AIOption`): `USE_HYBRID_SIMULATION` = the heuristic AI picks, `OnePlaySafetyChecker` simulates each play one move ahead and vetoes it if it scores worse; `USE_FULL_SIMULATION` = plays chosen by `SpellAbilityPicker` search (`SimulationController.DEFAULT_MAX_DEPTH` = 3, a constant, not a setting) and library searches decided by simulating each candidate (`chooseCardToHiddenOriginChangeZone`). No depth or strength knob exists. The user's rule (none/low/high -> low): **default `--sim hybrid`** for the user's seat and real-deck opponents (`--opp-sim`); dummies always off. The harness reads back each controller's mode and records it per game.
 - The AI timeout also exists as a preference (`MATCH_AI_TIMEOUT`); the harness keeps setting the field directly.
 - Forge 2.0.15's lookahead crashes on prepared cards: `docs/FORGE_ISSUES.md` #1 (pause + replay workaround, both reported).
 - Tutoring: the plain AI picks library-search targets with generic pickers (`ComputerUtilCard.getBestAI`, `getMostExpensivePermanentAI`, `getBestCreatureAI`; Forge's own Demonic Tutor script: "will generally look for the most expensive castable thing"). Hybrid doesn't change that; full does (board-score simulation, so value picks, not combo pieces). Deck-level `AiHints` only drive sideboarding; card hints are global. The harness logs every library search/dig of the user's seat into hand or play (`#FP-TUTOR`: source, card, land, key card, key cards left) and the report prints tutor targets per tutor and key-card fetches. Superseded 2026-10-02 by "Pilot policy" below (general, on by default, all seats).
 - **Measured (Chulane vacuum, the same 12 seeds, 2026-10-01):** lookahead off won 4 / lost 8 (7 `surge_trap`), median game 77 s, 15 CPU-minutes; hybrid won 8 / lost 3 (3 `surge_trap`) / 1 cut by the then 600 s per-game limit (now 1800 s), median game 152 s, 41 CPU-minutes (about 2.7x). Lookahead paused on 3 of 141 hero turns (prepared cards), 0 fallbacks. Zur vacuum, 8 games, hybrid: won 5, lost 0, 3 at the cap; median game 61 s (about 53 s without). Zur's tutor picks (now logged): Words of Worship 7, Astral Drift 5, Solitary Confinement 5, Rule of Law 5 (defensive or hate pieces that do nothing against dummies): value-blind, as the code says; Solve the Equation fetched Approach of the Second Sun both times.
 - Pilot watch: known blind spots are tagged (`surge_trap`, `oracle_trap`) or listed (win-condition cards cast vs won with, never-cast, AI-flagged, dead cards, tutor targets). Add tags/lines as new ones appear.
 
-## Pilot policy (plan, 2026-10-02; Ian approved the direction, implementation waits until the active sims finish)
+## Pilot policy (plan, 2026-10-02; the user approved the direction, implementation waits until the active sims finish)
 
-**Why.** 25-game Zur runs (same seed and pod: Chulane / Niv / Omnath, hybrid) went 3-22 under both Default and Cautious, every win Approach of the Second Sun. The profile barely matters (18 of 25 paired games ended alike); the pilot does. Zur's tutors fetch by generic "best card" pickers: Grasp of Fate was Default's top Zur fetch (10/25 games), while the deck is built to fetch Astral Slide (the engine) and fire it with its 27 cycling cards (Step Through among them). Zur was cast in only ~75% of games, and the core enchantments are AI-flagged (`AI:RemoveDeck:All`: Astral Slide, Necrodominance, Solitary Confinement, Words of Worship...). Ian's direction: **systematic pilot changes over deck-specific ones**, on by default for every seat, with deck-specific overrides only where the general rules provably miss.
+**Why.** 25-game Zur runs (same seed and pod: Chulane / Niv / Omnath, hybrid) went 3-22 under both Default and Cautious, every win Approach of the Second Sun. The profile barely matters (18 of 25 paired games ended alike); the pilot does. Zur's tutors fetch by generic "best card" pickers: Grasp of Fate was Default's top Zur fetch (10/25 games), while the deck is built to fetch Astral Slide (the engine) and fire it with its 27 cycling cards (Step Through among them). Zur was cast in only ~75% of games, and the core enchantments are AI-flagged (`AI:RemoveDeck:All`: Astral Slide, Necrodominance, Solitary Confinement, Words of Worship...). The user's direction: **systematic pilot changes over deck-specific ones**, on by default for every seat, with deck-specific overrides only where the general rules provably miss.
 
 ### Part 1: tutor policy in the harness (`fishpond/harness`)
 
@@ -225,7 +232,7 @@ Priority order:
 2. **Group by mechanic**, not card: optional life/discard upkeep costs (Solitary Confinement), draw replacement and skipping draws (Necrodominance, Words of Worship), cycling-triggered flicker (Astral Slide/Drift), and so on. One fix per decision pattern.
 3. **Cheapest fix first:** card-script AI hints (`AILogic`, SVars) shipped as override files in `fishpond/forge_card_overrides/`, applied at setup like `forge_patches/`; Java patches to the AI classes only when hints can't express it.
 4. **Tests are Forge puzzles** (`.pzl` board states): "Slide on the battlefield, a cycler in hand at end of an opponent's turn: does the AI cycle with a creature to flicker?" Fast, deterministic, re-run on every Forge bump.
-5. **Upstream:** Forge (Card-Forge/forge, GPL-3) takes contributions. Before sending anything: read its CONTRIBUTING notes and any stance on AI-assisted code, open an issue or discussion first, keep PRs small with puzzle tests, and disclose that Claude helped write them. Ian submits under his account and owns the review. Accepted patches drop out of our patch set.
+5. **Upstream:** Forge (Card-Forge/forge, GPL-3) takes contributions. Before sending anything: read its CONTRIBUTING notes and any stance on AI-assisted code, open an issue or discussion first, keep PRs small with puzzle tests, and disclose that Claude helped write them. The user submits under their account and owns the review. Accepted patches drop out of our patch set.
 
 ### Status (2026-10-02, built)
 
@@ -255,11 +262,11 @@ Phase A/B acceptance, 2026-10-01, Claude Code container (4 CPUs), Forge 2.0.15, 
 
 ### Yusri follow-ups (open; from the 2026-10-03 vacuum run)
 
-1. **Yusri's coin count.** Forge's script is `AILogic$ Max` (always 5). Ian plays it the same way: always 5 unless the flips can kill him outright, so the only change wanted is a buffer of 1: choose 5 unless 2 x (flips lost in the worst case) >= life (at 11 life, flip 5; at 10, take fewer). Krark's Thumb doesn't change the worst case. Game 20 (seed 1000023) died to 5 flips at 8 life on T8.
-2. **Enter the Infinite -> Thassa's Oracle.** Game 16 (seed 1000019, T11): won 5 flips, cast Enter the Infinite free *after* the Toad's attack trigger, never cast Thassa's Oracle, then cast Edgar and decked to his enter-the-battlefield draw. Ian: Enter the Infinite is right even without the win in hand, since drawing the library finds the Oracle; the miss is sequencing. To check: was the Oracle the card Enter the Infinite put back on top (Forge's choice of card to put back), or did patch 10's hold-the-Oracle check refuse a winning cast? Then: never put back a win card, cast the Oracle before any further draw, and don't cast a forced draw into an empty library with no win card out. `--sim full` likely won't fix it (its search scores board value; it doesn't value an empty library with the Oracle in hand and doesn't make the put-back choice).
-3. **Mystical Tutor: Enter the Infinite -> Show and Tell (3 times).** Show and Tell was cast in 5 games and won 4; it put out big threats (Ancient Silver Dragon in game 0) and led into wide attacks. Ian prefers Enter the Infinite unless Show and Tell sets up a play now. Options: a combo-layer rule (Show and Tell only when the hand holds a big permanent), or a `# priority: Enter the Infinite` header (cheap, but it would also move early tutors off ramp).
+1. **Yusri's coin count.** Forge's script is `AILogic$ Max` (always 5). The user plays it the same way: always 5 unless the flips can kill them outright, so the only change wanted is a buffer of 1: choose 5 unless 2 x (flips lost in the worst case) >= life (at 11 life, flip 5; at 10, take fewer). Krark's Thumb doesn't change the worst case. Game 20 (seed 1000023) died to 5 flips at 8 life on T8.
+2. **Enter the Infinite -> Thassa's Oracle.** Game 16 (seed 1000019, T11): won 5 flips, cast Enter the Infinite free *after* the Toad's attack trigger, never cast Thassa's Oracle, then cast Edgar and decked to his enter-the-battlefield draw. The user: Enter the Infinite is right even without the win in hand, since drawing the library finds the Oracle; the miss is sequencing. To check: was the Oracle the card Enter the Infinite put back on top (Forge's choice of card to put back), or did patch 10's hold-the-Oracle check refuse a winning cast? Then: never put back a win card, cast the Oracle before any further draw, and don't cast a forced draw into an empty library with no win card out. `--sim full` likely won't fix it (its search scores board value; it doesn't value an empty library with the Oracle in hand and doesn't make the put-back choice).
+3. **Mystical Tutor: Enter the Infinite -> Show and Tell (3 times).** Show and Tell was cast in 5 games and won 4; it put out big threats (Ancient Silver Dragon in game 0) and led into wide attacks. The user prefers Enter the Infinite unless Show and Tell sets up a play now. Options: a combo-layer rule (Show and Tell only when the hand holds a big permanent), or a `# priority: Enter the Infinite` header (cheap, but it would also move early tutors off ramp).
 
-## Pilot study 2026-10-04 (draft; Ian: plan only, no patches yet)
+## Pilot study 2026-10-04 (draft; the user: plan only, no patches yet)
 
 **What ran.** Every 4-deck pod within each bracket of the 16 bracketed lists in `decks/`, 4 games a pod, hybrid at every seat, Default AI, `--cap 20`: B2 5 pods, B3 15, B4 5 = 100 games (`data/fishpond/pilot_study_20261004/`, `pods.json`; seeds 7319044 + 100 x pod index). Seat 1 rotated across pods. 89 games ended with a single winner. 11 didn't: 5 timeouts and 1 out-of-memory crash, all from the Balancer loop (FORGE_ISSUES #8); 3 games voided when that crash killed the worker's JVM; 1 NPE (#9); 1 at the turn cap.
 
@@ -275,49 +282,49 @@ Phase A/B acceptance, 2026-10-01, Claude Code container (4 CPUs), Forge 2.0.15, 
 
 **Upgrade plan, in order:**
 
-1. **Loop shortcut (Comprehensive Rules "Taking Shortcuts" and "Handling Infinite Loops"), fixes #8.** Ian's idea: once a loop starts and nobody responds, let it run many times without re-checking the board each time.
+1. **Loop shortcut (Comprehensive Rules "Taking Shortcuts" and "Handling Infinite Loops"), fixes #8.** The user's idea: once a loop starts and nobody responds, let it run many times without re-checking the board each time.
    - *Detect:* a pilot seat casts or activates the same ability from the same card 3 times in one priority sequence, the stack resolves empty between, and the card returns to where it started (Sprout Swarm back to hand).
    - *Offer the response window once:* every other seat gets one real priority pass, with its normal AI and lookahead, as the shortcut rules allow ("accept the shortcut or say where you'll stop it").
    - *Run it fast:* if nobody responds, the next iterations run with lookahead off for every seat, opponents auto-pass, and the looping AI skips its decision step (the harness casts the same ability directly). Each iteration still really resolves, so triggers stay correct (Soul Warden, Parallel Lives, Suture Priest); that costs milliseconds, not the seconds each hybrid check costs now.
-   - *Stop:* when a cheap goal check passes (opponents' total life covered by the looping seat's attack power with a margin for blockers, or by a drain counter), or at a cap (`-Dfishpond.loopMax`, default 1000, Ian 2026-10-04). Then mark the ability done for the turn so the AI moves on to combat. Log `#FP-LOOP`: seat, card, iterations, stop reason. The report counts them.
+   - *Stop:* when a cheap goal check passes (opponents' total life covered by the looping seat's attack power with a margin for blockers, or by a drain counter), or at a cap (`-Dfishpond.loopMax`, default 1000, the user 2026-10-04). Then mark the ability done for the turn so the AI moves on to combat. Log `#FP-LOOP`: seat, card, iterations, stop reason. The report counts them.
    - *Not doing:* applying N iterations in one bulk step (making 1000 tokens at once). That skips triggers and differs per card; real iterations without lookahead are fast enough.
    - *Tests:* puzzles `sprout_swarm_loop` (Witherbloom + Sprout Swarm + enough mana: loops, stops, attacks for lethal) and `sprout_swarm_loop_soul_warden` (triggers counted), plus a guard puzzle where a looping seat can't win and must stop at the cap and pass. Acceptance: replay the 6 #8 seeds; all finish well under the 30-minute limit, deterministic on replay.
 2. **Harness hardening** (FORGE_ISSUES "Harness safety net" gaps): unwrap `ExecutionException` in `SafeControllerAi` so lookahead exceptions are remade without lookahead; restart a worker's JVM after `OutOfMemoryError` and replay its remaining games from their seeds.
 3. **#9 root cause:** replay seed 7320765962232, find the null-source card state, fix the copy in Forge.
-4. **Commander combat safety (Ian's rules, 2026-10-04),** a pilot patch in `AiAttackController` / `AiBlockController`. Symmetrical: applies to every pilot seat's commander, never the hero alone (Ian, 2026-10-04: pilot logic is always symmetrical):
+4. **Commander combat safety (the user's rules, 2026-10-04),** a pilot patch in `AiAttackController` / `AiBlockController`. Symmetrical: applies to every pilot seat's commander, never the hero alone (user, 2026-10-04: pilot logic is always symmetrical):
    - *Attack* with the commander only into a player whose untapped potential blockers can't kill it (first strike, deathtouch, and pump or removal the AI can see count as able to kill it). If every opponent can kill it, it stays home. Indestructible, protection and similar count as survivable.
    - *Block* with the commander only an attacker that won't kill it. If every incoming attacker would kill it, don't block with it, unless the damage left unblocked would be lethal to its controller (life or commander damage); then block as Forge would.
-   - *Exception, attack triggers (Ian, 2026-10-04):* the attack safeguard is skipped for a commander with an attack trigger when attacking gets value now (Yusri's coin flips, Zur's fetch, Klauth's mana; read from the card's `Attacks` triggers). It still swings at the least problematic opponent (check that Forge's defender choice already does this, and fix it if not), and stays home if attacking would leave its controller dead on the swing back. Blocking rules have no exception. Chulane isn't one (its value is casting creatures).
+   - *Exception, attack triggers (user, 2026-10-04):* the attack safeguard is skipped for a commander with an attack trigger when attacking gets value now (Yusri's coin flips, Zur's fetch, Klauth's mana; read from the card's `Attacks` triggers). It still swings at the least problematic opponent (check that Forge's defender choice already does this, and fix it if not), and stays home if attacking would leave its controller dead on the swing back. Blocking rules have no exception. Chulane isn't one (its value is casting creatures).
    - *Also check* why `AiAttackController` kept Zur (21% of turns) and Chulane (5%) home in the study.
    - *Puzzles:* commander into three boards that can kill it (stays home); into one safe opponent (attacks that one); blocks the small attacker, not the lethal one; must chump because unblocked is lethal; Zur attacks into risk for a fetch; Zur stays home when the swing back kills its controller.
 5. **Finisher misses:** Primal Surge (held now? check whether the `surge_trap` handling over-corrected), Enter the Infinite (0 casts after patch 10: replay a Yusri hero game where it rotted in hand), Approach of the Second Sun's second cast. One puzzle each.
 5a. **Araumi encore:** (1) un-flag override `araumi_of_the_dead_tide.txt` plus puzzles: Araumi out with a full graveyard and Gray Merchant / Archon of Cruelty / Gyruda in it, enough mana (activates at sorcery speed, encores the best enter- or leave-the-battlefield creature it can pay for); one where it can't pay the encore (doesn't activate). (2) If the un-flagged AI misplays it, a pilot patch: pick the target by the creature's ETB/LTB value per opponent within the mana left, and make sure encore costs get paid (Rakshasa Debaser's printed encore was never paid either). (3) Rank the deck's other flags (Dakmor Salvage, Lim-Dûl's Vault, Toxic Deluge) under Pilot policy Part 2. (4) Re-run Araumi's 4 B2 pods.
 5b. **Ragost engine under pressure:** vacuum, 10 games (`data/fishpond/ragost_vacuum_20261004`, seed 8810427): won 10/10, Ragost's ability fired 30 times in 65 Ragost turns (31 damage a game, its top source) and the AI sacrificed non-token artifacts too (Solemn Simulacrum, Servo Schematic, Great Furnace). In the B2 pods it fired 6 times in about 76 turns. So the AI can run the engine but stops against real opponents. Replay a pod game where Ragost had a Food and {1} up and didn't activate, find which check said no (keeping blockers? danger checks? the untap needing lifegain?), and fix that logic for every seat.
-5c. **Commander timing (policy level, every seat and deck):** Klauth's seat-1 games had a median of 8 mana available on turn 4 and 9-10 on turn 5, yet Klauth was out by turn 5 in 0% / 25% of games (Ian: it should land on 4 or 5; attacking on turn 5 instead of 7 matters a lot, same for Wilson). The AI spends the mana on other spells first. Forge already ran about a turn behind goldfish on commanders (Acceptance log).
-   - *Default (Ian, 2026-10-04):* most decks just want their commander, combat-relevant or not, so cast it as soon as it's affordable unless something more urgent (survival layer) is in hand. A general policy rule, not a per-card fix.
-   - *Careful with exceptions:* some commanders are worse early or help the table (Ian's example: a Grothama list; Grothama's leave-the-battlefield draw rewards opponents who damaged it), and some decks hold the commander for a protected or combo turn. Before shipping: list such patterns (symmetric or opponent-benefiting commander text, commanders that need setup on the battlefield, decks whose plan or key line says to hold it), give the rule a deck-header opt-out (e.g. `# commander: hold`), and don't guess. Ask Ian about any deck the heuristics flag.
+5c. **Commander timing (policy level, every seat and deck):** Klauth's seat-1 games had a median of 8 mana available on turn 4 and 9-10 on turn 5, yet Klauth was out by turn 5 in 0% / 25% of games (the user: it should land on 4 or 5; attacking on turn 5 instead of 7 matters a lot, same for Wilson). The AI spends the mana on other spells first. Forge already ran about a turn behind goldfish on commanders (Acceptance log).
+   - *Default (user, 2026-10-04):* most decks just want their commander, combat-relevant or not, so cast it as soon as it's affordable unless something more urgent (survival layer) is in hand. A general policy rule, not a per-card fix.
+   - *Careful with exceptions:* some commanders are worse early or help the table (the user's example: a Grothama list; Grothama's leave-the-battlefield draw rewards opponents who damaged it), and some decks hold the commander for a protected or combo turn. Before shipping: list such patterns (symmetric or opponent-benefiting commander text, commanders that need setup on the battlefield, decks whose plan or key line says to hold it), give the rule a deck-header opt-out (e.g. `# commander: hold`), and don't guess. Ask the user about any deck the heuristics flag.
    - *Acceptance:* commander-out-by-turn and win rate on the same seeds before and after, for every deck in `decks/`. No deck may get worse without an explanation; Klauth and Wilson puzzles on curve.
-6. **`fishpond study` command:** automate this run: pods by bracket, chunked so no process outlives Claude's 2-hour background-task limit (this run's driver was killed at 24/25 pods). Long studies are meant to run locally from Ian's own terminal (no limit) as runs get longer; the command prints the line to run and Claude reads the results folder afterwards. It must be resumable and print a per-deck table (wins over decided games, undecided, kills, deaths, how it won). Win attribution must use the single surviving winner; on draws, cap and timeout games Forge marks every seat "has won", which the first count of this study got wrong.
+6. **`fishpond study` command:** automate this run: pods by bracket, chunked so no process outlives Claude's 2-hour background-task limit (this run's driver was killed at 24/25 pods). Long studies are meant to run locally from the user's own terminal (no limit) as runs get longer; the command prints the line to run and Claude reads the results folder afterwards. It must be resumable and print a per-deck table (wins over decided games, undecided, kills, deaths, how it won). Win attribution must use the single surviving winner; on draws, cap and timeout games Forge marks every seat "has won", which the first count of this study got wrong.
 7. **Re-run** the 15 B3 pods after 1-2 (Balancer's real rate), then the whole study at 8 games a pod for tighter numbers.
 
 ## Roadmap (2026-10-01, after the merge to main)
 
-Fishpond works end to end but isn't "set". In priority order:
+Superseded as the priority list by the pilot study's upgrade plan above; kept for the items still open (3, 4, 5, 7, 8). Fishpond works end to end but isn't "set". In the original order:
 
-1. **Run it where Ian runs it.** Everything so far ran in a 4-CPU Claude Code container. The chat sandbox has 1 CPU, ~4 GB and no javac by default: test `setup --jdk`, memory with lookahead, and a real "Launch Fishpond" form round trip there.
+1. **Run it where the user runs it.** Everything so far ran in a 4-CPU Claude Code container. The chat sandbox has 1 CPU, ~4 GB and no javac by default: test `setup --jdk`, memory with lookahead, and a real "Launch Fishpond" form round trip there.
    - *Chat sandbox, 2026-10-02:* `setup --jdk` works (65 s: Forge download, JDK install, 9 patches built). Hybrid lookahead at every real seat runs about 10 min per 4-player game on 1 CPU (Zur vs Chulane/Niv/Omnath, game 1: 590 s, 13 hero turns), so a 25-game read is ~4 h: fine for small checks, home machine for A/B batches. Background runs must be started with `setsid nohup ... < /dev/null &` or they die when the tool call returns; `--resume` picks them back up.
 2. ~~Resumable runs~~ Done 2026-10-01: `run --resume RUN_DIR [--trials N]` replays cut-off games from their seeds and adds new ones; `report` shows partial runs. Mulligan line added to the report.
 3. **Re-baseline with lookahead on.** The acceptance numbers (Chulane vacuum 26%, 0/20 into the gauntlet) were measured with lookahead off. Re-run Chulane, and each of Yusri, Zur, Klauth as the hero (vacuum + gauntlet), which also completes the 3-deck goldfish cross-check.
 4. **A headline block** at the top of the report (5-6 lines: win rate and interval, how it wins, how it loses, pilot-error share, the user's field-9 questions answered), with the tables below as detail. Combined report when a run uses both a vacuum and a gauntlet pod.
 5. **Validate `--variant` at scale** (code path exists, never run on a real swap question).
-6. **Pilot modes:** profiles measured on Zur 2026-10-02 (Default vs Cautious, 25 games each: no real difference, see "Pilot policy"); `--sim full` runs in progress in another session. Next: the pilot policy plan.
-7. **Gauntlet growth:** tester decks by bracket beyond Ian's own lists (Phase D 5).
+6. ~~**Pilot modes:**~~ Done 2026-10-02 (pilot policy built, see above). profiles measured on Zur 2026-10-02 (Default vs Cautious, 25 games each: no real difference, see "Pilot policy"); `--sim full` runs in progress in another session. Next: the pilot policy plan.
+7. **Gauntlet growth:** tester decks by bracket beyond the user's own lists (Phase D 5).
 8. **Leftovers:** stranded and cycled columns, combo/line detection, card impact beyond association; Forge version-bump procedure (re-test FORGE_ISSUES entries).
 
-## Open questions for Ian
+## Open questions for the user
 
-- The brackets, plans and key cards of the saved decks (~~decks/Ians_Yusri_Omni~~ done 2026-10-03; Ians_Zur_Cycling, Ians_Klauth_Dragons). Reports print "bracket ?" until they carry headers. Ians Ragost Burn: list not in the repo yet.
+- ~~The brackets, plans and key cards of the saved decks.~~ Done 2026-10-04: all 16 lists in `decks/` carry a bracket header; Ragost is in the repo.
 - ~~Klauth's list has 101 cards.~~ Fixed 2026-10-02: Vorinclex, Voice of Hunger out (d190686).
 
 - Which decks form the first real-opponent gauntlet, and at what bracket?
-- ~~Pilot-error losses in the headline?~~ Ian, 2026-10-02: show them beside the headline win rate, never excluded, and say which game and which turn each one happened (so it can be replayed by seed).
+- ~~Pilot-error losses in the headline?~~ The user, 2026-10-02: show them beside the headline win rate, never excluded, and say which game and which turn each one happened (so it can be replayed by seed).

@@ -18,7 +18,7 @@ Only needed if you want the assistant to push updates (new EDHREC snapshots, res
 
 ## For editors of `docs/`
 
-The docs are written for the assistant: second person ("you"), the deck owner is "the user", no product or personal names. Keep `USE_INSTRUCTIONS.md` minimal; tool-specific detail goes in its own doc (`STATS_MATH.md`, `GOLDFISH.md`). Scripts reference its section numbers, so keep them stable.
+The docs are written for the assistant: second person ("you"), the deck owner is "the user", no product or personal names. `docs/README.md` indexes every doc and its status (live, active plan, frozen); update it when that changes. Keep `USE_INSTRUCTIONS.md` minimal; tool-specific detail goes in its own doc (`STATS_MATH.md`, `GOLDFISH.md`). Scripts reference its section numbers, so keep them stable.
 
 ## Credits
 

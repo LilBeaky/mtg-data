@@ -11,7 +11,7 @@ python3 -m fishpond run DECK [--trials 20] [--seed 1] [--turns 10] [--cap 20] [-
     [--ai PROFILE] [--opp-ai A,B,C] [--sim off|hybrid|full] [--opp-sim off|hybrid|full] [--track "Label=REGEX"] [--variant "Label|Out=>In;Out=>In"] [--commander NAME]
     [--engine auto|harness|cli] [--jobs N] [--timeout S] [--clock S] [--out DIR] [--json]
 python3 -m fishpond run --resume RUN_DIR [--trials N] [--jobs N]   # finish a cut-off run and/or add N games to it
-python3 -m fishpond save LIST --name "Ians Zur Cycling"              # store a list in decks/ (.txt + Forge .dck)
+python3 -m fishpond save LIST --name "Ians Zur Wizardcycling"              # store a list in decks/ (.txt + Forge .dck)
 python3 -m fishpond report RUN_DIR [--reparse] [--turns N] [--json]
 python3 -m fishpond show RUN_DIR GAME [--build LABEL] [--log] [--phases]
 ```

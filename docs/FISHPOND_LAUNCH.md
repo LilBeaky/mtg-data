@@ -4,7 +4,7 @@ When the user says **"Launch Fishpond"**, reply with the form below (fenced, rea
 
 ```
 FISHPOND RUN
-0. Deck name (Owner Commander Strategy, e.g. Ians Zur Cycling; saved to decks/):
+0. Deck name (Owner Commander Strategy, e.g. Ians Zur Wizardcycling; saved to decks/):
 1. My deck (paste the list, or the name of a deck already in decks/):
 
 2. Bracket [required, 1-5]:

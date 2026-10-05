@@ -29,7 +29,7 @@ Custom queries only when no tool answers; respect §7. Suggest folding useful on
 
 ## 3. Layout
 
-`scripts/` (code) · `fishpond/` (Forge-backed simulator; `fishpond/opponents/` holds opponent gauntlets) · `data/` (bulk data + `aliases.txt`, `goldfish_overrides.json`; `data/fishpond/` = saved runs, `data/explorer_cache/` = EDHREC responses, both gitignored) · `docs/` · `snapshots/` (EDHREC transcriptions) · `tests/` (edge-case test deck, goldfish and Fishpond fixtures, `goldfish_units.py`, `fishpond_units.py` + `smoke.py`; run `python3 tests/smoke.py` after changing any script, before pushing). Scripts pick the newest dated rulings/tags/rules files automatically.
+`scripts/` (code) · `fishpond/` (Forge-backed simulator; `fishpond/opponents/` holds opponent gauntlets) · `data/` (bulk data + `aliases.txt`, `goldfish_overrides.json`; `data/fishpond/` = saved runs, `data/explorer_cache/` = EDHREC responses, both gitignored) · `docs/` (index and plan status in `docs/README.md`) · `snapshots/` (EDHREC transcriptions) · `tests/` (edge-case test deck, goldfish and Fishpond fixtures, `goldfish_units.py`, `fishpond_units.py` + `smoke.py`; run `python3 tests/smoke.py` after changing any script, before pushing). Scripts pick the newest dated rulings/tags/rules files automatically.
 
 ## 4. mtg.py and deck files
 

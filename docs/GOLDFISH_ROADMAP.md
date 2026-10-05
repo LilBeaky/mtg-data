@@ -1,6 +1,6 @@
 # Goldfish parser coverage roadmap
 
-> **FROZEN 2026-10-01.** Ian moved simulation to Forge; see `docs/FORGE_PLAN.md`. Do not continue this plan (no GEF translation, no new engine features, no parser work). goldfish.py stays as a working legacy tool.
+> **FROZEN 2026-10-01.** The user moved simulation to Forge; see `docs/FORGE_PLAN.md`. Do not continue this plan (no GEF translation, no new engine features, no parser work). goldfish.py stays as a working legacy tool.
 
 For the assistant. Goal: goldfish.py reads as much of the Commander card pool as regex parsing reasonably allows, without reading anything *wrong*. Every number below is measured with `scripts/goldfish_coverage.py report` (weight = 1/√edhrec_rank, so staples count far more than draft chaff).
 

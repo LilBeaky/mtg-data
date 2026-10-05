@@ -17,9 +17,9 @@ tapped lands is. Example: Zur runs 13 tapped-early lands of 38 and none of that 
 
 ## Step 0 — check before building (cheap)
 
-- Read `docs/GOLDFISH.md` / `GOLDFISH_ROADMAP.md`: the goldfish already plays turns. If it models
-  land drops and tapped lands, the turn-by-turn sim may belong there (or be shared) instead of a
-  second implementation in landbase.py. Decide that first.
+- ~~Should the sim live in goldfish.py instead?~~ Decided: no. goldfish.py is frozen (no new engine
+  features, `docs/FORGE_PLAN.md`), so build it in landbase.py. Read goldfish's land-drop code only
+  as a reference for edge cases.
 - Reuse `audit.tapped_kind` and landbase's `tap_kind` (early-turn grading) — don't re-parse oracle text.
 
 ## Step 1 — turn-by-turn sim in landbase.py
