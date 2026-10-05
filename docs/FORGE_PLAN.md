@@ -10,7 +10,7 @@ This doc is self-contained. Everything learned in the feasibility chat is below;
 
 1. Clone the repo and read `docs/USE_INSTRUCTIONS.md` once (it's the general workflow), then this file. You don't need GOLDFISH.md, GOLDFISH_ROADMAP.md, UPGRADE_PLAN.md or the TRANSLATION_* docs; they describe the frozen legacy path. Read `scripts/goldfish.py` lines ~6000–6320 (stats + report printers) only when you do the `sim_report.py` extraction.
 2. Set up the environment exactly as in "Environment recipe" below.
-3. Check the Status table, then work **"Pilot study 2026-10-04" → upgrade plan** in order (that's the active plan; the 2026-10-01 Roadmap below is kept for its open leftovers). Phases A/B, pilot policy and patches 01-11 are built. Acceptance runs use `tests/forge/chulane.txt` (the user's Chulane list, 100 cards, B3, plan Primal Surge, keys Shrieking Drake / Primal Surge / Thassa's Oracle).
+3. Check the Status table, then work **"Pilot study 2026-10-04" → "Priority order (difficulty vs payoff, 2026-10-05)"** top down (that's the active plan; the 2026-10-01 Roadmap below is kept for its open leftovers). Phases A/B, pilot policy and patches 01-11 are built. Acceptance runs use `tests/forge/chulane.txt` (the user's Chulane list, 100 cards, B3, plan Primal Surge, keys Shrieking Drake / Primal Surge / Thassa's Oracle).
 4. Push straight to main, one commit per step; run `python3 tests/smoke.py` before each push. The GitHub token is in the project instructions, not in the repo. Never commit it. (A Claude Code session pinned to a branch pushes there instead; the user merges.)
 
 ### Environment recipe (all verified 2026-10-01 in the chat sandbox unless marked untested)
@@ -193,7 +193,7 @@ All done; the user-facing doc is `docs/FISHPOND.md` (not `FORGE.md`), the tool r
 | Resumable runs, Windows support | Done 2026-10-01 / 2026-10-03 (`run --resume`; override home via junctions/hard links) |
 | Pilot policy Part 1 + Part 2 (patches 07-09, card overrides, puzzles) | Built 2026-10-02 (see "Pilot policy") |
 | Patches 10 (empty-library wins) and 11 (large-board blocks) | Built 2026-10-03 (FORGE_ISSUES #6, #7) |
-| Pilot study (16 bracketed decks, 100 games) | Done 2026-10-04; its upgrade plan is **next** (items 1-7, none started) |
+| Pilot study (16 bracketed decks, 100 games) | Done 2026-10-04; power-matched run 2026-10-05 added N1-N5; **next**: the priority order table (14 items, none started) |
 | Landbase tempo validation logging | Planned: `docs/LANDBASE_TEMPO_PLAN.md` step 3 |
 
 ## Lookahead and tutoring (2026-10-01, the user: enable lookahead, moderate/low setting)
@@ -306,6 +306,42 @@ Phase A/B acceptance, 2026-10-01, Claude Code container (4 CPUs), Forge 2.0.15, 
    - *Acceptance:* commander-out-by-turn and win rate on the same seeds before and after, for every deck in `decks/`. No deck may get worse without an explanation; Klauth and Wilson puzzles on curve.
 6. **`fishpond study` command:** automate this run: pods by bracket, chunked so no process outlives Claude's 2-hour background-task limit (this run's driver was killed at 24/25 pods). Long studies are meant to run locally from the user's own terminal (no limit) as runs get longer; the command prints the line to run and Claude reads the results folder afterwards. It must be resumable and print a per-deck table (wins over decided games, undecided, kills, deaths, how it won). Win attribution must use the single surviving winner; on draws, cap and timeout games Forge marks every seat "has won", which the first count of this study got wrong.
 7. **Re-run** the 15 B3 pods after 1-2 (Balancer's real rate), then the whole study at 8 games a pod for tighter numbers.
+
+### Power-matched run 2026-10-05: new pilot failures
+
+**What ran.** 6 pods of 4, grouped by the pilot study's win rates (strongest decks together, weakest together, two mixed pods), 5 games each, hybrid at every seat, seed 1 (`data/fishpond/powermatch_20261005/`, G1-G6). 29 games had a single winner, 1 timed out. Every game was reviewed turn by turn (all seats' lands, casts, attacks, blocks, deaths; the hero's hand and mana) and suspects were checked in the raw logs.
+
+**Known failures seen again:** Araumi never cast (0/5; item 5a); commanders late with mana up (Niv with 9-23 mana and Niv-Mizzet uncast for turns, Klauth on its turns 5-8, Wilson on 3-5; item 5c); commanders blocking a token or trading (item 4). Balancer's Sprout Swarm loop ran once and finished (no new data for #8).
+
+**New** (N1-N5; each applies to every pilot seat):
+- **N1. Wheel of Misfortune number.** G2 game 4: Lumra picked 25 at 40 life and took 25 on turn 6. Forge's choose-number logic ignores the damage. Fix: a card override (or a `ChooseNumber` AI patch) that caps the number well below life, plus a puzzle.
+- **N2. Felidar Sovereign at 4 life.** G5 game 2: Heliod cast it facing a lethal swarm, instead of holding mana or a blocker. Fix: a `NeedsToPlay`-style hint so it's cast only when the life total can plausibly reach 40 (the same class as "cast an alt-win card only when it can win"; check Test of Endurance too).
+- **N3. City of Traitors stops land drops.** Lumra played City of Traitors, then played no land again in two games: G2 game 4 (discarded Yavimaya, Forest, Mirrorpool to hand size) and G6 game 3 (no land after its turn 2). The AI treats "sacrifice when you play another land" as never play another land. Fix: play the land when it would otherwise be discarded, or when the land drop is worth more than City's two mana (fetch/landfall/utility lands), with a puzzle.
+- **N4. Paying life into a lethal board.** G1 game 4: Niv went 22 -> 12 through Bolas's Citadel, Vampiric Tutor and Sensei's Top with Zhulodok's Kozilek board out, then took 19 and died (at 22 it lives on 3); it cracked Tainted Sigil on the opponent's turn, when life lost "this turn" was near zero. Erebos also paid for draws under pressure (not game-deciding). Fix: a life budget (life minus the biggest attack the table can make next round, from the existing danger checks) applied to optional life payments (Citadel, Erebos, Ad Nauseam, shocklands, Yusri's flips), and Tainted Sigil only in the turn the life was lost. Merge with Yusri follow-up 1 (coin-count buffer), which is the same rule.
+- **N5. A 30-minute land-drop turn.** G2 game 0: Lumra with Mirrorpool copies of Icetill Explorer (extra land drops, lands from the graveyard) chained City of Traitors through hundreds of land plays, each firing landfall triggers, until the per-game timeout. Not yet known whether it is an unbounded loop or a finite turn made slow by hybrid on a big board (#7 class). Item 1's detector (same ability cast or activated 3 times) would not see land plays. Next: replay seed 1000003 of that run, then either widen loop detection to repeated land plays or add a cost cap.
+
+**Seen once, not filed:** Chulane holding 8 cards with 13-20 mana for several turns (G4 game 1; hand contents aren't logged, needs a replay); Swords to Plowshares on Ajani's Pridemate gave Heliod about 50 life (defensible, it was the biggest threat); nobody answered Felidar Sovereign at 59 life (G1 game 1; hands unknown).
+
+### Priority order (difficulty vs payoff, 2026-10-05; supersedes "in order" above)
+
+Payoff = how many decks and games the failure costs and how badly; difficulty = card override < pilot patch < engine/harness work. Item numbers refer to the lists above; each keeps its own puzzles and acceptance.
+
+| # | Item | Difficulty | Payoff | Why here |
+|---|---|---|---|---|
+| 1 | N3 City of Traitors land drops | Low-medium (pilot patch + puzzle) | Medium-high: crippled Lumra in 2 of 10 games | Cheap, game-deciding, any deck with City or similar sacrifice lands |
+| 2 | N1 Wheel of Misfortune + N2 Felidar Sovereign | Low (card overrides + puzzles) | Low-medium: one deck each, game-losing when it happens | One small batch of overrides |
+| 3 | 5a step (1) Araumi un-flag | Low (override + puzzles) | High for Araumi: 0 commander casts in 21 games | The deck can't run its plan at all; step (2) only if the AI misplays it |
+| 4 | 5c Commander timing | Medium (policy rule + opt-out header) | Very high: every deck, about a turn of tempo | Biggest across-the-board gain; acceptance re-runs every deck |
+| 5 | 4 Commander combat safety | Medium (attack/block patch + 6 puzzles) | High: every deck's commander | Pairs with 5c (a commander cast earlier must also survive) |
+| 6 | N4 Life budget (with Yusri follow-up 1) | Medium (one rule over optional life payments) | Medium: Niv, Erebos, Yusri, any Citadel/Ad Nauseam deck | One rule fixes several known losses |
+| 7 | 2 Harness hardening | Medium | Medium: keeps runs valid (voided games, OOM) | Protects every later measurement; needed before the big re-runs |
+| 8 | N5 replay (diagnosis only) | Low | Decides how 9 is built | Do before 9 |
+| 9 | 1 Loop shortcut (widened to land plays if N5 is a loop) | High | High: Balancer's real rate, no timed-out games | Most work; the cheaper fixes above shouldn't wait for it |
+| 10 | 5 Finisher misses (Primal Surge, Enter the Infinite, Approach) | Medium-high (one puzzle and fix each) | Medium: Chulane, Yusri, Zur | Per-card; do after the general rules |
+| 11 | 5b Ragost under pressure | Medium-high (find the check that says no) | Low-medium: one deck | Diagnosis-heavy |
+| 12 | 3 #9 null-source NPE | High (Forge copy internals) | Low: one game in 130 | Rare; the item 2 safety net covers it meanwhile |
+| 13 | 6 `fishpond study` command | Medium (tooling) | Medium: makes 14 cheap and repeatable | Build right before the re-run |
+| 14 | 7 Re-run (B3 pods, then the whole study at 8 a pod) | Run time only | Measures 1-13 | Last |
 
 ## Roadmap (2026-10-01, after the merge to main)
 
