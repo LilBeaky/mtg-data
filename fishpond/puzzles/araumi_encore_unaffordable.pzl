@@ -1,0 +1,15 @@
+# title: Araumi out, Gray Merchant in the graveyard, only 2 lands: the AI does not give encore it cannot pay
+# card: Araumi of the Dead Tide
+# turns: 1
+# sim: hybrid
+# forbid: activated Araumi of the Dead Tide
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Araumi of the Dead Tide;Swamp;Island
+p0graveyard=Gray Merchant of Asphodel;Island;Swamp;Island
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

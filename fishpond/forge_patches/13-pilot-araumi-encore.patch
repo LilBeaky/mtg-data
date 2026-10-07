@@ -1,0 +1,80 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index ce10b32..825039a 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -969,6 +969,11 @@ public class AiController {
+                     return needs;
+                 }
+             }
++            // fishpond patch 13: granting encore pays off on the encore activation after it, which a one-move simulation
++            // can't see (it only sees Araumi tapped and the graveyard exiled); PumpAi already checked it can pay
++            if (forge.ai.ability.PumpAi.isEncoreGrant(player, sa)) {
++                return AiPlayDecision.WillPlay;
++            }
+             return OnePlaySafetyChecker.isAcceptable(player, sa) ? AiPlayDecision.WillPlay : AiPlayDecision.HybridSimRejected;
+         }
+ 
+diff --git a/forge-ai/src/main/java/forge/ai/ability/PumpAi.java b/forge-ai/src/main/java/forge/ai/ability/PumpAi.java
+index cc8e688..8d9af30 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/PumpAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/PumpAi.java
+@@ -90,6 +90,10 @@ public class PumpAi extends PumpAiBase {
+     @Override
+     protected boolean checkPhaseRestrictions(final Player ai, final SpellAbility sa, final PhaseHandler ph) {
+         final Game game = ai.getGame();
++        if (isEncoreGrant(ai, sa)) {
++            // fishpond patch 13: not a combat trick; encoreTarget times it (and Araumi taps instead of attacking)
++            return true;
++        }
+         if (game.getStack().isEmpty()) {
+             boolean isBeforeMyAttack = ph.getPhase().isBefore(PhaseType.COMBAT_DECLARE_ATTACKERS) && ph.isPlayerTurn(ai);
+             boolean isBeforeOppCombat = ph.getPhase().isBefore(PhaseType.COMBAT_BEGIN) && ph.getPlayerTurn().isOpponentOf(ai);
+@@ -129,6 +133,12 @@ public class PumpAi extends PumpAiBase {
+         final boolean isFight = "Fight".equals(aiLogic) || "PowerDmg".equals(aiLogic);
+         final boolean isBerserk = "Berserk".equals(aiLogic);
+ 
++        // fishpond patch 13: granting encore to a graveyard creature (Araumi of the Dead Tide) has no pump logic, so the
++        // AI never used it; pick the best creature card it can pay the encore for this turn
++        if (isEncoreGrant(ai, sa)) {
++            return encoreTarget(ai, sa);
++        }
++
+         if ("Pummeler".equals(aiLogic)) {
+             return SpecialCardAi.ElectrostaticPummeler.consider(ai, sa);
+         } else if (aiLogic.startsWith("AristocratCounters")) {
+@@ -352,6 +362,35 @@ public class PumpAi extends PumpAiBase {
+         return new AiAbilityDecision(0, AiPlayDecision.TargetingFailed);
+     }
+ 
++    public static boolean isEncoreGrant(final Player ai, final SpellAbility sa) {
++        return "Graveyard".equals(sa.getParam("PumpZone")) && sa.hasParam("KW") && DrawAi.pilotSeat(ai)
++                && Arrays.stream(sa.getParam("KW").split(" & ")).anyMatch(k -> k.startsWith("Encore"));
++    }
++
++    /** fishpond patch 13: encore is sorcery speed and the tokens attack, so only in the AI's own precombat main with an
++     *  empty stack; the graveyard must also hold the cards the cost exiles. The target is the best creature card whose
++     *  mana value fits the mana the AI has left. */
++    private static AiAbilityDecision encoreTarget(final Player ai, final SpellAbility sa) {
++        final Game game = ai.getGame();
++        final PhaseHandler ph = game.getPhaseHandler();
++        if (!ph.isPlayerTurn(ai) || !ph.is(PhaseType.MAIN1) || !game.getStack().isEmpty()) {
++            return new AiAbilityDecision(0, AiPlayDecision.ConditionsNotMet);
++        }
++        if (ai.getCardsIn(ZoneType.Graveyard).size() <= ai.getOpponents().size()) {
++            return new AiAbilityDecision(0, AiPlayDecision.MissingNeededCards);
++        }
++        final int mana = ComputerUtilMana.getAvailableManaEstimate(ai, false);
++        final CardCollection options = CardLists.filter(CardUtil.getValidCardsToTarget(sa),
++                c -> c.isCreature() && c.getOwner() == ai && c.getCMC() <= mana);
++        final Card best = ComputerUtilCard.getBestCreatureAI(options);
++        if (best == null) {
++            return new AiAbilityDecision(0, AiPlayDecision.TargetingFailed);
++        }
++        sa.resetTargets();
++        sa.getTargets().add(best);
++        return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
++    }
++
+     private boolean pumpTgtAI(final Player ai, final SpellAbility sa, final int defense, final int attack, final boolean mandatory,
+                               boolean immediately) {
+         final List<String> keywords = sa.hasParam("KW") ? Arrays.asList(sa.getParam("KW").split(" & "))
