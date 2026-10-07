@@ -60,3 +60,63 @@ index f5145d0..fc089ed 100644
          // life won't change
          int remainingLife = Integer.MAX_VALUE;
  
+diff --git a/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java b/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
+index 389fe51..a444a1d 100644
+--- a/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
++++ b/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
+@@ -1481,7 +1481,7 @@ public class PlayerControllerAi extends PlayerController {
+         if ((ph.isPlayerTurn(ai) && ph.getPhase().isAfter(PhaseType.COMBAT_BEGIN)) ||
+                 (!ph.isPlayerTurn(ai) && ph.getPhase().isBefore(PhaseType.COMBAT_DECLARE_BLOCKERS))) {
+             // Do not convoke potential blockers until after opponent's attack
+-            final CardCollectionView blockers = ComputerUtil.protectRecursion(sa, () -> ComputerUtilCard.getLikelyBlockers(ai, null), CardCollection.EMPTY);
++            final CardCollectionView blockers = ComputerUtil.protectRecursion(sa, () -> likelyBlockersForConvoke(ai), CardCollection.EMPTY);
+             untapped.removeAll(blockers);
+             // Add threatened creatures
+             if (!ai.getGame().getStack().isEmpty() && !blockers.isEmpty()) {
+@@ -1702,4 +1702,46 @@ public class PlayerControllerAi extends PlayerController {
+ 
+         return choices;
+     }
++
++    // fishpond patch 16: ComputerUtilCard.getLikelyBlockers picks the attacking opponent with choosePreferredDefenderPlayer,
++    // a full next-combat prediction per opponent, and the convoke chooser asks it whenever the AI checks whether it can pay
++    // a convoke spell: most of a big-board turn in Witherbloom's Sprout Swarm games (JFR, 2026-10-07). Take the opponent
++    // with the most power that can attack next turn (or the one attacking now) instead; the block plan is the same.
++    private static CardCollectionView likelyBlockersForConvoke(final Player ai) {
++        final Combat current = ai.getGame().getCombat();
++        Player opp = current != null && current.getAttackingPlayer() != ai ? current.getAttackingPlayer() : null;
++        if (opp == null) {
++            int best = -1;
++            for (final Player o : ai.getOpponents()) {
++                int power = 0;
++                for (final Card c : o.getCreaturesInPlay()) {
++                    if (ComputerUtilCombat.canAttackNextTurn(c, ai)) {
++                        power += Math.max(0, c.getNetCombatDamage());
++                    }
++                }
++                if (power > best) {
++                    best = power;
++                    opp = o;
++                }
++            }
++        }
++        if (opp == null) {
++            return CardCollection.EMPTY;
++        }
++        final Combat combat = new Combat(opp);
++        if (current != null && current.getAttackingPlayer() == opp) {
++            for (final Card c : current.getAttackers()) {
++                combat.addAttacker(c, ai);
++            }
++        } else {
++            for (final Card c : opp.getCreaturesInPlay()) {
++                if (ComputerUtilCombat.canAttackNextTurn(c, ai)) {
++                    combat.addAttacker(c, ai);
++                }
++            }
++        }
++        new AiBlockController(ai, false).assignBlockersForCombat(combat);
++        return combat.getAllBlockers();
++    }
++
+ }

@@ -1,5 +1,5 @@
 diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
-index fc0a6c9..6881879 100644
+index fc0a6c9..440147b 100644
 --- a/forge-ai/src/main/java/forge/ai/AiController.java
 +++ b/forge-ai/src/main/java/forge/ai/AiController.java
 @@ -433,6 +433,10 @@ public class AiController {
@@ -23,7 +23,7 @@ index fc0a6c9..6881879 100644
          if (!checkAiSpecificRestrictions(sa)) {
              return AiPlayDecision.CantPlayAi;
          }
-@@ -959,6 +966,128 @@ public class AiController {
+@@ -959,6 +966,135 @@ public class AiController {
          return saSideEffects(spellHost, sa);
      }
  
@@ -34,7 +34,8 @@ index fc0a6c9..6881879 100644
 +    // life it can't afford), danger checks are frozen (ComputerUtil.aiLifeInDanger) and other pilot seats pass priority. It
 +    // stops once its creatures beat the table's life after one chump block per opposing creature, or after
 +    // -Dfishpond.loopMax iterations; then that play (every land play, for a land loop) is off for the rest of the turn.
-+    // Each start and stop prints a #FP-LOOP line.
++    // A loop that stopped on lethal stays off in later turns while the board is still lethal (Witherbloom used to rebuild
++    // its Saproling loop on every opponent's turn, each round slower than the last). Each start and stop prints #FP-LOOP.
 +    static final int LOOP_CONFIRM = 10;
 +    private static final int LOOP_MAX = Integer.getInteger("fishpond.loopMax", 1000);
 +
@@ -43,6 +44,7 @@ index fc0a6c9..6881879 100644
 +        final Map<String, Integer> counts = new HashMap<>();
 +        final Set<String> stopped = new HashSet<>();
 +        final Map<String, Boolean> danger = new HashMap<>();
++        final Set<String> goalLoops = new HashSet<>();   // the whole game: loops that stopped on lethal
 +        Player looper;
 +        String key;
 +        int iterations;
@@ -90,6 +92,9 @@ index fc0a6c9..6881879 100644
 +        final boolean goal = loopGoalReached(player);
 +        if (goal || ls.iterations >= LOOP_MAX) {
 +            ls.stopped.add(player.getId() + "#" + key);
++            if (goal) {
++                ls.goalLoops.add(player.getId() + "#" + key);
++            }
 +            System.out.println("#FP-LOOP {\"event\": \"stop\", \"player\": \"" + player.getName() + "\", \"turn\": " + ls.turn
 +                    + ", \"play\": \"" + sa.getHostCard().getName() + "\", \"iterations\": " + ls.iterations
 +                    + ", \"reason\": \"" + (goal ? "goal" : "cap") + "\"}");
@@ -128,7 +133,9 @@ index fc0a6c9..6881879 100644
 +        if (sa == null || sa.getHostCard() == null || !forge.ai.ability.DrawAi.pilotSeat(player)) {
 +            return false;
 +        }
-+        return loopState(game).stopped.contains(player.getId() + "#" + loopKey(sa));
++        final LoopState ls = loopState(game);
++        final String k = player.getId() + "#" + loopKey(sa);
++        return ls.stopped.contains(k) || (ls.goalLoops.contains(k) && loopGoalReached(player));
 +    }
 +
 +    private boolean inLoop(final SpellAbility sa) {
@@ -152,7 +159,7 @@ index fc0a6c9..6881879 100644
      /** fishpond patch 14: null when nothing of ours is sacrificed by a land drop; otherwise whether this land is worth it:
       *  the hand is over its limit (a card goes at cleanup anyway), the land does something besides mana (fetch, utility,
       *  enters-the-battlefield trigger), we have landfall payoffs, or it's a fresh City replacing tapped ones. */
-@@ -1028,6 +1157,11 @@ public class AiController {
+@@ -1028,6 +1164,11 @@ public class AiController {
              if (forge.ai.ability.PumpAi.isEncoreGrant(player, sa)) {
                  return AiPlayDecision.WillPlay;
              }
@@ -164,7 +171,7 @@ index fc0a6c9..6881879 100644
              return OnePlaySafetyChecker.isAcceptable(player, sa) ? AiPlayDecision.WillPlay : AiPlayDecision.HybridSimRejected;
          }
  
-@@ -1416,6 +1550,20 @@ public class AiController {
+@@ -1416,6 +1557,20 @@ public class AiController {
      }
  
      public List<SpellAbility> chooseSpellAbilityToPlay() {
