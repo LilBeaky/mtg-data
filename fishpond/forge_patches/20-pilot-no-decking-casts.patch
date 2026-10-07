@@ -1,0 +1,91 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index f493570..35eeb72 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1140,7 +1140,86 @@ public class AiController {
+         return false;
+     }
+ 
++    // ---- fishpond patch 20: a spell whose draws would empty the library ----
++    // Chulane after Primal Surge cast Inga and Esika, Selvala and Beast Whisperer with a handful of cards left, and Chulane's
++    // own "whenever you cast a creature spell, draw a card" decked it (pod G4, 2026-10-07; lookahead was paused on a
++    // prepared card, so no one-move check caught it). Count what casting this spell makes its caster draw: the spell's own
++    // draws, the caster's cast triggers that match it, and a permanent spell's draw-on-entering triggers.
++    static int drawsFromCasting(final Player ai, final SpellAbility sa, final boolean beforeResolving) {
++        final Card card = sa.getHostCard();
++        int n = 0;
++        for (SpellAbility a = sa; a != null; a = a.getSubAbility()) {
++            n += drawsForCaster(card, a);
++        }
++        boolean putsLand = false;   // a cast trigger that may put a land onto the battlefield (Chulane) fires landfall draws too
++        int landfallDraws = 0;
++        for (final Card c : ai.getCardsIn(ZoneType.Battlefield)) {
++            for (final forge.game.trigger.Trigger t : c.getTriggers()) {
++                final boolean cast = t.getMode() == forge.game.trigger.TriggerType.SpellCast;
++                final boolean enters = !beforeResolving && (t.getMode() == forge.game.trigger.TriggerType.ChangesZone
++                        || t.getMode() == forge.game.trigger.TriggerType.ChangesZoneAll) && "Battlefield".equals(t.getParam("Destination"));
++                if (!cast && !enters) {
++                    continue;
++                }
++                final String valid = t.getParamOrDefault("ValidCard", t.getParamOrDefault("ValidCards", ""));
++                if (enters && valid.startsWith("Land")) {
++                    for (SpellAbility a = t.ensureAbility(); a != null; a = a.getSubAbility()) {
++                        landfallDraws += drawsForCaster(c, a);
++                    }
++                    continue;
++                }
++                if (valid.isEmpty() || !card.isValid(valid.split(","), ai, c, null)
++                        || cast && t.hasParam("ValidActivatingPlayer") && !"You".equals(t.getParam("ValidActivatingPlayer"))
++                        || enters && !card.isPermanent()) {
++                    continue;
++                }
++                for (SpellAbility a = t.ensureAbility(); a != null; a = a.getSubAbility()) {
++                    n += drawsForCaster(c, a);
++                    if (cast && a.getApi() == ApiType.ChangeZone && "Battlefield".equals(a.getParam("Destination"))
++                            && "Land".equals(a.getParam("ChangeType"))) {
++                        putsLand = true;
++                    }
++                }
++            }
++        }
++        if (card.isPermanent() && !beforeResolving) {
++            for (final forge.game.trigger.Trigger t : card.getTriggers()) {
++                if (t.getMode() == forge.game.trigger.TriggerType.ChangesZone && "Battlefield".equals(t.getParam("Destination"))) {
++                    for (SpellAbility a = t.ensureAbility(); a != null; a = a.getSubAbility()) {
++                        n += drawsForCaster(card, a);
++                    }
++                }
++            }
++        }
++        return n + (putsLand ? landfallDraws : 0);
++    }
++
++    private static int drawsForCaster(final Card host, final SpellAbility a) {
++        final String def = a.getParamOrDefault("Defined", "You");
++        if (a.getApi() != ApiType.Draw || !"You".equals(def) && !def.startsWith("TriggeredCard")) {
++            return 0;
++        }
++        try {
++            return Math.max(1, AbilityUtils.calculateAmount(host, a.getParamOrDefault("NumCards", "1"), a));
++        } catch (RuntimeException e) {
++            return 1;
++        }
++    }
++
+     private AiPlayDecision saSideEffects(final Card card, final SpellAbility sa) {
++        if (sa.isSpell() && forge.ai.ability.DrawAi.pilotSeat(player) && !ComputerUtil.winsOnEmptyLibraryDraw(player)
++                && !(sa.getApi() == ApiType.Draw && forge.ai.ability.DrawAi.selfDeckWins(player, sa))) {
++            final int lib = player.getCardsIn(ZoneType.Library).size();
++            // an empty-library win card (Thassa's Oracle) may draw down to the last card before it resolves (its enter
++            // trigger then wins); anything else keeps a card for the next draw step plus a margin of half the estimate,
++            // since conditional "may draw" engines make the count low
++            final boolean winCard = forge.ai.ability.DrawAi.emptyLibraryWinCard(card);
++            final int draws = drawsFromCasting(player, sa, winCard);
++            final int floor = winCard ? 0 : 1 + (draws + 1) / 2;
++            if (draws > 0 && lib - draws < floor) {
++                return AiPlayDecision.CurseEffects;   // fishpond patch 20: casting it would deck the caster
++            }
++        }
+         // fishpond patch 14: with City of Traitors (or any "sacrifice this when you play another land") out, a land drop is
+         // decided by a rule: stock Forge plays any land and loses City, and hybrid's one-move check vetoes every land
+         // (it sees City sacrificed), which stranded lands in hand for whole games

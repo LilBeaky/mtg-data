@@ -1,0 +1,16 @@
+# title: Primal Surge with Tatyova out (each land drawn on entering): the AI stops putting permanents while the library still covers the waiting draws (pilot study: 5 of 5 recent Surge casts decked Chulane)
+# card: Primal Surge
+# turns: 2
+# sim: hybrid
+# expect: cast Primal Surge
+# forbid: has lost trying to draw
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Tatyova, Benthic Druid;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p0hand=Primal Surge
+p0library=Forest;Llanowar Elves;Grizzly Bears;Forest;Llanowar Elves;Grizzly Bears;Forest;Llanowar Elves;Grizzly Bears;Forest;Llanowar Elves;Grizzly Bears;Forest;Llanowar Elves;Grizzly Bears;Forest;Llanowar Elves;Grizzly Bears;Forest;Llanowar Elves;Grizzly Bears;Forest;Llanowar Elves;Grizzly Bears;Forest;Llanowar Elves;Grizzly Bears;Forest;Llanowar Elves;Grizzly Bears
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,16 @@
+# title: Guard for the Approach rule: with no Approach pending, Zur attacks and searches for an enchantment as usual
+# card: Zur the Enchanter
+# turns: 3
+# sim: hybrid
+# expect: Ai\(1\)-P1 assigned Zur the Enchanter
+# expect: triggered Omen of the Sea
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter|SummonSick;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p0hand=Plains
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Omen of the Sea;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -124,6 +124,10 @@ Fishpond runs stock Forge plus the fixes in `fishpond/forge_patches/*.patch` (un
 | `14-pilot-city-of-traitors-land-drops` | `forge-ai/.../ai/AiController.java` | AI play: land drops with a sacrifice-on-land permanent out (puzzles `city_of_traitors_*`) |
 | `15-pilot-loop-shortcut` | `forge-ai/.../ai/AiController.java`, `ComputerUtil.java` | #8 (puzzles `sprout_swarm_loop*`) |
 | `16-combat-prediction-memo` | `forge-ai/.../ai/ComputerUtil.java` | #7, #8: repeated next-combat predictions on huge boards |
+| `17-pilot-draw-library-wins` | `forge-ai/.../ai/ability/DrawAi.java`, `ChangeZoneAi.java` | AI play: Enter the Infinite when an empty-library win is in hand or still in the library (never put back on top); no search of its own library while Approach of the Second Sun waits in its top 7 (puzzles `enter_the_infinite_oracle_*`, `approach_no_shuffle_zur`, `zur_fetch_guard`) |
+| `18-pilot-primal-surge-reserve` | `forge-game/.../game/trigger/TriggerHandler.java`, `forge-ai/.../ai/ability/ChangeZoneAi.java` | AI play: Primal Surge stops putting permanents before the draw triggers waiting on it deck the AI (`-Dfishpond.surgeReserve`, default 5; puzzle `primal_surge_draw_engine`) |
+| `19-pilot-sacrifice-fodder` | `forge-ai/.../ai/ComputerUtil.java`, `AiController.java`, `ability/LifeLoseAi.java`, `DamageDealAi.java` | AI play: sacrifice costs paid with low-value fodder; sacrifice-cost damage and drains fire with cheap fodder; Jarad's sacrificed-power drain (puzzles `jarad_drain_*`, `ragost_*`) |
+| `20-pilot-no-decking-casts` | `forge-ai/.../ai/AiController.java` | AI play: no spell whose draws (its own, the caster's cast triggers, enter-the-battlefield draw engines, landfall draws from a land it puts) would empty the library; an empty-library win card may draw to zero (puzzles `chulane_no_decking_casts`, `chulane_oracle_last_card`) |
 
 The `-pilot-` patches act only for the pilot seats (`-Dfishpond.pilotSeats`, default all; the helper lives in patch 07's `DrawAi`, which 08 and 09 use).
 

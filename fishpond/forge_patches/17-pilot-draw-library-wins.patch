@@ -1,0 +1,145 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+index dc8c75f..598f680 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+@@ -177,12 +177,67 @@ public class ChangeZoneAi extends SpellAbilityAi {
+                 return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+             }
+         }
++        if (sa.isHidden() && shufflesAwayKnownWin(aiPlayer, sa)) {
++            return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);   // fishpond patch 17
++        }
+         if (sa.isHidden()) {
+             return hiddenOriginCanPlayAI(aiPlayer, sa);
+         }
+         return knownOriginCanPlayAI(aiPlayer, sa);
+     }
+ 
++    // ---- fishpond patch 17: Approach of the Second Sun goes 7th from the top after its first cast, and the second cast from
++    // hand wins. Zur's attack trigger, tutors, wizardcycling and fetchlands all shuffle the library and bury it (varied pods
++    // 2026-10-07: Zur drew 9 and 11 cards after a first Approach and never saw it again). A pilot seat doesn't search its own
++    // library while such a card sits in its top 7. Read from the card's script (a cast trigger that creates a command-zone
++    // effect, and a spell that can win the game), not its name.
++    public static boolean shufflesAwayKnownWin(final Player ai, final SpellAbility sa) {
++        if (!DrawAi.pilotSeat(ai) || !sa.hasParam("Origin") || !ZoneType.listValueOf(sa.getParam("Origin")).contains(ZoneType.Library)) {
++            return false;
++        }
++        final String who = sa.getParamOrDefault("DefinedPlayer", "You");
++        if (!"You".equals(who)) {
++            return false;                                  // searching someone else's library
++        }
++        final CardCollectionView lib = ai.getCardsIn(ZoneType.Library);
++        for (int i = 0; i < Math.min(7, lib.size()); i++) {
++            if (secondCastWins(ai, lib.get(i))) {
++                return true;
++            }
++        }
++        return false;
++    }
++
++    /** c wins when cast again: its cast trigger made an effect the player already has (Approach's "ApproachingSuns"), and its
++     *  spell holds a WinsGame branch. */
++    private static boolean secondCastWins(final Player ai, final Card c) {
++        boolean wins = false;
++        for (final SpellAbility sp : c.getSpells()) {
++            for (SpellAbility a = sp; a != null; a = a.getSubAbility()) {
++                if (a.getApi() == ApiType.WinsGame || a.getApi() == ApiType.Branch && (c.getSVar(a.getParamOrDefault("TrueSubAbility", "")).contains("WinsGame") || c.getSVar(a.getParamOrDefault("FalseSubAbility", "")).contains("WinsGame"))) {
++                    wins = true;
++                }
++            }
++        }
++        if (!wins) {
++            return false;
++        }
++        for (final forge.game.trigger.Trigger t : c.getTriggers()) {
++            if (t.getMode() != forge.game.trigger.TriggerType.SpellCast) {
++                continue;
++            }
++            final SpellAbility eff = t.ensureAbility();
++            if (eff != null && eff.getApi() == ApiType.Effect && eff.hasParam("Name")) {
++                for (final Card e : ai.getCardsIn(ZoneType.Command)) {
++                    if (eff.getParam("Name").equals(e.getName())) {
++                        return true;
++                    }
++                }
++            }
++        }
++        return false;
++    }
++
+     /**
+      * <p>
+      * changeZonePlayDrawbackAI.
+@@ -244,6 +299,9 @@ public class ChangeZoneAi extends SpellAbilityAi {
+             return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+         }
+ 
++        if (!mandatory && sa.isHidden() && shufflesAwayKnownWin(aiPlayer, sa)) {
++            return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);   // fishpond patch 17
++        }
+         if (sa.isHidden()) {
+             return hiddenTriggerAI(aiPlayer, sa, mandatory);
+         }
+@@ -1607,6 +1665,13 @@ public class ChangeZoneAi extends SpellAbilityAi {
+                     }
+                 }
+ 
++                if (ZoneType.Library.equals(destination) && origin.contains(ZoneType.Hand) && DrawAi.pilotSeat(decider)) {
++                    // fishpond patch 17: never put an empty-library win card back (Enter the Infinite into Thassa's Oracle)
++                    final CardCollection keep = CardLists.filter(fetchList, x -> !DrawAi.emptyLibraryWinCard(x));
++                    if (!keep.isEmpty()) {
++                        fetchList = keep;
++                    }
++                }
+                 c = ComputerUtilCard.getWorstAI(fetchList);
+                 if (ComputerUtilAbility.getAbilitySourceName(sa).equals("Temur Sabertooth")) {
+                     Card tobounce = canBouncePermanent(player, sa, fetchList);
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+index 1ccd274..24b1e38 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+@@ -168,6 +168,44 @@ public class DrawAi extends SpellAbilityAi {
+                 }
+             }
+         }
++        // fishpond patch 17: draw the whole library, then put cards back (Enter the Infinite). Nothing decks this turn and
++        // the next draw step takes a card put back, so the AI has a full turn with its library in hand. Worth it when the
++        // win is among those cards: one that wins when it enters with a tiny library (Thassa's Oracle) or a permanent that
++        // wins on an empty-library draw (Laboratory Maniac, Jace), castable with the mana the AI has now (this turn or
++        // next), or a creature already out that wins on attack with a full hand (Twenty-Toed Toad). The put-back never
++        // takes such a card (ChangeZoneAi, patch 17).
++        if (back > 0 && drawn >= lib) {
++            final int mana = ComputerUtilMana.getAvailableManaEstimate(ai, false);
++            final java.util.List<Card> pool = new java.util.ArrayList<>(ai.getCardsIn(ZoneType.Hand));
++            pool.addAll(ai.getCardsIn(ZoneType.Library));
++            for (final Card c : pool) {
++                if (c != source && emptyLibraryWinCard(c) && (castFree(ai, c) || c.getManaCost().getCMC() <= mana)) {
++                    return true;
++                }
++            }
++            for (final Card c : ai.getCreaturesInPlay()) {
++                if (hasWinTrigger(c, TriggerType.Attacks)) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
++    /** A card that wins when it enters with a tiny library (Thassa's Oracle) or wins on an empty-library draw while it is
++     *  on the battlefield (Laboratory Maniac, Jace, Wielder of Mysteries). Fishpond patch 17. */
++    public static boolean emptyLibraryWinCard(final Card c) {
++        if (hasWinTrigger(c, TriggerType.ChangesZone)) {
++            return true;
++        }
++        for (final forge.game.replacement.ReplacementEffect re : c.getReplacementEffects()) {
++            if (re.getMode() == forge.game.replacement.ReplacementType.Draw && re.hasParam("ReplaceWith")) {
++                final SpellAbility rsa = re.ensureAbility();
++                if (rsa != null && rsa.getApi() == ApiType.WinsGame) {
++                    return true;
++                }
++            }
++        }
+         return false;
+     }
+ 

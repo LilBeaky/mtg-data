@@ -1,0 +1,15 @@
+# title: Jarad with a token to spare: the AI sacrifices the token (not its best creature) to drain each opponent for 2 in its second main phase
+# card: Jarad, Golgari Lich Lord
+# turns: 1
+# sim: hybrid
+# expect: activated Jarad, Golgari Lich Lord
+# forbid: Craw Wurm.*Graveyard
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN2
+p0battlefield=Jarad, Golgari Lich Lord;Craw Wurm;t:Zombie,P:2,T:2,Cost:no cost,Color:B,Types:Creature-Zombie,Keywords:,Image:b_2_2_zombie;Swamp;Swamp;Forest;Forest;Swamp;Forest
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

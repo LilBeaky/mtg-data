@@ -1,0 +1,16 @@
+# title: Chulane with 1 card left and Thassa's Oracle in hand: the cast trigger draws the last card, then the Oracle's trigger wins (the no-decking rule lets a win card draw down to zero)
+# card: Thassa's Oracle
+# turns: 1
+# sim: off
+# expect: cast Thassa's Oracle
+# expect: Ai\(1\)-P1 has won due to effect of 'Thassa's Oracle'
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Chulane, Teller of Tales;Forest;Forest;Forest;Island;Island;Island;Plains;Plains
+p0hand=Thassa's Oracle
+p0library=Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

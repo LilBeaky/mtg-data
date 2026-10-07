@@ -1,0 +1,17 @@
+# title: Enter the Infinite with Thassa's Oracle still in the library: the AI draws its library, keeps the Oracle and casts it to win
+# card: Enter the Infinite
+# turns: 1
+# sim: hybrid
+# expect: cast Enter the Infinite
+# expect: cast Thassa's Oracle
+# expect: Ai\(1\)-P1 has won due to effect of 'Thassa's Oracle'
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p0hand=Enter the Infinite;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Thassa's Oracle;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

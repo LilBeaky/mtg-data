@@ -1,0 +1,18 @@
+# title: Enter the Infinite with exactly 12 mana and Thassa's Oracle in the library: cast it now, keep the Oracle in hand (never put it back), win next turn
+# card: Enter the Infinite
+# turns: 3
+# sim: hybrid
+# expect: cast Enter the Infinite
+# expect: cast Thassa's Oracle
+# expect: Ai\(1\)-P1 has won due to effect of 'Thassa's Oracle'
+# forbid: has lost trying to draw
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p0hand=Enter the Infinite;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Thassa's Oracle;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

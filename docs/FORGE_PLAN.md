@@ -19,19 +19,19 @@ Working doc for Claude: what is left to build in Fishpond and in what order. Usa
 - **Claude's background tasks die at 2 hours.** Split batches into resumable chunks under that (`run --resume` finishes a cut-off pod), or hand the user the command for long studies (the user's preference as runs grow).
 - **Seeds replay exactly.** One game replays alone from one line of a run's `logs/plan_*.tsv` with ForgeRunner (the command line is in `runner.execute`); the game log is printed only when the game ends. Profile with `-XX:StartFlightRecording=...,settings=profile` and dump mid-turn with `jcmd <pid> JFR.dump`. Since patch 16 games diverge from pre-16 runs on the same seed: compare distributions, not paired games, across that boundary.
 - **Writing a patch:** `~/forge-cache/forge-src-2.0.15` is CRLF and doesn't match the tag; fetch the files with `forge.FORGE_SRC_URL` into a scratch git repo, apply 01..NN, edit, `git diff` > the next patch; procedure and table in FORGE_ISSUES "Patches". To see a debug println, call `fishpond.puzzles.run_one(path)` and grep its lines.
-- **Before pushing:** `python -m fishpond puzzles` (58: 55 pass, 3 known gaps) and `python tests/smoke.py`. Stage only your own files, fetch/rebase, never force. Write findings into this doc as soon as they're known.
+- **Before pushing:** `python -m fishpond puzzles` (70: 67 pass, 3 known gaps) and `python tests/smoke.py`. Stage only your own files, fetch/rebase, never force. Write findings into this doc as soon as they're known.
 - `--sim hybrid` prints hundreds of "AI failed to play" lines a game (lookahead test-casts unaffordable spells): noise, not a stuck card.
 
 ## Where things stand (2026-10-07)
 
-- **Built:** harness and cli engines, goldfish-layout reports with Fishpond's sections, resumable runs, puzzles, `compare`, `flags`. Pilot: tutor policy at every seat, Forge patches 01-16 (crash fixes, big-board blocks, loop shortcut, combat-prediction memo, and pilot patches for cycling, blink, empty-library wins, Wheel, Araumi, City of Traitors), 31 card overrides.
+- **Built:** harness and cli engines, goldfish-layout reports with Fishpond's sections, resumable runs, puzzles, `compare`, `flags`. Pilot: tutor policy at every seat, Forge patches 01-20 (crash fixes, big-board blocks, loop shortcut, combat-prediction memo, and pilot patches for cycling, blink, empty-library wins, Wheel, Araumi, City of Traitors, draw-the-library and Approach, Primal Surge, sacrifice fodder, no decking casts), 31 card overrides.
 - **Run validity:** the last 80 games (`powermatch_20261007_p16`, `varied_20261007`) had 1 timeout (a Vilis life-payment spiral, item 2), 0 search fallbacks, 0 replays; lookahead pauses on prepared cards (#1) about once per 7 games.
 - **Reference runs** (`data/fishpond/`, gitignored): `varied_20261007` (10 pods x 5, every deck 2-3 times, seeds 20261007 + 100 x pod; `pods.txt`, `lane.sh`) is the current baseline; `powermatch_20261007_p16` (6 power-matched pods, seed 1); `pilot_study_20261004` (100 games by bracket, before patches 12-16).
 - **Current single-winner record** (varied, 50 games): Heliod 9/15, Niv 5/10, Klauth 5/15, Ragost 5/15, Witherbloom 5/15, Wilson 4/15, Araumi 3/10, Lumra 3/15, Zhulodok 3/10, Erebos 2/10, Omnath 2/15, Xyris 2/10, Yusri 1/10, Zur 1/10, Chulane 0/10, Jarad 0/15. Small samples: signals, not rates.
 
 ## Priority list
 
-Ordered by payoff over difficulty (the user, 2026-10-07: finishers, then Jarad and Ragost, are being worked now): run validity first (every later number depends on it), then rules that help every deck, then single decks. Each item gets puzzles first (failing), then the fix, then its acceptance. N-numbers are the failure IDs used in earlier write-ups and commits.
+Ordered by payoff over difficulty (items 5 and 6 done 2026-10-07, worked first at the user's request): run validity first (every later number depends on it), then rules that help every deck, then single decks. Each item gets puzzles first (failing), then the fix, then its acceptance. N-numbers are the failure IDs used in earlier write-ups and commits.
 
 | # | Item | Difficulty | Payoff |
 |---|---|---|---|
@@ -39,8 +39,8 @@ Ordered by payoff over difficulty (the user, 2026-10-07: finishers, then Jarad a
 | 2 | Life budget (N4, Yusri coin buffer) | Medium: one rule over optional life payments | High: self-kills in Niv, Erebos, Yusri; the last timeout |
 | 3 | Commander timing, with cumulative upkeep (5c, N7) | Medium: policy rule + opt-out header | Very high: every deck, about a turn of tempo |
 | 4 | Commander combat safety | Medium: attack/block patch + 6 puzzles | High: every deck's commander |
-| 5 | Finisher misses (Primal Surge, Enter the Infinite, Approach) | Medium-high: one fix each | Medium: Chulane 0/10, Yusri 1/10, Zur 1/10 |
-| 6 | Sacrifice-cost damage and drains (N10: Jarad, Ragost) | Medium | Medium-high: two decks' whole engine |
+| 5 | **Done 2026-10-07** (patches 17, 18, 20) Finisher misses (Primal Surge, Enter the Infinite, Approach) | Medium-high: one fix each | Medium: Chulane 0/10, Yusri 1/10, Zur 1/10 |
+| 6 | **Done 2026-10-07** (patch 19) Sacrifice-cost damage and drains (N10: Jarad, Ragost) | Medium | Medium-high: two decks' whole engine |
 | 7 | Harness hardening | Medium | Medium: protects the big re-runs |
 | 8 | Symmetric self-mill and wipe (N6) + Araumi encore mana | Low-medium | Low-medium: Araumi, any self-mill deck |
 | 9 | Pump abilities in loop detection (N9) | Low | Low: a guard |
@@ -76,19 +76,14 @@ The user's rules (2026-10-04), a pilot patch in `AiAttackController` / `AiBlockC
 - **Also:** find why `AiAttackController` kept Zur (21% of turns) and Chulane (5%) home in the pilot study.
 - **Puzzles:** three boards that can kill it (stays home); one safe opponent (attacks that one); blocks the small attacker, not the lethal one; must chump because unblocked is lethal; Zur attacks into risk for a fetch; Zur stays home when the swing back kills its controller.
 
-### 5. Finisher misses
+### 5 and 6. Done 2026-10-07: finishers, sacrifice-cost engines (patches 17-20)
 
-- **Primal Surge (Chulane):** cast 5 times in 40 pilot-study games, in hand at game end in half its hero games; 3 casts and 0 Chulane wins in `varied_20261007` V08. Check whether the `surge_trap` handling over-corrected (the AI used to take every put until decked).
-- **Enter the Infinite (Yusri):** 0 casts in 16 pilot-study games even after patch 10. Replay a hero game where it rotted in hand. Also the 2026-10-03 sequencing miss (seed 1000019: cast free after the Toad's attack trigger, never cast Thassa's Oracle, then decked to Edgar's draw): never put a win card back on top, cast the Oracle before any further draw, don't cast a forced draw into an empty library with no win card out. Mystical Tutor picked Show and Tell over Enter the Infinite 3 times; the user prefers Enter the Infinite unless Show and Tell sets up a play now (combo-layer rule, or a `# priority:` header).
-- **Approach of the Second Sun (Zur):** cast in all 5 V08 games, won once; 9 casts and 1 win in the pilot study. Find what stops the second cast.
-- One puzzle and fix each.
-
-### 6. Sacrifice-cost damage and drains (N10, absorbs Ragost 5b)
-
-- **Problem:** Jarad, Golgari Lich Lord was cast in 13 of 15 games and activated "{1}{B}{G}, sacrifice another creature: each opponent loses life equal to its power" 0 times (Jarad 0/25 across `powermatch_20261007_p16` and `varied_20261007`). Ragost as the hero (`varied_20261007` V07) activated "{1}, {T}, sacrifice a Food: 3 damage to each opponent" 0 times in 5 games; as an opponent up to 3 a game; in a vacuum (2026-10-04) 30 times in 65 turns, sacrificing non-token artifacts too.
-- **Hypotheses:** Jarad: `LifeLoseAi` computes the amount (`Sacrificed$CardPower`) before a creature is chosen, gets 0, returns `CantPlayAi`. Ragost: `ComputerUtilCost.checkSacrificeCost` -> `getCardPreference("SacCost")` offers only `SacMe` permanents (Food and Treasure tokens), not the artifacts Ragost makes Foods; under pressure the danger checks may also hold it.
-- **Fix:** puzzles first (Jarad with a fat creature and a lethal-ish table; Ragost with only non-token artifacts), then one rule for sacrifice-cost damage/drain abilities: estimate the amount from the best fodder, choose fodder by low value (tokens, `SacMe`, cheap creatures and artifacts), never a key piece.
-- **Acceptance:** puzzles pass; a Jarad pod and a Ragost pod show the abilities firing.
+What each patch does is in FORGE_ISSUES "Patches" and FISHPOND.md "The pilot"; puzzles 67/67 (3 known gaps). Re-runs on the varied seeds (`data/fishpond/finishers_20261007/`, V03, V07, V08, V09 and the power-matched G4 at seed 1; `finishers_20261007_p20/` = G4 and V08 on the final build):
+- **Primal Surge (Chulane):** every recent cast had decked Chulane, two ways: Surge took every put while draw triggers waited on it (18), and the pilot then cast creature spells whose cast and enter triggers drew the rest (20; lookahead was paused on a prepared card, #1, so no one-move check caught it). Final build: 6 Surge casts in G4 and V08, 6 wins with Thassa's Oracle, 0 deck-outs. Chulane in G4: 0/5 -> 3/5.
+- **Approach of the Second Sun (Zur):** Zur's attack search (and any tutor) shuffled the first Approach away from 7th place (17). V08 game 4 on the patch-17-19 build: no searches after the first Approach, second cast won. On the final build Chulane wins that pod first more often, so Zur is 1/5 there again: the table got stronger, not Zur weaker.
+- **Enter the Infinite (Yusri):** now cast with the Oracle still in the library and never puts the win card back (17; puzzles). In games it still needs 12 mana or five won flips: 1 cast in V09's 5 games.
+- **Ragost and Jarad:** sacrifice costs were paid only with SacMe cards (the Default profile turns Forge's fodder rule off), and Forge plays sacrifice-cost damage or drains only when nearly lethal (19). V03 + V07: Ragost activations 6 -> 14, Jarad 0 -> 2 (and its first win); G4: Ragost 3 -> 11.
+- **Still open:** Mystical Tutor's Show and Tell vs Enter the Infinite preference (the user prefers Enter the Infinite unless Show and Tell sets up a play now); Yusri's 2026-10-03 sequencing miss (seed 1000019) should be replayed on the new build.
 
 ### 7. Harness hardening
 
@@ -120,7 +115,7 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
 ## Backlog (not scheduled)
 
 - **`--sim full` usable** (the user wants it working): share the node budget across top-level options, stop free repeatable abilities (equip {0}) repeating inside the search, cheaper late-game positions (FORGE_ISSUES #5 "Open").
-- **Prepared cards crash the lookahead copy (#1):** still paused around, not patched; root-fix in the copier.
+- **Prepared cards crash the lookahead copy (#1):** still paused around, not patched; root-fix in the copier. It matters more than it looked: the pause switched off hybrid's one-move check in Chulane's Primal Surge turns (Studious First-Year enters prepared), which is how the decking casts got through before patch 20.
 - **Remaining AI-flagged cards:** known gaps Biorhythm and Words of Worship (puzzles marked `known_gap`); untested flagged cards (`fishpond flags --smoke`); Araumi's other flags (Dakmor Salvage, Lim-Dûl's Vault, Toxic Deluge).
 - **Upstream the patches** to Card-Forge/forge (needs the user's go-ahead; `gh` isn't installed).
 - **Report:** a headline block (win rate and interval, how it wins and loses, pilot errors beside it with game and turn); combined vacuum + gauntlet report; stranded and cycled columns; combo/line detection (what preceded wins, how often key packages assemble); mana analysis (flood/screw, color-screw); interaction stats (what removal and counters hit).
@@ -132,6 +127,7 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
 
 - Chulane holding 8 cards with 13-20 mana for several turns (`powermatch_20261005` G4 game 1; hand contents aren't logged, needs a replay).
 - Nobody answered Felidar Sovereign at 59 life (`powermatch_20261005` G1 game 1).
+- Yusri's game 3 in the G4 pod logs "cast Enter the Infinite" 11 times in one game, on every build (`finishers_20261007_p20/G4...` worker 3): a recursion loop or a log artifact; check once.
 
 ## Open questions for the user
 

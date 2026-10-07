@@ -1,0 +1,15 @@
+# title: Guard for the sacrifice-fodder rule: Ragost on 3 lands with only Sol Ring and Arcane Signet does not eat its mana rocks for 3 damage
+# card: Ragost, Deft Gastronaut
+# turns: 1
+# sim: hybrid
+# forbid: activated Ragost, Deft Gastronaut
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN2
+removesummoningsickness=true
+p0battlefield=Ragost, Deft Gastronaut;Sol Ring;Arcane Signet;Mountain;Mountain;Plains
+p0library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

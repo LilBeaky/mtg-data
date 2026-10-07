@@ -1,0 +1,15 @@
+# title: Jarad, Golgari Lich Lord: sacrificing a 6-power creature drains the opponent at 6 for the win (Jarad was cast in 13 of 15 games and never activated: N10)
+# card: Jarad, Golgari Lich Lord
+# turns: 1
+# sim: hybrid
+# expect: activated Jarad, Golgari Lich Lord
+# expect: Ai\(2\)-P2 has lost
+p0life=20
+p1life=6
+turn=1
+activeplayer=p0
+activephase=MAIN2
+p0battlefield=Jarad, Golgari Lich Lord;Craw Wurm;Swamp;Swamp;Forest;Forest;Swamp;Forest
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

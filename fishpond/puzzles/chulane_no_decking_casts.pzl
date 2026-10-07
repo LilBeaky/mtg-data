@@ -1,0 +1,16 @@
+# title: Chulane and Beast Whisperer with 3 cards left: every creature spell draws 2, so the AI stops casting creatures before it decks (G4 replay: Inga and Esika, Selvala, Beast Whisperer drew Chulane out)
+# card: Chulane, Teller of Tales
+# turns: 1
+# sim: off
+# forbid: cast Grizzly Bears
+# forbid: has lost trying to draw
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Chulane, Teller of Tales;Beast Whisperer;Forest;Forest;Forest;Island;Island;Island;Plains;Plains
+p0hand=Grizzly Bears;Grizzly Bears
+p0library=Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

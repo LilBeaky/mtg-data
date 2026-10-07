@@ -1,0 +1,17 @@
+# title: Approach of the Second Sun cast once: it sits 7th from the top, so Zur attacks without searching (the search would shuffle it away)
+# card: Approach of the Second Sun
+# turns: 3
+# sim: hybrid
+# expect: cast Approach of the Second Sun
+# expect: Ai\(1\)-P1 assigned Zur the Enchanter
+# forbid: triggered Omen of the Sea
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter|SummonSick;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p0hand=Approach of the Second Sun
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Omen of the Sea;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

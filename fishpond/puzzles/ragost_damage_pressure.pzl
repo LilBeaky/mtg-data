@@ -1,0 +1,15 @@
+# title: Ragost facing attackers (pod games: 0 activations as the hero): the AI still sacrifices a spare artifact for 3 damage to each opponent at the opponent's end step or in its own turn
+# card: Ragost, Deft Gastronaut
+# turns: 2
+# sim: hybrid
+# expect: activated Ragost, Deft Gastronaut
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN2
+removesummoningsickness=true
+p0battlefield=Ragost, Deft Gastronaut;Ichor Wellspring;Servo Schematic;Mountain;Mountain;Plains;Plains
+p0library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1battlefield=Grizzly Bears;Grizzly Bears;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

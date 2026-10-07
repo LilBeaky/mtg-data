@@ -1,0 +1,73 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+index 598f680..9e0d11a 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+@@ -1795,6 +1795,19 @@ public class ChangeZoneAi extends SpellAbilityAi {
+      */
+     @Override
+     public boolean confirmAction(Player player, SpellAbility sa, PlayerActionConfirmMode mode, String message, Map<String, Object> params) {
++        // fishpond patch 18: Primal Surge ("exile the top card; you may put it onto the battlefield; if you do, repeat") ran
++        // until the library was empty, then the draw triggers waiting on it (Tatyova's landfall, ETB draws) decked the AI:
++        // 5 of 5 recent Chulane casts, and under hybrid the one-move check then vetoed the cast. A pilot seat stops putting
++        // once the library left no longer covers the waiting draws plus a reserve (-Dfishpond.surgeReserve, default 5),
++        // unless it wins on an empty-library draw.
++        if (DrawAi.pilotSeat(player) && "Battlefield".equals(sa.getParam("Destination")) && sa.getRootAbility().getApi() == ApiType.Repeat
++                && !ComputerUtil.winsOnEmptyLibraryDraw(player)) {
++            final int lib = player.getCardsIn(ZoneType.Library).size();
++            final int waiting = player.getGame().getTriggerHandler().countWaitingDraws(player);
++            if (lib < waiting + Integer.getInteger("fishpond.surgeReserve", 5) + 1) {
++                return false;
++            }
++        }
+         // AI was never asked
+         return true;
+     }
+diff --git a/forge-game/src/main/java/forge/game/trigger/TriggerHandler.java b/forge-game/src/main/java/forge/game/trigger/TriggerHandler.java
+index a5298d7..663d93a 100644
+--- a/forge-game/src/main/java/forge/game/trigger/TriggerHandler.java
++++ b/forge-game/src/main/java/forge/game/trigger/TriggerHandler.java
+@@ -348,6 +348,44 @@ public class TriggerHandler {
+         return checkStatics;
+     }
+ 
++    /**
++     * fishpond patch 18: cards the triggers now waiting on a resolving spell will make p draw (abilities controlled by p
++     * that draw for their controller), so the AI can stop a "repeat while you put" effect (Primal Surge) before those draws
++     * deck it. Read-only: waiting entries not collected yet are matched against the active triggers without storing them.
++     */
++    public int countWaitingDraws(final Player p) {
++        int n = 0;
++        for (final TriggerWaiting wt : waitingTriggers) {
++            final Iterable<Trigger> trigs = wt.getTriggers() != null ? wt.getTriggers() : getActiveTrigger(wt.getMode(), wt.getParams());
++            final Object entering = wt.getParams().get(AbilityKey.Card);
++            for (final Trigger t : trigs) {
++                if (t.getHostCard() == null) {
++                    continue;
++                }
++                for (SpellAbility a = t.ensureAbility(); a != null; a = a.getSubAbility()) {
++                    if (a.getApi() != forge.game.ability.ApiType.Draw) {
++                        continue;
++                    }
++                    // who draws: the trigger's controller ("You"), or the entering card's controller ("its controller may
++                    // draw": TriggeredCardController / TriggeredCardOwner)
++                    final String def = a.getParamOrDefault("Defined", "You");
++                    final Player drawer = "You".equals(def) ? t.getHostCard().getController()
++                            : def.startsWith("TriggeredCard") && entering instanceof Card ? ((Card) entering).getController() : null;
++                    if (p.equals(drawer)) {
++                        int k = 1;
++                        try {
++                            k = AbilityUtils.calculateAmount(t.getHostCard(), a.getParamOrDefault("NumCards", "1"), a);
++                        } catch (RuntimeException e) {
++                            // unknown amount: count one
++                        }
++                        n += Math.max(1, k);
++                    }
++                }
++            }
++        }
++        return n;
++    }
++
+     public void clearWaitingTriggers() {
+         waitingTriggers.clear();
+     }
