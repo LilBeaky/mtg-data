@@ -323,6 +323,14 @@ Phase A/B acceptance, 2026-10-01, Claude Code container (4 CPUs), Forge 2.0.15, 
 
 **Seen once, not filed:** Chulane holding 8 cards with 13-20 mana for several turns (G4 game 1; hand contents aren't logged, needs a replay); Swords to Plowshares on Ajani's Pridemate gave Heliod about 50 life (defensible, it was the biggest threat); nobody answered Felidar Sovereign at 59 life (G1 game 1; hands unknown).
 
+### Re-run after patches 12-14 (2026-10-06)
+
+The 6 power-matched pods again, same decks, seed 1, 5 games, hybrid (`data/fishpond/powermatch_20261006_p14/`; G5b = G5 with the final 40/50 Felidar/Test thresholds). 7 of 30 paired games changed. Hero results: Niv 2 -> 1 (game 2: patch 14's first rule traded City of Traitors for City of Brass on a pain trigger; fixed in ff99a22 with a puzzle), Erebos 1 -> 2 (game 4: Lumra no longer takes 25 from Wheel of Misfortune, makes its land drops and discards no lands), Araumi 1 -> 0 (game 1 lost, game 4 cut by the Balancer loop), Chulane, Heliod, Wilson unchanged.
+- **Araumi:** commander cast 5 times in 5 games (0 before), 8 activations, 7 encores (Gray Merchant, Kairi x2, Peregrine Drake, Sphinx Ambassador, Vindictive Lich, Wurmcoil Engine). One miss: it granted encore to Archon of Cruelty, then spent the mana on Singularity Rupture (its own board wipe). Follow-up: hold the encore mana once the grant resolves.
+- **Felidar / Test:** Felidar no longer cast at low life (G5 game 2); Test of Endurance at 50 life still won G5 game 4.
+- **Timeouts: 2 of 30, both loops.** G2 game 0 (Lumra's Nantuko/Icetill land loop, N5) and G3 game 4 (Balancer's Sprout Swarm loop, #8, on Araumi's turn 25). Item 9 is now the main source of void games.
+- Game times about doubled tonight: two pods plus a replay shared the CPU; results are seed-determined, not time-determined.
+
 ### Priority order (difficulty vs payoff, 2026-10-05; supersedes "in order" above)
 
 Payoff = how many decks and games the failure costs and how badly; difficulty = card override < pilot patch < engine/harness work. Item numbers refer to the lists above; each keeps its own puzzles and acceptance.
