@@ -193,7 +193,7 @@ All done; the user-facing doc is `docs/FISHPOND.md` (not `FORGE.md`), the tool r
 | Resumable runs, Windows support | Done 2026-10-01 / 2026-10-03 (`run --resume`; override home via junctions/hard links) |
 | Pilot policy Part 1 + Part 2 (patches 07-09, card overrides, puzzles) | Built 2026-10-02 (see "Pilot policy") |
 | Patches 10 (empty-library wins) and 11 (large-board blocks) | Built 2026-10-03 (FORGE_ISSUES #6, #7) |
-| Pilot study (16 bracketed decks, 100 games) | Done 2026-10-04; power-matched run 2026-10-05 added N1-N5; priority items 1-3 and 8 done 2026-10-06 (N5 is a land-play loop) (patches 12-14, overrides, puzzles 50/50); **next**: item 4 (commander timing) |
+| Pilot study (16 bracketed decks, 100 games) | Done 2026-10-04; power-matched run 2026-10-05 added N1-N5; priority items 1-3 and 8 done 2026-10-06 (patches 12-14, overrides); item 9, loop shortcut, done 2026-10-07 (patches 15-16; puzzles 55/55, 3 known gaps); **next**: item 6 (life budget, N4: cause of the last timeout), then item 4 (commander timing) |
 | Landbase tempo validation logging | Planned: `docs/LANDBASE_TEMPO_PLAN.md` step 3 |
 
 ## Lookahead and tutoring (2026-10-01, the user: enable lookahead, moderate/low setting)
@@ -331,6 +331,14 @@ The 6 power-matched pods again, same decks, seed 1, 5 games, hybrid (`data/fishp
 - **Timeouts: 2 of 30, both loops.** G2 game 0 (Lumra's Nantuko/Icetill land loop, N5) and G3 game 4 (Balancer's Sprout Swarm loop, #8, on Araumi's turn 25). Item 9 is now the main source of void games.
 - Game times about doubled tonight: two pods plus a replay shared the CPU; results are seed-determined, not time-determined.
 
+### Final regression after patches 15-16 (2026-10-07)
+
+The same 6 pods, seed 1, 5 games, with patches 01-16 (`data/fishpond/powermatch_20261007_p16/`; `_v1` and `_invalid` are superseded runs of earlier versions of 15/16, each with a README). The overwritten patch-14 pods were regenerated from worktrees at 02bb02f/7cbe3a4 and match the records above game for game.
+- **Timeouts: 1 of 30** (baseline 1, patch 14 2). Both loop games now end naturally: G2 game 0 (Lumra's land loop) in 5 minutes, G3 game 4 (Witherbloom's Sprout Swarm) in under 5. Loop stops: Witherbloom 13 and 40 on `goal`; Omnath's Staff of Domination twice at 10 (harmless).
+- **The remaining timeout is N4, not a loop:** G2 game 4, Erebos activates Vilis, Broker of Blood 13 times (24 -> 4 life) and ends with a 36-card hand; every priority then evaluates that hand. Alone the game ends at 25.8 minutes; with 10 games running at once it passes 30. The fix is the life budget (item 6), now the most useful next step for run validity too. Puzzle `vilis_life_payments` (known gap) is its test.
+- **Paired comparisons no longer line up with older runs:** patch 16 shifts Forge's random stream (the block planner draws random numbers), so 3-5 games a pod take different paths. Compare distributions, not paired games, across the patch-16 boundary.
+- **Araumi:** 8 commander casts and 9 encores in 5 games (baseline 0 and 0), first win (G3 game 3).
+
 ### Priority order (difficulty vs payoff, 2026-10-05; supersedes "in order" above)
 
 Payoff = how many decks and games the failure costs and how badly; difficulty = card override < pilot patch < engine/harness work. Item numbers refer to the lists above; each keeps its own puzzles and acceptance.
@@ -345,7 +353,7 @@ Payoff = how many decks and games the failure costs and how badly; difficulty = 
 | 6 | N4 Life budget (with Yusri follow-up 1) | Medium (one rule over optional life payments) | Medium: Niv, Erebos, Yusri, any Citadel/Ad Nauseam deck | One rule fixes several known losses |
 | 7 | 2 Harness hardening | Medium | Medium: keeps runs valid (voided games, OOM) | Protects every later measurement; needed before the big re-runs |
 | 8 | **Done 2026-10-06**: an unbounded loop (Springheart Nantuko on Icetill Explorer + City of Traitors; see N5) N5 replay (diagnosis only) | Low | Decides how 9 is built | Do before 9 |
-| 9 | **Built 2026-10-07** (patches 15 and 16; FORGE_ISSUES #8) 1 Loop shortcut, widened to repeated land plays (N5 is a land loop) | High | High: Balancer's real rate, no timed-out games | Most work; the cheaper fixes above shouldn't wait for it |
+| 9 | **Done 2026-10-07** (patches 15 and 16; FORGE_ISSUES #8; final regression: loop games all finish) 1 Loop shortcut, widened to repeated land plays (N5 is a land loop) | High | High: Balancer's real rate, no timed-out games | Most work; the cheaper fixes above shouldn't wait for it |
 | 10 | 5 Finisher misses (Primal Surge, Enter the Infinite, Approach) | Medium-high (one puzzle and fix each) | Medium: Chulane, Yusri, Zur | Per-card; do after the general rules |
 | 11 | 5b Ragost under pressure | Medium-high (find the check that says no) | Low-medium: one deck | Diagnosis-heavy |
 | 12 | 3 #9 null-source NPE | High (Forge copy internals) | Low: one game in 130 | Rare; the item 2 safety net covers it meanwhile |
