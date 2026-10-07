@@ -1,5 +1,5 @@
 diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
-index fc0a6c9..a9f64e9 100644
+index fc0a6c9..6881879 100644
 --- a/forge-ai/src/main/java/forge/ai/AiController.java
 +++ b/forge-ai/src/main/java/forge/ai/AiController.java
 @@ -433,6 +433,10 @@ public class AiController {
@@ -23,18 +23,18 @@ index fc0a6c9..a9f64e9 100644
          if (!checkAiSpecificRestrictions(sa)) {
              return AiPlayDecision.CantPlayAi;
          }
-@@ -959,6 +966,130 @@ public class AiController {
+@@ -959,6 +966,128 @@ public class AiController {
          return saSideEffects(spellHost, sa);
      }
  
 +    // ---- fishpond patch 15: loop shortcut (docs/FORGE_PLAN.md "Pilot study 2026-10-04" item 1; FORGE_ISSUES #8) ----
-+    // A seat that chooses the same play (same card and ability; for lands, the same land) LOOP_DETECT times in one turn
-+    // may be looping: its loop play skips hybrid's one-move check and danger checks are frozen (ComputerUtil.aiLifeInDanger).
-+    // At LOOP_CONFIRM repeats it is a loop (a few repeats are normal: Erebos's draws, Staff of Domination): other pilot seats
-+    // pass priority, and it stops once its creatures beat the table's life after one chump block per opposing creature, or
-+    // after -Dfishpond.loopMax iterations; then that play (every land play, for a land loop) is off for the rest of the
-+    // turn. Each start and stop prints a #FP-LOOP line.
-+    static final int LOOP_DETECT = 3;
++    // A seat that chooses the same play (same card and ability; for lands, the same land) LOOP_CONFIRM times in one turn is
++    // looping (a few repeats are normal: Erebos's draws, Staff of Domination; nothing changes before the threshold). While it
++    // loops, its loop play skips hybrid's one-move check unless the play costs life (that check is what stops the AI paying
++    // life it can't afford), danger checks are frozen (ComputerUtil.aiLifeInDanger) and other pilot seats pass priority. It
++    // stops once its creatures beat the table's life after one chump block per opposing creature, or after
++    // -Dfishpond.loopMax iterations; then that play (every land play, for a land loop) is off for the rest of the turn.
++    // Each start and stop prints a #FP-LOOP line.
 +    static final int LOOP_CONFIRM = 10;
 +    private static final int LOOP_MAX = Integer.getInteger("fishpond.loopMax", 1000);
 +
@@ -76,7 +76,7 @@ index fc0a6c9..a9f64e9 100644
 +    private void noteLoopPlay(final LoopState ls, final SpellAbility sa) {
 +        final int n = ls.counts.merge(player.getId() + "#" + countKey(sa), 1, Integer::sum);
 +        final String key = loopKey(sa);
-+        if (n >= LOOP_DETECT && ls.looper == null && !ls.stopped.contains(player.getId() + "#" + key)) {
++        if (n >= LOOP_CONFIRM && ls.looper == null && !ls.stopped.contains(player.getId() + "#" + key)) {
 +            ls.looper = player;
 +            ls.key = key;
 +            ls.iterations = n;
@@ -85,9 +85,6 @@ index fc0a6c9..a9f64e9 100644
 +        } else if (ls.looper == player && key.equals(ls.key)) {
 +            ls.iterations = Math.max(ls.iterations + 1, n);
 +        } else {
-+            return;
-+        }
-+        if (ls.iterations < LOOP_CONFIRM) {
 +            return;
 +        }
 +        final boolean goal = loopGoalReached(player);
@@ -139,7 +136,8 @@ index fc0a6c9..a9f64e9 100644
 +            return false;
 +        }
 +        final LoopState ls = loopState(game);
-+        return ls.looper == player && loopKey(sa).equals(ls.key);
++        return ls.looper == player && loopKey(sa).equals(ls.key)
++                && (sa.getPayCosts() == null || !sa.getPayCosts().hasSpecificCostType(CostPayLife.class));
 +    }
 +
 +    /** Danger checks while a loop runs: computed once per player and question for the rest of the loop. */
@@ -154,7 +152,7 @@ index fc0a6c9..a9f64e9 100644
      /** fishpond patch 14: null when nothing of ours is sacrificed by a land drop; otherwise whether this land is worth it:
       *  the hand is over its limit (a card goes at cleanup anyway), the land does something besides mana (fetch, utility,
       *  enters-the-battlefield trigger), we have landfall payoffs, or it's a fresh City replacing tapped ones. */
-@@ -1028,6 +1159,11 @@ public class AiController {
+@@ -1028,6 +1157,11 @@ public class AiController {
              if (forge.ai.ability.PumpAi.isEncoreGrant(player, sa)) {
                  return AiPlayDecision.WillPlay;
              }
@@ -166,7 +164,7 @@ index fc0a6c9..a9f64e9 100644
              return OnePlaySafetyChecker.isAcceptable(player, sa) ? AiPlayDecision.WillPlay : AiPlayDecision.HybridSimRejected;
          }
  
-@@ -1416,6 +1552,20 @@ public class AiController {
+@@ -1416,6 +1550,20 @@ public class AiController {
      }
  
      public List<SpellAbility> chooseSpellAbilityToPlay() {

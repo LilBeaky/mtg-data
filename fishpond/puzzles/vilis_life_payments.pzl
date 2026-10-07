@@ -1,0 +1,15 @@
+# title: Vilis, Broker of Blood at 10 life: the AI pays 2 life per activation down to 4, then dies on the swing back (known gap: stock Forge, no life budget; FORGE_PLAN N4)
+# card: Vilis, Broker of Blood
+# known_gap: yes
+# turns: 1
+# sim: hybrid
+# forbid: Life: Ai\(1\)-P1 \d+ > [0-4]$
+p0life=10
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Vilis, Broker of Blood;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest;Forest;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
