@@ -1,0 +1,16 @@
+# title: Regression guard for commander timing: Klauth (7 mana) with exactly 7 lands and cheaper creatures in hand gets cast (the timing gain itself is measured on real games: FORGE_PLAN item 3)
+# card: Klauth, Unrivaled Ancient
+# turns: 1
+# sim: hybrid
+# expect: cast Klauth, Unrivaled Ancient
+p0life=40
+p1life=40
+turn=5
+activeplayer=p0
+activephase=MAIN1
+p0command=Klauth, Unrivaled Ancient|IsCommander
+p0battlefield=Mountain;Mountain;Forest;Forest;Forest;Forest;Forest
+p0hand=Centaur Courser;Grizzly Bears;Elvish Mystic;Hill Giant
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest;Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

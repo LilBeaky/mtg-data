@@ -1,0 +1,15 @@
+# title: Regression guard for commander combat safety: at 3 life the commander blocks the Cyclops anyway (unblocked damage would be lethal)
+# card: (commander combat)
+# turns: 1
+# sim: hybrid
+# expect: assigned Centaur Courser.* to block
+p0life=3
+p1life=40
+turn=4
+activeplayer=p1
+activephase=MAIN1
+removesummoningsickness=true
+p0battlefield=Centaur Courser|IsCommander;Plains;Plains;Plains
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Bloodrock Cyclops;Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

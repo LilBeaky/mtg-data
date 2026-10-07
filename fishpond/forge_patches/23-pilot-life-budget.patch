@@ -1,0 +1,90 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 35eeb72..fa563bd 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1206,7 +1206,40 @@ public class AiController {
+         }
+     }
+ 
++    // ---- fishpond patch 23: life budget ----
++    // The AI paid life into boards that killed it: Niv 22 -> 12 through Bolas's Citadel and Vampiric Tutor, then died to
++    // 19; Erebos paid Vilis 13 times (24 -> 4); Erebos paid 8 for draws and died to exactly 20 (FORGE_PLAN item 2).
++    // Forge only kept a fixed floor (4 life for most abilities). A pilot seat now refuses a play whose life cost (life
++    // paid as a cost, plus "you lose N life" in its own effect) leaves it dead to the next combat the table can make:
++    // budget = life minus the biggest attack before its next turn (ComputerUtil.aiLifeInDanger, serious).
++    static int lifeCostOf(final Player ai, final SpellAbility sa) {
++        int n = 0;
++        if (sa.getPayCosts() != null) {
++            for (final forge.game.cost.CostPart part : sa.getPayCosts().getCostParts()) {
++                if (part instanceof forge.game.cost.CostPayLife payLife) {
++                    n += payLife.getAbilityAmount(sa);
++                }
++            }
++        }
++        for (SpellAbility a = sa; a != null; a = a.getSubAbility()) {
++            if (a.getApi() == ApiType.LoseLife && "You".equals(a.getParamOrDefault("Defined", "You"))) {
++                try {
++                    n += AbilityUtils.calculateAmount(a.getHostCard(), a.getParamOrDefault("LifeAmount", "0"), a);
++                } catch (RuntimeException e) {
++                    // amount not known before resolving: ignore
++                }
++            }
++        }
++        return n;
++    }
++
+     private AiPlayDecision saSideEffects(final Card card, final SpellAbility sa) {
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && player.canLoseLife() && !player.cantLoseForZeroOrLessLife()) {
++            final int lifeCost = lifeCostOf(player, sa);
++            if (lifeCost > 0 && ComputerUtil.aiLifeInDanger(player, true, lifeCost)) {
++                return AiPlayDecision.CurseEffects;   // fishpond patch 23: past the life budget
++            }
++        }
+         if (sa.isSpell() && forge.ai.ability.DrawAi.pilotSeat(player) && !ComputerUtil.winsOnEmptyLibraryDraw(player)
+                 && !(sa.getApi() == ApiType.Draw && forge.ai.ability.DrawAi.selfDeckWins(player, sa))) {
+             final int lib = player.getCardsIn(ZoneType.Library).size();
+@@ -2159,6 +2192,20 @@ public class AiController {
+     public int chooseNumber(SpellAbility sa, String title, int min, int max) {
+         final Card source = sa.getHostCard();
+         final String logic = sa.getParamOrDefault("AILogic", "Max");
++        // fishpond patch 23: a number of coins to flip where each lost flip damages you (Yusri, Fortune's Flame: 2 per loss).
++        // The user's rule (2026-10-03): the most flips whose worst case still leaves 1 life (at 11 life flip 5, at 10 flip
++        // 4); Krark's Thumb doesn't change the worst case.
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && player.canLoseLife() && !player.cantLoseForZeroOrLessLife()) {
++            final int perLoss = selfDamagePerLostFlip(sa);
++            if (perLoss > 0) {
++                int k = max;
++                while (k > min && k * perLoss >= player.getLife()) {
++                    k--;
++                }
++                System.out.println("#FP-PILOT {\"flips\": " + k + ", \"life\": " + player.getLife() + ", \"player\": \"" + player.getName() + "\"}");
++                return k;
++            }
++        }
+         if ("GainLife".equals(logic)) {
+             if (player.getLife() < 5 || player.getCardsIn(ZoneType.Hand).size() >= player.getMaxHandSize()) {
+                 return min;
+@@ -2231,6 +2278,23 @@ public class AiController {
+         return max;
+     }
+ 
++    /** Damage to its controller per lost flip when sa's sub-abilities flip coins and a loss damages "You" (patch 23), else 0. */
++    private static int selfDamagePerLostFlip(final SpellAbility sa) {
++        for (SpellAbility a = sa.getSubAbility(); a != null; a = a.getSubAbility()) {
++            if (a.getApi() != ApiType.FlipCoin || !a.hasParam("LoseSubAbility")) {
++                continue;
++            }
++            final SpellAbility lose = a.getAdditionalAbility("LoseSubAbility");
++            if (lose == null || lose.getApi() != ApiType.DealDamage || !"You".equals(lose.getParamOrDefault("Defined", ""))) {
++                continue;
++            }
++            final String dmg = a.getHostCard().getSVar(lose.getParamOrDefault("NumDmg", ""));
++            final java.util.regex.Matcher m = java.util.regex.Pattern.compile("Times\\.(\\d+)").matcher(dmg);
++            return m.find() ? Integer.parseInt(m.group(1)) : 1;
++        }
++        return 0;
++    }
++
+     public int chooseNumber(SpellAbility sa, String title, List<Integer> options, Player relatedPlayer) {
+         switch (sa.getApi()) {
+             case SetLife: // Reverse the Sands

@@ -262,6 +262,18 @@ public class ForgeRunner {
             rp.setPlayer(lp);
             players.add(rp);
         }
+        // decks whose list says '# commander: hold' (policy.json "commander_hold"): Forge patch 24 doesn't rush them out
+        StringBuilder hold = new StringBuilder();
+        for (int i = 0; i < 4; i++) {
+            File pf = new File(deckDir, f[6 + i] + ".policy.json");
+            if (!pf.exists()) continue;
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"commander_hold\"\\s*:\\s*\\[(.*?)\\]", java.util.regex.Pattern.DOTALL)
+                    .matcher(new String(java.nio.file.Files.readAllBytes(pf.toPath()), java.nio.charset.StandardCharsets.UTF_8));
+            if (!m.find()) continue;
+            java.util.regex.Matcher n = java.util.regex.Pattern.compile("\"([^\"]*)\"").matcher(m.group(1));
+            while (n.find()) hold.append(hold.length() > 0 ? ";" : "").append(n.group(1));
+        }
+        System.setProperty("fishpond.commanderHold", hold.toString());
         Match match = new Match(rules, players, "Fishpond");
         Game game = match.createGame();
         game.setNoGUIUser();

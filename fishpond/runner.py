@@ -226,6 +226,7 @@ def execute(entries, jobs, run_dir, session, quiet=False):
         lf = os.path.join(log_dir, f"worker_{session}_{j}.log")
         cmd = ["java", f"-Xmx{xmx_for(jobs, uses_full(entries))}m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
                *([] if forge.pilot_on() else ["-Dfishpond.policy=off"]), *_pilot_seat_props(run_dir),
+               *os.environ.get("FISHPOND_JVM", "").split(),   # extra -D switches for A/B runs (e.g. -Dfishpond.commanderRules=false)
                "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "ForgeRunner", os.path.join(deck_dir, ""), pf]
         fh = open(lf, "w", encoding="utf-8")
         procs.append((subprocess.Popen(cmd, cwd=forge.run_home(quiet=True), stdout=fh, stderr=subprocess.STDOUT), fh, lf))

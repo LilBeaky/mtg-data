@@ -1,0 +1,15 @@
+# title: Regression guard (stock Forge already passes; the gain is measured in games, FORGE_PLAN item 4): the commander (Centaur Courser here) doesn't attack into an untapped deathtouch blocker (the user's rules, 2026-10-04)
+# card: (commander combat)
+# turns: 1
+# sim: hybrid
+# forbid: assigned Centaur Courser
+p0life=40
+p1life=40
+turn=3
+activeplayer=p0
+activephase=MAIN1
+removesummoningsickness=true
+p0battlefield=Centaur Courser|IsCommander;Plains;Plains;Plains
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Typhoid Rats;Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

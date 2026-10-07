@@ -1,6 +1,5 @@
-# title: Vilis, Broker of Blood at 10 life: the AI pays 2 life per activation down to 4, then dies on the swing back (known gap: stock Forge, no life budget; FORGE_PLAN N4)
+# title: Vilis, Broker of Blood at 10 life: the AI pays 2 life per activation down to 4, then dies on the swing back; with the life budget (patch 23) it stops paying before the swing back can kill it
 # card: Vilis, Broker of Blood
-# known_gap: yes
 # turns: 1
 # sim: hybrid
 # forbid: Life: Ai\(1\)-P1 \d+ > [0-4]$

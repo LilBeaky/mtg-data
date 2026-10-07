@@ -1,0 +1,16 @@
+# title: Regression guard (stock Forge already passes; the gain is measured in games, FORGE_PLAN item 4): the commander doesn't trade with an attacking Bloodrock Cyclops (a 3/3 that must attack) when the damage isn't lethal
+# card: (commander combat)
+# turns: 1
+# sim: hybrid
+# expect: Bloodrock Cyclops .* to attack
+# forbid: assigned Centaur Courser.* to block
+p0life=40
+p1life=40
+turn=4
+activeplayer=p1
+activephase=MAIN1
+removesummoningsickness=true
+p0battlefield=Centaur Courser|IsCommander;Plains;Plains;Plains
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Bloodrock Cyclops;Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,16 @@
+# title: Mystic Remora's third upkeep (3 mana) with 3 lands and Yusri in the command zone: the AI lets Remora go and casts its commander (Yusri paid 15 mana of upkeep and never cast Yusri, varied pods V09 game 4)
+# card: Mystic Remora
+# turns: 2
+# sim: hybrid
+# expect: Mystic Remora .*Graveyard
+# expect: cast Yusri, Fortune's Flame
+p0life=40
+p1life=40
+turn=5
+activeplayer=p1
+activephase=END_OF_TURN
+p0command=Yusri, Fortune's Flame|IsCommander
+p0battlefield=Mystic Remora|Counters:AGE=2;Island;Mountain;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

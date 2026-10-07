@@ -1,0 +1,14 @@
+# title: Guard for the life budget: Erebos at 30 life facing 8 power still pays 2 life to draw cards
+# card: Erebos, God of the Dead
+# turns: 1
+# sim: hybrid
+# expect: activated Erebos, God of the Dead
+p0life=30
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN2
+p0battlefield=Erebos, God of the Dead;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest;Forest;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

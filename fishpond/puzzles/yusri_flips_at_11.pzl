@@ -1,0 +1,16 @@
+# title: Yusri attacking at 11 life: the most flips whose worst case (2 damage per lost flip) still leaves 1 life is 5 (the user's rule, 2026-10-03)
+# card: Yusri, Fortune's Flame
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 assigned Yusri
+# expect: #FP-PILOT \{"flips": 5, "life": 11
+p0life=11
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+removesummoningsickness=true
+p0battlefield=Yusri, Fortune's Flame;Island;Island;Mountain;Mountain
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

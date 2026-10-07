@@ -1,0 +1,235 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiAttackController.java b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+index a618e67..28447e5 100644
+--- a/forge-ai/src/main/java/forge/ai/AiAttackController.java
++++ b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+@@ -822,6 +822,15 @@ public class AiAttackController {
+      * @return a {@link forge.game.combat.Combat} object.
+      */
+     public final int declareAttackers(final Combat combat) {
++        ComputerUtilCombat.beginCombatPlan();   // fishpond patch 22: combat-trigger lists built once per plan
++        try {
++            return declareAttackers0(combat);
++        } finally {
++            ComputerUtilCombat.endCombatPlan();
++        }
++    }
++
++    private int declareAttackers0(final Combat combat) {
+         // something prevents attacking, try another
+         if (this.attackers.isEmpty() && ai.getOpponents().size() > 1) {
+             final PlayerCollection opps = ai.getOpponents();
+diff --git a/forge-ai/src/main/java/forge/ai/AiBlockController.java b/forge-ai/src/main/java/forge/ai/AiBlockController.java
+index 27d180b..e08b7f9 100644
+--- a/forge-ai/src/main/java/forge/ai/AiBlockController.java
++++ b/forge-ai/src/main/java/forge/ai/AiBlockController.java
+@@ -1033,6 +1033,15 @@ public class AiBlockController {
+         assignBlockersForCombat(combat, null);
+     }
+     public void assignBlockersForCombat(final Combat combat, final CardCollection excludedBlockers) {
++        ComputerUtilCombat.beginCombatPlan();   // fishpond patch 22: combat-trigger lists built once per plan
++        try {
++            assignBlockersForCombat0(combat, excludedBlockers);
++        } finally {
++            ComputerUtilCombat.endCombatPlan();
++        }
++    }
++
++    private void assignBlockersForCombat0(final Combat combat, final CardCollection excludedBlockers) {
+         List<Card> possibleBlockers = ai.getCreaturesInPlay();
+         if (excludedBlockers != null && !excludedBlockers.isEmpty()) {
+             possibleBlockers.removeAll(excludedBlockers);
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index 41ad6e3..d2d6063 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -3431,7 +3431,13 @@ public class ComputerUtil {
+             }
+         }
+         final long t0 = st != null ? System.nanoTime() : 0;
+-        final int result = predictNextCombatsRemainingLife0(ai, serious, checkDiff, payment, excludedBlockers, opps);
++        final int result;
++        ComputerUtilCombat.beginCombatPlan();   // fishpond patch 22
++        try {
++            result = predictNextCombatsRemainingLife0(ai, serious, checkDiff, payment, excludedBlockers, opps);
++        } finally {
++            ComputerUtilCombat.endCombatPlan();
++        }
+         if (st != null) {
+             final long dt = System.nanoTime() - t0;
+             synchronized (st) {
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java
+index 0c917c4..2eb894d 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java
+@@ -733,6 +733,87 @@ public class ComputerUtilCombat {
+             Combat combat) {
+         return combatTriggerWillTrigger(attacker, defender, trigger, combat, null);
+     }
++    // ---- fishpond patch 22: the block planner asks for every attacker/blocker pair what pumps, destroy and damage
++    // triggers could fire, and each ask rebuilt the list of every trigger on every permanent (and command-zone card):
++    // most of a combat prediction on a big board (JFR, 30 creatures a side, 2026-10-07). While a combat is being
++    // planned (beginCombatPlan/endCombatPlan around AiAttackController.declareAttackers, AiBlockController.
++    // assignBlockersForCombat and ComputerUtil's next-combat prediction) the board doesn't change, so each game's list
++    // is built once, keeping only the modes combatTriggerWillTrigger accepts (it rejects every other mode first), in
++    // the original order. Outside a plan, or with -Dfishpond.combatPlanCache=false, the lists are built as before.
++    private static final boolean PLAN_CACHE = !"false".equals(System.getProperty("fishpond.combatPlanCache"));
++
++    private static final class CombatPlan {
++        int depth;
++        final Map<Game, FCollection<Trigger>> withCommand = new java.util.HashMap<>();
++        final Map<Game, FCollection<Trigger>> battlefieldOnly = new java.util.HashMap<>();
++    }
++
++    private static final ThreadLocal<CombatPlan> PLAN = new ThreadLocal<>();
++
++    public static void beginCombatPlan() {
++        if (!PLAN_CACHE) {
++            return;
++        }
++        CombatPlan p = PLAN.get();
++        if (p == null) {
++            p = new CombatPlan();
++            PLAN.set(p);
++        }
++        p.depth++;
++    }
++
++    public static void endCombatPlan() {
++        final CombatPlan p = PLAN.get();
++        if (p != null && --p.depth <= 0) {
++            PLAN.remove();
++        }
++    }
++
++    private static boolean combatMode(final Trigger t) {
++        final TriggerType mode = t.getMode();
++        return mode == TriggerType.Attacks || mode == TriggerType.AttackerUnblocked || mode == TriggerType.Blocks
++                || mode == TriggerType.AttackerBlocked || mode == TriggerType.AttackerBlockedByCreature || mode == TriggerType.DamageDone;
++    }
++
++    private static FCollection<Trigger> combatTriggers(final Game game, final boolean withCommand) {
++        final CombatPlan p = PLAN.get();
++        if (p == null) {
++            final FCollection<Trigger> all = new FCollection<>();
++            for (Card card : game.getCardsIn(ZoneType.Battlefield)) {
++                all.addAll(card.getTriggers());
++            }
++            if (withCommand) {
++                for (Card card : game.getCardsIn(ZoneType.Command)) {
++                    all.addAll(card.getTriggers());
++                }
++            }
++            return all;
++        }
++        final Map<Game, FCollection<Trigger>> m = withCommand ? p.withCommand : p.battlefieldOnly;
++        FCollection<Trigger> cached = m.get(game);
++        if (cached == null) {
++            cached = new FCollection<>();
++            for (Card card : game.getCardsIn(ZoneType.Battlefield)) {
++                for (final Trigger t : card.getTriggers()) {
++                    if (combatMode(t)) {
++                        cached.add(t);
++                    }
++                }
++            }
++            if (withCommand) {
++                for (Card card : game.getCardsIn(ZoneType.Command)) {
++                    for (final Trigger t : card.getTriggers()) {
++                        if (combatMode(t)) {
++                            cached.add(t);
++                        }
++                    }
++                }
++            }
++            m.put(game, cached);
++        }
++        return new FCollection<>(cached);
++    }
++
+     public static boolean combatTriggerWillTrigger(final Card attacker, final Card defender, final Trigger trigger,
+             Combat combat, final List<Card> plannedAttackers) {
+         final Game game = attacker.getGame();
+@@ -912,13 +993,7 @@ public class ComputerUtilCombat {
+             }
+         }
+ 
+-        final FCollection<Trigger> theTriggers = new FCollection<>();
+-        for (Card card : game.getCardsIn(ZoneType.Battlefield)) {
+-            theTriggers.addAll(card.getTriggers());
+-        }
+-        for (Card card : game.getCardsIn(ZoneType.Command)) {
+-            theTriggers.addAll(card.getTriggers());
+-        }
++        final FCollection<Trigger> theTriggers = combatTriggers(game, true);   // fishpond patch 22
+         theTriggers.addAll(attacker.getTriggers());
+         for (final Trigger trigger : theTriggers) {
+             final Card source = trigger.getHostCard();
+@@ -1021,13 +1096,7 @@ public class ComputerUtilCombat {
+         }
+ 
+         final Game game = attacker.getGame();
+-        final FCollection<Trigger> theTriggers = new FCollection<>();
+-        for (Card card : game.getCardsIn(ZoneType.Battlefield)) {
+-            theTriggers.addAll(card.getTriggers());
+-        }
+-        for (Card card : game.getCardsIn(ZoneType.Command)) {
+-            theTriggers.addAll(card.getTriggers());
+-        }
++        final FCollection<Trigger> theTriggers = combatTriggers(game, true);   // fishpond patch 22
+         theTriggers.addAll(attacker.getTriggers());
+         for (final Trigger trigger : theTriggers) {
+             final Card source = trigger.getHostCard();
+@@ -1156,13 +1225,7 @@ public class ComputerUtilCombat {
+         }
+ 
+         final Game game = attacker.getGame();
+-        final FCollection<Trigger> theTriggers = new FCollection<>();
+-        for (Card card : game.getCardsIn(ZoneType.Battlefield)) {
+-            theTriggers.addAll(card.getTriggers());
+-        }
+-        for (Card card : game.getCardsIn(ZoneType.Command)) {
+-            theTriggers.addAll(card.getTriggers());
+-        }
++        final FCollection<Trigger> theTriggers = combatTriggers(game, true);   // fishpond patch 22
+         // if the defender has first strike and wither the attacker will deal
+         // less damage than expected
+         if (null != blocker) {
+@@ -1356,13 +1419,7 @@ public class ComputerUtilCombat {
+         }
+ 
+         final Game game = attacker.getGame();
+-        final FCollection<Trigger> theTriggers = new FCollection<>();
+-        for (Card card : game.getCardsIn(ZoneType.Battlefield)) {
+-            theTriggers.addAll(card.getTriggers());
+-        }
+-        for (Card card : game.getCardsIn(ZoneType.Command)) {
+-            theTriggers.addAll(card.getTriggers());
+-        }
++        final FCollection<Trigger> theTriggers = combatTriggers(game, true);   // fishpond patch 22
+         if (blocker != null) {
+             theTriggers.addAll(blocker.getTriggers());
+         }
+@@ -1566,10 +1623,7 @@ public class ComputerUtilCombat {
+         }
+ 
+         // check Destroy triggers (Cockatrice and friends)
+-        final FCollection<Trigger> theTriggers = new FCollection<>();
+-        for (Card card : attacker.getGame().getCardsIn(ZoneType.Battlefield)) {
+-            theTriggers.addAll(card.getTriggers());
+-        }
++        final FCollection<Trigger> theTriggers = combatTriggers(attacker.getGame(), false);   // fishpond patch 22
+         for (Trigger trigger : theTriggers) {
+             final Card source = trigger.getHostCard();
+ 
+@@ -1823,10 +1877,7 @@ public class ComputerUtilCombat {
+         }
+ 
+         final Game game = blocker.getGame();
+-        final FCollection<Trigger> theTriggers = new FCollection<>();
+-        for (Card card : game.getCardsIn(ZoneType.Battlefield)) {
+-            theTriggers.addAll(card.getTriggers());
+-        }
++        final FCollection<Trigger> theTriggers = combatTriggers(game, false);   // fishpond patch 22
+         for (Trigger trigger : theTriggers) {
+             final Card source = trigger.getHostCard();
+ 

@@ -1,0 +1,219 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiAttackController.java b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+index 28447e5..c0251b6 100644
+--- a/forge-ai/src/main/java/forge/ai/AiAttackController.java
++++ b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+@@ -824,12 +824,63 @@ public class AiAttackController {
+     public final int declareAttackers(final Combat combat) {
+         ComputerUtilCombat.beginCombatPlan();   // fishpond patch 22: combat-trigger lists built once per plan
+         try {
+-            return declareAttackers0(combat);
++            final int result = declareAttackers0(combat);
++            commanderAttackSafety(combat);   // fishpond patch 24
++            return result;
+         } finally {
+             ComputerUtilCombat.endCombatPlan();
+         }
+     }
+ 
++    // ---- fishpond patch 24: commander combat safety (the user's rules, 2026-10-04) ----
++    // A pilot seat's commander attacks only a player none of whose untapped creatures can kill it in a block (first
++    // strike, deathtouch and pumps the AI can see count; indestructible survives): it moves to a safe opponent, or stays
++    // home. A commander whose attack trigger gets value now (Yusri's flips, Zur's search, Klauth's mana) still attacks.
++    private void commanderAttackSafety(final Combat combat) {
++        if (!AiController.commanderRulesOn() || !forge.ai.ability.DrawAi.pilotSeat(ai)) {
++            return;
++        }
++        for (final Card att : new ArrayList<>(combat.getAttackers())) {
++            if (!att.isCommander() || !ai.equals(att.getController()) || hasAttackTrigger(att)) {
++                continue;
++            }
++            final Player defender = defendingPlayer(combat.getDefenderByAttacker(att));
++            if (defender == null || !canKillInBlock(att, defender, combat)) {
++                continue;
++            }
++            combat.removeFromCombat(att);
++            for (final Player o : ai.getOpponents()) {
++                if (o != defender && CombatUtil.canAttack(att, o) && !canKillInBlock(att, o, combat)) {
++                    combat.addAttacker(att, o);
++                    break;
++                }
++            }
++        }
++    }
++
++    private static Player defendingPlayer(final GameEntity def) {
++        return def instanceof Player ? (Player) def : def instanceof Card ? ((Card) def).getController() : null;
++    }
++
++    private boolean canKillInBlock(final Card att, final Player defender, final Combat combat) {
++        for (final Card b : defender.getCreaturesInPlay()) {
++            if (b.isUntapped() && CombatUtil.canBlock(att, b) && ComputerUtilCombat.canDestroyAttacker(ai, att, b, combat, false)) {
++                return true;
++            }
++        }
++        return false;
++    }
++
++    private static boolean hasAttackTrigger(final Card c) {
++        for (final forge.game.trigger.Trigger t : c.getTriggers()) {
++            if (t.getMode() == forge.game.trigger.TriggerType.Attacks && !t.isStatic()
++                    && "Card.Self".equals(t.getParamOrDefault("ValidCard", ""))) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     private int declareAttackers0(final Combat combat) {
+         // something prevents attacking, try another
+         if (this.attackers.isEmpty() && ai.getOpponents().size() > 1) {
+diff --git a/forge-ai/src/main/java/forge/ai/AiBlockController.java b/forge-ai/src/main/java/forge/ai/AiBlockController.java
+index e08b7f9..9f215a5 100644
+--- a/forge-ai/src/main/java/forge/ai/AiBlockController.java
++++ b/forge-ai/src/main/java/forge/ai/AiBlockController.java
+@@ -1036,11 +1036,39 @@ public class AiBlockController {
+         ComputerUtilCombat.beginCombatPlan();   // fishpond patch 22: combat-trigger lists built once per plan
+         try {
+             assignBlockersForCombat0(combat, excludedBlockers);
++            commanderBlockSafety(combat);   // fishpond patch 24
+         } finally {
+             ComputerUtilCombat.endCombatPlan();
+         }
+     }
+ 
++    // ---- fishpond patch 24: a pilot seat's commander doesn't block an attacker that would kill it (no trades, no chumps)
++    // unless taking that damage would be lethal (life or commander damage: lifeInSeriousDanger); then Forge's block stays.
++    private void commanderBlockSafety(final Combat combat) {
++        if (!AiController.commanderRulesOn() || !forge.ai.ability.DrawAi.pilotSeat(ai)) {
++            return;
++        }
++        for (final Card b : new ArrayList<>(combat.getAllBlockers())) {
++            if (!b.isCommander() || !ai.equals(b.getController())) {
++                continue;
++            }
++            final List<Card> blocked = new ArrayList<>(combat.getAttackersBlockedBy(b));
++            boolean dies = false;
++            for (final Card a : blocked) {
++                dies |= ComputerUtilCombat.canDestroyBlocker(ai, b, a, combat, false);
++            }
++            if (!dies) {
++                continue;
++            }
++            combat.removeFromCombat(b);
++            if (ComputerUtilCombat.lifeInSeriousDanger(ai, combat)) {
++                for (final Card a : blocked) {
++                    combat.addBlocker(a, b);   // needed to survive
++                }
++            }
++        }
++    }
++
+     private void assignBlockersForCombat0(final Combat combat, final CardCollection excludedBlockers) {
+         List<Card> possibleBlockers = ai.getCreaturesInPlay();
+         if (excludedBlockers != null && !excludedBlockers.isEmpty()) {
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index fa563bd..20d7c11 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -886,6 +886,9 @@ public class AiController {
+         if (!sa.canCastTiming(player)) {
+             return AiPlayDecision.TimingRestrictions;
+         }
++        if (commanderNow(sa)) {
++            return AiPlayDecision.WillPlay;   // fishpond patch 24: cast the commander as soon as it's affordable
++        }
+ 
+         final Card card = sa.getHostCard();
+ 
+@@ -1206,6 +1209,37 @@ public class AiController {
+         }
+     }
+ 
++    // ---- fishpond patch 24: commander timing ----
++    // Forge cast commanders about a turn late: it spent the mana on other spells first (Klauth with 8 mana on turn 4 was out
++    // by turn 5 in a quarter of games; Niv first cast on turns 5-10). The user's rule (2026-10-04): cast the commander as
++    // soon as it's affordable unless something more urgent is in hand. For a pilot seat in its own main phase, a commander
++    // spell from the command zone goes first and isn't held by the "cast later" checks or hybrid's one-move veto, unless
++    // the seat is facing lethal (then the survival plays come first), its cost has X, or its deck says
++    // '# commander: hold' (the harness lists those commanders in -Dfishpond.commanderHold, ';'-separated names).
++    /** Patch 24's commander rules (timing, cumulative upkeep, combat safety); -Dfishpond.commanderRules=false for A/B runs. */
++    public static boolean commanderRulesOn() {
++        return !"false".equals(System.getProperty("fishpond.commanderRules"));
++    }
++
++    private boolean commanderNow(final SpellAbility sa) {
++        final Card c = sa.getHostCard();
++        if (!commanderRulesOn() || c == null || !sa.isSpell() || !c.isCommander() || !c.isInZone(ZoneType.Command) || !forge.ai.ability.DrawAi.pilotSeat(player)) {
++            return false;
++        }
++        final forge.game.phase.PhaseHandler ph = game.getPhaseHandler();
++        if (!ph.isPlayerTurn(player) || ph.getPhase() == null || !ph.getPhase().isMain()) {
++            return false;
++        }
++        final String hold = System.getProperty("fishpond.commanderHold", "");
++        if (!hold.isEmpty() && Arrays.asList(hold.split(";")).contains(c.getName())) {
++            return false;
++        }
++        if (sa.getPayCosts() != null && sa.getPayCosts().hasXInAnyCostPart()) {
++            return false;
++        }
++        return !ComputerUtil.aiLifeInDanger(player, true, 0);
++    }
++
+     // ---- fishpond patch 23: life budget ----
+     // The AI paid life into boards that killed it: Niv 22 -> 12 through Bolas's Citadel and Vampiric Tutor, then died to
+     // 19; Erebos paid Vilis 13 times (24 -> 4); Erebos paid 8 for draws and died to exactly 20 (FORGE_PLAN item 2).
+@@ -1932,6 +1966,9 @@ public class AiController {
+         try {
+             all.sort(ComputerUtilAbility.saEvaluator); // put best spells first
+             ComputerUtilAbility.sortCreatureSpells(all);
++            if (forge.ai.ability.DrawAi.pilotSeat(player)) {
++                all.sort(Comparator.comparing((SpellAbility x) -> !commanderNow(x)));   // fishpond patch 24 (stable sort)
++            }
+         } catch (IllegalArgumentException ex) {
+             System.err.println(ex.getMessage());
+             String assertex = ComparatorUtil.verifyTransitivity(ComputerUtilAbility.saEvaluator, all);
+diff --git a/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java b/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
+index a444a1d..c6e1af9 100644
+--- a/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
++++ b/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
+@@ -1271,6 +1271,9 @@ public class PlayerControllerAi extends PlayerController {
+ 
+     @Override
+     public boolean payCostToPreventEffect(Cost cost, SpellAbility sa, boolean alreadyPaid, FCollectionView<Player> allPayers) {
++        if (sa.hasParam("CumulativeUpkeep") && AiController.commanderRulesOn() && forge.ai.ability.DrawAi.pilotSeat(player) && !cumulativeUpkeepWorthIt(cost)) {
++            return false;   // fishpond patch 24: let it go
++        }
+         if (SpellApiToAi.Converter.get(sa).willPayUnlessCost(player, sa, cost, alreadyPaid, allPayers)) {
+             if (!ComputerUtilCost.canPayCost(cost, sa, player, true)) {
+                 return false;
+@@ -1282,6 +1285,29 @@ public class PlayerControllerAi extends PlayerController {
+         return false;
+     }
+ 
++    // fishpond patch 24: Yusri paid Mystic Remora's cumulative upkeep for 5 turns (1+2+3+4+5 mana on 3-5 lands) and never
++    // cast its 3-mana commander (varied pods V09 game 4). Pay a cumulative upkeep's mana only while it leaves the mana to
++    // cast the commander this turn (when that was affordable) and takes no more than half the mana available.
++    private boolean cumulativeUpkeepWorthIt(final Cost cost) {
++        final int mana = cost.getTotalMana() == null ? 0 : cost.getTotalMana().getCMC();
++        if (mana <= 0) {
++            return true;
++        }
++        final int available = ComputerUtilMana.getAvailableManaEstimate(player, false);
++        if (mana * 2 > available) {
++            return false;
++        }
++        for (final Card c : player.getCardsIn(ZoneType.Command)) {
++            if (c.isCommander() && player.equals(c.getOwner())) {
++                final int need = c.getCMC() + 2 * player.getCommanderCast(c);
++                if (available >= need && available - mana < need) {
++                    return false;
++                }
++            }
++        }
++        return true;
++    }
++
+     public boolean payCostDuringRoll(final Cost cost, final SpellAbility sa) {
+         // TODO logic for AI to pay rerolls and modification costs
+         return false;
