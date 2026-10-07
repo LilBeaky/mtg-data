@@ -1,0 +1,15 @@
+# title: Ramp first: 2 Forests with Llanowar Elves and Grizzly Bears in hand on turn 2: the AI casts the Elves (stock Forge waits for main 2 and spends the mana on the Bears; Klauth held its ramp the same way, 2026-10-07)
+# card: Llanowar Elves
+# turns: 1
+# sim: hybrid
+# expect: cast Llanowar Elves
+p0life=40
+p1life=40
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest
+p0hand=Llanowar Elves;Grizzly Bears;Craw Wurm
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

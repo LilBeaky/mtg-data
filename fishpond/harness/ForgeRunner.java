@@ -533,6 +533,14 @@ public class ForgeRunner {
             b.append(", \"disc\": ").append(discarded).append(", \"recur\": ").append(recurred);
             b.append(", \"lands\": ").append(hero.getLandsInPlay().size());
             if (when.equals("main")) {
+                // the hand's card names at main phase (for audits: what was held, e.g. ramp not cast)
+                b.append(", \"hand_names\": [");
+                boolean firstName = true;
+                for (Card c : hero.getCardsIn(ZoneType.Hand)) {
+                    b.append(firstName ? "" : ", ").append('"').append(c.getName().replace("\\", "\\\\").replace("\"", "\\\"")).append('"');
+                    firstName = false;
+                }
+                b.append(']');
                 int mana = 0;
                 try { mana = ComputerUtilMana.getAvailableManaEstimate(hero, false); } catch (Throwable t) { mana = -1; }
                 b.append(", \"mana\": ").append(mana);

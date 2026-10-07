@@ -1,0 +1,67 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 20d7c11..c13b5cb 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1967,6 +1967,9 @@ public class AiController {
+             all.sort(ComputerUtilAbility.saEvaluator); // put best spells first
+             ComputerUtilAbility.sortCreatureSpells(all);
+             if (forge.ai.ability.DrawAi.pilotSeat(player)) {
++                if (ComputerUtil.rampFirstOn() && game.getPhaseHandler().isPlayerTurn(player)) {
++                    all.sort(Comparator.comparing((SpellAbility x) -> !ComputerUtil.isRamp(player, x)));   // fishpond patch 25 (stable)
++                }
+                 all.sort(Comparator.comparing((SpellAbility x) -> !commanderNow(x)));   // fishpond patch 24 (stable sort)
+             }
+         } catch (IllegalArgumentException ex) {
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index d2d6063..b2dde4f 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -1256,8 +1256,48 @@ public class ComputerUtil {
+                 && !sa.hasParam("ActivationPhases");
+     }
+ 
++    // ---- fishpond patch 25: ramp first ----
++    // Forge casts a permanent in main 1 only for a reason (haste, an equipment target...), so mana dorks, mana rocks and
++    // cost reducers waited for main 2, where the mana usually went to the best-rated spell instead: Klauth in a vacuum held
++    // Llanowar Elves, Medallions, Selvala and Dragonspeaker Shaman with the lands to cast them and was out by turn 5 in 14
++    // of 40 games (2026-10-07). A pilot seat with fewer than 7 lands casts its ramp in main 1 and before other spells
++    // (after the commander, patch 24): nonland permanents with a mana ability, permanents that reduce spell costs, and
++    // spells that put a land from the library onto the battlefield. -Dfishpond.rampFirst=false turns it off.
++    public static boolean rampFirstOn() {
++        return !"false".equals(System.getProperty("fishpond.rampFirst"));
++    }
++
++    public static boolean isRamp(final Player ai, final SpellAbility sa) {
++        final Card c = sa.getHostCard();
++        if (c == null || !sa.isSpell() || c.isLand() || ai.getLandsInPlay().size() >= 7
++                || sa.getPayCosts() != null && sa.getPayCosts().hasXInAnyCostPart()) {
++            return false;
++        }
++        if (c.isPermanent()) {
++            if (!c.getManaAbilities().isEmpty()) {
++                return true;
++            }
++            for (final StaticAbility st : c.getStaticAbilities()) {
++                if (st.checkMode(StaticAbilityMode.ReduceCost)) {
++                    return true;
++                }
++            }
++            return false;
++        }
++        for (SpellAbility a = sa; a != null; a = a.getSubAbility()) {
++            if (a.getApi() == ApiType.ChangeZone && "Battlefield".equals(a.getParam("Destination"))
++                    && a.getParamOrDefault("Origin", "").contains("Library") && a.getParamOrDefault("ChangeType", "").contains("Land")) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     public static boolean castPermanentInMain1(final Player ai, final SpellAbility sa) {
+         final Card card = sa.getHostCard();
++        if (rampFirstOn() && forge.ai.ability.DrawAi.pilotSeat(ai) && isRamp(ai, sa)) {
++            return true;   // fishpond patch 25
++        }
+         final CardState cardState = card.isFaceDown() ? card.getState(CardStateName.Original) : card.getCurrentState();
+ 
+         if (card.hasSVar("PlayMain1")) {
