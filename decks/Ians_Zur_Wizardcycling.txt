@@ -9,7 +9,6 @@ Deck
 1 Adarkar Wastes
 1 Aether Channeler
 1 Approach of the Second Sun
-1 Arcane Sanctum
 1 Arcane Signet
 1 Archaeomancer
 1 Archfiend of Ifnir
@@ -17,35 +16,36 @@ Deck
 1 Astral Drift
 1 Astral Slide
 1 Auramancer
-1 Azami, Lady of Scrolls
+1 Azorius Signet
 1 Barren Moor
 1 Bloodline Necromancer
 1 Brainspoil
 1 Choked Estuary
 1 Command Tower
 1 Complicate
-1 Counterbalance
 1 Cyclonic Rift
 1 Dark Ritual
 1 Desert of the Mindful
 1 Desert of the True
 1 Deserted Beach
+1 Dimir Signet
 1 Disciple of Caelus Nin
 1 Dour Port-Mage
 1 Drannith Magistrate
 1 Drifting Meadow
 1 Emeritus of Ideation
 1 Ephemerate
-1 Ertai Resurrected
 1 Escape Protocol
 1 Exotic Orchard
 1 Feed the Swarm
+1 Fellwar Stone
 1 Fetid Pools
 1 Flickering Hound
 1 Flooded Strand
 1 Floodfarm Verge
 1 Fluctuator
 1 Forsake the Worldly
+1 Fracture
 1 Ghostway
 1 Glen Elendra Archmage
 1 Gloomlake Verge
@@ -54,13 +54,11 @@ Deck
 1 Hall of Heliod's Generosity
 1 Hallowed Fountain
 1 Irrigated Farmland
-5 Island
-1 Kindred Judgment
+4 Island
 1 Land Tax
 1 Lonely Sandbar
 1 Long-Term Plans
 1 Mage's Attendant
-1 Magus of the Abyss
 1 Mana Sculpt
 1 Miscalculation
 1 Monument to Endurance
@@ -68,8 +66,8 @@ Deck
 1 Naban, Dean of Iteration
 1 Necrodominance
 1 Neutralize
+1 Orzhov Signet
 1 Path of Ancestry
-1 Patron Wizard
 1 Personal Tutor
 1 Pest Control
 3 Plains
@@ -77,7 +75,6 @@ Deck
 1 Raffine's Tower
 1 Remote Isle
 1 Rule of Law
-1 Scheming Symmetry
 1 Secluded Steppe
 1 Shattered Sanctum
 1 Silent Clearing
@@ -88,7 +85,11 @@ Deck
 1 Spellseeker
 1 Step Through
 1 Swamp
+1 Swords to Plowshares
+1 Talisman of Dominance
+1 Talisman of Hierarchy
 1 Talisman of Progress
+1 Thought Vessel
 1 Tribute Mage
 1 Triskaidekaphile
 1 Underground River
