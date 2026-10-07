@@ -1,6 +1,7 @@
-# title: City of Traitors out, only basics in hand and room in it: the AI keeps City (no land drop)
+# title: City of Traitors out, a basic in hand, hybrid: the AI keeps City
 # card: City of Traitors
 # turns: 3
+# sim: hybrid
 # expect: played City of Traitors
 # forbid: Resolve Stack: When you play another land, sacrifice City of Traitors
 p0life=20

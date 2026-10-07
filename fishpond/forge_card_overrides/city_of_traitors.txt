@@ -1,0 +1,9 @@
+# fishpond override (Forge 2.0.15 script without AI:RemoveDeck:All): the AI now keeps or trades City by a rule (patch 14:
+# play the land when a card goes at cleanup anyway, for landfall, utility lands or a fresh City); see the city_of_traitors puzzles.
+Name:City of Traitors
+ManaCost:no cost
+Types:Land
+T:Mode$ LandPlayed | ValidCard$ Land.Other+YouCtrl | TriggerZones$ Battlefield | Execute$ TrigSac | TriggerDescription$ When you play another land, sacrifice CARDNAME.
+SVar:TrigSac:DB$ Sacrifice
+A:AB$ Mana | Cost$ T | Produced$ C | Amount$ 2 | SpellDescription$ Add {C}{C}.
+Oracle:When you play another land, sacrifice City of Traitors.\n{T}: Add {C}{C}.

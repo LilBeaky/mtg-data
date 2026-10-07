@@ -1,0 +1,15 @@
+# title: City of Traitors out, 8 cards in hand: the AI plays the land anyway (a card goes at cleanup; power-matched run N3)
+# card: City of Traitors
+# turns: 1
+# sim: hybrid
+# expect: played Swamp
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=City of Traitors;Swamp
+p0hand=Swamp;Gray Merchant of Asphodel;Gray Merchant of Asphodel;Gray Merchant of Asphodel;Gray Merchant of Asphodel;Gray Merchant of Asphodel;Gray Merchant of Asphodel;Gray Merchant of Asphodel
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,15 @@
+# title: City of Traitors out with a landfall payoff: the AI makes its land drop (power-matched run N3, Lumra)
+# card: City of Traitors
+# turns: 1
+# sim: hybrid
+# expect: played Forest
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=City of Traitors;Forest;Forest;Tireless Provisioner
+p0hand=Forest
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest

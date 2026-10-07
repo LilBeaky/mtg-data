@@ -1,0 +1,60 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 825039a..824ae79 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -959,7 +959,55 @@ public class AiController {
+         return saSideEffects(spellHost, sa);
+     }
+ 
++    /** fishpond patch 14: null when nothing of ours is sacrificed by a land drop; otherwise whether this land is worth it:
++     *  the hand is over its limit (a card goes at cleanup anyway), the land does something besides mana (fetch, utility,
++     *  enters-the-battlefield trigger), we have landfall payoffs, or it's a fresh City replacing tapped ones. */
++    private Boolean landDropWorthSacrifice(final Card land) {
++        final CardCollection sacOnLand = CardLists.filter(player.getCardsIn(ZoneType.Battlefield), AiController::sacrificedOnLandDrop);
++        if (sacOnLand.isEmpty()) {
++            return null;
++        }
++        if (sacrificedOnLandDrop(land)) {
++            return sacOnLand.allMatch(Card::isTapped);
++        }
++        if (land.isInZone(ZoneType.Hand) && player.getCardsIn(ZoneType.Hand).size() > player.getMaxHandSize()) {
++            return true;
++        }
++        if (!land.getTriggers().isEmpty()
++                || land.getSpellAbilities().anyMatch(a -> a.isActivatedAbility() && !a.isManaAbility() && !a.isLandAbility())) {
++            return true;
++        }
++        for (final Card c : player.getCardsIn(ZoneType.Battlefield)) {
++            for (final Trigger t : c.getTriggers()) {
++                if (t.getMode() == TriggerType.ChangesZone && "Battlefield".equals(t.getParam("Destination"))
++                        && t.getParamOrDefault("ValidCard", "").contains("Land") && !t.getParam("ValidCard").contains("nonLand")) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
++    private static boolean sacrificedOnLandDrop(final Card c) {
++        for (final Trigger t : c.getTriggers()) {
++            if (t.getMode() == TriggerType.LandPlayed && t.ensureAbility() != null
++                    && t.ensureAbility().getApi() == ApiType.Sacrifice && !t.ensureAbility().hasParam("Defined")) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     private AiPlayDecision saSideEffects(final Card card, final SpellAbility sa) {
++        // fishpond patch 14: with City of Traitors (or any "sacrifice this when you play another land") out, a land drop is
++        // decided by a rule: stock Forge plays any land and loses City, and hybrid's one-move check vetoes every land
++        // (it sees City sacrificed), which stranded lands in hand for whole games
++        if (sa.isLandAbility() && forge.ai.ability.DrawAi.pilotSeat(player)) {
++            final Boolean worth = landDropWorthSacrifice(card);
++            if (worth != null) {
++                return worth ? AiPlayDecision.WillPlay : AiPlayDecision.AnotherTime;
++            }
++        }
+         if (usesHybridSimulation()) {
+             // fishpond patch 10: a card's own "only when" hint (NeedsToPlay, NeedsToPlayVar: hold Thassa's Oracle until it
+             // wins) still applies; a one-move simulation can't see why a card should wait
