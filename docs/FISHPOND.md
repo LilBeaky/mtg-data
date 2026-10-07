@@ -1,6 +1,6 @@
 # FISHPOND — Forge-backed deck simulation (`python3 -m fishpond`)
 
-Companion to `USE_INSTRUCTIONS.md` §6. Read this before running Fishpond. Design history and the build plan: `docs/FORGE_PLAN.md`.
+Companion to `USE_INSTRUCTIONS.md` §6. Read this before running Fishpond. What's left to build, in priority order: `docs/FORGE_PLAN.md`.
 
 Fishpond plays the user's deck on [Forge](https://github.com/Card-Forge/forge), an open-source (GPL-3.0) rules engine with about 34,000 scripted cards, in 4-player Commander pods. Forge's AI pilots every seat. **Every card is played by real rules**: no card is "blank" or "partial" the way goldfish.py reads them. The limits are the pilot (Forge's AI is decent at fair Magic and weak at combo sequencing) and sample size. Use Fishpond for "how does this deck actually play out": win rate and how it wins, how it loses (including losing to itself), commander timing, development, which cards get cast, and how it does into real decks. goldfish.py stays as a fast, frozen cross-check for mana/curve questions and its disruption ladder.
 

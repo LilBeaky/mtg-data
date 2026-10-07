@@ -21,7 +21,7 @@ Index of the docs, what each is for, and whether it's live. Keep it current when
 
 ## Active plans (in priority order)
 
-1. **`FORGE_PLAN.md`** — Fishpond's working plan. The active list is "Pilot study 2026-10-04 → Upgrade plan" (loop shortcut, harness hardening, #9, commander combat safety, finisher misses, Araumi encore, Ragost engine, commander timing, `fishpond study`, re-runs). None started.
+1. **`FORGE_PLAN.md`** — Fishpond's working plan. Standing rules, how to work on the Windows box, where things stand, and the "Priority list" (memo on lookahead copies, life budget, commander timing, commander combat safety, sacrifice-cost drains, finishers, harness hardening, ...), then the backlog. Finished work lives in git history and `FORGE_ISSUES.md`.
 2. **`LANDBASE_TEMPO_PLAN.md`** — tapped lands turn by turn in `landbase.py`, validated with Fishpond logging. Not started.
 
 ## Frozen (2026-10-01; simulation moved to Forge)
