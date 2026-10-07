@@ -1,0 +1,16 @@
+# title: Tapped lands first: 2 Forests and a Castle Garenbrig out (Forge's mana estimate reads it as six), Temple of Abandon and a Forest in hand, only Centaur Courser to cast (3 untapped already): the AI plays the Temple (the untapped land adds nothing it can use this turn)
+# card: (land sequencing)
+# turns: 1
+# sim: hybrid
+# expect: played Temple of Abandon
+# expect: cast Centaur Courser
+p0life=40
+p1life=40
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest;Castle Garenbrig
+p0hand=Temple of Abandon;Forest;Centaur Courser
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

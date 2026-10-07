@@ -54,6 +54,7 @@ public final class PilotPolicy {
         Map<String, Mech> mechs = new HashMap<>();
         List<Combo> combos = new ArrayList<>();
         Map<String, Double> role_share = new HashMap<>();
+        List<String> keys = new ArrayList<>();       // the deck's '# key:' cards (policy.py)
     }
 
     final Intel in;
@@ -73,6 +74,57 @@ public final class PilotPolicy {
             System.out.println("#FP-WARN policy intel unreadable for " + dckFile + ": " + e);
             return null;
         }
+    }
+
+    // ------------------------------------------------------------------ the commander gate (the user's rule, 2026-10-07)
+
+    static final boolean GATE_ON = !"false".equals(System.getProperty("fishpond.tutorGate"));
+
+    /** Mana the player's permanents can make: lands count one each, other mana producers their most (up to 3). */
+    static int existingMana(Player me) {
+        int n = 0;
+        for (Card c : me.getCardsIn(ZoneType.Battlefield)) {
+            if (c.getManaAbilities().isEmpty()) continue;
+            n += c.isLand() ? 1 : Math.max(1, Math.min(3, c.getMaxManaProduced()));
+        }
+        return n;
+    }
+
+    /** Ramp: a nonland permanent that makes mana or reduces costs, a spell that puts a land onto the battlefield, or a card
+     *  the deck intel tags as ramp. */
+    boolean isRamp(Card c) {
+        if (c.isLand()) return false;
+        CardIntel ci = in.cards.get(c.getName());
+        if (ci != null && ci.roles.contains("ramp")) return true;
+        if (c.isPermanent()) {
+            if (!c.getManaAbilities().isEmpty()) return true;
+            for (forge.game.staticability.StaticAbility st : c.getStaticAbilities())
+                if (st.checkMode(forge.game.staticability.StaticAbilityMode.ReduceCost)) return true;
+            return false;
+        }
+        for (SpellAbility sp : c.getSpells())
+            for (SpellAbility a = sp; a != null; a = a.getSubAbility())
+                if (a.getApi() == ApiType.ChangeZone && "Battlefield".equals(a.getParam("Destination"))
+                        && String.valueOf(a.getParam("ChangeType")).contains("Land")) return true;
+        return false;
+    }
+
+    /** While the commander sits in the command zone and the seat's mana can't pay for it (tax included), a tutor takes ramp
+     *  first, else a '# key:' card (best by the policy's ranking); if the tutor can find neither, Forge's pick if it's
+     *  castable with the mana the seat already has, else the best-ranked castable card, else Forge's pick. Returns null when
+     *  the rule doesn't apply (no commander waiting, or it's affordable). */
+    Card commanderGate(Player me, List<Map.Entry<Card, double[]>> ranked, Card forgePick) {
+        if (!GATE_ON) return null;
+        Card cmdr = null;
+        for (Card c : me.getCardsIn(ZoneType.Command)) if (c.isCommander() && me.equals(c.getOwner())) { cmdr = c; break; }
+        if (cmdr == null) return null;
+        int mana = existingMana(me);
+        if (mana >= cmdr.getCMC() + 2 * me.getCommanderCast(cmdr)) return null;
+        for (Map.Entry<Card, double[]> e : ranked) if (isRamp(e.getKey())) return e.getKey();
+        for (Map.Entry<Card, double[]> e : ranked) if (in.keys.contains(e.getKey().getName())) return e.getKey();
+        if (forgePick != null && forgePick.getCMC() <= mana) return forgePick;
+        for (Map.Entry<Card, double[]> e : ranked) if (e.getKey().getCMC() <= mana) return e.getKey();
+        return forgePick;
     }
 
     // ------------------------------------------------------------------ when the policy applies

@@ -1,0 +1,16 @@
+# title: Guard for tapped-land sequencing: 2 Forests out and a 3-drop (Centaur Courser) in hand: the AI plays the untapped Forest so it can cast it
+# card: (land sequencing)
+# turns: 1
+# sim: hybrid
+# expect: played Forest
+# expect: cast Centaur Courser
+p0life=40
+p1life=40
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest
+p0hand=Temple of Abandon;Forest;Centaur Courser
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

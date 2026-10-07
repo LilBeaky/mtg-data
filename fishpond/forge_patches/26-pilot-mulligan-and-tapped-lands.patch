@@ -1,0 +1,262 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index c13b5cb..5af3f5d 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -471,6 +471,28 @@ public class AiController {
+         return landList;
+     }
+ 
++    /** Whether land would enter tapped if played now (its replacement effects with their conditions; Forge's own check). */
++    private boolean landEntersTapped(final Card land) {
++        final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(land);
++        repParams.put(AbilityKey.Origin, land.getZone().getZoneType());
++        repParams.put(AbilityKey.Destination, ZoneType.Battlefield);
++        final GameEntityCounterTable table = new GameEntityCounterTable();
++        repParams.put(AbilityKey.EffectOnly, true);
++        repParams.put(AbilityKey.CounterTable, table);
++        repParams.put(AbilityKey.CounterMap, table.column(land));
++        for (final ReplacementEffect re : player.getGame().getReplacementHandler().getReplacementList(ReplacementType.Moved, repParams, ReplacementLayer.Other)) {
++            final SpellAbility reSA = re.ensureAbility();
++            if (reSA == null || !ApiType.Tap.equals(reSA.getApi())) {
++                continue;
++            }
++            reSA.setActivatingPlayer(reSA.getHostCard().getController());
++            if (reSA.metConditions()) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     private Card chooseBestLandToPlay(CardCollection landList) {
+         if (landList.isEmpty()) {
+             return null;
+@@ -516,8 +538,55 @@ public class AiController {
+             landList = unreflectedLands;
+         }
+ 
++        // fishpond patch 26: play a land that enters tapped unless an untapped one lets a spell (or the commander) be cast
++        // this turn that couldn't be otherwise. Forge's own check below uses the mana estimate, which counts lands like
++        // Castle Garenbrig as six mana, so it played untapped lands early whether or not the mana was needed.
++        boolean pilotLandsDecided = false;
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && !"false".equals(System.getProperty("fishpond.tapLands"))) {
++            final CardCollection tapped = new CardCollection(), untapped = new CardCollection();
++            for (final Card land : landList) {
++                (landEntersTapped(land) ? tapped : untapped).add(land);
++            }
++            if (!tapped.isEmpty() && !untapped.isEmpty()) {
++                int extra = 1;
++                for (final Card u : untapped) {
++                    extra = Math.max(extra, Math.min(3, u.getMaxManaProduced()));
++                }
++                boolean needed = false;
++                final CardCollection wanted = new CardCollection(nonLandsInHand);
++                for (final Card c : player.getCardsIn(ZoneType.Command)) {
++                    if (c.isCommander() && player.equals(c.getOwner())) {
++                        wanted.add(c);
++                    }
++                }
++                // usable mana now: one per untapped source (Castle Garenbrig counts one, not six)
++                final int usable = ComputerUtilMana.getAvailableManaSources(player, true).size();
++                for (final Card c : wanted) {
++                    final SpellAbility sp = c.getFirstSpellAbility();
++                    if (sp == null || !sp.isSpell()) {
++                        continue;
++                    }
++                    sp.setActivatingPlayer(player);
++                    int cost = c.getCMC();
++                    if (c.isCommander() && c.isInZone(ZoneType.Command)) {
++                        cost += 2 * player.getCommanderCast(c);
++                    }
++                    try {
++                        if (!ComputerUtilMana.canPayManaCost(sp, player, 0, false) && cost > 0 && cost <= usable + extra) {
++                            needed = true;
++                            break;
++                        }
++                    } catch (RuntimeException e) {
++                        // can't tell: leave it to Forge
++                    }
++                }
++                landList = needed ? untapped : tapped;
++                pilotLandsDecided = true;
++            }
++        }
++
+         // try to skip lands that enter the battlefield tapped if we might want to play something this turn
+-        if (!nonLandsInHand.isEmpty()) {
++        if (!pilotLandsDecided && !nonLandsInHand.isEmpty()) {
+             CardCollection nonTappedLands = new CardCollection();
+             for (Card land : landList) {
+                 // check replacement effects if land would enter tapped or not
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index b2dde4f..b5dbbed 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -2329,6 +2329,145 @@ public class ComputerUtil {
+         return score;
+     }
+ 
++    // ---- fishpond patch 26: mulligans (the user's floor and commander-cost scaling, 2026-10-07) ----
++    // Forge only threw back 0-1 land or 6+ land hands. A pilot seat keeps a hand only if it meets the user's floor (3+
++    // lands, or 2 lands and 2+ mana of ramp castable off them) and isn't flooded (6+ lands); with the free first mulligan
++    // a 7-card hand must also project to cast a commander costing 4+ on time: target turn 4 for 4 mana, turn 5 for 5+,
++    // allowing one turn late. The projection: lands in hand plus the lands the deck should draw (its land share of the
++    // library per draw, no more than one land a turn), plus ramp mana, minus cost reducers that apply to the commander.
++    // 6 cards: the floor only; 5 or fewer: keep with 2+ lands. -Dfishpond.mulligan=false restores Forge's rule;
++    // each decision prints #FP-MULL.
++    public static boolean pilotMulliganOn() {
++        return !"false".equals(System.getProperty("fishpond.mulligan"));
++    }
++
++    /** Mana a ramp card adds once it resolves (0 for cost reducers). */
++    static int rampMana(final Card c) {
++        if (c.isPermanent() && !c.getManaAbilities().isEmpty()) {
++            int best = 1;
++            for (final SpellAbility m : c.getManaAbilities()) {
++                try {
++                    best = Math.max(best, m.amountOfManaGenerated(true));
++                } catch (RuntimeException e) {
++                    // unknown amount: count one
++                }
++            }
++            return Math.min(best, 3);
++        }
++        if (!c.isPermanent()) {
++            return 1;   // a land put onto the battlefield
++        }
++        return 0;
++    }
++
++    /** How much c's cost-reduction statics would take off the commander's cost (0 if none apply). */
++    static int commanderReduction(final Card c, final Card commander) {
++        int n = 0;
++        for (final StaticAbility st : c.getStaticAbilities()) {
++            if (!st.checkMode(StaticAbilityMode.ReduceCost)) {
++                continue;
++            }
++            try {
++                if (st.hasParam("ValidCard") && !commander.isValid(st.getParam("ValidCard").split(","), c.getController() == null ? commander.getController() : c.getController(), c, st)) {
++                    continue;
++                }
++                n += st.hasParam("Amount") ? Math.max(1, AbilityUtils.calculateAmount(c, st.getParam("Amount"), st)) : 1;
++            } catch (RuntimeException e) {
++                n += 1;
++            }
++        }
++        return n;
++    }
++
++    public static boolean pilotWantMulligan(final Player ai, final int cardsToReturn) {
++        final CardCollectionView hand = ai.getCardsIn(ZoneType.Hand);
++        if (hand.isEmpty()) {
++            return false;
++        }
++        final int finalSize = hand.size() - cardsToReturn;
++        int lands = 0, ramp = 0, reduce = 0;
++        Card commander = null;
++        for (final Card c : ai.getCardsIn(ZoneType.Command)) {
++            if (c.isCommander() && ai.equals(c.getOwner())) {
++                commander = c;
++                break;
++            }
++        }
++        for (final Card c : hand) {
++            if (c.isLand()) {
++                lands++;
++            }
++        }
++        for (final Card c : hand) {
++            if (c.isLand()) {
++                continue;
++            }
++            final SpellAbility sp = c.getFirstSpellAbility();
++            if (sp == null || !isRamp(ai, sp) || c.getCMC() > Math.max(1, Math.min(3, lands))) {
++                continue;   // only ramp the hand's lands can cast by turn 3
++            }
++            ramp += rampMana(c);
++            if (commander != null) {
++                reduce += commanderReduction(c, commander);
++            }
++        }
++        final boolean floor = lands >= 3 || lands == 2 && ramp >= 2;
++        final boolean flood = lands >= 6;
++        boolean mull;
++        String why;
++        int projected = -1;
++        if (finalSize <= 5) {
++            mull = lands < 2;
++            why = "5 or fewer cards: keep with 2+ lands";
++        } else if (!floor || flood) {
++            mull = true;
++            why = flood ? "flood" : "below the floor";
++        } else if (finalSize == 6 || commander == null || commander.getCMC() < 4) {
++            mull = false;
++            why = "floor met";
++        } else {
++            final int cost = Math.max(0, commander.getCMC() - reduce);
++            final CardCollectionView lib = ai.getCardsIn(ZoneType.Library);
++            final double share = lib.isEmpty() ? 0 : (double) CardLists.count(lib, CardPredicates.LANDS) / lib.size();
++            projected = 99;
++            for (int t = 1; t <= 12; t++) {
++                final double mana = Math.min(t, lands + (t - 1) * share) + ramp;
++                if (mana + 0.5 >= cost) {
++                    projected = t;
++                    break;
++                }
++            }
++            final int target = commander.getCMC() <= 4 ? 4 : 5;
++            mull = projected > target + 1;
++            why = "commander " + commander.getName() + " (cost " + commander.getCMC() + ", -" + reduce + ") projected on turn " + projected + ", target " + target;
++        }
++        System.out.println("#FP-MULL {\"player\": \"" + ai.getName() + "\", \"cards\": " + finalSize + ", \"lands\": " + lands + ", \"ramp\": " + ramp
++                + ", \"reduce\": " + reduce + ", \"mulligan\": " + mull + ", \"why\": \"" + why.replace("\"", "'") + "\"}");
++        return mull;
++    }
++
++    /** London mulligan: keep lands up to 4 (worst extras go first), keep ramp, bottom the most expensive other cards. */
++    public static CardCollectionView pilotCardsToBottom(final Player ai, final CardCollectionView hand, final int cardsToReturn) {
++        final List<Card> order = new ArrayList<>(hand);
++        final int lands = CardLists.count(hand, CardPredicates.LANDS);
++        final java.util.function.ToIntFunction<Card> keep = c -> {
++            if (c.isLand()) {
++                return lands > 4 ? 100 : 1000;                  // extra lands beyond 4 are bottom candidates
++            }
++            final SpellAbility sp = c.getFirstSpellAbility();
++            if (sp != null && isRamp(ai, sp)) {
++                return 500 - c.getCMC();
++            }
++            return 300 - 10 * c.getCMC();
++        };
++        order.sort(Comparator.comparingInt(keep));
++        final CardCollection out = new CardCollection();
++        for (int i = 0; i < Math.min(cardsToReturn, order.size()); i++) {
++            out.add(order.get(i));
++        }
++        return out;
++    }
++
+     // Computer mulligans if there are no cards with converted mana cost of 0 in its hand
+     public static boolean wantMulligan(Player ai, int cardsToReturn) {
+         final CardCollectionView handList = ai.getCardsIn(ZoneType.Hand);
+diff --git a/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java b/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
+index c6e1af9..5cbc32f 100644
+--- a/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
++++ b/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
+@@ -771,11 +771,17 @@ public class PlayerControllerAi extends PlayerController {
+ 
+     @Override
+     public boolean mulliganKeepHand(Player firstPlayer, int cardsToReturn)  {
++        if (ComputerUtil.pilotMulliganOn() && forge.ai.ability.DrawAi.pilotSeat(player)) {
++            return !ComputerUtil.pilotWantMulligan(player, cardsToReturn);   // fishpond patch 26
++        }
+         return !ComputerUtil.wantMulligan(player, cardsToReturn);
+     }
+ 
+     @Override
+     public CardCollectionView tuckCardsViaMulligan(CardCollectionView hand, int cardsToReturn) {
++        if (ComputerUtil.pilotMulliganOn() && forge.ai.ability.DrawAi.pilotSeat(player)) {
++            return ComputerUtil.pilotCardsToBottom(player, hand, cardsToReturn);   // fishpond patch 26
++        }
+         // TODO This is better than it was before, but still suboptimal (but fast).
+         // Maybe score a bunch of hands based on projected hand size and return the "duds"
+         int numLandsDesired = (player.getStartingHandSize() - cardsToReturn) / 2;

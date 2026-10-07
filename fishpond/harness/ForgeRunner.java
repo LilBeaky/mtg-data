@@ -151,7 +151,9 @@ public class ForgeRunner {
             var ranked = policy.rank(new ArrayList<>(fetchList), me, sa, destination, forgePick);
             Card pick = ranked.get(0).getKey();
             String mode = "policy";
-            if (getAi().usesFullSimulation()) {
+            Card gated = policy.commanderGate(me, ranked, forgePick);   // the user's tutor rule (hand, battlefield or top of library)
+            if (gated != null) { pick = gated; mode = "commander-gate"; }
+            else if (getAi().usesFullSimulation()) {
                 forge.game.card.CardCollection shortlist = new forge.game.card.CardCollection();
                 for (int i = 0; i < Math.min(3, ranked.size()); i++) shortlist.add(ranked.get(i).getKey());
                 Card sim = getAi().chooseCardToHiddenOriginChangeZone(destination, origin, sa, shortlist, me, decider);

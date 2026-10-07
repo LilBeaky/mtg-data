@@ -205,7 +205,9 @@ def build(d):
             "combos": combos[:MAX_COMBOS],
             "role_share": {r: round(k / nonland, 3) for r, k in sorted(role_count.items())},
             # '# commander: hold' (FORGE_PLAN item 3): Forge patch 24 doesn't rush these commanders out
-            "commander_hold": [d.forge.get(c, c) for c in d.commanders] if str(d.meta.get("commander", "")).strip().lower() == "hold" else []}
+            "commander_hold": [d.forge.get(c, c) for c in d.commanders] if str(d.meta.get("commander", "")).strip().lower() == "hold" else [],
+            # '# key:' cards (Forge names): the tutor rule fetches these or ramp while the commander is unaffordable
+            "keys": [d.forge.get(k, k) for k in (k.strip() for k in str(d.meta.get("key") or "").replace(" + ", ";").split(";")) if k]}
 
 def write_for(d, dck_path):
     """Write <dck>.policy.json for deck d (skipped for dummies). Returns the path or None."""
