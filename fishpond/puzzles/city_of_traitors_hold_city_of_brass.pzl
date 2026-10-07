@@ -1,0 +1,15 @@
+# title: City of Traitors out, City of Brass in hand: the AI keeps City (a pain trigger is not a reason to trade; G1 game 2)
+# card: City of Traitors
+# turns: 3
+# sim: hybrid
+# forbid: played City of Brass
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=City of Traitors;Swamp;Swamp
+p0hand=City of Brass
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest

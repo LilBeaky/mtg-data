@@ -1,8 +1,8 @@
 diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
-index 825039a..824ae79 100644
+index 825039a..fc0a6c9 100644
 --- a/forge-ai/src/main/java/forge/ai/AiController.java
 +++ b/forge-ai/src/main/java/forge/ai/AiController.java
-@@ -959,7 +959,55 @@ public class AiController {
+@@ -959,7 +959,61 @@ public class AiController {
          return saSideEffects(spellHost, sa);
      }
  
@@ -20,9 +20,15 @@ index 825039a..824ae79 100644
 +        if (land.isInZone(ZoneType.Hand) && player.getCardsIn(ZoneType.Hand).size() > player.getMaxHandSize()) {
 +            return true;
 +        }
-+        if (!land.getTriggers().isEmpty()
-+                || land.getSpellAbilities().anyMatch(a -> a.isActivatedAbility() && !a.isManaAbility() && !a.isLandAbility())) {
++        if (land.getSpellAbilities().anyMatch(a -> a.isActivatedAbility() && !a.isManaAbility() && !a.isLandAbility())) {
 +            return true;
++        }
++        for (final Trigger t : land.getTriggers()) {
++            // its own enters-the-battlefield trigger, not a drawback like City of Brass's damage
++            if (t.getMode() == TriggerType.ChangesZone && "Battlefield".equals(t.getParam("Destination"))
++                    && t.getParamOrDefault("ValidCard", "").startsWith("Card.Self")) {
++                return true;
++            }
 +        }
 +        for (final Card c : player.getCardsIn(ZoneType.Battlefield)) {
 +            for (final Trigger t : c.getTriggers()) {
