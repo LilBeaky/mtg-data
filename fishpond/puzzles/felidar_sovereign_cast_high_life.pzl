@@ -1,0 +1,15 @@
+# title: Felidar Sovereign at 30 life: the AI casts it (within 20 life of the win)
+# card: Felidar Sovereign
+# turns: 1
+# sim: hybrid
+# expect: cast Felidar Sovereign
+p0life=30
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains;Plains;Plains
+p0hand=Felidar Sovereign
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

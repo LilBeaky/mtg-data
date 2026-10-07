@@ -1,0 +1,21 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index cd7b21b..ce10b32 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1897,6 +1897,16 @@ public class AiController {
+         } else if ("LowestLoseLife".equals(logic)) {
+             return MyRandom.getRandom().nextInt(Math.min(player.getLife() / 3, player.getWeakestOpponent().getLife())) + 1;
+         } else if ("HighestLoseLife".equals(logic)) {
++            // fishpond patch 12 (Wheel of Misfortune): the damage only hits whoever chose the highest number, and the
++            // lowest number keeps its hand, so a big number is all risk. Keep a hand of 4+ with 0; otherwise choose
++            // 1-3 (refill unless everyone else also wants to), never more than a fifth of life.
++            if (forge.ai.ability.DrawAi.pilotSeat(player)) {
++                if (player.getCardsIn(ZoneType.Hand).size() >= 4) {
++                    return min;
++                }
++                int safe = Math.min(3, (player.getLife() - 1) / 5);
++                return Math.max(min, Math.min(max, safe <= 0 ? 0 : MyRandom.getRandom().nextInt(safe) + 1));
++            }
+             return Math.min(player.getLife() - 1, MyRandom.getRandom().nextInt(Math.max(player.getLife() / 3, player.getWeakestOpponent().getLife())) + 1);
+         } else if ("HighestGetCounter".equals(logic)) {
+             return MyRandom.getRandom().nextInt(3);

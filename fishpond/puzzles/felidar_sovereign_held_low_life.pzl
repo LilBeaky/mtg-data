@@ -1,0 +1,15 @@
+# title: Felidar Sovereign at 4 life: the AI holds it (power-matched run N2: Heliod cast it into a lethal swarm)
+# card: Felidar Sovereign
+# turns: 1
+# sim: hybrid
+# forbid: cast Felidar Sovereign
+p0life=4
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains;Plains;Plains
+p0hand=Felidar Sovereign
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

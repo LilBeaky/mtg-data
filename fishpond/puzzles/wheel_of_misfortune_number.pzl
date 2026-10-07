@@ -1,0 +1,16 @@
+# title: Wheel of Misfortune at 40 life: nobody chooses a number that costs real life (power-matched run N1: Lumra took 25)
+# card: Wheel of Misfortune
+# turns: 1
+# expect: cast Wheel of Misfortune
+# forbid: Wheel of Misfortune \(\d+\) deals ([4-9]|\d\d+) non-combat damage
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Mountain;Mountain;Mountain
+p0hand=Wheel of Misfortune;Mountain
+p0library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1battlefield=Forest;Forest
+p1hand=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

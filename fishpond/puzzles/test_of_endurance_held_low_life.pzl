@@ -1,0 +1,15 @@
+# title: Test of Endurance at 10 life: the AI holds it (same rule as Felidar Sovereign, N2)
+# card: Test of Endurance
+# turns: 1
+# sim: hybrid
+# forbid: cast Test of Endurance
+p0life=10
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains;Plains;Plains
+p0hand=Test of Endurance
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

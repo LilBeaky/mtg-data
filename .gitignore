@@ -4,3 +4,4 @@ translation/out/
 data/fishpond/
 fishpond/puzzles/*.state.tmp
 data/explorer_cache/
+runs/
