@@ -35,7 +35,7 @@ Ordered by payoff over difficulty (items 5 and 6 done 2026-10-07, worked first a
 
 | # | Item | Difficulty | Payoff |
 |---|---|---|---|
-| 1 | Combat-prediction memo on lookahead copies (N8) | Low-medium: one patch, diagnosed | High: slow turns, AI timeouts, every big board |
+| 1 | **Done 2026-10-07** (patch 21; repeats gone, the rest is item 1b) Combat-prediction memo on lookahead copies (N8) | Low-medium: one patch, diagnosed | High: slow turns, AI timeouts, every big board |
 | 2 | Life budget (N4, Yusri coin buffer) | Medium: one rule over optional life payments | High: self-kills in Niv, Erebos, Yusri; the last timeout |
 | 3 | Commander timing, with cumulative upkeep (5c, N7) | Medium: policy rule + opt-out header | Very high: every deck, about a turn of tempo |
 | 4 | Commander combat safety | Medium: attack/block patch + 6 puzzles | High: every deck's commander |
@@ -47,12 +47,12 @@ Ordered by payoff over difficulty (items 5 and 6 done 2026-10-07, worked first a
 | 10 | `fishpond study` command | Medium (tooling) | Makes 11 cheap and repeatable |
 | 11 | Re-run: whole study at 8 games a pod; bigger Araumi study | Run time | Measures 1-9 |
 
-### 1. Combat-prediction memo on lookahead copies (N8)
+### 1. Done 2026-10-07: combat-prediction memo on lookahead copies (N8, patch 21)
 
-- **Problem:** turns of 10-12 minutes on big boards, with AI decisions hitting the 120 s limit (results then depend on machine load). `varied_20261007` V04 game 3 (a Chulane turn, 618 s) and V05 game 4 (Lumra's Ashaya/landfall turn 33: 684 s even replayed alone, 2 AI timeouts; replays line for line).
-- **Cause (JFR, V05 game 4, plan `logs/plan_s1_4.tsv` line 0, seed 20261567784525):** 76% of samples under `OnePlaySafetyChecker.isAcceptable`, 66% in `predictNextCombatsRemainingLife0` (the uncached body). Patch 16's memo is keyed on the `Game` object; hybrid builds a new `GameSimulator` (a fresh copy) per candidate play, rescores the unchanged board (38% of misses) and scores the post-play board (37%), so the memo never hits on copies.
-- **Fix:** key the memo on board contents within a match instead of the `Game` object (copies keep card ids; the key must cover everything the prediction reads), so the unchanged board is predicted once per decision and plays that change no creature reuse it. Smaller fallback: cache the original-board score per decision in `OnePlaySafetyChecker`.
-- **Acceptance:** that replay's turn 33 well under a minute with the same game result; puzzles green; V04 and V05 pods re-run with no AI timeouts.
+- **Problem:** turns of 10-12 minutes on big boards with AI decisions hitting the 120 s limit (`varied_20261007` V04 game 3, V05 game 4). JFR: 76% of the turn under hybrid's one-move check, 66% in the uncached combat prediction; patch 16's memo was per `Game` and every candidate play runs on a fresh copy, so it never hit there.
+- **Fix (patch 21):** copies record the game they came from and share its memo; the key also covers combat keywords and noncreature permanents with static abilities, so a play that grants flying or taxes attacks never reuses a stale answer.
+- **Measured** (`-Dfishpond.memoStats`): replays of V05 game 4 and V04 game 3 with the old memo computed 2,114 and 1,923 predictions, of which 908 (43%) and 964 (50%) were exact repeats of a board already predicted that turn, costing 27 of 51 s and 40 of 78 s of prediction time. With patch 21: 0 repeats; 46-47% of requests answered from the memo. Fixed-board benchmarks (scratch puzzles, two runs each, identical results): 30 creatures a side with a 10-card hand, predictions 47 -> 32, prediction time 49.6 -> 36.5 s (-26%), puzzle wall 107 -> 91 s; 120 a side, predictions 8 -> 4, 28.2 -> 17.0 s (-40%), wall 92.5 -> 73.5 s. Games diverge from older runs (the block planner draws random numbers): compare distributions.
+- **1b, what's left (open):** a unique prediction on a 30-a-side board costs about 1 s, so big-board turns are still slow (the patched V05 replay reached a 266 s turn: 273 distinct predictions, 235 s). Next levers: skip the combat preview for candidate plays that can't change combat (the memo now answers those, but the copy is still made and scored), and make one prediction cheaper (profile `predictNextCombatsRemainingLife0` on the benchmark board; patch 11's limits of 20 attackers and 400 pairs may be too high for 4-player boards).
 
 ### 2. Life budget (N4, with the Yusri coin buffer)
 

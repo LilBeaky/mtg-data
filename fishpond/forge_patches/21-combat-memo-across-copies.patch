@@ -1,0 +1,127 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index 95496fe..41ad6e3 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -3328,6 +3328,55 @@ public class ComputerUtil {
+     // player's life and poison, the turn and phase, and the arguments. On huge boards this was most of the run time.
+     private static final Map<Game, Map<String, Integer>> COMBAT_MEMO = Collections.synchronizedMap(new WeakHashMap<>());
+ 
++    // fishpond patch 21: hybrid's one-move check scores every candidate play on a fresh copy of the game (GameCopier), so a
++    // memo per Game never hit there: the unchanged board was re-planned once per candidate, and so was every "after" board
++    // that changes no creature (a land, a mana rock). Copies record the game they were copied from (GameCopier, patch
++    // 21), and the memo is shared by a game and all its copies; the key (below) is what makes two boards the same.
++    // -Dfishpond.memoAcrossCopies=false restores the per-Game memo; -Dfishpond.memoStats=true prints #FP-MEMO per turn.
++    public static final Map<Game, Game> MEMO_ROOT = Collections.synchronizedMap(new WeakHashMap<>());
++    private static final boolean MEMO_ACROSS_COPIES = !"false".equals(System.getProperty("fishpond.memoAcrossCopies"));
++    private static final boolean MEMO_STATS = Boolean.getBoolean("fishpond.memoStats");
++
++    public static Game memoRoot(final Game g) {
++        final Game r = MEMO_ROOT.get(g);
++        return r == null ? g : r;
++    }
++
++    private static final class MemoStats {
++        int turn = -1;
++        long calls, hits, computes, computeNanos, repeats, repeatNanos;
++        final Set<String> seen = Collections.newSetFromMap(new LinkedHashMap<String, Boolean>(256, 0.75f, true) {
++            @Override
++            protected boolean removeEldestEntry(final Map.Entry<String, Boolean> e) {
++                return size() > 4096;
++            }
++        });
++    }
++
++    private static final Map<Game, MemoStats> MEMO_STATS_BY_ROOT = Collections.synchronizedMap(new WeakHashMap<>());
++
++    private static MemoStats memoStats(final Game root) {
++        final MemoStats st = MEMO_STATS_BY_ROOT.computeIfAbsent(root, k -> new MemoStats());
++        final int turn = root.getPhaseHandler().getTurn();
++        if (st.turn != turn) {
++            if (st.calls > 0) {
++                System.out.println("#FP-MEMO {\"turn\": " + st.turn + ", \"across_copies\": " + MEMO_ACROSS_COPIES + ", \"calls\": " + st.calls
++                        + ", \"hits\": " + st.hits + ", \"computes\": " + st.computes + ", \"compute_ms\": " + st.computeNanos / 1000000
++                        + ", \"repeat_computes\": " + st.repeats + ", \"repeat_ms\": " + st.repeatNanos / 1000000 + "}");
++            }
++            st.turn = turn;
++            st.calls = st.hits = st.computes = st.computeNanos = st.repeats = st.repeatNanos = 0;
++            st.seen.clear();
++        }
++        return st;
++    }
++
++    // keywords that change who can attack, block or survive a combat
++    private static final Keyword[] COMBAT_KEYWORDS = {Keyword.FLYING, Keyword.REACH, Keyword.FIRST_STRIKE, Keyword.DOUBLE_STRIKE,
++            Keyword.DEATHTOUCH, Keyword.TRAMPLE, Keyword.VIGILANCE, Keyword.HASTE, Keyword.MENACE, Keyword.INDESTRUCTIBLE,
++            Keyword.LIFELINK, Keyword.DEFENDER, Keyword.SHADOW, Keyword.HORSEMANSHIP, Keyword.INFECT, Keyword.WITHER,
++            Keyword.FEAR, Keyword.INTIMIDATE, Keyword.SKULK, Keyword.HEXPROOF, Keyword.SHROUD, Keyword.PROTECTION};
++
+     public static int predictNextCombatsRemainingLife(Player ai, boolean serious, boolean checkDiff, int payment, final CardCollection excludedBlockers, final List<Player> opps) {
+         final Game g = ai.getGame();
+         final StringBuilder key = new StringBuilder();
+@@ -3349,22 +3398,52 @@ public class ComputerUtil {
+             if (c.isCreature() || c.isPlaneswalker()) {
+                 key.append(';').append(c.getId()).append(c.getController().getId()).append(c.isTapped() ? 't' : 'u')
+                         .append(c.isSick() ? 's' : 'r').append(c.getNetPower()).append('/').append(c.getNetToughness());
++                int kw = 0;                                     // patch 21: combat keywords (a play can grant one)
++                for (int i = 0; i < COMBAT_KEYWORDS.length; i++) {
++                    if (c.hasKeyword(COMBAT_KEYWORDS[i])) {
++                        kw |= 1 << i;
++                    }
++                }
++                key.append('k').append(kw);
++            } else if (!c.isLand() && !c.getStaticAbilities().isEmpty()) {
++                key.append(";s").append(c.getId());           // patch 21: anthems, attack taxes, equipment...
+             }
+         }
+-        final Map<String, Integer> memo = COMBAT_MEMO.computeIfAbsent(g, k -> new LinkedHashMap<String, Integer>(64, 0.75f, true) {
++        final Game root = MEMO_ACROSS_COPIES ? memoRoot(g) : g;
++        final Map<String, Integer> memo = COMBAT_MEMO.computeIfAbsent(root, k -> new LinkedHashMap<String, Integer>(64, 0.75f, true) {
+             @Override
+             protected boolean removeEldestEntry(final Map.Entry<String, Integer> e) {
+-                return size() > 256;
++                return size() > 1024;
+             }
+         });
+         final String k = key.toString();
++        final MemoStats st = MEMO_STATS ? memoStats(memoRoot(g)) : null;
+         synchronized (memo) {
+             final Integer hit = memo.get(k);
+             if (hit != null) {
++                if (st != null) {
++                    synchronized (st) {
++                        st.calls++;
++                        st.hits++;
++                    }
++                }
+                 return hit;
+             }
+         }
++        final long t0 = st != null ? System.nanoTime() : 0;
+         final int result = predictNextCombatsRemainingLife0(ai, serious, checkDiff, payment, excludedBlockers, opps);
++        if (st != null) {
++            final long dt = System.nanoTime() - t0;
++            synchronized (st) {
++                st.calls++;
++                st.computes++;
++                st.computeNanos += dt;
++                if (!st.seen.add(k)) {                          // the same board was already predicted this turn
++                    st.repeats++;
++                    st.repeatNanos += dt;
++                }
++            }
++        }
+         synchronized (memo) {
+             memo.put(k, result);
+         }
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+index d7474b8..28e143b 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+@@ -83,6 +83,7 @@ public class GameCopier {
+         GameRules currentRules = origGame.getRules();
+         Match newMatch = new Match(currentRules, newPlayers, origGame.getView().getTitle());
+         Game newGame = new Game(newPlayers, currentRules, newMatch);
++        forge.ai.ComputerUtil.MEMO_ROOT.put(newGame, forge.ai.ComputerUtil.memoRoot(origGame));   // fishpond patch 21: share the combat memo
+         newGame.setNoGUIUser();
+         newGame.dangerouslySetTimestamp(origGame.getTimestamp());
+ 
