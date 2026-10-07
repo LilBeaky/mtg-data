@@ -1,5 +1,5 @@
-# fishpond override (Forge 2.0.15 script plus an AI hint): cast Test of Endurance only within 20 life of its win (30+ life),
-# the same rule as Felidar Sovereign (power-matched run N2). Read under hybrid too (patch 10).
+# fishpond override (Forge 2.0.15 script plus an AI hint): cast Test of Endurance only at 50+ life, so it wins at the next
+# upkeep unless answered (same rule as Felidar Sovereign, power-matched run N2). Read under hybrid too (patch 10).
 Name:Test of Endurance
 ManaCost:2 W W
 Types:Enchantment
@@ -7,5 +7,5 @@ T:Mode$ Phase | Phase$ Upkeep | ValidPlayer$ You | TriggerZones$ Battlefield | L
 SVar:TrigWin:DB$ WinsGame | Defined$ You
 AI:RemoveDeck:Random
 SVar:MyLife:Count$YourLifeTotal
-SVar:NeedsToPlayVar:MyLife GE30
+SVar:NeedsToPlayVar:MyLife GE50
 Oracle:At the beginning of your upkeep, if you have 50 or more life, you win the game.

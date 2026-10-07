@@ -1,5 +1,5 @@
-# fishpond override (Forge 2.0.15 script plus an AI hint): cast Felidar Sovereign only within 20 life of its win (20+ life);
-# at 4 life facing a swarm it's a 6-mana blocker, not a win (power-matched run N2, Heliod). Read under hybrid too (patch 10).
+# fishpond override (Forge 2.0.15 script plus an AI hint): cast Felidar Sovereign only at 40+ life, so it wins at the next
+# upkeep unless answered; cast early it is just a removal target (power-matched run N2, Heliod). Read under hybrid too (patch 10).
 Name:Felidar Sovereign
 ManaCost:4 W W
 Types:Creature Cat Beast
@@ -10,5 +10,5 @@ T:Mode$ Phase | Phase$ Upkeep | ValidPlayer$ You | TriggerZones$ Battlefield | L
 SVar:TrigWin:DB$ WinsGame | Defined$ You
 DeckHints:Ability$LifeGain
 SVar:MyLife:Count$YourLifeTotal
-SVar:NeedsToPlayVar:MyLife GE20
+SVar:NeedsToPlayVar:MyLife GE40
 Oracle:Vigilance, lifelink\nAt the beginning of your upkeep, if you have 40 or more life, you win the game.

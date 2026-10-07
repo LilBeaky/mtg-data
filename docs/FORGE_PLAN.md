@@ -330,7 +330,7 @@ Payoff = how many decks and games the failure costs and how badly; difficulty = 
 | # | Item | Difficulty | Payoff | Why here |
 |---|---|---|---|---|
 | 1 | **Done 2026-10-06** (patch 14, City un-flagged, 4 puzzles) N3 City of Traitors land drops | Low-medium (pilot patch + puzzle) | Medium-high: crippled Lumra in 2 of 10 games | Cheap, game-deciding, any deck with City or similar sacrifice lands |
-| 2 | **Done 2026-10-06** (patch 12 for Wheel; overrides for Felidar Sovereign and Test of Endurance; 5 puzzles) N1 Wheel of Misfortune + N2 Felidar Sovereign | Low (card overrides + puzzles) | Low-medium: one deck each, game-losing when it happens | One small batch of overrides |
+| 2 | **Done 2026-10-06** (patch 12 for Wheel; overrides: Felidar Sovereign and Test of Endurance cast only at their winning life total (user, 2026-10-06); 7 puzzles) N1 Wheel of Misfortune + N2 Felidar Sovereign | Low (card overrides + puzzles) | Low-medium: one deck each, game-losing when it happens | One small batch of overrides |
 | 3 | **Done 2026-10-06**, steps (1) and (2) (un-flag override + patch 13; 2 puzzles; step (4), the B2 re-run, still to do) 5a Araumi un-flag | Low (override + puzzles) | High for Araumi: 0 commander casts in 21 games | The deck can't run its plan at all; step (2) only if the AI misplays it |
 | 4 | 5c Commander timing | Medium (policy rule + opt-out header) | Very high: every deck, about a turn of tempo | Biggest across-the-board gain; acceptance re-runs every deck |
 | 5 | 4 Commander combat safety | Medium (attack/block patch + 6 puzzles) | High: every deck's commander | Pairs with 5c (a commander cast earlier must also survive) |
