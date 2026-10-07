@@ -1,0 +1,62 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index f5145d0..fc089ed 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -3209,7 +3209,57 @@ public class ComputerUtil {
+     public static int predictNextCombatsRemainingLife(Player ai, boolean serious, boolean checkDiff, int payment, final CardCollection excludedBlockers) {
+         return predictNextCombatsRemainingLife(ai, serious, checkDiff, payment, excludedBlockers, ai.getOpponents());
+     }
++    // fishpond patch 16: the AI re-plans the same next combat many times per decision on an unchanged board (once per
++    // removal target via evaluateBoardPosition, once per Tireless Provisioner trigger via aiLifeInDanger, ...), and AiCache
++    // is cleared at every decision. Remember results per game, keyed on everything the prediction reads that can change
++    // within a turn: each creature's and planeswalker's id, controller, tapped/sick state, power and toughness, each
++    // player's life and poison, the turn and phase, and the arguments. On huge boards this was most of the run time.
++    private static final Map<Game, Map<String, Integer>> COMBAT_MEMO = Collections.synchronizedMap(new WeakHashMap<>());
++
+     public static int predictNextCombatsRemainingLife(Player ai, boolean serious, boolean checkDiff, int payment, final CardCollection excludedBlockers, final List<Player> opps) {
++        final Game g = ai.getGame();
++        final StringBuilder key = new StringBuilder();
++        key.append(g.getPhaseHandler().getTurn()).append(g.getPhaseHandler().getPhase()).append('|').append(ai.getId())
++                .append(serious).append(checkDiff).append(payment).append('|');
++        if (excludedBlockers != null) {
++            for (final Card c : excludedBlockers) {
++                key.append(c.getId()).append(',');
++            }
++        }
++        key.append('|');
++        for (final Player p : opps) {
++            key.append(p.getId()).append(',');
++        }
++        for (final Player p : g.getPlayers()) {
++            key.append('|').append(p.getId()).append(':').append(p.getLife()).append(':').append(p.getPoisonCounters());
++        }
++        for (final Card c : g.getCardsIn(ZoneType.Battlefield)) {
++            if (c.isCreature() || c.isPlaneswalker()) {
++                key.append(';').append(c.getId()).append(c.getController().getId()).append(c.isTapped() ? 't' : 'u')
++                        .append(c.isSick() ? 's' : 'r').append(c.getNetPower()).append('/').append(c.getNetToughness());
++            }
++        }
++        final Map<String, Integer> memo = COMBAT_MEMO.computeIfAbsent(g, k -> new LinkedHashMap<String, Integer>(64, 0.75f, true) {
++            @Override
++            protected boolean removeEldestEntry(final Map.Entry<String, Integer> e) {
++                return size() > 256;
++            }
++        });
++        final String k = key.toString();
++        synchronized (memo) {
++            final Integer hit = memo.get(k);
++            if (hit != null) {
++                return hit;
++            }
++        }
++        final int result = predictNextCombatsRemainingLife0(ai, serious, checkDiff, payment, excludedBlockers, opps);
++        synchronized (memo) {
++            memo.put(k, result);
++        }
++        return result;
++    }
++
++    private static int predictNextCombatsRemainingLife0(Player ai, boolean serious, boolean checkDiff, int payment, final CardCollection excludedBlockers, final List<Player> opps) {
+         // life won't change
+         int remainingLife = Integer.MAX_VALUE;
+ 

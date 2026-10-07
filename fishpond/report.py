@@ -252,6 +252,11 @@ def print_all(meta, builds, approx_notes=None):
             for t in sm["turns"]: sm["turns"][t]["hand"]["leq1"] = round(sr.mean([1 if h <= 1 else 0 for h in res["rec"]["hand"][t]]), 4)
         summaries.append((label, sm, ex))
         if i == 0: print_header(meta, records, ex)
+        stops = [x for r in records for x in r.get("loops") or [] if x.get("event") == "stop"]
+        if stops:
+            from collections import Counter
+            print(f"loop shortcuts (Forge patch 15, any seat): {len(stops)} stopped in {sum(1 for r in records if any(x.get('event') == 'stop' for x in r.get('loops') or []))} game(s): "
+                  + " | ".join(f"{k} {v}" for k, v in Counter(f"{x['play']} ({x['player']}, {x['reason']}, {x['iterations']}x)" for x in stops).most_common(6)))
         else:
             r = ex["results"]
             print(f"\n=== {label}: won {r.get('win', 0)} of {ex['n']} ({share(r.get('win', 0), ex['n'])}, {ci(r.get('win', 0), ex['n'])}) ===")

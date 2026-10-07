@@ -1,0 +1,19 @@
+# title: Sprout Swarm repeated with no lethal in sight (opponent at 2000): the loop shortcut stops at -Dfishpond.loopMax (10 here; a loop is confirmed at 10 repeats)
+# card: Sprout Swarm
+# turns: 2
+# jvm: -Dfishpond.loopMax=10
+# sim: hybrid
+# expect: #FP-LOOP .*"start"
+# expect: #FP-LOOP .*"stop".*"cap"
+# expect: Turn: Turn 2
+# forbid: #FP-LOOP .*"iterations": (1[1-9]|[2-9][0-9])
+p0life=20
+p1life=2000
+turn=1
+activeplayer=p1
+activephase=END_OF_TURN
+p0battlefield=Witherbloom, the Balancer;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p0hand=Sprout Swarm
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

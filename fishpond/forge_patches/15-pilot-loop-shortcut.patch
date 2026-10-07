@@ -1,0 +1,206 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index fc0a6c9..a9f64e9 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -433,6 +433,10 @@ public class AiController {
+         }
+ 
+         landList = ComputerUtilCard.dedupeCards(landList);
++        if (!landList.isEmpty() && loopStopped(landList.get(0).getAllPossibleAbilities(player, true).stream()
++                .filter(SpellAbility::isLandAbility).findFirst().orElse(null))) {
++            return null;   // fishpond patch 15: a land loop ran this turn
++        }
+ 
+         landList = CardLists.filter(landList, c -> {
+             String name = c.getName();
+@@ -869,6 +873,9 @@ public class AiController {
+     }
+ 
+     public AiPlayDecision canPlaySa(SpellAbility sa) {
++        if (sa.getHostCard() != null && loopStopped(sa)) {
++            return AiPlayDecision.AnotherTime;   // fishpond patch 15: the loop already ran this turn
++        }
+         if (!checkAiSpecificRestrictions(sa)) {
+             return AiPlayDecision.CantPlayAi;
+         }
+@@ -959,6 +966,130 @@ public class AiController {
+         return saSideEffects(spellHost, sa);
+     }
+ 
++    // ---- fishpond patch 15: loop shortcut (docs/FORGE_PLAN.md "Pilot study 2026-10-04" item 1; FORGE_ISSUES #8) ----
++    // A seat that chooses the same play (same card and ability; for lands, the same land) LOOP_DETECT times in one turn
++    // may be looping: its loop play skips hybrid's one-move check and danger checks are frozen (ComputerUtil.aiLifeInDanger).
++    // At LOOP_CONFIRM repeats it is a loop (a few repeats are normal: Erebos's draws, Staff of Domination): other pilot seats
++    // pass priority, and it stops once its creatures beat the table's life after one chump block per opposing creature, or
++    // after -Dfishpond.loopMax iterations; then that play (every land play, for a land loop) is off for the rest of the
++    // turn. Each start and stop prints a #FP-LOOP line.
++    static final int LOOP_DETECT = 3;
++    static final int LOOP_CONFIRM = 10;
++    private static final int LOOP_MAX = Integer.getInteger("fishpond.loopMax", 1000);
++
++    static final class LoopState {
++        int turn = -1;
++        final Map<String, Integer> counts = new HashMap<>();
++        final Set<String> stopped = new HashSet<>();
++        final Map<String, Boolean> danger = new HashMap<>();
++        Player looper;
++        String key;
++        int iterations;
++    }
++
++    private static final Map<Game, LoopState> LOOPS = Collections.synchronizedMap(new WeakHashMap<>());
++
++    static LoopState loopState(final Game g) {
++        final LoopState s = LOOPS.computeIfAbsent(g, k -> new LoopState());
++        final int t = g.getPhaseHandler().getTurn();
++        if (s.turn != t) {
++            s.turn = t;
++            s.counts.clear();
++            s.stopped.clear();
++            s.danger.clear();
++            s.looper = null;
++            s.key = null;
++            s.iterations = 0;
++        }
++        return s;
++    }
++
++    static String loopKey(final SpellAbility sa) {
++        return sa.isLandAbility() ? "land" : sa.getHostCard().getName() + "|" + sa.getDescription();
++    }
++
++    private static String countKey(final SpellAbility sa) {
++        return sa.isLandAbility() ? "land:" + sa.getHostCard().getName() : loopKey(sa);
++    }
++
++    private void noteLoopPlay(final LoopState ls, final SpellAbility sa) {
++        final int n = ls.counts.merge(player.getId() + "#" + countKey(sa), 1, Integer::sum);
++        final String key = loopKey(sa);
++        if (n >= LOOP_DETECT && ls.looper == null && !ls.stopped.contains(player.getId() + "#" + key)) {
++            ls.looper = player;
++            ls.key = key;
++            ls.iterations = n;
++            System.out.println("#FP-LOOP {\"event\": \"start\", \"player\": \"" + player.getName() + "\", \"turn\": " + ls.turn
++                    + ", \"play\": \"" + sa.getHostCard().getName() + "\", \"land\": " + sa.isLandAbility() + "}");
++        } else if (ls.looper == player && key.equals(ls.key)) {
++            ls.iterations = Math.max(ls.iterations + 1, n);
++        } else {
++            return;
++        }
++        if (ls.iterations < LOOP_CONFIRM) {
++            return;
++        }
++        final boolean goal = loopGoalReached(player);
++        if (goal || ls.iterations >= LOOP_MAX) {
++            ls.stopped.add(player.getId() + "#" + key);
++            System.out.println("#FP-LOOP {\"event\": \"stop\", \"player\": \"" + player.getName() + "\", \"turn\": " + ls.turn
++                    + ", \"play\": \"" + sa.getHostCard().getName() + "\", \"iterations\": " + ls.iterations
++                    + ", \"reason\": \"" + (goal ? "goal" : "cap") + "\"}");
++            ls.looper = null;
++            ls.key = null;
++            ls.danger.clear();
++        }
++    }
++
++    /** The looper's creatures, after the opponents chump-block its biggest attackers one each, cover their life. */
++    static boolean loopGoalReached(final Player p) {
++        int life = 0, blockers = 0;
++        for (final Player o : p.getOpponents()) {
++            if (o.hasLost()) {
++                continue;
++            }
++            life += o.getLife();
++            blockers += o.getCreaturesInPlay().size();
++        }
++        if (life <= 0) {
++            return true;
++        }
++        final List<Integer> powers = new ArrayList<>();
++        for (final Card c : p.getCreaturesInPlay()) {
++            powers.add(Math.max(0, c.getNetCombatDamage()));
++        }
++        powers.sort(Collections.reverseOrder());
++        int damage = 0;
++        for (int i = blockers; i < powers.size(); i++) {
++            damage += powers.get(i);
++        }
++        return damage >= life;
++    }
++
++    private boolean loopStopped(final SpellAbility sa) {
++        if (sa == null || sa.getHostCard() == null || !forge.ai.ability.DrawAi.pilotSeat(player)) {
++            return false;
++        }
++        return loopState(game).stopped.contains(player.getId() + "#" + loopKey(sa));
++    }
++
++    private boolean inLoop(final SpellAbility sa) {
++        if (sa.getHostCard() == null || !forge.ai.ability.DrawAi.pilotSeat(player)) {
++            return false;
++        }
++        final LoopState ls = loopState(game);
++        return ls.looper == player && loopKey(sa).equals(ls.key);
++    }
++
++    /** Danger checks while a loop runs: computed once per player and question for the rest of the loop. */
++    public static boolean loopDanger(final Player ai, final String question, final java.util.function.BooleanSupplier compute) {
++        final LoopState ls = LOOPS.get(ai.getGame());
++        if (ls == null || ls.looper == null || ls.turn != ai.getGame().getPhaseHandler().getTurn()) {
++            return compute.getAsBoolean();
++        }
++        return ls.danger.computeIfAbsent(ai.getId() + "#" + question, k -> compute.getAsBoolean());
++    }
++
+     /** fishpond patch 14: null when nothing of ours is sacrificed by a land drop; otherwise whether this land is worth it:
+      *  the hand is over its limit (a card goes at cleanup anyway), the land does something besides mana (fetch, utility,
+      *  enters-the-battlefield trigger), we have landfall payoffs, or it's a fresh City replacing tapped ones. */
+@@ -1028,6 +1159,11 @@ public class AiController {
+             if (forge.ai.ability.PumpAi.isEncoreGrant(player, sa)) {
+                 return AiPlayDecision.WillPlay;
+             }
++            // fishpond patch 15: inside a detected loop each iteration is the same play on a bigger board; a one-move
++            // simulation per iteration is what made loops take half an hour
++            if (inLoop(sa)) {
++                return AiPlayDecision.WillPlay;
++            }
+             return OnePlaySafetyChecker.isAcceptable(player, sa) ? AiPlayDecision.WillPlay : AiPlayDecision.HybridSimRejected;
+         }
+ 
+@@ -1416,6 +1552,20 @@ public class AiController {
+     }
+ 
+     public List<SpellAbility> chooseSpellAbilityToPlay() {
++        // fishpond patch 15: loop shortcut. Once another seat is looping, this seat has had its real response windows
++        // (the first iterations); it passes until the loop stops, as the shortcut rules allow.
++        final LoopState ls = forge.ai.ability.DrawAi.pilotSeat(player) ? loopState(game) : null;
++        if (ls != null && ls.looper != null && ls.looper != player && ls.iterations >= LOOP_CONFIRM) {
++            return null;
++        }
++        final List<SpellAbility> chosen = chooseSpellAbilityToPlay0();
++        if (ls != null && chosen != null && !chosen.isEmpty() && chosen.get(0) != null && chosen.get(0).getHostCard() != null) {
++            noteLoopPlay(ls, chosen.get(0));
++        }
++        return chosen;
++    }
++
++    private List<SpellAbility> chooseSpellAbilityToPlay0() {
+         AiCache.clear();
+         // Reset cached predicted combat, as it may be stale. It will be
+         // re-created if needed and used for any AI logic that needs it.
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index eb5c895..f5145d0 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -3201,8 +3201,10 @@ public class ComputerUtil {
+     // call this to determine if it's safe to use a life payment spell
+     // or trigger "emergency" strategies such as holding mana for Spike Weaver or Counterspell.
+     public static boolean aiLifeInDanger(Player ai, boolean serious, int payment) {
+-        return Integer.MIN_VALUE == AiCache.getCached("aiLifeInDanger", () -> predictNextCombatsRemainingLife(ai, serious, false, payment, null),
+-                List.of(AiCache::identity, Objects::equals, Objects::equals), ai, serious, payment);
++        // fishpond patch 15: frozen for the rest of a detected loop (AiController.loopDanger)
++        return AiController.loopDanger(ai, "danger|" + serious + "|" + payment, () ->
++                Integer.MIN_VALUE == AiCache.getCached("aiLifeInDanger", () -> predictNextCombatsRemainingLife(ai, serious, false, payment, null),
++                List.of(AiCache::identity, Objects::equals, Objects::equals), ai, serious, payment));
+     }
+     public static int predictNextCombatsRemainingLife(Player ai, boolean serious, boolean checkDiff, int payment, final CardCollection excludedBlockers) {
+         return predictNextCombatsRemainingLife(ai, serious, checkDiff, payment, excludedBlockers, ai.getOpponents());

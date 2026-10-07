@@ -1,0 +1,17 @@
+# title: Sprout Swarm repeated at an opponent's end step (opponent at 14): the loop shortcut stops once the board is lethal, then the attack wins (FORGE_ISSUES #8)
+# card: Sprout Swarm
+# turns: 2
+# sim: hybrid
+# expect: #FP-LOOP .*"start"
+# expect: #FP-LOOP .*"stop".*"goal"
+# expect: Ai\(1\)-P1 has won
+p0life=20
+p1life=14
+turn=1
+activeplayer=p1
+activephase=END_OF_TURN
+p0battlefield=Witherbloom, the Balancer;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p0hand=Sprout Swarm
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

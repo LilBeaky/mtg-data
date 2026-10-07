@@ -11,6 +11,7 @@ regex does.
   # sim: hybrid         (seat 1's lookahead: off, the default, or hybrid as in a run)
   # expect: REGEX       (repeatable)
   # forbid: REGEX       (repeatable)
+  # jvm: -Dname=value   (optional: system properties for this puzzle, e.g. a small -Dfishpond.loopMax)
   # card: NAME          (the card or mechanic under test, for the summary)
   p0life=20
   p0battlefield=Astral Slide;Plains;Plains;Plains
@@ -44,7 +45,7 @@ def run_one(path, quiet=True):
     patched = forge.patched_classes(quiet=quiet)
     sf = path + ".state.tmp"
     open(sf, "w", encoding="utf-8").write("\n".join(state) + "\n")
-    cmd = ["java", "-Xmx1500m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
+    cmd = ["java", "-Xmx1500m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8", *meta.get("jvm", "").split(),
            "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "PuzzleRunner", os.path.abspath(sf),
            str(meta["turns"]), str(meta["seed"]), meta["sim"]]
     try:

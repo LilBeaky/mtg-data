@@ -173,6 +173,8 @@ def cmd_run(args):
         engine = "harness" if runner.harness_available() or forge.install_jdk(quiet=True) else "cli"
         if engine == "cli": print("fishpond: no javac, so using --engine cli (setup --jdk enables the faster harness)", file=sys.stderr)
     run_dir = os.path.abspath(args.out) if args.out else os.path.join(dk.REPO, "data", "fishpond", time.strftime("%Y%m%d-%H%M%S") + "-" + hero.tag)
+    if os.path.exists(os.path.join(run_dir, "meta.json")) or os.path.exists(os.path.join(run_dir, "games.jsonl")):
+        sys.exit(f"fishpond: {_rel(run_dir)} already holds a run; pick a new --out, or finish that one with --resume")
     os.makedirs(run_dir, exist_ok=True)
     if not args.quiet:
         print(f"fishpond: {len(builds)} build(s) x {args.trials} games, {jobs} JVM(s), engine {engine}; saving to {run_dir}",

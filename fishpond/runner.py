@@ -255,6 +255,7 @@ def collect(run_dir, plan, builds, pods, hero_ai="Default", opp_ai=("Default",) 
             r.update({"v": 1, "engine": "harness", "forge": forge.FORGE_VERSION, "build": e["label"], "game": e["game"],
                       "seed": e["seed"], "pod": pod_info(opps, opp_ai), "hero_ai": hero_ai, "snaps": snaps, "stop": end.get("stop"),
                       "end": end, "log": os.path.relpath(lf, run_dir), "log_id": end["id"], "tutors": end.get("tutors", []), "policy_log": end.get("policy_log", []),
+                      "loops": end.get("loops", []),
                       "sim": end.get("sim")})
             if end.get("stop") not in ("natural", "hero_lost") and r["result"] != "loss": r["result"], r["route"] = "draw", None
             r["stopped"] = end.get("stop") in ("timeout",)

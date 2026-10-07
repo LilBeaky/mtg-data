@@ -345,7 +345,7 @@ Payoff = how many decks and games the failure costs and how badly; difficulty = 
 | 6 | N4 Life budget (with Yusri follow-up 1) | Medium (one rule over optional life payments) | Medium: Niv, Erebos, Yusri, any Citadel/Ad Nauseam deck | One rule fixes several known losses |
 | 7 | 2 Harness hardening | Medium | Medium: keeps runs valid (voided games, OOM) | Protects every later measurement; needed before the big re-runs |
 | 8 | **Done 2026-10-06**: an unbounded loop (Springheart Nantuko on Icetill Explorer + City of Traitors; see N5) N5 replay (diagnosis only) | Low | Decides how 9 is built | Do before 9 |
-| 9 | 1 Loop shortcut, widened to repeated land plays (N5 is a land loop) | High | High: Balancer's real rate, no timed-out games | Most work; the cheaper fixes above shouldn't wait for it |
+| 9 | **Built 2026-10-07** (patches 15 and 16; FORGE_ISSUES #8) 1 Loop shortcut, widened to repeated land plays (N5 is a land loop) | High | High: Balancer's real rate, no timed-out games | Most work; the cheaper fixes above shouldn't wait for it |
 | 10 | 5 Finisher misses (Primal Surge, Enter the Infinite, Approach) | Medium-high (one puzzle and fix each) | Medium: Chulane, Yusri, Zur | Per-card; do after the general rules |
 | 11 | 5b Ragost under pressure | Medium-high (find the check that says no) | Low-medium: one deck | Diagnosis-heavy |
 | 12 | 3 #9 null-source NPE | High (Forge copy internals) | Low: one game in 130 | Rare; the item 2 safety net covers it meanwhile |

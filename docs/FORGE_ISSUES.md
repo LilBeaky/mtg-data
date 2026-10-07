@@ -70,7 +70,7 @@ Fixes Fishpond makes to Forge itself are listed under **Patches** below; everyth
 - **Fix:** patch `11-large-board-blocks`: `CombatUtil.blockCostStatics` collects the block-cost statics once per check (same results, any board); past `-Dfishpond.maxPredictAttackers` (20) only the biggest attackers join a predicted combat and the rest count as unblocked damage; past `-Dfishpond.maxBlockPairs` (400 attacker x blocker pairs) the block planner plans the biggest attackers with the best blockers; `notNeededAsBlockers` releases candidates in at most `-Dfishpond.maxReleaseSteps` (12) groups, retrying a lethal group one by one. Each limit at 0 restores stock behavior; boards under the limits plan exactly as before.
 - **Verified (2026-10-03):** the 120-a-side puzzle (`big_board_blocks`) plays both turns in 52 s. All puzzles pass.
 
-## 8. The AI never stops an infinite loop — open (draft, not patched)
+## 8. The AI never stops an infinite loop — patched (loop shortcut)
 
 - **Forge:** 2.0.15. **Cards:** Witherbloom, the Balancer + Sprout Swarm (`decks/Gaiges_Balancer_Combo.txt`): each Saproling convokes the next copy (Witherbloom gives instants and sorceries affinity for creatures), buyback returns it to hand, so the loop is free and unbounded. Any similar free loop would behave the same way.
 - **When:** any lookahead mode; hybrid makes it much worse.
@@ -80,7 +80,9 @@ Fixes Fishpond makes to Forge itself are listed under **Patches** below; everyth
   - Pilot study (`data/fishpond/pilot_study_20261004`), timeouts: `B3_05` g3 seed 7319565958635 (with Soul Warden), `B3_06` g1 seed 7319665958933 (Suture Priest, 128 triggers), `B3_08` g0 seed 7319865959532, `B3_09` g2 seed 7319965959834, `B3_16` g1 seed 7320665961933 (peak heap 4.2 GB).
   - `B3_18` g0 seed 7320865962532: `OutOfMemoryError` on table turn 44 mid-loop. The worker's JVM died with it, so games 1-3 in that pod recorded the same error at table turn 0 (see Harness safety net).
 - **Effect on results:** Balancer finished 23 of 40 B3 games with a single winner, so its 3/23 win rate is a floor. Those games probably were Balancer wins.
-- **Fishpond's workaround:** none yet. Fix plan: `docs/FORGE_PLAN.md`, "Pilot study 2026-10-04", item 1 (loop shortcut).
+- **Fix:** patch `15-pilot-loop-shortcut` (`AiController`, `ComputerUtil`). A seat that chooses the same play (same card and ability; for lands, the same land) 3 times in a turn may be looping: that play skips hybrid's one-move check and the danger checks (`aiLifeInDanger`) are frozen while it runs. At 10 repeats the loop is confirmed (fewer is normal: Erebos's draws, Staff of Domination): the other pilot seats pass priority, and the loop stops once the looper's creatures beat the table's life after one chump block per opposing creature (`goal`), or at `-Dfishpond.loopMax` (default 1000, `cap`); that play (every land play, for a land loop) is then off for the turn. `#FP-LOOP` start/stop lines; the run report counts stops. Puzzles `sprout_swarm_loop` (goal) and `sprout_swarm_loop_cap`.
+- **Patch 16 (`16-combat-prediction-memo`, `ComputerUtil`):** after a loop the board is huge, and a 60 s JFR profile of the Lumra replay put 63% of samples in `predictNextCombatsRemainingLife`, re-planned on an unchanged board once per removal target (`evaluateRemovalTargetPriority` -> `evaluateBoardPosition`) and once per Tireless Provisioner trigger (`aiLifeInDanger`); `AiCache` is cleared at every decision. Results are now remembered per game, keyed on each creature's and planeswalker's id, controller, tapped/sick state, power and toughness, each player's life and poison, turn, phase and the arguments. Same board, same answer; no decision changes except through the random stream.
+- **Verified (2026-10-07):** replays of the two loop timeouts of `powermatch_20261006_p14`: G3 game 4 (Sprout Swarm) stopped at 30 casts on `goal` and the game ended naturally after 21 minutes (was a 30-minute timeout); G2 game 0 finished in 2.3 minutes (the game diverged before Lumra's land loop formed; a patch-15-only replay stopped that loop at 21 land plays on `goal`). The N5 land loop (Springheart Nantuko on Icetill Explorer, City of Traitors from the graveyard) is covered by the land rule.
 
 ## 9. Hybrid lookahead crashes copying a cascaded, copied spell — open (draft, not patched)
 
@@ -115,6 +117,11 @@ Fishpond runs stock Forge plus the fixes in `fishpond/forge_patches/*.patch` (un
 | `09-pilot-seat-overrides` | `forge-ai/.../ai/AiController.java` | `--pilot-seats you`: seats outside the pilot treat fishpond's un-flagged cards as still flagged |
 | `10-pilot-empty-library-wins` | `forge-ai/.../ai/ComputerUtil.java`, `AiController.java`, `AiAttackController.java`, `ability/DrawAi.java`, `DiscardAi.java`, `TokenAi.java`, `ManifestBaseAi.java` | #6 (puzzles `empty_library_*`, `oracle_*`, `full_hand_toad_infinite`, `yusri_edgar_free_oracle_line`) |
 | `11-large-board-blocks` | `forge-game/.../game/combat/CombatUtil.java`, `forge-ai/.../ai/ComputerUtil.java`, `AiBlockController.java`, `AiAttackController.java` | #7 (puzzle `big_board_blocks`) |
+| `12-pilot-wheel-number` | `forge-ai/.../ai/AiController.java` | AI play: Wheel of Misfortune's number (puzzle `wheel_of_misfortune_number`) |
+| `13-pilot-araumi-encore` | `forge-ai/.../ai/ability/PumpAi.java`, `AiController.java` | AI play: Araumi grants encore and pays it (puzzles `araumi_encore*`) |
+| `14-pilot-city-of-traitors-land-drops` | `forge-ai/.../ai/AiController.java` | AI play: land drops with a sacrifice-on-land permanent out (puzzles `city_of_traitors_*`) |
+| `15-pilot-loop-shortcut` | `forge-ai/.../ai/AiController.java`, `ComputerUtil.java` | #8 (puzzles `sprout_swarm_loop*`) |
+| `16-combat-prediction-memo` | `forge-ai/.../ai/ComputerUtil.java` | #7, #8: repeated next-combat predictions on huge boards |
 
 The `-pilot-` patches act only for the pilot seats (`-Dfishpond.pilotSeats`, default all; the helper lives in patch 07's `DrawAi`, which 08 and 09 use).
 
