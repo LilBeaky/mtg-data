@@ -28,6 +28,8 @@ REPORT
   7 Tutor worth   each tutor taken out: points of access lost on the key cards and on the
                   whole deck, and the cards only it reaches
 
+  --md              the same report with Markdown tables (renders in the app and on GitHub)
+
 Key cards: your header lines are always used; inference runs alongside and adds cards beyond
 them (win conditions, payoffs for a mechanic the deck is full of, typal packages, draw engines,
 EDHREC synergy for this commander, cards the deck's narrow tutors converge on, Spellbook combo
@@ -625,8 +627,52 @@ def pct(p): return f"{100 * p:5.1f}%"
 
 def names_list(xs, lists, limit=12):
     xs = sorted(xs)
-    if not lists: return f"{len(xs)} cards"
+    if not lists: return f"{len(xs)} card{'s' if len(xs) != 1 else ''}"
     return "; ".join(xs[:limit]) + (f" … (+{len(xs) - limit})" if len(xs) > limit else "")
+
+class Out:
+    """The report's one layout: headings, notes, bullet lines and tables. Text (default) prints aligned tables;
+    --md prints the same tables as Markdown (they render in the app, on GitHub and in claude.ai)."""
+    WIDTH = 60                                     # widest text column; longer cells are cut with "…"
+
+    def __init__(self, md=False): self.md = md
+
+    def title(self, s): print(f"# {s}" if self.md else f"=== {s} ===")
+
+    def h2(self, s): print(f"\n## {s}\n" if self.md else f"\n## {s}")
+
+    def note(self, s): print(f"{s}  " if self.md else f"  {s}")       # Markdown: two trailing spaces keep the line break
+
+    def bullet(self, s, depth=0): print(("  " * depth + "- " + s) if self.md else ("  " + "    " * depth + s))
+
+    def table(self, headers, rows, right=()):
+        rows = [["" if c is None else str(c) for c in r] for r in rows]
+        if not rows: return
+        if self.md:
+            print()                                                   # a table renders only after a blank line
+            print("| " + " | ".join(headers) + " |")
+            print("|" + "|".join("---:" if i in right else "---" for i in range(len(headers))) + "|")
+            for r in rows: print("| " + " | ".join(c.replace("|", "\\|") for c in r) + " |")
+            print()
+            return
+        cut = lambda c: c if len(c) <= self.WIDTH else c[:self.WIDTH - 1] + "…"
+        rows = [[cut(c) for c in r] for r in rows]
+        w = [max([len(h)] + [len(r[i]) for r in rows]) for i, h in enumerate(headers)]
+        fmt = lambda cells: "  " + "  ".join(c.rjust(w[i]) if i in right else c.ljust(w[i]) for i, c in enumerate(cells)).rstrip()
+        print(fmt(headers)); print("  " + "  ".join("-" * x for x in w))
+        for r in rows: print(fmt(r))
+
+
+def how_used(t):
+    """Short 'how' for the tutor table: spell, enters, attack trigger, wizardcycling, transmute, activated..."""
+    if t.kind == "trigger": return (t.condition or "trigger").replace("whenever ", "").replace("when ", "")
+    if t.kind == "etb": return "enters"
+    if t.kind == "cycling": return t.condition or "cycling"
+    if t.kind == "transmute": return "transmute"
+    if t.kind == "activated": return "activated"
+    if t.kind == "loyalty": return t.condition
+    return t.kind
+
 
 def main():
     ap = argparse.ArgumentParser(description="Tutor graph and access analysis (see module docstring)")
@@ -634,6 +680,7 @@ def main():
     ap.add_argument("--turns", default="4,6"); ap.add_argument("--no-lists", action="store_true")
     ap.add_argument("--trials", type=int, default=40000)
     ap.add_argument("--no-infer", action="store_true", help="key cards from the header lines only")
+    ap.add_argument("--md", action="store_true", help="Markdown tables (same report)")
     a = ap.parse_args()
     if not os.path.exists(a.deck): sys.exit(f"deck file not found: {a.deck}")
     if a.deck.lower().endswith(".dck"): sys.exit("this is a Forge .dck file; pass the .txt list")
@@ -642,45 +689,52 @@ def main():
     if not turns or min(turns) < 1: sys.exit("--turns must be positive, e.g. 4,6")
     if a.trials < 1: sys.exit("--trials must be at least 1")
     on_play, lists = not a.draw, not a.no_lists
+    o = Out(a.md)
     d = Deck(a.deck, a.commander)
     cmd = " + ".join(sorted(d.cmd_names)) or "(no commander)"
-    print(f"=== TUTORS: {cmd} | {d.N} cards in library | on the {'play' if on_play else 'draw'} ===")
-    print("Odds ignore mana and the turns a chain takes (\"can you get there\", not \"how fast\"); goldfish.py is the mana check.")
+    o.title(f"TUTORS: {cmd} | {d.N} cards in library | on the {'play' if on_play else 'draw'}")
+    o.note("Odds ignore mana and the turns a chain takes (\"can you get there\", not \"how fast\"); goldfish.py is the mana check.")
 
     # ---- 1. inventory
     all_t = [t for ts in d.tutors.values() for t in ts]
     main_t = [t for t in all_t if not d.land_only(t)]
     land_t = [t for t in all_t if d.land_only(t)]
-    print(f"\n## 1. Tutors ({len(main_t)} effects on {len({t.name for t in main_t})} cards; "
-          f"{len(land_t)} land-only effects listed separately)")
+    o.h2(f"1. Tutors ({len(main_t)} effects on {len({t.name for t in main_t})} cards; "
+         f"{len(land_t)} land-only effects listed separately)")
     order = sorted(main_t, key=lambda t: (t.name not in d.cmd_names, not t.repeatable, t.name))
-    dead, shallow, approx = [], [], []
+    dead, shallow, approx, rows, targets = [], [], [], [], []
     for t in order:
         tg = sorted(x for x in d.lib_names if t.target.matches(d.card[x]) and not (x == t.name and d.qty.get(x, 0) < 2))
         nonland = [x for x in tg if not d.is_land[x]]
-        where = "commander, " if t.name in d.cmd_names else ""
         nl = len(tg) - len(nonland)
-        print(f"  {t.name} [{where}{t.label()}] → {t.dest}{' (not counted as access)' if t.dest in NO_ACCESS else ''}: "
-              f"{t.target.describe()}" + (f" ×{t.target.count}" if t.target.count > 1 else "")
-              + f" — {len(nonland)} nonland" + (f" + {nl} land" if nl else "") + " target(s)")
-        if lists and nonland: print(f"      {names_list(nonland, lists)}")
-        elif lists and tg: print(f"      {names_list(tg, lists)}")
-        if t.target.approx:
-            print(f"      ⚠ read approximately: {'; '.join(dict.fromkeys(t.target.approx))}"); approx.append(t.name)
+        finds = t.target.describe() + (f" ×{t.target.count}" if t.target.count > 1 else "") + (" ⚠" if t.target.approx else "")
+        rows.append([t.name + (" (commander)" if t.name in d.cmd_names else ""), how_used(t),
+                     "repeatable" if t.repeatable else ("one-shot, re-buyable" if t.rebuy else "one-shot"),
+                     t.dest + (" (no access)" if t.dest in NO_ACCESS else ""), finds,
+                     f"{len(nonland)}" + (f" + {nl} lands" if nl else "")])
+        targets.append((t.name, nonland or tg))
+        if t.target.approx: approx.append(f"{t.name}: {'; '.join(dict.fromkeys(t.target.approx))}")
         if not tg: dead.append(t.name)
         elif len(nonland) <= 2 and not all(d.is_land[x] for x in tg): shallow.append(f"{t.name} ({len(nonland)})")
-    if land_t:
-        print(f"  land-only (mana, not analyzed further): {'; '.join(sorted({t.name for t in land_t}))}")
+    o.table(["Tutor", "How", "Uses", "Puts it", "Finds", "Targets here"], rows, right=(5,))
+    if not main_t: o.note("no tutors outside land search")
+    if land_t: o.note(f"land-only (mana, not analyzed further): {'; '.join(sorted({t.name for t in land_t}))}")
     if d.engines:
-        print(f"  flicker engines: " + "; ".join(f"{n} ({w}{', repeatable' if r else ', one-shot'})" for n, w, r in d.engines))
-    if dead: print(f"  ⚠ no targets in this deck: {'; '.join(dead)}")
-    if shallow: print(f"  shallow pools (≤2 nonland targets): {'; '.join(shallow)}")
-    if not main_t: print("  no tutors outside land search")
+        o.note("flicker engines: " + "; ".join(f"{n} ({w}{', repeatable' if r else ', one-shot'})" for n, w, r in d.engines))
+    rebuy = sorted({f"{t.name} via {'; '.join(t.rebuy)}" for t in main_t if t.rebuy})
+    if rebuy: o.note("re-buyable ETB tutors: " + " | ".join(rebuy))
+    if approx: o.note("⚠ read approximately: " + " | ".join(approx))
+    if dead: o.note(f"⚠ no targets in this deck: {'; '.join(dead)}")
+    if shallow: o.note(f"shallow pools (≤2 nonland targets): {'; '.join(shallow)}")
     generic = sorted({t.name for t in main_t if t.target.broad() and t.dest not in NO_ACCESS})
-    if generic: print(f"  find-anything tutors: {'; '.join(generic)} (sections 3-6 also show the deck without them)")
+    if generic: o.note(f"find-anything tutors: {'; '.join(generic)} (the 'specific only' columns set them aside)")
+    if lists and targets:
+        o.note("targets:")
+        for n, tg in targets:
+            if tg: o.bullet(f"{n}: {names_list(tg, lists, 14)}", 1)
 
     # ---- 2. chains
-    print("\n## 2. Chains (tutors that find other tutors; a fetched tutor must land where it still works)")
+    o.h2("2. Chains (tutors that find other tutors; a fetched tutor must land where it still works)")
     links = []
     for src, outs in sorted(d.edges.items()):
         found = []
@@ -691,15 +745,14 @@ def main():
         if found: links.append((src, found))
     reach_all = {x: d.reach(x) for x in d.lib_names}
     if links:
-        print("  links:")
-        for src, found in links:
-            print(f"      {src}{' [commander]' if src in d.cmd_names else ''} → {'; '.join(found)}")
+        o.table(["Tutor", "Can find these tutors"],
+                [[src + (" (commander)" if src in d.cmd_names else ""), "; ".join(found)] for src, found in links])
     chains = []
     for x in [y for y in d.lib_names if not d.is_land[y]]:
         for src, p in reach_all[x].items():
             if len(p) >= 3: chains.append((len(p), p))
     if chains:
-        print("  routes a tutor only gets through another tutor (shortest route to each card):")
+        o.note("routes a tutor only gets through another tutor (shortest route to each card):")
         chains.sort(key=lambda z: (-z[0], z[1]))
         shown, seen_keys = 0, set()
         for L, p in chains:
@@ -707,49 +760,60 @@ def main():
             if key in seen_keys: continue
             seen_keys.add(key)
             ends = sorted({q[-1] for L2, q in chains if tuple(q[:-1]) == key})
-            print(f"      {path_str(p[:-1])} → {names_list(ends, lists, 8)}")
+            o.bullet(f"{path_str(p[:-1])} → {names_list(ends, lists, 8)}", 1)
             shown += 1
-            if shown >= 12: print("      … more omitted"); break
+            if shown >= 12: o.bullet("… more omitted", 1); break
     if not links and not chains:
-        print("  none: no tutor here can find another tutor that still works where it lands")
+        o.note("none: no tutor here can find another tutor that still works where it lands")
 
     # ---- 3. coverage
-    print("\n## 3. Coverage (nonland cards; ways = cards that can start a path to it)")
+    o.h2("3. Coverage (nonland cards; ways = cards that can start a path to it)")
     nonbasic = [x for x in d.lib_names if not d.is_land[x]]
     reach_spec = {x: d.reach(x, specific=True) for x in d.lib_names}
     views = [("all tutors", reach_all)] + ([("specific tutors only", reach_spec)] if generic else [])
+    rows, extra = [], []
     for label, R in views:
         unreach = sorted(x for x in nonbasic if not R[x])
         one = sorted(x for x in nonbasic if len(R[x]) == 1)
         many = sorted(x for x in nonbasic if len(R[x]) >= 2)
-        print(f"  {label}: {len(many)} reachable 2+ ways | {len(one)} exactly 1 way | {len(unreach)} no tutor finds (of {len(nonbasic)})")
-        if unreach: print(f"      draw-only: {names_list(unreach, lists, 40)}")
+        rows.append([label, len(many), len(one), len(unreach), len(nonbasic)])
+        if unreach: extra.append(f"{label}, draw-only: {names_list(unreach, lists, 40)}")
         if one:
-            print("      single path: " + ("; ".join(f"{x} (via {next(iter(R[x]))})" for x in one[:20])
-                                        if lists else f"{len(one)} cards") + (" …" if lists and len(one) > 20 else ""))
+            via = {}
+            for x in one: via.setdefault(next(iter(R[x])), []).append(x)
+            for v, xs in sorted(via.items(), key=lambda kv: -len(kv[1])):
+                extra.append(f"{label}, only via {v}: {names_list(xs, lists, 20)}")
+    o.table(["View", "2+ ways", "1 way", "No tutor", "Of"], rows, right=(1, 2, 3, 4))
+    for e in extra: o.note(e)
     lands_nb = sorted(x for x in d.lib_names if d.is_land[x] and not d.basic[x])
-    if lands_nb: print(f"  nonbasic lands a tutor can find: {sum(1 for x in lands_nb if reach_all[x])} of {len(lands_nb)}")
+    if lands_nb: o.note(f"nonbasic lands a tutor can find: {sum(1 for x in lands_nb if reach_all[x])} of {len(lands_nb)}")
 
     # ---- 4. dependencies
-    print("\n## 4. Dependencies (cards that lose ALL tutor access without this one)")
+    o.h2("4. Dependencies (cards that lose ALL tutor access without this one)")
+    rows = []
     for label, R, spec in [("all tutors", reach_all, False)] + ([("specific tutors only", reach_spec, True)] if generic else []):
         deps = []
         for src in sorted({x for t in nonbasic for x in R[t]}):
             lost = [x for x in nonbasic if R[x] and not d.reach(x, frozenset({src}), spec)]
             if lost: deps.append((src, lost))
         deps.sort(key=lambda z: (z[0] not in d.cmd_names, -len(z[1]), z[0]))
-        if not deps:
-            print(f"  {label}: none, every tutorable card has two independent starting points"); continue
-        print(f"  {label}:")
+        if not deps: rows.append([label, "none", 0, "every tutorable card has two independent starting points"])
         for src, lost in deps[:10]:
-            print(f"      {src}{' [commander]' if src in d.cmd_names else ''}: {len(lost)} — {names_list(lost, lists, 10)}")
+            rows.append([label, src + (" (commander)" if src in d.cmd_names else ""), len(lost), names_list(lost, lists, 8)])
+    o.table(["View", "Without", "Cards cut off", "Which"], rows, right=(2,))
 
     # ---- keys: yours (header lines) and inferred beyond them
     yours, inferred, scores, bad_keys = key_cards(d, infer=not a.no_infer)
+    bad_keys = [b for b in bad_keys if "it's the commander" not in b]       # a commander named as a key is fine
     keys = yours + inferred
     pk_specs = [sm.parse_package(v) for v in (d.meta.get("package") or [])]
     ts_, dc = mtg.deck_combos(sorted(d.lib_names | d.cmd_names))
-    combos = sorted((v for v in (dc or []) if len(v["cards"]) <= 3), key=lambda v: (len(v["cards"]), -v.get("pop", 0)))
+    tutor_names = {x for x in d.tutors if not all(d.land_only(t) for t in d.tutors[x])}
+    def tutor_plus_target(cards):
+        """Spellbook's 'combo' that's a tutor plus a card it can find (Approach of the Second Sun + Mystical Tutor)."""
+        return any(x in tutor_names and any(y in d.edges.get(x, {}) for y in cards if y != x) for x in cards)
+    combos = sorted((v for v in (dc or []) if len(v["cards"]) <= 3 and not tutor_plus_target(v["cards"])),
+                    key=lambda v: (len(v["cards"]), -v.get("pop", 0)))
     trees = None
     if any(p.lower().startswith("tag:") for _, parts in pk_specs for p in parts):
         trees = mtg.load_tags_multi(sorted({p[4:].strip() for _, parts in pk_specs for p in parts if p.lower().startswith("tag:")}))
@@ -761,66 +825,85 @@ def main():
         pk_resolved.append(("combo", " + ".join(v["cards"]), v["cards"], [{x} for x in v["cards"]]))
 
     # ---- 5. key cards and access odds
-    print(f"\n## 5. Key cards (drawn, or a card with a path to it, by " + ", ".join(f"T{T}" for T in turns) + ")")
-    if bad_keys: print(f"  ⚠ '# key:' names not in the library: {'; '.join(bad_keys)}")
+    o.h2(f"5. Key cards (drawn, or a card with a path to it, by " + ", ".join(f"T{T}" for T in turns) + ")")
+    if bad_keys: o.note(f"⚠ '# key:' names not in the library: {'; '.join(bad_keys)}")
     agree = [x for x in yours if x in scores and scores[x][0] >= INFER_MIN]
-    print(f"  yours ({len(yours)}, from the header lines): " + ("; ".join(yours) if yours else "none"))
+    o.note(f"yours ({len(yours)}, from the header lines): " + ("; ".join(yours) if yours else "none"))
     if not a.no_infer:
-        print(f"  inferred beyond yours ({len(inferred)}): "
-              + ("; ".join(f"{x} ({'; '.join(scores[x][1])})" for x in inferred) if inferred else "none"))
         if yours:
-            print(f"  inference also picks {len(agree)} of your {len(yours)}"
-                  + (f"; it misses {'; '.join(x for x in yours if x not in agree)}" if len(agree) < len(yours) else "")
-                  + " (how far to trust the inferred list on this deck)")
+            o.note(f"inference also picks {len(agree)} of your {len(yours)}"
+                   + (f"; it misses {'; '.join(x for x in yours if x not in agree)}" if len(agree) < len(yours) else "")
+                   + " (how far to trust the inferred list on this deck)")
+        if inferred:
+            o.note(f"inferred beyond yours ({len(inferred)}):")
+            o.table(["Inferred card", "Score", "Why"], [[x, f"{scores[x][0]:.1f}", "; ".join(scores[x][1])] for x in inferred],
+                    right=(1,))
+        else:
+            o.note("inferred beyond yours: none")
     timing = cmd_timing(a.deck, a.commander, on_play, turns) if any(c in d.tutors for c in d.cmd_names) else {}
     if not keys:
-        print("  no key cards (none in the header, none inferred)")
-    for x in keys:
-        cells = []
+        o.note("no key cards (none in the header, none inferred)")
+    else:
+        has_cmd = any(cmd_access(d, x, T, timing, reach_all[x]) for x in keys for T in turns)
+        head = ["Card", "Key", "Ways"]
         for T in turns:
-            n_seen = sm.cards_seen(T, on_play)
-            p = access_odds(d, x, T, on_play, frozenset(d.cmd_names))[0]
-            q = sm.hyper_at_least(d.N, d.qty.get(x, 0), n_seen, 1)
-            cell = f"T{T} {pct(p)}"
-            if generic: cell += f" (specific only {pct(access_odds(d, x, T, on_play, frozenset(d.cmd_names), True)[0])})"
-            pc = cmd_access(d, x, T, timing, reach_all[x])
-            if pc: cell += f", + commander {pct(1 - (1 - p) * (1 - pc))}"
-            cells.append(cell + f", drawn {pct(q)}")
-        T0 = turns[0]
-        eq = copies_equiv(d.N, sm.cards_seen(T0, on_play), access_odds(d, x, T0, on_play, frozenset(d.cmd_names))[0])
-        src = "yours" if x in yours else "inferred"
-        print(f"  {x} [{src}]: " + " | ".join(cells) + f" | {len(reach_all[x])} way(s), plays like {eq:.1f} copies by T{T0}")
-    if keys:
-        print("  (library odds: the card or a library card that leads to it. '+ commander': also the commander's own tutor,")
-        print("   once manasim.py games have it on the battlefield long enough to use it; repeatable tutors are a ceiling)")
+            head += [f"T{T}"] + ([f"T{T} specific"] if generic else []) + ([f"T{T} +cmdr"] if has_cmd else [])
+        head += ["Drawn " + "/".join(f"T{T}" for T in turns), f"Copies T{turns[0]}"]
+        rows = []
+        for x in keys:
+            r = [x, "yours" if x in yours else "inferred", len(reach_all[x])]
+            for T in turns:
+                p = access_odds(d, x, T, on_play, frozenset(d.cmd_names))[0]
+                r.append(pct(p).strip())
+                if generic: r.append(pct(access_odds(d, x, T, on_play, frozenset(d.cmd_names), True)[0]).strip())
+                if has_cmd:
+                    pc = cmd_access(d, x, T, timing, reach_all[x])
+                    r.append(pct(1 - (1 - p) * (1 - pc)).strip() if pc else "—")
+            r.append(" / ".join(pct(sm.hyper_at_least(d.N, d.qty.get(x, 0), sm.cards_seen(T, on_play), 1)).strip() for T in turns))
+            T0 = turns[0]
+            r.append(f"{copies_equiv(d.N, sm.cards_seen(T0, on_play), access_odds(d, x, T0, on_play, frozenset(d.cmd_names))[0]):.1f}")
+            rows.append(r)
+        o.table(head, rows, right=tuple(range(2, len(head))))
+        o.note("T: the card, or a library card that leads to it. specific: without find-anything tutors. +cmdr: also the")
+        o.note("commander's own tutor once manasim.py games have it out long enough to use it (repeatable: a ceiling).")
+        o.note("Copies: how many copies of the card would give the same odds by that turn.")
 
     # ---- 6. packages
-    print("\n## 6. Packages (every piece drawn, or reached by a different tutor chain; a repeatable tutor can cover several)")
-    if not pk_resolved:
-        print("  none: no Spellbook combo of ≤3 cards here and no '# package:' lines")
+    o.h2("6. Packages (every piece drawn, or reached by a different tutor chain; a repeatable tutor can cover several)")
+    rows, notes6 = [], []
     for src, label, parts, mem in pk_resolved:
-        print(f"  [{src}] {label}")
         bad = [p for p, m in zip(parts, mem) if not m]
-        if bad: print(f"      no card in the deck matches: {'; '.join(bad)}"); continue
+        if bad: notes6.append(f"{label}: no card in the deck matches {'; '.join(bad)}"); continue
         pieces = [set(m) for m in mem]
         if src == "header" and any(pieces[i] & pieces[j] for i in range(len(pieces)) for j in range(i + 1, len(pieces))):
-            print("      parts share cards, so the odds aren't computed; make each part distinct"); continue
+            notes6.append(f"{label}: parts share cards, so the odds aren't computed; make each part distinct"); continue
+        cmd_reach = d.cmd_names and any(any(c in d.reach(x) for c in d.cmd_names) for m in pieces for x in m)
+        r = [label, "yours" if src == "header" else "Spellbook"]
         for T in turns:
             nat, lib_ = package_odds_chains(d, pieces, T, on_play, a.trials, use_cmd=False)
-            line = f"by T{T}: drawn {pct(nat)} | with library tutors {pct(lib_)}"
-            if generic:
-                line += f" (specific only {pct(package_odds_chains(d, pieces, T, on_play, a.trials, use_cmd=False, specific=True)[1])})"
-            if d.cmd_names and any(any(c in d.reach(x) for c in d.cmd_names) for m in pieces for x in m):
-                line += f" | + commander tutoring {pct(package_odds_chains(d, pieces, T, on_play, a.trials)[1])}"
-            print(f"      {line}")
-    if len(combos) > 8: print(f"  +{len(combos) - 8} more combo(s) not shown")
+            r += [pct(nat).strip(), pct(lib_).strip()]
+            if generic: r.append(pct(package_odds_chains(d, pieces, T, on_play, a.trials, use_cmd=False, specific=True)[1]).strip())
+            r.append(pct(package_odds_chains(d, pieces, T, on_play, a.trials)[1]).strip() if cmd_reach else "—")
+        rows.append(r)
+    head = ["Package", "From"]
+    for T in turns: head += [f"T{T} drawn", f"T{T} tutors"] + ([f"T{T} specific"] if generic else []) + [f"T{T} +cmdr"]
+    if rows: o.table(head, rows, right=tuple(range(2, len(head))))
+    for n_ in notes6: o.note(n_)
+    dropped = sum(1 for v in (dc or []) if len(v["cards"]) <= 3 and tutor_plus_target(v["cards"]))
+    if not pk_resolved:
+        o.note("none: no Spellbook combo of ≤3 cards here and no '# package:' lines"
+               + (f" ({dropped} Spellbook 'combo(s)' that are only a tutor and its target left out)" if dropped else ""))
+    elif rows:
+        o.note(f"tutors: drawn or reached through library tutors; +cmdr: the commander's tutoring too, used as often as needed (a")
+        o.note(f"ceiling). Sampled, {a.trials:,} games per cell (±~0.5 pts). Spellbook 'combos' that are only a tutor and its target are left out.")
+    if len(combos) > 8: o.note(f"+{len(combos) - 8} more combo(s) not shown")
 
     # ---- 7. tutor worth
     T0 = turns[-1]
-    print(f"\n## 7. Tutor worth (each tutor taken out: points of access lost by T{T0}, library tutors; a ceiling)")
+    o.h2(f"7. Tutor worth (each tutor taken out: points of access lost by T{T0}, library tutors; a ceiling)")
     lib_tutors = sorted(x for x in d.tutors if x in d.lib_names and not all(d.land_only(t) for t in d.tutors[x]))
     if not lib_tutors:
-        print("  no library tutors")
+        o.note("no library tutors")
     else:
         def mean_access(cards, banned, spec=False):
             if not cards: return 0.0
@@ -834,15 +917,18 @@ def main():
             ks = (base_ks - mean_access(keys, b, True)) if generic and tname not in generic else None
             rows.append((base_k - mean_access(keys, b), ks, base_all - mean_access(nonbasic, b), tname, only))
         rows.sort(key=lambda r: (-r[0], -(r[1] or 0), -r[2], r[3]))
-        print(f"  {'tutor':<34}{'key cards':>11}" + (f"{'specific only':>15}" if generic else "") + f"{'whole deck':>12}   only it reaches")
+        head = ["Tutor", "Key cards"] + (["Specific only"] if generic else []) + ["Whole deck", "Only it reaches"]
+        out = []
         for dk, ks, da, tname, only in rows:
-            print(f"  {tname[:34]:<34}{100 * dk:+10.1f}" + ((f"{100 * ks:+15.1f}" if ks is not None else f"{'find-anything':>15}") if generic else "")
-                  + f"{100 * da:+12.1f}   " + (names_list(only, lists, 6) if only else "—"))
-        print(f"  (mean access over the {len(keys)} key cards and the {len(nonbasic)} nonland cards; the commander's own")
-        print("   tutoring stays out, so this is what each library tutor adds on top of the rest. Every chain counts as free")
-        print("   here, so tutors look alike; 'specific only' sets the find-anything tutors aside, which separates them more)")
-    print(f"\nsampled packages: {a.trials:,} games per cell (±~0.5 pts); single-card odds in section 5 are exact.")
-    if d.cmd_names & set(d.tutors): print("'+ commander tutoring' assumes the commander is out and its tutor fires as often as needed: a ceiling.")
+            r = [tname, f"{100 * dk:+.1f}"]
+            if generic: r.append(f"{100 * ks:+.1f}" if ks is not None else "find-anything")
+            r += [f"{100 * da:+.1f}", names_list(only, lists, 6) if only else "—"]
+            out.append(r)
+        o.table(head, out, right=(1, 2, 3) if generic else (1, 2))
+        o.note(f"Points of mean access lost over the {len(keys)} key cards and the {len(nonbasic)} nonland cards; the commander's")
+        o.note("own tutoring stays out. Every chain counts as free here, so tutors look alike; 'specific only' sets the")
+        o.note("find-anything tutors aside, which separates them more. The played version (mana and turns) is TUTOR_PLAN phase 2.")
+
 
 if __name__ == "__main__":
     main()
