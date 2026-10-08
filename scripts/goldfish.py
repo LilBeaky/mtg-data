@@ -3890,6 +3890,9 @@ class Game:
         sim, b = self.sim, 0
         if c in have: return 0
         if c in sim.keys: b = 80
+        elif c in sim.inferred and (not self.cmd or len(self.lands) >= 5):
+            b = 60      # inferred key card: below yours and a missing package piece, and only once the deck has developed
+                        # (commander out or 5 lands), so tutors keep finding ramp first (Klauth's inferred keys are dragons)
         for parts in sim.packages:
             slots = [i for i, part in enumerate(parts) if c in part]
             if not slots or any(have & parts[i] for i in slots): continue
@@ -5846,8 +5849,9 @@ class Sim:
         self.dis_rng = random.Random(0)
         self.persist = 3
         self.board_spec = getattr(args, "board_spec", None) or []     # --blockers: [(turn, until, seats, item)]
-        self.keys, self.packages = want or (set(), [])
-        self.wanted = set(self.keys) | {c for parts in self.packages for part in parts for c in part}
+        self.keys, self.packages = (want or (set(), []))[:2]
+        self.inferred = set(want[2]) if want and len(want) > 2 else set()    # key cards tutors.py infers beyond yours
+        self.wanted = set(self.keys) | self.inferred | {c for parts in self.packages for part in parts for c in part}
         uniq = list(dict.fromkeys(self.deck + self.commanders))
         self.recursion = [k for k in uniq if k.recur_fx]
         self.finds = {}
@@ -6063,7 +6067,7 @@ def print_report(label, sm, meta, groups, show_header=True):
         print(f"mulligans: {pct(sm['mulligan_rate']).strip()} of games mulligan; kept size "
               + ", ".join(f"{k}: {pct(v).strip()}" for k, v in sm["kept_hand_size"].items())
               + "  (London, first mulligan free per rule 103.5c)")
-        if meta.get("priorities"): print(f"tutor priorities from the list header: {meta['priorities']}")
+        if meta.get("priorities"): print(f"tutor priorities (list header, then inferred): {meta['priorities']}")
         print(f"opponents: not simulated. {meta['opp_n']} card(s) use the fixed opponent approximations (~opp in --explain); "
               f"{meta['vac_n']} need opponents and do nothing here (vacuum)")
         if meta.get("kill"): print(f"--kill-commander {meta['kill']}: every clean game loses the commander after turn {meta['kill'] - 1}")
@@ -6340,8 +6344,10 @@ def explain(cache, names, commanders):
     print("\nnonland: " + ", ".join(f"{v} {s}" for s, v in counts.most_common()))
 
 # ---------------------------------------------------------------- main
-def header_wants(path, found, cache, names):
-    """'# key:' and '# package:' header lines -> (set of key Cards, [package: [set of Cards per part]])."""
+def header_wants(path, found, cache, names, infer=True):
+    """'# key:' and '# package:' header lines -> (set of key Cards, [package: [set of Cards per part]], set of inferred
+    key Cards). Inferred = tutors.py's key-card inference beyond the header's (tutors.key_cards); it runs whether or
+    not the header has key lines."""
     meta = mtg.parse_deck_meta(path)
     by_name = {}
     for n in names: by_name.setdefault(found[n]["name"], cache[n])
@@ -6357,7 +6363,17 @@ def header_wants(path, found, cache, names):
     for _, parts in specs:
         mem = [{by_name[n] for n in sm._part_members(p, set(by_name), trees)} for p in parts]
         if all(mem): pk.append(mem)
-    return keys, pk
+    inferred = set()
+    if infer:
+        try:
+            import io, contextlib
+            with contextlib.redirect_stdout(io.StringIO()):
+                td = tu.Deck(path)
+                _, inf, _, _ = tu.key_cards(td)
+            inferred = {by_name[n] for n in inf if n in by_name} - keys
+        except Exception as ex:
+            print(f"(key-card inference skipped: {type(ex).__name__}: {ex})", file=sys.stderr)
+    return keys, pk, inferred
 
 def main():
     ap = argparse.ArgumentParser(description="Monte Carlo goldfish simulator (see module docstring)")
@@ -6462,6 +6478,7 @@ def main():
             sys.exit("--disruption-trace in ladder mode: SHUFFLE:RUNG, e.g. 3:12")
         if args.ladder_max: lad["forced"] = True
     prio_txt = "; ".join((["key: " + ", ".join(sorted(k.name for k in want[0]))] if want[0] else [])
+                         + ([f"inferred: {len(want[2])} more (tutors.py section 5)"] if want[2] else [])
                          + ([f"{len(want[1])} package(s)"] if want[1] else []))
     nonland = [cache[n] for n in dict.fromkeys(raw_lib) if not cache[n].is_land]
     st = Counter(k.status for k in nonland)

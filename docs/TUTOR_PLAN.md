@@ -1,6 +1,6 @@
 # Tutor plan
 
-Status: **phase 0 done** (2026-10-08); phase 1 next. Written 2026-10-08.
+Status: **phases 0 and 1 done** (2026-10-08); phase 2 next. Written 2026-10-08.
 
 ## Goal
 
@@ -79,20 +79,30 @@ Ragost's packages (its assembly problem) need header lines before phase 2 can me
 
 ## Phase 1: tutors.py quick wins (exact layer)
 
-- **Commander folded in.** For each key card, odds = drawn, or reached through the library, or reached
-  through the commander once it's out and its tutor has fired. "Out by T" comes from manasim.py's
-  castable-by curve; the trigger condition (cast = ETB, attack = the next turn unless haste) shifts it.
-  Shown as its own column so the ceiling and the commander's share stay visible.
-- **One-shot contention in section 5:** single-card odds already exact; add a "key cards together" line
-  using section 6's matching (each one-shot tutor serves one card).
-- **What each tutor is worth (ceiling):** take each tutor out, recompute key-card and package odds, report
-  the points lost. Ranks dead weight (Personal Tutor reaching 8 sorceries) against load-bearing tutors.
-- **Equivalent copies:** state access as "plays like about N copies" of the card.
-- **Partial dependencies:** besides "loses all access", list cards that lose most of their routes.
-- `.dck` guard.
-
-Done when: Zur shows Zur's own tutoring in the odds, the tutor-worth ranking, and no `.dck` misread; Ragost
-(not a tutoring commander) is unchanged except the new lines; smoke checks added.
+**Done 2026-10-08, revised on the way:** key cards no longer depend on header lines.
+- **Key cards, yours and inferred in parallel.** `# key:` / `# package:` lines are always used; inference runs
+  alongside and adds cards beyond them; with no lines, inference alone (`key_cards`, `infer_keys`). Signals:
+  wins the game (oracle tag `alternate win condition`), payoff for a mechanic or creature type the deck has 8+ of
+  (`synergy-*` / `*-matters` tags against the deck's keywords and subtypes), typal package, repeatable draw/token/
+  mana engine, EDHREC synergy >= 30% for this commander, narrow tutors converging on it (each specific tutor
+  spreads 1 over its nonland targets, repeatable x2), Spellbook combo pieces (not the tutor in "tutor + target").
+  Score >= 2 to count, at most 10 shown. The report says how many of your keys inference also picks.
+  Results: Zur 5 of 8 (misses Archaeomancer, Words of Worship, Necrodominance: a deck-specific loop and combo no
+  tag describes); Ragost 0 of 5 (artifact synergy is everywhere; only Test of Endurance inferred); Klauth (no
+  lines) gets Dragon Tempest and the dragons its tutors converge on.
+- **goldfish.py fetch priority:** inferred keys at 60 (yours 80, a missing package piece 70-90), and only once
+  the deck has developed (commander out or 5 lands); before that gate, inferred dragons slowed Klauth (by T5
+  56.0% -> 52.4%), with it 57.3%.
+- **Commander folded in:** "+ commander" = 1 - (1 - library odds)(1 - P(commander out long enough to use its
+  tutor)), from manasim.py's castable-by curve; attack triggers and {T} abilities wait a turn unless haste.
+  Zur: Astral Slide by T4 71.0% -> 81.6%, by T6 77.8% -> 97.4%. Independence between the two is assumed.
+- **Plays like N copies** per key card. **Tutor worth (section 7):** drop-one on key cards and the whole deck,
+  plus a specific-only view and "only it reaches". As expected the ceiling flattens it (every chain is free):
+  Zur all +3.5 except Wishclaw +7.2 and Step Through +5.9; specific-only separates (Step Through +11.6,
+  Brainspoil +6.9, Spellseeker +6.1, the instant/sorcery tutors +3.2). The played version is phase 2's.
+- `.dck` refused.
+- Not done: one-shot contention for key cards together in section 5 (section 6's matching covers packages);
+  partial dependencies. Both fold into phase 2, where play handles contention directly.
 
 ## Phase 2: played access (the mana-and-turns layer)
 

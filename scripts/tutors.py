@@ -20,15 +20,23 @@ REPORT
   2 Chains        tutors that find tutors (Step Through -> Spellseeker -> Cyclonic Rift)
   3 Coverage      how many ways each card can be reached; cards no tutor can find
   4 Dependencies  what loses all tutor access if a card is gone (the commander first)
-  5 Access odds   key cards: drawn, or a card that leads to them, by each turn
+  5 Key cards     yours ('# key:' / '# package:' lines) and inferred beyond them, with reasons;
+                  access odds for both: drawn, or a card that leads to them, by each turn, then
+                  with the commander's own tutoring added once it's out (manasim.py games);
+                  "plays like N copies"
   6 Packages      Spellbook combos (<= 3 cards) and '# package:' lines, with chains
+  7 Tutor worth   each tutor taken out: points of access lost on the key cards and on the
+                  whole deck, and the cards only it reaches
 
-Key cards come from '# package:' and '# key:' header lines ('# key: A; B').
+Key cards: your header lines are always used; inference runs alongside and adds cards beyond
+them (win conditions, payoffs for a mechanic the deck is full of, typal packages, draw engines,
+EDHREC synergy for this commander, cards the deck's narrow tutors converge on, Spellbook combo
+pieces). With no header lines, inference alone. --no-infer turns it off.
 All odds ignore mana and the turns a chain takes: they say "can you get there",
 not "how fast". goldfish.py is the mana-aware check. Full docs: USE_INSTRUCTIONS.md §6.
 """
-import argparse, os, random, re, sys
-from collections import deque
+import argparse, glob, json, os, random, re, sys
+from collections import Counter, deque
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
@@ -460,6 +468,158 @@ def package_odds_chains(deck, pieces, T, on_play, trials, seed=11, use_cmd=True,
     return nat / trials, ok / trials
 
 
+# ------------------------------------------------------------------ key cards: inferred alongside yours
+INFER_MIN, INFER_MAX = 2.0, 10                   # score to count as a key card; most inferred cards shown
+ENGINE_TAGS = {"draw-engine": "draw engine", "repeatable-pure-draw": "draw engine",
+               "repeatable-token-generator": "token engine", "repeatable-treasure": "mana engine"}
+_TAGS = {}
+
+def _tags_by_oid():
+    """{oracle_id: set of Scryfall oracle-tag slugs} from the newest tag file (one pass, cached)."""
+    if _TAGS: return _TAGS
+    for f in sorted(glob.glob(os.path.join(mtg.DATA_DIR, "oracle-tags-*.jsonl")))[-1:]:
+        for line in open(f, encoding="utf-8"):
+            t = json.loads(line)
+            for x in t.get("taggings", []):
+                _TAGS.setdefault(x.get("oracle_id"), set()).add(t["slug"])
+    return _TAGS
+
+def snapshot_rows(cmdrs, bracket=None):
+    """Rows of the newest EDHREC snapshot for this commander (snapshots/), the bracket's variant first; [] if none."""
+    try:
+        import explorer, edhrec_diff
+    except Exception: return []
+    if not cmdrs: return []
+    slugs = {"-".join(explorer.slug(c["name"]) for c in cmdrs)}
+    if len(cmdrs) == 2: slugs.add("-".join(explorer.slug(c["name"]) for c in reversed(cmdrs)))
+    found = []
+    for f in glob.glob(os.path.join(os.path.dirname(ROOT), "snapshots", "*.txt")):
+        parts = os.path.basename(f)[:-4].split("__")
+        if len(parts) == 3 and parts[0] in slugs: found.append((parts[1], parts[2], f))
+    if not found: return []
+    want = getattr(mtg, "BRACKET_VARIANT", {}).get(bracket)
+    for pick in ([v for v in found if v[0] == want], [v for v in found if v[0] == "all"], found):
+        if pick: return edhrec_diff.parse_snapshot(max(pick, key=lambda v: v[1])[2])[1]
+    return []
+
+def infer_keys(d):
+    """{card: (score, [reasons])} for every library card with any signal that it's a key card. Signals:
+    wins the game (oracle tag), payoff for a mechanic or creature type the deck is full of (8+ cards), typal
+    package, repeatable engine, EDHREC synergy >= 30% for this commander, narrow tutors converging on it
+    (each specific tutor spreads 1 over its nonland targets, repeatable counts double), a Spellbook combo piece
+    that isn't just the tutor in 'tutor + target'. key_cards() keeps the ones scoring INFER_MIN or more."""
+    tg = _tags_by_oid()
+    cards = {n: d.card[n] for n in d.lib_names if not d.is_land[n]}
+    kw, sub = Counter(), Counter()
+    for c in cards.values():
+        for k in c.get("keywords") or []:
+            k = k.lower(); kw[k] += 1
+            if k.endswith("cycling") and k != "cycling": kw["cycling"] += 1
+        for t in type_parts(c)[2]: sub[t] += 1
+    syn = {mtg.norm(r["name"]): r["syn"] for r in snapshot_rows(d.cmdrs, d.meta.get("bracket"))}
+    ntarg = {}
+    for src, ts in d.tutors.items():
+        for t in ts: ntarg[id(t)] = sum(1 for x in cards if t.target.matches(d.card[x]))
+    conv = Counter()
+    for src, outs in d.edges.items():
+        for x, ts in outs.items():
+            if x not in cards: continue
+            for t in ts:
+                if t.target.broad() or t.dest in NO_ACCESS or not ntarg.get(id(t)): continue
+                conv[x] += (2 if t.repeatable else 1) / ntarg[id(t)]
+    combo = set()
+    try:
+        _, dc = mtg.deck_combos(sorted(d.lib_names | d.cmd_names))
+        for v in dc or []:
+            if len(v["cards"]) <= 3:
+                tutors_in = {x for x in v["cards"] if x in d.tutors and not all(d.land_only(t) for t in d.tutors[x])}
+                combo |= set(v["cards"]) - tutors_in
+    except Exception: pass
+    out = {}
+    for n, c in cards.items():
+        r, w = [], 0.0
+        tags = tg.get(c.get("oracle_id"), set())
+        if "alternate-win-condition" in tags: r.append("wins the game"); w += 3
+        for t in sorted(tags):
+            m = re.match(r"(?:synergy|payoff)-(.+)$", t) or re.match(r"(.+)-matters$", t)
+            if m:
+                k = m.group(1).replace("-", " ")
+                cnt = kw.get(k, 0) or sub.get(k, 0)
+                if cnt >= 8: r.append(f"payoff for {k} ({cnt} cards)"); w += 2
+            m = re.match(r"typal-(.+)$", t)
+            if m and sub.get(m.group(1), 0) >= 8: r.append(f"{m.group(1)} package ({sub[m.group(1)]} cards)"); w += 1.5
+        for e in sorted({ENGINE_TAGS[t] for t in tags if t in ENGINE_TAGS}): r.append(e); w += 1
+        sy = syn.get(mtg.norm(n))
+        if sy is not None and sy >= 30: r.append(f"EDHREC synergy {sy:g}%"); w += 1
+        if n in combo: r.append("Spellbook combo piece"); w += 2
+        if conv[n] >= 0.25: r.append(f"narrow tutors converge on it ({conv[n]:.2f})"); w += 1 + min(conv[n], 1.0)
+        if w > 0: out[n] = (w, r)
+    return out
+
+def key_cards(d, infer=True):
+    """(yours, inferred, scores, bad): yours from '# key:' and '# package:' lines (library cards); inferred = the
+    best INFER_MAX library cards scoring INFER_MIN or more that aren't already yours; scores = infer_keys(d)."""
+    yours, bad = [], []
+    for v in (d.meta.get("key") or "").replace(" + ", ";").split(";"):
+        if not v.strip(): continue
+        c = mtg.find(v.strip())[0]
+        if c and c["name"] in d.lib_names: yours.append(c["name"])
+        elif c and c["name"] in d.cmd_names: bad.append(f"{v.strip()} (it's the commander)")
+        else: bad.append(v.strip())
+    pk_specs = [sm.parse_package(v) for v in (d.meta.get("package") or [])]
+    trees = None
+    if any(p.lower().startswith("tag:") for _, parts in pk_specs for p in parts):
+        trees = mtg.load_tags_multi(sorted({p[4:].strip() for _, parts in pk_specs for p in parts if p.lower().startswith("tag:")}))
+    for label, parts in pk_specs:
+        for m in [sm._part_members(p, d.lib_names | d.cmd_names, trees) for p in parts]:
+            for x in sorted(m):
+                if x in d.lib_names and x not in yours: yours.append(x)
+    scores = infer_keys(d) if infer else {}
+    ranked = sorted((x for x in scores if scores[x][0] >= INFER_MIN and x not in yours), key=lambda x: (-scores[x][0], x))
+    return yours, ranked[:INFER_MAX], scores, bad
+
+def cmd_timing(path, commander, on_play, turns, trials=2000):
+    """{commander name: {T: P(out on the battlefield by T)}} from manasim.py games (ramp and reducers played),
+    or {} when that isn't available."""
+    try:
+        import io, contextlib, manasim
+        with contextlib.redirect_stdout(io.StringIO()):
+            r = manasim.simulate(path, commander, on_play, trials, max(turns) + 1, 1)
+        return {n: t["by"] for n, t in r["targets"].items() if t["zone"] == "cmd"}
+    except Exception:
+        return {}
+
+def cmd_fire_delay(t, card):
+    """Turns between the commander landing and its tutor first working: an attack trigger or a {T} ability waits a
+    turn (summoning sickness) unless it has haste; a cast/ETB trigger or another ability works the same turn."""
+    haste = "haste" in [k.lower() for k in card.get("keywords") or []]
+    if haste: return 0
+    cond = (t.condition or "").lower()
+    if t.kind == "trigger" and "attack" in cond: return 1
+    if t.kind == "activated" and "{t}" in cond: return 1
+    return 0
+
+def cmd_access(d, x, T, timing, reach):
+    """P(by T a commander that can tutor x has been out long enough to use it); commanders with paths to x only."""
+    best = 0.0
+    for cname in d.cmd_names:
+        if cname not in reach or cname not in timing: continue
+        first = [t for t in d.edges[cname][reach[cname][1]]]
+        delay = min(cmd_fire_delay(t, d.card[cname]) for t in first)
+        best = max(best, timing[cname].get(T - delay, 0.0) if T - delay >= 1 else 0.0)
+    return best
+
+def copies_equiv(N, n, p):
+    """The number of copies K for which P(at least one in n cards) = p: 'plays like about K copies'."""
+    if p <= 0: return 0.0
+    for K in range(1, N + 1):
+        if sm.hyper_at_least(N, K, n, 1) >= p:
+            lo = sm.hyper_at_least(N, K - 1, n, 1) if K > 1 else 0.0
+            hi = sm.hyper_at_least(N, K, n, 1)
+            return K - 1 + (p - lo) / (hi - lo) if hi > lo else float(K)
+    return float(N)
+
+
 # ------------------------------------------------------------------ report
 def pct(p): return f"{100 * p:5.1f}%"
 
@@ -473,8 +633,10 @@ def main():
     ap.add_argument("deck"); ap.add_argument("--commander"); ap.add_argument("--draw", action="store_true")
     ap.add_argument("--turns", default="4,6"); ap.add_argument("--no-lists", action="store_true")
     ap.add_argument("--trials", type=int, default=40000)
+    ap.add_argument("--no-infer", action="store_true", help="key cards from the header lines only")
     a = ap.parse_args()
     if not os.path.exists(a.deck): sys.exit(f"deck file not found: {a.deck}")
+    if a.deck.lower().endswith(".dck"): sys.exit("this is a Forge .dck file; pass the .txt list")
     try: turns = [int(x) for x in a.turns.split(",") if x.strip()]
     except ValueError: sys.exit("--turns takes a comma list, e.g. 4,6")
     if not turns or min(turns) < 1: sys.exit("--turns must be positive, e.g. 4,6")
@@ -582,14 +744,9 @@ def main():
         for src, lost in deps[:10]:
             print(f"      {src}{' [commander]' if src in d.cmd_names else ''}: {len(lost)} — {names_list(lost, lists, 10)}")
 
-    # ---- keys
-    keys, bad_keys = [], []
-    for v in d.meta.get("key", "").replace(" + ", ";").split(";"):
-        if not v.strip(): continue
-        c = mtg.find(v.strip())[0]
-        if c and c["name"] in d.lib_names: keys.append(c["name"])
-        elif c and c["name"] in d.cmd_names: bad_keys.append(f"{v.strip()} (it's the commander)")
-        else: bad_keys.append(v.strip())
+    # ---- keys: yours (header lines) and inferred beyond them
+    yours, inferred, scores, bad_keys = key_cards(d, infer=not a.no_infer)
+    keys = yours + inferred
     pk_specs = [sm.parse_package(v) for v in (d.meta.get("package") or [])]
     ts_, dc = mtg.deck_combos(sorted(d.lib_names | d.cmd_names))
     combos = sorted((v for v in (dc or []) if len(v["cards"]) <= 3), key=lambda v: (len(v["cards"]), -v.get("pop", 0)))
@@ -600,32 +757,42 @@ def main():
     for label, parts in pk_specs:
         mem = [sm._part_members(p, d.lib_names | d.cmd_names, trees) for p in parts]
         pk_resolved.append(("header", label, parts, mem))
-        for m in mem:
-            for x in m:
-                if x in d.lib_names and x not in keys: keys.append(x)
     for v in combos[:8]:
         pk_resolved.append(("combo", " + ".join(v["cards"]), v["cards"], [{x} for x in v["cards"]]))
 
-    # ---- 5. access odds
-    print(f"\n## 5. Access odds (drawn, or a card with a path to it, by " + ", ".join(f"T{T}" for T in turns) + ")")
+    # ---- 5. key cards and access odds
+    print(f"\n## 5. Key cards (drawn, or a card with a path to it, by " + ", ".join(f"T{T}" for T in turns) + ")")
     if bad_keys: print(f"  ⚠ '# key:' names not in the library: {'; '.join(bad_keys)}")
+    agree = [x for x in yours if x in scores and scores[x][0] >= INFER_MIN]
+    print(f"  yours ({len(yours)}, from the header lines): " + ("; ".join(yours) if yours else "none"))
+    if not a.no_infer:
+        print(f"  inferred beyond yours ({len(inferred)}): "
+              + ("; ".join(f"{x} ({'; '.join(scores[x][1])})" for x in inferred) if inferred else "none"))
+        if yours:
+            print(f"  inference also picks {len(agree)} of your {len(yours)}"
+                  + (f"; it misses {'; '.join(x for x in yours if x not in agree)}" if len(agree) < len(yours) else "")
+                  + " (how far to trust the inferred list on this deck)")
+    timing = cmd_timing(a.deck, a.commander, on_play, turns) if any(c in d.tutors for c in d.cmd_names) else {}
     if not keys:
-        print("  no key cards: add '# key: Card A; Card B' or '# package:' lines to the list header")
+        print("  no key cards (none in the header, none inferred)")
     for x in keys:
         cells = []
         for T in turns:
+            n_seen = sm.cards_seen(T, on_play)
             p = access_odds(d, x, T, on_play, frozenset(d.cmd_names))[0]
-            q = sm.hyper_at_least(d.N, d.qty.get(x, 0), sm.cards_seen(T, on_play), 1)
+            q = sm.hyper_at_least(d.N, d.qty.get(x, 0), n_seen, 1)
             cell = f"T{T} {pct(p)}"
             if generic: cell += f" (specific only {pct(access_odds(d, x, T, on_play, frozenset(d.cmd_names), True)[0])})"
+            pc = cmd_access(d, x, T, timing, reach_all[x])
+            if pc: cell += f", + commander {pct(1 - (1 - p) * (1 - pc))}"
             cells.append(cell + f", drawn {pct(q)}")
-        cmd_paths = [s_ for s_ in reach_all[x] if s_ in d.cmd_names]
-        tail = ""
-        if cmd_paths:
-            conds = {t.condition for s_ in cmd_paths for t in d.edges[s_][reach_all[x][s_][1]]}
-            tail = f" | + {' / '.join(cmd_paths)} can fetch it ({'; '.join(sorted(c for c in conds if c)) or 'ability'})"
-        print(f"  {x}: " + " | ".join(cells) + f" | {len(reach_all[x])} way(s){tail}")
-    if keys: print("  (library odds: the card or a library card that leads to it; the commander's paths are listed, not added in)")
+        T0 = turns[0]
+        eq = copies_equiv(d.N, sm.cards_seen(T0, on_play), access_odds(d, x, T0, on_play, frozenset(d.cmd_names))[0])
+        src = "yours" if x in yours else "inferred"
+        print(f"  {x} [{src}]: " + " | ".join(cells) + f" | {len(reach_all[x])} way(s), plays like {eq:.1f} copies by T{T0}")
+    if keys:
+        print("  (library odds: the card or a library card that leads to it. '+ commander': also the commander's own tutor,")
+        print("   once manasim.py games have it on the battlefield long enough to use it; repeatable tutors are a ceiling)")
 
     # ---- 6. packages
     print("\n## 6. Packages (every piece drawn, or reached by a different tutor chain; a repeatable tutor can cover several)")
@@ -647,6 +814,33 @@ def main():
                 line += f" | + commander tutoring {pct(package_odds_chains(d, pieces, T, on_play, a.trials)[1])}"
             print(f"      {line}")
     if len(combos) > 8: print(f"  +{len(combos) - 8} more combo(s) not shown")
+
+    # ---- 7. tutor worth
+    T0 = turns[-1]
+    print(f"\n## 7. Tutor worth (each tutor taken out: points of access lost by T{T0}, library tutors; a ceiling)")
+    lib_tutors = sorted(x for x in d.tutors if x in d.lib_names and not all(d.land_only(t) for t in d.tutors[x]))
+    if not lib_tutors:
+        print("  no library tutors")
+    else:
+        def mean_access(cards, banned, spec=False):
+            if not cards: return 0.0
+            return sum(access_odds(d, x, T0, on_play, frozenset(d.cmd_names) | banned, spec)[0] for x in cards) / len(cards)
+        base_k, base_all = mean_access(keys, frozenset()), mean_access(nonbasic, frozenset())
+        base_ks = mean_access(keys, frozenset(), True) if generic else None
+        rows = []
+        for tname in lib_tutors:
+            b = frozenset({tname})
+            only = sorted(x for x in nonbasic if x != tname and reach_all[x] and not d.reach(x, b | frozenset(d.cmd_names)))
+            ks = (base_ks - mean_access(keys, b, True)) if generic and tname not in generic else None
+            rows.append((base_k - mean_access(keys, b), ks, base_all - mean_access(nonbasic, b), tname, only))
+        rows.sort(key=lambda r: (-r[0], -(r[1] or 0), -r[2], r[3]))
+        print(f"  {'tutor':<34}{'key cards':>11}" + (f"{'specific only':>15}" if generic else "") + f"{'whole deck':>12}   only it reaches")
+        for dk, ks, da, tname, only in rows:
+            print(f"  {tname[:34]:<34}{100 * dk:+10.1f}" + ((f"{100 * ks:+15.1f}" if ks is not None else f"{'find-anything':>15}") if generic else "")
+                  + f"{100 * da:+12.1f}   " + (names_list(only, lists, 6) if only else "—"))
+        print(f"  (mean access over the {len(keys)} key cards and the {len(nonbasic)} nonland cards; the commander's own")
+        print("   tutoring stays out, so this is what each library tutor adds on top of the rest. Every chain counts as free")
+        print("   here, so tutors look alike; 'specific only' sets the find-anything tutors aside, which separates them more)")
     print(f"\nsampled packages: {a.trials:,} games per cell (±~0.5 pts); single-card odds in section 5 are exact.")
     if d.cmd_names & set(d.tutors): print("'+ commander tutoring' assumes the commander is out and its tutor fires as often as needed: a ceiling.")
 

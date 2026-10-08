@@ -142,7 +142,10 @@ def checks():
              must_not=["Lim-Dûl's Vault ["]),
         dict(name="tutors options", cmd=S("tutors.py", DECK, "--trials", "300", "--no-lists", "--commander", "Kraum, Ludevic's Opus",
                                           "--turns", "4,6", "--draw"),
-             must=["on the draw", "## 5. Access odds", "by T4, T6", "Demonic Tutor: T4"]),
+             must=["on the draw", "## 5. Key cards", "by T4, T6", "Demonic Tutor [yours]: T4", "inferred beyond yours",
+                   "plays like", "## 7. Tutor worth", "only it reaches"]),
+        dict(name="tutors no-infer", cmd=S("tutors.py", DECK, "--trials", "300", "--no-lists", "--no-infer"),
+             must=["## 5. Key cards", "yours ("], must_not=["inferred beyond yours", "Traceback"]),
         # ---- EDHREC snapshots still resolve against today's data
         *[dict(name=f"snapshot {os.path.basename(f)[:30]}", data=True, cmd=S("edhrec_diff.py", "check", "snapshots/" + os.path.basename(f)), must=["OK"])
           for f in sorted(os.listdir(os.path.join(REPO, "snapshots"))) if f.endswith(".txt")],
@@ -158,7 +161,7 @@ def checks():
                    "partial  other  Tymna the Weaver — 2/2 lifelink"],
              must_not=["Barrage Tyrant — act"]),               # 'another colorless creature': a qualified fodder cost stays unread
         dict(name="goldfish run", cmd=S("goldfish.py", nofake, "--trials", "300"),
-             must=["tutor priorities from the list header: key: Demonic Tutor, Stroke of Genius; 2 package(s)", "tutor targets"],
+             must=["tutor priorities (list header, then inferred): key: Demonic Tutor, Stroke of Genius", "tutor targets"],
              must_not=["Entomb 0."]),                       # a graveyard tutor is never card advantage
         # ---- goldfish graveyard fixture
         dict(name="goldfish gy explain", cmd=S("goldfish.py", "tests/goldfish_gy_deck.txt", "--explain"),
@@ -243,7 +246,7 @@ def checks():
                        "Glen Elendra's Answer — token",
                        "Embercleave — costs", "on opp_cast(noncreature) 1/turn: ;"]),
         dict(name="goldfish mech run", cmd=S("goldfish.py", MECH, "--trials", "200", "--shuffles", "10"),
-             must=["tutor priorities from the list header: key: Nyxbloom Ancient", "disruption ladder, Bracket 3", "tutor targets"]),
+             must=["tutor priorities (list header, then inferred): key: Nyxbloom Ancient", "disruption ladder, Bracket 3", "tutor targets"]),
         dict(name="goldfish gy trace", cmd=S("goldfish.py", "tests/goldfish_gy_deck.txt", "--trials", "2", "--trace", "2"),
              must=["Entomb finds Griselbrand -> graveyard", "Demonic Tutor finds Reanimate -> hand", "cast Reanimate"]),
         # ---- goldfish combat fixture (Sept 29 2026): keywords, anthems, equipment, combat/noncombat triggers, face damage
