@@ -3428,9 +3428,9 @@ class Game:
             # and ramp, before draw and the rest: otherwise main phase 1 spends the mana and Step Through never cycles
             tut_at = sim.order.get("draw", len(sim.order))
             tried = self.dry
-            hold_top = self.shuffle_ahead()
+            hold_top = self.shuffle_ahead() or self.land_short()
             for pr, k, zone in cands:
-                if hold_top and to_top_tutor(k):               # after combat: Zur's search would shuffle the card away
+                if hold_top and to_top_tutor(k):               # after combat (Zur's search would shuffle the card away), or until lands
                     self.held_top = True; continue
                 if not tried and pr[0] >= tut_at:
                     tried = True
@@ -3441,6 +3441,11 @@ class Game:
                 if not tried and self.hand_act(): continue
                 if not self.try_ritual(cands): break
         if activate: self.activations()
+
+    def land_short(self):
+        """No land in hand and behind on land drops (fewer than min(turn + 1, 4) lands): a tutor to the top would
+        replace the draw that might be the land (Mystical Tutor on T2 with two lands and none in hand)."""
+        return not self.dry and not any(c.is_land for c in self.hand) and len(self.lands) < min(self.turn + 1, 4)
 
     def shuffle_ahead(self):
         """A search that shuffles the library is still to come this turn: an attack trigger that tutors or fetches a

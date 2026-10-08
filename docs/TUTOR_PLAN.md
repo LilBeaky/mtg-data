@@ -1,6 +1,6 @@
 # Tutor plan
 
-Status: **phases 0 and 1 done** (2026-10-08); phase 2 next. Written 2026-10-08.
+Status: **phases 0-2 done** (2026-10-08); phase 3 next. Written 2026-10-08.
 
 ## Goal
 
@@ -119,6 +119,27 @@ Ragost's packages (its assembly problem) need header lines before phase 2 can me
 Done when: Zur's Astral Slide shows ceiling vs played by T4/T6 with the commander's share; Ragost's
 packages show assembled-by-turn (it's an assembly deck: this is its main read); the worth ranking from games
 roughly agrees with the ceiling ranking or the disagreements are explained; runtime reported.
+
+**Done 2026-10-08.**
+- manasim.py `mode="tutors"`: card flow plays too (`plays_in_tutor_mode`: goldfish.py's draw category and any card
+  with a tutor effect); inert cards keep tutoring hand abilities; tutoring commanders are cast (Zur attacks and
+  fetches); goldfish.py's fetch priorities come from your keys, package pieces and inferred keys; a key card is
+  "found" once it has left the library; packages are "assembled" when every part is found. `inert_names` takes
+  a card out (its tutoring too) for drop-one runs on the same shuffles.
+- tutors.py: section 5 shows best / specific / +cmdr / **played** per turn, copies from played; section 6 adds
+  played assembly; section 7 leads with **played worth**: key cards found by the last turn per 100 games that a
+  tutor adds, paired against the deck with that tutor inert (≈ within noise). `--no-played`, `--played-trials`.
+- Zur, by T4 / T6: Astral Slide best 82% / 97% (with Zur) vs played 17% / 59%; Approach 71% / 78% vs 9% / 23%.
+  Played worth (per 100 games, by T6): Step Through +40, Solve the Equation +14, Wishclaw +13, Brainspoil +12,
+  Personal Tutor +8, Tribute Mage +8, Aethermage +5, Mystical / Spellseeker +4, Long-Term Plans -3 (its card
+  arrives two draws later and the 3 mana goes elsewhere). Klauth: Signal the Clans +34, Chord / Finale ≈0
+  (pointed at mana creatures early, and the worth counts key cards only).
+- Item 2 from the ramp work: manasim.py's report adds "+draw, tutors" next to "with ramp"; landbase.py
+  `--with-draw` runs its count table and plan games in tutor mode. Klauth castable by T7 76% -> 89%, Erebos by T4
+  78% -> 81%, Yusri by T4 79% -> 81%; Zur by T4 81% -> 78% (casting tutors on curve costs tempo: a card tutored
+  to the top replaces a draw; the cost is spread a point at a time over Mystical, Personal, Solve and others).
+- goldfish.py: tutors to the top wait while the pilot is short of lands (no land in hand, behind on drops).
+- Not done: partial dependencies (the drop-one worth covers the question better).
 
 ## Phase 3: a tutor index for the whole card pool
 

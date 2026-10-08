@@ -22,6 +22,9 @@ landbase.py — land count and land swaps for a Commander deck (mtg-data).
   --no-sim            exact land-only formulas for the count table (fast; ramp only as a rough +1)
   --no-ramp-pick      skip section 1b (land or ramp; adds ~15s)
   --no-sim-swaps      swaps by the exact color score alone (no manasim.py games)
+  --with-draw         the count table and the plan's games also play card draw and tutors (manasim.py
+                      tutor mode: tutors finding ramp, draw finding lands); the lands-only baseline,
+                      land-or-ramp and the swap picks stay ramp-only
   --swap-options N    color-best swaps the games compare at each step (default 6)
 
 REPORT
@@ -266,6 +269,7 @@ def main():
     ap.add_argument("--trials", type=int, default=1000); ap.add_argument("--no-sim", action="store_true")
     ap.add_argument("--no-ramp-pick", action="store_true")
     ap.add_argument("--no-sim-swaps", action="store_true"); ap.add_argument("--swap-options", type=int, default=6)
+    ap.add_argument("--with-draw", action="store_true")
     a = ap.parse_args()
     _w = mtg.stale_warning()
     if _w: print(_w)
@@ -297,13 +301,14 @@ def main():
     # ----- 1. land count -----
     T = a.turn
     deck_ms = None if a.no_sim else ms.load(a.deck, a.commander)
+    mode = "tutors" if a.with_draw else "ramp"          # --with-draw: card draw and tutors played in the games too
     turns = max(T, cmd_mv) + 1
     counts = list(range(max(0, L0 - 4), L0 + 5))
     sims, base = {}, {}                  # manasim.py games per count: with the ramp, and lands only (same shuffles)
     if deck_ms:
-        specs = [(Lx - L0, False, ()) for Lx in counts] + [(Lx - L0, True, ()) for Lx in range(counts[0], L0 + 9)]
+        specs = [(Lx - L0, False, (), (), (), mode) for Lx in counts] + [(Lx - L0, True, ()) for Lx in range(counts[0], L0 + 9)]
         runs = ms.simulate_many(a.deck, a.commander, on_play, a.trials, turns, 1, specs, deck=deck_ms)
-        for (d, lo, _), r in zip(specs, runs): (base if lo else sims)[L0 + d] = r
+        for sp, r in zip(specs, runs): (base if sp[1] else sims)[L0 + sp[0]] = r
     def metrics(Lx):
         """count_metrics, with development and the commander from manasim.py games (same shuffles at every count)."""
         m = count_metrics(N, Lx, mdfc, cheap, rocks_all, T, cmd_mv, on_play)
@@ -312,7 +317,7 @@ def main():
         if deck_ms:
             if Lx not in sims:
                 sims[Lx], base[Lx] = ms.simulate_many(a.deck, a.commander, on_play, a.trials, turns, 1,
-                                                      [(Lx - L0, False, ()), (Lx - L0, True, ())], deck=deck_ms)
+                                                      [(Lx - L0, False, (), (), (), mode), (Lx - L0, True, ())], deck=deck_ms)
             r = sims[Lx]
             m["develop"] = r["dev"][T]
             m["lands_only"] = base[Lx]["dev"][T]
@@ -537,7 +542,7 @@ def main():
     if tap0 != tap1: print(f"  lands tapped early {tap0} → {tap1}")
     if played:
         before, after = ms.simulate_many(a.deck, a.commander, on_play, a.trials * 3, turns, 5,
-                                         [(0, False, ()), (0, False, (), plan_in, plan_out)], deck=deck_ms)
+                                         [(0, False, (), (), (), mode), (0, False, (), plan_in, plan_out, mode)], deck=deck_ms)
         print(f"  the whole plan in manasim.py games ({a.trials * 3:,}, same shuffles; castable by turn):")
         print(f"    {T} mana by T{T} {pct(before['dev'][T]).strip()} → {pct(after['dev'][T]).strip()}")
         for name, mv in cmds_ms:

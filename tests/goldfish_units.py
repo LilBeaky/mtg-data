@@ -1405,15 +1405,20 @@ def _():
     return ZK["Step Through"] in G.hand
 @check("A tutor to the top waits until after combat while Zur can attack (its search would shuffle the card away)")
 def _():
-    G = zgame(perms=["Zur the Enchanter"], lands=["Island", "Island"], hand=["Mystical Tutor"],
+    G = zgame(perms=["Zur the Enchanter"], lands=["Island", "Island", "Island", "Island"], hand=["Mystical Tutor"],
               lib=["Island"] * 6 + ["Solve the Equation", "Astral Slide"])
     G.build_pool(); G.cast_loop(activate=False)
     held = ZK["Mystical Tutor"] in G.hand and G.held_top
     G.combat_done = True; G.cast_loop(activate=False)
     return held and ZK["Mystical Tutor"] not in G.hand
+@check("Short on lands (none in hand, behind on drops), a tutor to the top waits: it would replace the draw that might be the land")
+def _():
+    G = zgame(lands=["Island"], hand=["Mystical Tutor"], lib=["Island"] * 6 + ["Solve the Equation"])
+    G.build_pool(); G.cast_loop(activate=False)
+    return ZK["Mystical Tutor"] in G.hand and G.held_top
 @check("Without an attack-trigger search pending, a tutor to the top is cast in main phase 1")
 def _():
-    G = zgame(lands=["Island", "Island"], hand=["Mystical Tutor"], lib=["Island"] * 6 + ["Solve the Equation"])
+    G = zgame(lands=["Island", "Island", "Island", "Island"], hand=["Mystical Tutor"], lib=["Island"] * 6 + ["Solve the Equation"])
     G.build_pool(); G.cast_loop(activate=False)
     return ZK["Mystical Tutor"] not in G.hand
 

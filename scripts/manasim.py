@@ -22,8 +22,9 @@ Medallion for a green spell).
 
 REPORT
   1 Development   lands and mana at the start of each main phase; P(T mana by turn T)
-  2 Castable by   per target, P(castable by turn T) with ramp and with lands only, and the
-                  same when every land drop was hit (to check by hand)
+  2 Castable by   per target, P(castable by turn T) with ramp, with lands only, with card draw
+                  and tutors played too (tutor mode), and with ramp when every land drop was hit
+                  (to check by hand)
   3 Coverage      every card counted as acceleration, and how goldfish.py reads it;
                   partial readings named; what is not counted (draw, tutors)
 
@@ -50,6 +51,12 @@ def accelerates(k):
     """goldfish.py's own ramp category (mana producers, land search, extra land drops, cost
     reducers, free/alt casting, mana doublers, Treasure), plus rituals (one-turn mana)."""
     return not k.is_land and (k.cat == "ramp" or k.ritual)
+
+def plays_in_tutor_mode(k):
+    """Tutor mode also plays card flow: goldfish.py's draw category (draw, look, tutors, wheels, recursion to hand)
+    and any card with a tutor effect anywhere (ETB, cycling, transmute, activated)."""
+    return not k.is_land and (k.cat == "draw" or any(e[0] in ("tutor", "tutor_multi") for e in gf.all_fx(k)))
+
 
 def why(k):
     """Short reading of what makes k acceleration, for the coverage list."""
@@ -106,6 +113,17 @@ class ManaGame(gf.Game):
         self.probe_tg = targets                  # [(name, Card, zone)]
         self.first_ok = {}                        # name -> first turn castable
         self.land_drops = 0; self._probed = 0; self.drops_by = {}
+        self.found_tg = []; self.found_first = {}    # tutor mode: [(name, Card)]; name -> first turn it left the library
+
+    def check_found(self):
+        """A key card is found once it has left the library (drawn, tutored to hand or battlefield): checked at the
+        start of each main phase, after each cast loop and at the end of the turn."""
+        for name, k in self.found_tg:
+            if name not in self.found_first and k not in self.lib: self.found_first[name] = self.turn
+
+    def opponents(self):
+        if self.found_tg: self.check_found()
+        super().opponents()
 
     def play_land(self, k):
         self.land_drops += 1
@@ -152,7 +170,9 @@ class ManaGame(gf.Game):
             self.drops_by[self.turn] = self.land_drops
             for name, k, zone in self.probe_tg:
                 if name not in self.first_ok and self.castable(k, zone): self.first_ok[name] = self.turn
+        if self.found_tg: self.check_found()
         super().cast_loop(activate)
+        if self.found_tg and not self.dry: self.check_found()
 
     def castable(self, k, zone):
         """Could the pilot cast k this turn? First as is; then in a copy of the game where k is the top priority,
@@ -167,13 +187,15 @@ class ManaGame(gf.Game):
         return k not in g.cmd
 
 
-def _inert(k):
-    """A stand-in for a card that doesn't accelerate: same mana value (mulligans see the same hand),
-    never cast; landcycling kept (it finds a land drop)."""
+def _inert(k, keep_tutor_acts=False):
+    """A stand-in for a card that doesn't play here: same mana value (mulligans see the same hand), never cast;
+    landcycling kept (it finds a land drop), and in tutor mode every tutoring hand ability (typecycling, transmute).
+    Tutors still find it by its card (raw), so a key card that isn't played can be fetched and counted as found."""
     if k.status == "inert": return k
     f = gf.Card(k.name + " (inert)")
     f.mv = k.mv; f.gen = 99; f.raw = k.raw; f.status = "inert"
-    f.hand_acts = [a for a in k.hand_acts if _land_search_act(a)]
+    f.hand_acts = [a for a in k.hand_acts if _land_search_act(a)
+                   or (keep_tutor_acts and any(e[0] == "tutor" for e in gf.flat(a["fx"])))]
     return f
 
 
@@ -227,17 +249,24 @@ def compile_named(name, anyc):
     return c["name"], k
 
 
-def build(deck, on_play=True, land_delta=0, extra_targets=(), add_cards=(), cut_cards=()):
+def build(deck, on_play=True, land_delta=0, extra_targets=(), add_cards=(), cut_cards=(), mode="ramp",
+          inert_names=(), want=None):
     """The mana-only goldfish Sim for a loaded deck: lands and accelerants real, the rest inert.
     land_delta adds basics (or cuts them); cut_cards come out by name, add_cards go in. Every change takes
     one existing slot in place (a cut card's slot first, then an inert card's from the end), so every run
     with the same seed deals the same games except for the changed cards.
+    mode "tutors" also plays card flow (plays_in_tutor_mode); inert_names are made inert whatever they are
+    (a tutor taken out, for its worth). want = (your key names, packages [(label, [[names] per part])],
+    inferred key names): goldfish.py's tutor priorities, as in a goldfish run.
     Returns (sim, targets [(name, Card, zone)], names, cache, add, cut)."""
     N, lib, cmdrs, anyc, keys = deck
     add, cut = _land_plan(lib, anyc, land_delta)
+    tutors_on = mode == "tutors"
+    real = lambda k: k.is_land or accelerates(k) or (tutors_on and plays_in_tutor_mode(k))
     names, cache = [], {}
     for q, c, k in lib:
-        cache[c["name"]] = k if (k.is_land or accelerates(k)) else _inert(k)
+        if c["name"] in inert_names: cache[c["name"]] = _inert(k, False)     # taken out: its tutoring goes too
+        else: cache[c["name"]] = k if real(k) else _inert(k, tutors_on)
         names += [c["name"]] * q
     open_slots = []                                     # slots of cut cards
     for n in [n for n, q in cut.items() for _ in range(q)] + list(cut_cards):
@@ -259,13 +288,18 @@ def build(deck, on_play=True, land_delta=0, extra_targets=(), add_cards=(), cut_
         for i in open_slots: names[i] = "(inert filler)"
         names += ["(inert filler)"] * (N - len(names))
     names = [x for x in names if x is not None]
-    acc_cmd = [c["name"] for c, k in cmdrs if accelerates(k)]
+    acc_cmd = [c["name"] for c, k in cmdrs if accelerates(k) or (tutors_on and plays_in_tutor_mode(k))]
     for c, k in cmdrs: cache[c["name"]] = k
     args = SimpleNamespace(order=gf.ORDER_DEFAULT, draw=not on_play, kill_commander=0, cast_interaction=False,
                            no_mulligan=False, trace=0, board_spec=[])
-    sim = gf.Sim(names, acc_cmd, args, [], cache, anyc)
+    gwant = None
+    if want:
+        yours, packages, inferred = want
+        objs = lambda ns: {cache[n] for n in ns if n in cache}
+        gwant = (objs(yours), [[objs(part) for part in parts] for _, parts in packages if parts], objs(inferred))
+    sim = gf.Sim(names, acc_cmd, args, [], cache, anyc, want=gwant)
     sim.mana_combat = any(t[0] in COMBAT_EVENTS for n in set(names) | set(acc_cmd) for t in cache[n].trig
-                          if accelerates(cache[n]))
+                          if cache[n].status != "inert")
     # targets: commanders, key cards, extras
     by_name = {c["name"]: getattr(k, "orig", k) for _, c, k in lib}
     by_name.update({c["name"]: k for c, k in cmdrs})
@@ -281,13 +315,20 @@ def build(deck, on_play=True, land_delta=0, extra_targets=(), add_cards=(), cut_
 
 
 def simulate(path, commander=None, on_play=True, trials=3000, turns=8, seed=1, land_delta=0, extra_targets=(), deck=None,
-             add_cards=(), cut_cards=()):
+             add_cards=(), cut_cards=(), mode="ramp", inert_names=(), want=None):
     """Run the mana-only games. Returns a dict: lands, N, dev (P(T mana by T)), mana/lands medians,
     targets {name: {"mv", "zone", "by": {t: p}, "by_hit": {t: (p, share of games)}, "median"}}, coverage."""
     deck = deck or load(path, commander)
     N, lib, cmdrs, anyc, keys = deck
-    sim, tg, names, cache, add, cut = build(deck, on_play, land_delta, extra_targets, add_cards, cut_cards)
+    sim, tg, names, cache, add, cut = build(deck, on_play, land_delta, extra_targets, add_cards, cut_cards, mode,
+                                            inert_names, want)
     T = range(1, turns + 1)
+    found_names = []
+    if want:
+        for n in list(want[0]) + list(want[2]) + [x for _, parts in want[1] for part in parts for x in part]:
+            if n in cache and n not in found_names and not cache[n].is_land: found_names.append(n)
+    found_tg = [(n, cache[n]) for n in found_names]
+    found = {n: [] for n in found_names}
     first = {n: [] for n, _, _ in tg}
     hit = {n: [] for n, _, _ in tg}
     mana = {t: [] for t in T}; lands = {t: [] for t in T}
@@ -295,8 +336,10 @@ def simulate(path, commander=None, on_play=True, trials=3000, turns=8, seed=1, l
         rng = random.Random(seed * 1_000_003 + i)
         hand, libr, size, mulls = sim.opening(rng)
         g = ManaGame(sim, hand, libr, rng, tg)
+        g.found_tg = found_tg
         rec = gf.blank_rec(turns)
         g.play(turns, rec)
+        for n in found_names: found[n].append(g.found_first.get(n))
         for t in T:
             mana[t].append(rec["mana"][t][-1]); lands[t].append(rec["lands"][t][-1])
         full = next((t - 1 for t in T if g.drops_by.get(t, 0) < t), turns)
@@ -317,6 +360,17 @@ def simulate(path, commander=None, on_play=True, trials=3000, turns=8, seed=1, l
         out["targets"][n] = {"mv": k.mv, "gen": k.gen, "pips": k.pips, "zone": zone, "by": by, "by_hit": by_hit,
                              "median": _median_turn(f, turns), "first": f}
     out["coverage"] = coverage(lib, cmdrs)
+    if want:
+        by = lambda f, t: sum(1 for x in f if x is not None and x <= t) / trials
+        out["found"] = {n: {"by": {t: by(f, t) for t in T}, "first": f} for n, f in found.items()}
+        asm = []
+        for label, parts in want[1]:
+            per = []
+            for i in range(trials):
+                turns_ = [min((found[x][i] for x in part if x in found and found[x][i] is not None), default=None) for part in parts]
+                per.append(None if not parts or any(x is None for x in turns_) else max(turns_))
+            asm.append({"label": label, "by": {t: by(per, t) for t in T}, "first": per})
+        out["assembled"] = asm
     return out
 
 
@@ -361,7 +415,7 @@ def coverage(lib, cmdrs):
 # ---------------------------------------------------------------- report
 def pct(p): return "  —  " if p is None else f"{100 * p:5.1f}%"
 
-def report(res, on_play, lands_only=None):
+def report(res, on_play, lands_only=None, with_draw=None):
     T = range(1, res["turns"] + 1)
     print(f"## 1. Development ({res['lands']} lands; lands / mana at the start of each main phase, medians)")
     print("  turn  " + "".join(f"{'T' + str(t):>7}" for t in T))
@@ -376,6 +430,10 @@ def report(res, on_play, lands_only=None):
         if lands_only and n in lands_only["targets"]:
             lo = lands_only["targets"][n]
             print("      lands only    " + " | ".join(f"T{t} {pct(lo['by'][t])}" for t in T if t >= 2))
+        if with_draw and n in with_draw["targets"]:
+            wd = with_draw["targets"][n]
+            print("      +draw, tutors " + " | ".join(f"T{t} {pct(wd['by'][t])}" for t in T if t >= 2)
+                  + "   (card draw and tutors played too)")
         print("      drops all hit " + " | ".join(f"T{t} {pct(r['by_hit'][t][0])}" for t in T if t >= 2)
               + "   (games that hit every land drop through that turn)")
     cov = res["coverage"]
@@ -405,19 +463,20 @@ def lands_only(deck):
 # ---------------------------------------------------------------- several runs at once
 _DECKS = {}
 def _worker(job):
-    path, commander, on_play, trials, turns, seed, delta, base, extra, add, cut = job
+    path, commander, on_play, trials, turns, seed, delta, base, extra, add, cut, mode, inert, want = job
     key = (path, commander)
     if key not in _DECKS: _DECKS[key] = load(path, commander)
     d = _DECKS[key]
     return simulate(path, commander, on_play, trials, turns, seed, delta, extra, deck=lands_only(d) if base else d,
-                    add_cards=add, cut_cards=cut)
+                    add_cards=add, cut_cards=cut, mode=mode, inert_names=inert, want=want)
 
 def simulate_many(path, commander, on_play, trials, turns, seed, specs, deck=None):
-    """specs: [(land_delta, lands_only, extra_targets[, add_cards[, cut_cards]])]. Same shuffles in every run (the
-    seed), so differences between runs are the deck change, not noise. Runs in parallel processes when there are
-    several; falls back to one process if that isn't possible."""
-    jobs = [(path, commander, on_play, trials, turns, seed, sp[0], sp[1], tuple(sp[2]), tuple(sp[3] if len(sp) > 3 else ()),
-             tuple(sp[4] if len(sp) > 4 else ())) for sp in specs]
+    """specs: [(land_delta, lands_only, extra_targets[, add_cards[, cut_cards[, mode[, inert_names[, want]]]]])].
+    Same shuffles in every run (the seed), so differences between runs are the deck change, not noise. Runs in
+    parallel processes when there are several; falls back to one process if that isn't possible."""
+    opt = lambda sp, i, d: sp[i] if len(sp) > i else d
+    jobs = [(path, commander, on_play, trials, turns, seed, sp[0], sp[1], tuple(sp[2]), tuple(opt(sp, 3, ())),
+             tuple(opt(sp, 4, ())), opt(sp, 5, "ramp"), tuple(opt(sp, 6, ())), opt(sp, 7, None)) for sp in specs]
     if len(jobs) > 2:
         try:
             from concurrent.futures import ProcessPoolExecutor
@@ -687,13 +746,13 @@ def main():
         print_land_or_ramp(res)
         return
     delta = (a.lands - L0) if a.lands else 0
-    res, lo = simulate_many(a.deck, a.commander, on_play, a.trials, a.turns, a.seed,
-                            [(delta, False, a.target), (delta, True, a.target)], deck=deck)
+    res, lo, wd = simulate_many(a.deck, a.commander, on_play, a.trials, a.turns, a.seed,
+                            [(delta, False, a.target), (delta, True, a.target), (delta, False, a.target, (), (), "tutors")], deck=deck)
     cmd = " + ".join(c["name"] for c, _ in cmdrs) or "(no commander)"
     print(f"=== MANASIM: {cmd} | N={res['N']} | {res['lands']} lands"
           + (f" ({'+' if delta > 0 else ''}{delta}: {res['add'] or res['cut']})" if delta else "")
           + f" | {len(res['coverage']['rows'])} accelerants | {'on the play' if on_play else 'on the draw'} ===")
-    report(res, on_play, lo)
+    report(res, on_play, lo, wd)
     print("\nLimits: goldfish.py's pilot and card reading; no draw or tutors; no opponents' interaction. "
           "'drops all hit' is the number to check by hand.")
 

@@ -26,7 +26,14 @@ REPORT
                   "plays like N copies"
   6 Packages      Spellbook combos (<= 3 cards) and '# package:' lines, with chains
   7 Tutor worth   each tutor taken out: points of access lost on the key cards and on the
-                  whole deck, and the cards only it reaches
+                  whole deck, and the cards only it reaches; then played: the same games with that
+                  tutor inert, key cards found by the last turn, game by game
+
+PLAYED (sections 5-7): manasim.py's tutor mode plays lands, ramp, tutors and card draw through
+goldfish.py's engine (mana paid, timing, one-shot tutors used once, the commander attacking for its
+trigger), fetching your key cards first, then package pieces, then inferred keys; every other card
+is inert, so nothing competes for the mana but ramp and card flow. A key card counts as found once
+it has left the library. --no-played skips the games; --played-trials N (default 2000).
 
   --md              the same report with Markdown tables (renders in the app and on GitHub)
 
@@ -630,6 +637,34 @@ def names_list(xs, lists, limit=12):
     if not lists: return f"{len(xs)} card{'s' if len(xs) != 1 else ''}"
     return "; ".join(xs[:limit]) + (f" … (+{len(xs) - limit})" if len(xs) > limit else "")
 
+def played_runs(path, commander, on_play, turns, yours, inferred, packages, lib_tutors, trials=2000, seed=7):
+    """manasim.py tutor-mode games: the deck as is, then once per library tutor with that tutor inert (same shuffles).
+    packages: [(label, [[names] per part])]. Returns (base, {tutor: run}) or (None, {}) when manasim can't run."""
+    try:
+        import manasim
+    except Exception:
+        return None, {}
+    want = (tuple(yours), tuple((lab, tuple(tuple(sorted(p)) for p in parts)) for lab, parts in packages), tuple(inferred))
+    specs = [(0, False, (), (), (), "tutors", (), want)] + [(0, False, (), (), (), "tutors", (t,), want) for t in lib_tutors]
+    import io, contextlib
+    with contextlib.redirect_stdout(io.StringIO()):
+        runs = manasim.simulate_many(path, commander, on_play, trials, max(turns), seed, specs)
+    return runs[0], dict(zip(lib_tutors, runs[1:]))
+
+
+def found_paired(r, base, keys, T):
+    """(mean difference, standard error) of the number of key cards found by T, game by game."""
+    import math
+    ks = [k for k in keys if k in base["found"] and k in r["found"]]
+    if not ks: return 0.0, 1.0
+    score = lambda run: [sum(1 for k in ks if run["found"][k]["first"][i] is not None and run["found"][k]["first"][i] <= T)
+                         for i in range(len(run["found"][ks[0]]["first"]))]
+    d = [x - y for x, y in zip(score(r), score(base))]
+    n = len(d); m = sum(d) / n
+    sd = math.sqrt(sum((x - m) ** 2 for x in d) / (n - 1)) if n > 1 else 0.0
+    return m, sd / math.sqrt(n)
+
+
 class Out:
     """The report's one layout: headings, notes, bullet lines and tables. Text (default) prints aligned tables;
     --md prints the same tables as Markdown (they render in the app, on GitHub and in claude.ai)."""
@@ -681,6 +716,8 @@ def main():
     ap.add_argument("--trials", type=int, default=40000)
     ap.add_argument("--no-infer", action="store_true", help="key cards from the header lines only")
     ap.add_argument("--md", action="store_true", help="Markdown tables (same report)")
+    ap.add_argument("--no-played", action="store_true", help="best-case odds only (no manasim.py games)")
+    ap.add_argument("--played-trials", type=int, default=2000)
     a = ap.parse_args()
     if not os.path.exists(a.deck): sys.exit(f"deck file not found: {a.deck}")
     if a.deck.lower().endswith(".dck"): sys.exit("this is a Forge .dck file; pass the .txt list")
@@ -824,6 +861,14 @@ def main():
     for v in combos[:8]:
         pk_resolved.append(("combo", " + ".join(v["cards"]), v["cards"], [{x} for x in v["cards"]]))
 
+    # ---- played games (manasim.py tutor mode)
+    lib_tutors = sorted(x for x in d.tutors if x in d.lib_names and not all(d.land_only(t) for t in d.tutors[x]))
+    played, dropped_runs = None, {}
+    if not a.no_played and (keys or pk_resolved):
+        pk_names = [(label, [sorted(m) for m in mem]) for src, label, parts, mem in pk_resolved if all(mem)]
+        played, dropped_runs = played_runs(a.deck, a.commander, on_play, turns, yours, inferred, pk_names, lib_tutors,
+                                           a.played_trials)
+
     # ---- 5. key cards and access odds
     o.h2(f"5. Key cards (drawn, or a card with a path to it, by " + ", ".join(f"T{T}" for T in turns) + ")")
     if bad_keys: o.note(f"⚠ '# key:' names not in the library: {'; '.join(bad_keys)}")
@@ -845,10 +890,12 @@ def main():
         o.note("no key cards (none in the header, none inferred)")
     else:
         has_cmd = any(cmd_access(d, x, T, timing, reach_all[x]) for x in keys for T in turns)
+        pl = played is not None
         head = ["Card", "Key", "Ways"]
         for T in turns:
-            head += [f"T{T}"] + ([f"T{T} specific"] if generic else []) + ([f"T{T} +cmdr"] if has_cmd else [])
-        head += ["Drawn " + "/".join(f"T{T}" for T in turns), f"Copies T{turns[0]}"]
+            head += [f"T{T} best"] + ([f"T{T} specific"] if generic else []) + ([f"T{T} +cmdr"] if has_cmd else []) \
+                + ([f"T{T} played"] if pl else [])
+        head += ["Drawn " + "/".join(f"T{T}" for T in turns), f"Copies T{turns[-1]}" + (" (played)" if pl else "")]
         rows = []
         for x in keys:
             r = [x, "yours" if x in yours else "inferred", len(reach_all[x])]
@@ -859,14 +906,19 @@ def main():
                 if has_cmd:
                     pc = cmd_access(d, x, T, timing, reach_all[x])
                     r.append(pct(1 - (1 - p) * (1 - pc)).strip() if pc else "—")
+                if pl: r.append(pct(played["found"][x]["by"][T]).strip() if x in played["found"] else "—")
             r.append(" / ".join(pct(sm.hyper_at_least(d.N, d.qty.get(x, 0), sm.cards_seen(T, on_play), 1)).strip() for T in turns))
-            T0 = turns[0]
-            r.append(f"{copies_equiv(d.N, sm.cards_seen(T0, on_play), access_odds(d, x, T0, on_play, frozenset(d.cmd_names))[0]):.1f}")
+            T0 = turns[-1]
+            pv = played["found"][x]["by"][T0] if pl and x in played["found"] else access_odds(d, x, T0, on_play, frozenset(d.cmd_names))[0]
+            r.append(f"{copies_equiv(d.N, sm.cards_seen(T0, on_play), pv):.1f}")
             rows.append(r)
         o.table(head, rows, right=tuple(range(2, len(head))))
-        o.note("T: the card, or a library card that leads to it. specific: without find-anything tutors. +cmdr: also the")
-        o.note("commander's own tutor once manasim.py games have it out long enough to use it (repeatable: a ceiling).")
-        o.note("Copies: how many copies of the card would give the same odds by that turn.")
+        o.note("best: the card, or a library card that leads to it, every chain free. specific: without find-anything tutors.")
+        o.note("+cmdr: also the commander's own tutor once manasim.py games have it out long enough to use it (a ceiling).")
+        if pl:
+            o.note(f"played: found (out of the library) by that turn in {played['trials']:,} manasim.py games with lands, ramp, tutors")
+            o.note("and draw played and the mana paid; your keys are fetched first, then package pieces, then inferred keys.")
+        o.note("Copies: how many copies of the card would give the same odds by that turn" + (" (from played)." if pl else "."))
 
     # ---- 6. packages
     o.h2("6. Packages (every piece drawn, or reached by a different tutor chain; a repeatable tutor can cover several)")
@@ -878,15 +930,18 @@ def main():
         if src == "header" and any(pieces[i] & pieces[j] for i in range(len(pieces)) for j in range(i + 1, len(pieces))):
             notes6.append(f"{label}: parts share cards, so the odds aren't computed; make each part distinct"); continue
         cmd_reach = d.cmd_names and any(any(c in d.reach(x) for c in d.cmd_names) for m in pieces for x in m)
+        asm = next((x for x in (played or {}).get("assembled", []) if x["label"] == label), None)
         r = [label, "yours" if src == "header" else "Spellbook"]
         for T in turns:
             nat, lib_ = package_odds_chains(d, pieces, T, on_play, a.trials, use_cmd=False)
             r += [pct(nat).strip(), pct(lib_).strip()]
             if generic: r.append(pct(package_odds_chains(d, pieces, T, on_play, a.trials, use_cmd=False, specific=True)[1]).strip())
             r.append(pct(package_odds_chains(d, pieces, T, on_play, a.trials)[1]).strip() if cmd_reach else "—")
+            if played is not None: r.append(pct(asm["by"][T]).strip() if asm else "—")
         rows.append(r)
     head = ["Package", "From"]
-    for T in turns: head += [f"T{T} drawn", f"T{T} tutors"] + ([f"T{T} specific"] if generic else []) + [f"T{T} +cmdr"]
+    for T in turns: head += [f"T{T} drawn", f"T{T} tutors"] + ([f"T{T} specific"] if generic else []) + [f"T{T} +cmdr"] \
+        + ([f"T{T} played"] if played is not None else [])
     if rows: o.table(head, rows, right=tuple(range(2, len(head))))
     for n_ in notes6: o.note(n_)
     dropped = sum(1 for v in (dc or []) if len(v["cards"]) <= 3 and tutor_plus_target(v["cards"]))
@@ -900,8 +955,7 @@ def main():
 
     # ---- 7. tutor worth
     T0 = turns[-1]
-    o.h2(f"7. Tutor worth (each tutor taken out: points of access lost by T{T0}, library tutors; a ceiling)")
-    lib_tutors = sorted(x for x in d.tutors if x in d.lib_names and not all(d.land_only(t) for t in d.tutors[x]))
+    o.h2(f"7. Tutor worth (each library tutor taken out, by T{T0}: played, then best case)")
     if not lib_tutors:
         o.note("no library tutors")
     else:
@@ -917,17 +971,33 @@ def main():
             ks = (base_ks - mean_access(keys, b, True)) if generic and tname not in generic else None
             rows.append((base_k - mean_access(keys, b), ks, base_all - mean_access(nonbasic, b), tname, only))
         rows.sort(key=lambda r: (-r[0], -(r[1] or 0), -r[2], r[3]))
-        head = ["Tutor", "Key cards"] + (["Specific only"] if generic else []) + ["Whole deck", "Only it reaches"]
+        pl = played is not None and bool(dropped_runs)
+        worth = {}
+        if pl:
+            for tname, r_ in dropped_runs.items():
+                m, se = found_paired(r_, played, keys, T0)
+                worth[tname] = (-m, se)                     # points of key-card finding lost without it
+            rows.sort(key=lambda r: (-worth.get(r[3], (0, 0))[0], -r[0], r[3]))
+        head = ["Tutor"] + (["Played: key cards per 100 games"] if pl else []) + ["Key cards (best)"] + (["Specific only"] if generic else []) \
+            + ["Whole deck (best)", "Only it reaches"]
         out = []
         for dk, ks, da, tname, only in rows:
-            r = [tname, f"{100 * dk:+.1f}"]
+            r = [tname]
+            if pl:
+                m, se = worth.get(tname, (0.0, 1.0))
+                r.append(f"{100 * m:+.0f}" + ("" if abs(m) >= max(2 * se, 0.01) else " ≈"))
+            r.append(f"{100 * dk:+.1f}")
             if generic: r.append(f"{100 * ks:+.1f}" if ks is not None else "find-anything")
             r += [f"{100 * da:+.1f}", names_list(only, lists, 6) if only else "—"]
             out.append(r)
-        o.table(head, out, right=(1, 2, 3) if generic else (1, 2))
-        o.note(f"Points of mean access lost over the {len(keys)} key cards and the {len(nonbasic)} nonland cards; the commander's")
-        o.note("own tutoring stays out. Every chain counts as free here, so tutors look alike; 'specific only' sets the")
-        o.note("find-anything tutors aside, which separates them more. The played version (mana and turns) is TUTOR_PLAN phase 2.")
+        nr = 1 + (1 if pl else 0) + (1 if generic else 0)
+        o.table(head, out, right=tuple(range(1, nr + 2)))
+        if pl:
+            o.note(f"Played: key cards found by T{T0} per 100 games that this tutor adds (the same {played['trials']:,} games with the tutor")
+            o.note("inert, compared one by one; ≈: within noise or under 1 per 100). This is the number for 'is it worth its slot'.")
+            o.note("Best-case columns: points of mean access lost over the key cards and the whole deck.")
+        o.note(f"Best case: mean access over the {len(keys)} key cards and the {len(nonbasic)} nonland cards, the commander's own tutoring")
+        o.note("left out, every chain free (so tutors look alike); 'specific only' sets the find-anything tutors aside.")
 
 
 if __name__ == "__main__":
