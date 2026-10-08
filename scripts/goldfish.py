@@ -3905,8 +3905,18 @@ class Game:
             b = max(b, 70 + 20 * filled / len(parts))
         if not b and c in sim.finds:
             missing = sim.wanted - have
-            if missing and sim.finds[c] & missing: b = 50
+            if missing and sim.finds[c] & missing and self.usable_tutor(c): b = 50
         return b
+
+    def usable_tutor(self, c):
+        """Could the pilot use this tutor once it has it? Not when its extra cost has nothing to pay it (Diabolic Intent with
+        no creature it would sacrifice) or its requirement isn't met (Ringsight without a legendary creature): fetching
+        it would waste the tutor that found it."""
+        if c.addsac and not self.addsac_pick(c): return False
+        if c.requires and not self.has(c.requires, c): return False
+        tg = [e for e in all_fx(c) if e[0] == "tutor"]
+        if tg and all(tutor_unread(e[1]) for e in tg): return False     # the search itself would be skipped (Ringsight)
+        return True
 
     def tutor_value(self, c, dest, have):
         if c.is_land:                                   # a land only when you're actually short

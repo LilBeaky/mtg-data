@@ -25,6 +25,9 @@ SECTIONS
                   the card; then the card's inclusion and synergy on each theme page
   5 build-around  high-lift cards, similar cards, untapped commanders (share the card's
                   oracle tags, not in EDHREC's top list)
+  5b findable by  tutors in the card's colors (or --ci) that can fetch it, read by tutors.py's reader
+                  across the whole card pool (tutor_index.py), most played first, with how often
+                  each is played next to this card (EDHREC card page, when it's there)
   6 prompt        a reasoning prompt for the assistant (REASONING_PROMPT, end of this file)
 
 EDHREC is reached through its page JSON (json.edhrec.com), which is undocumented and can
@@ -352,6 +355,33 @@ def section_build(c, ep, combo_cmds, allowed, lim, out, top_names):
         out.append("  combo commanders (section 2): " + "; ".join(combo_cmds[:lim]))
     out.append("")
 
+def section_findable(c, ep, allowed, lim, out):
+    """Tutors in the pool that can fetch this card (tutor_index.py), with their co-play on this card's EDHREC page."""
+    out.append("== 5b FINDABLE BY")
+    try:
+        import tutor_index as ti
+    except Exception as e:
+        out.append(f"  tutor index unavailable ({type(e).__name__}: {e})"); out.append(""); return
+    ci = allowed if allowed is not None else set(c.get("color_identity") or [])
+    found = ti.findable_by(c, ci)
+    if not found:
+        out.append(f"  no tutor in {''.join(sorted(ci)) or 'colorless'} can fetch it (land-only and graveyard tutors left out)")
+        out.append(""); return
+    narrow = [x for x in found if not any(t.target.any for t in x[1])]
+    out.append(f"  {len(found)} tutor(s) in {''.join(sorted(ci)) or 'colorless'} can fetch it; {len(narrow)} of them are specific "
+               "(not find-anything), most played first:")
+    for t, hits in (narrow[:lim] + [x for x in found if x not in narrow][:max(0, lim - len(narrow[:lim]))])[:lim]:
+        h = hits[0]
+        v = find_view(ep, t["name"]) if ep else None
+        co = f" | played with it in {v['num_decks']:,} decks" + (f", lift x{v['lift']:.1f}" if isinstance(v.get("lift"), (int, float)) else "") if v else ""
+        anyc = " [find-anything]" if h.target.any else ""
+        out.append(f"    {t['name']} (MV {int(t.get('cmc') or 0)}, {('repeatable' if h.repeatable else 'one-shot')}, to {h.dest}): "
+                   f"{h.target.describe()}{anyc}{' ⚠' if h.target.approx else ''}{' [GC]' if t.get('game_changer') else ''}"
+                   f" {mtg.price_str(t) or ''}{co}")
+    if len(found) > lim: out.append(f"    … +{len(found) - lim} more (tutor_index.py \"{c['name']}\")")
+    out.append("")
+
+
 def main(argv):
     if not argv or argv[0] in ("-h", "--help"):
         print(__doc__); return 1
@@ -390,6 +420,7 @@ def main(argv):
     section_strategies(c, ep, ed, opened, opts["--themes"], out)
     top_names = [v["name"] for v in cardlists(ep).get("topcommanders", [])] if ep else []
     section_build(c, ep, combo_cmds, allowed, lim, out, top_names)
+    section_findable(c, ep, allowed, lim, out)
     out.append("== NOTES")
     if ed.offline:
         out.append("  offline: EDHREC sections skipped")

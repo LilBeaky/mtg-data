@@ -319,7 +319,13 @@ def build(deck, on_play=True, land_delta=0, extra_targets=(), add_cards=(), cut_
         idx = [j for j, x in enumerate(names) if x == n]
         if not idx: raise ValueError(f"not in the deck to cut: {n}")
         names[idx[-1]] = None; open_slots.append(idx[-1])
-    inert_slots = [i for i, x in enumerate(names) if x is not None and cache[x].status == "inert"]
+    # slots an added card may take: inert cards that aren't key cards or targets (taking a key card's slot would
+    # remove it from the library, and a key card out of the library counts as found)
+    protected = set(keys) | set(extra_targets)
+    if want: protected |= set(want[0]) | set(want[2]) | {x for _, parts in want[1] for part in parts for x in part}
+    # ...and that keep no hand ability (an inert landcycler still finds lands; taking its slot would cost land drops)
+    inert_slots = [i for i, x in enumerate(names) if x is not None and cache[x].status == "inert" and x not in protected
+                   and not cache[x].hand_acts]
     new = [n for n, q in add.items() for _ in range(q)] + list(add_cards)
     for n in new:
         if n not in cache:

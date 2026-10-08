@@ -30,3 +30,11 @@ python3 scripts/explorer.py "Card Name" [--commanders 8] [--themes 6] [--ci WUBR
 - Untapped commanders come from oracle-tag overlap, so they do *similar* things. That often means doubled-up triggers, not a guaranteed fit. Tags lag new sets, and a few tags are trivia (`inscryption achievement`); ignore those.
 - Spellbook popularity (`pop`) is how often the combo shows up in decks Spellbook has indexed. It is not a quality score.
 - EDHREC is meta signal, never card truth (§9). Verify every card you recommend with `mtg.py card` and check combos with `mtg.py combos`.
+
+## Section 5b: findable by (added 2026-10-08)
+
+Tutors in the card's colors (or `--ci`) that can fetch it, from tutors.py's reader run over the whole card pool
+(`scripts/tutor_index.py`, cached per card-data date). Specific tutors first, then find-anything ones, most played
+first; each with its mana value, one-shot or repeatable, where the card lands, price, Game Changer flag and how
+often it's played next to this card on the card's EDHREC page. Land-only and graveyard-destination tutors are
+left out. Same lookup from the command line: `python3 scripts/tutor_index.py "Card" [--ci WUB] [--md]`.

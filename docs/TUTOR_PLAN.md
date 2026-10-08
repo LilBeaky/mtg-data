@@ -1,6 +1,6 @@
 # Tutor plan
 
-Status: **phases 0-2 done** (2026-10-08); phase 3 next. Written 2026-10-08.
+Status: **phases 0-3 done** (2026-10-08); phase 4 (audit) next. Written 2026-10-08.
 
 ## Goal
 
@@ -154,6 +154,15 @@ roughly agrees with the ceiling ranking or the disagreements are explained; runt
 
 Done when: the explorer shows "findable by" for Step Through and a Klauth key card; tutors.py suggests
 tutors for Zur and Ragost with their played gain.
+
+**Done 2026-10-08.** Before building it, the reader was checked against Scryfall's tutor tags over all 32,116
+legal cards: 88.5% recall, then fixed to 95.7% (partner pairs with or without reminder text, "graveyard, hand,
+and/or library", "each player may search", own-creature-dies searches, Maralen, card names with commas); 100% of
+transmute, landcycling and typecycling. The rest are deliberate skips (opponent's library, an opponent's
+compensating basic, anti-tutor cards) and ~13 oddities. `scripts/tutor_index.py`: 1,062 tutor cards, cached
+per card-data date and reader source (about 1 s to build); `findable_by(card, ci)`. explorer.py section 5b
+(findable by, with co-play from the card's EDHREC page). tutors.py section 8 (tutors to add, played, plus the
+swap for your weakest tutor).
 
 ## Phase 4: audit layering
 

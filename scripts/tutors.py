@@ -29,7 +29,12 @@ REPORT
                   whole deck, and the cards only it reaches; then played: the same games with that
                   tutor inert, key cards found by the last turn, game by game
 
-PLAYED (sections 5-7): manasim.py's tutor mode plays lands, ramp, tutors and card draw through
+  8 Tutors to add  tutors from the whole card pool (tutor_index.py) in the deck's colors that reach its
+                  key cards, Game Changers within the bracket allowance, under --max-price; each is
+                  played in the deck (same games) and ranked by key cards found per 100 games it adds;
+                  then the best one swapped for the weakest tutor you run
+
+PLAYED (sections 5-8): manasim.py's tutor mode plays lands, ramp, tutors and card draw through
 goldfish.py's engine (mana paid, timing, one-shot tutors used once, the commander attacking for its
 trigger), fetching your key cards first, then package pieces, then inferred keys; every other card
 is inert, so nothing competes for the mana but ramp and card flow. A key card counts as found once
@@ -685,6 +690,63 @@ def played_runs(path, commander, on_play, turns, yours, inferred, packages, lib_
     return runs[0], dict(zip(lib_tutors, runs[1:]))
 
 
+GC_ALLOW = {1: 0, 2: 0, 3: 3}                     # Game Changers allowed by bracket (as audit.py)
+
+def tutor_candidates(d, keys, yours, bracket=None, max_price=None, limit=16):
+    """Tutors from the whole pool (tutor_index.py) that could join this deck: in its colors, legal, not in it, Game
+    Changers within the bracket allowance, under max_price, reaching at least one key card where it stays usable.
+    Shortlist by the key cards reached (yours count double, a repeatable tutor double), then EDHREC rank.
+    Only tutors goldfish.py reads fully (or holds as interaction) are played and ranked: a part it doesn't read can
+    make a card look far better or worse than it is (Profane Tutor's suspend read as a free tutor). The others
+    come back as `unverified`.
+    Returns ([(card, reached key names, effect)], pool size, gc_ok, unverified [(card, reached, status)])."""
+    import tutor_index as ti
+    ci = set().union(*((c.get("color_identity") or []) for c in d.cmdrs)) if d.cmdrs else \
+        set().union(*((d.card[n].get("color_identity") or []) for n in d.lib_names))
+    in_deck = d.lib_names | d.cmd_names
+    deck_gc = sum(1 for n in in_deck if d.card[n].get("game_changer"))
+    gc_ok = bracket is None or bracket >= 4 or deck_gc < GC_ALLOW.get(bracket, 0)
+    pool = []
+    for c, ts in ti.index():
+        if c["name"] in in_deck or not set(c.get("color_identity") or []) <= ci: continue
+        if c.get("game_changer") and not gc_ok: continue
+        if max_price is not None and (mtg.price(c) is None or mtg.price(c) > max_price): continue
+        if ti.land_only(ts) or "land" in type_parts(c)[1]: continue      # lands are land-swap territory (landbase.py)
+        best, reached = None, []
+        for t in ts:
+            if t.dest in NO_ACCESS: continue
+            r = [k for k in keys if t.target.matches(d.card[k])]
+            if len(r) > len(reached): best, reached = t, r
+        if not reached: continue
+        # efficiency: key cards reached (yours double) per mana, a repeatable tutor double
+        score = sum(2 if k in yours else 1 for k in reached) * (2 if best.repeatable else 1) / max(1, int(c.get("cmc") or 0))
+        pool.append((score, c, reached, best))
+    import goldfish as gf
+    anyc = frozenset(ci) or gf.ALL5
+    def status(c):
+        try:
+            k = gf.compile_card(c, anyc)
+            ov = gf.load_overrides().get(mtg.norm(c["name"]))
+            if ov: gf.apply_override(k, ov, anyc)
+            tg = [e for e in gf.all_fx(k) if e[0] == "tutor"]
+            if tg and all(gf.tutor_unread(e[1]) for e in tg): return "tutor unread"   # the games would skip its search
+            return k.status
+        except Exception:
+            return "?"
+    st = {x[1]["name"]: status(x[1]) for x in pool}
+    unverified = sorted(((c, r, st[c["name"]]) for _, c, r, t in pool if st[c["name"]] not in ("modeled", "held")),
+                        key=lambda x: (x[0].get("edhrec_rank") or 10**7, x[0]["name"]))
+    pool = [x for x in pool if st[x[1]["name"]] in ("modeled", "held")]
+    # shortlist: half the most played (EDHREC rank), half the most efficient; all of them are then played and ranked
+    by_rank = sorted(pool, key=lambda x: (x[1].get("edhrec_rank") or 10**7, x[1]["name"]))
+    by_eff = sorted(pool, key=lambda x: (-x[0], x[1].get("edhrec_rank") or 10**7, x[1]["name"]))
+    short, seen = [], set()
+    for a, b in zip(by_rank, by_eff):
+        for x in (a, b):
+            if x[1]["name"] not in seen and len(short) < limit: short.append(x); seen.add(x[1]["name"])
+    return [(c, r, t) for _, c, r, t in short], len(pool) + len(unverified), gc_ok, unverified
+
+
 def found_paired(r, base, keys, T):
     """(mean difference, standard error) of the number of key cards found by T, game by game."""
     import math
@@ -751,6 +813,9 @@ def main():
     ap.add_argument("--md", action="store_true", help="Markdown tables (same report)")
     ap.add_argument("--no-played", action="store_true", help="best-case odds only (no manasim.py games)")
     ap.add_argument("--played-trials", type=int, default=2000)
+    ap.add_argument("--no-suggest", action="store_true", help="skip section 8 (tutors to add)")
+    ap.add_argument("--max-price", type=float, help="section 8: candidate tutors at most $N")
+    ap.add_argument("--suggest", type=int, default=16, help="section 8: candidates played (default 16)")
     a = ap.parse_args()
     if not os.path.exists(a.deck): sys.exit(f"deck file not found: {a.deck}")
     if a.deck.lower().endswith(".dck"): sys.exit("this is a Forge .dck file; pass the .txt list")
@@ -992,6 +1057,7 @@ def main():
         o.note(f"ceiling). Sampled, {a.trials:,} games per cell (±~0.5 pts). Spellbook 'combos' that are only a tutor and its target are left out.")
     if len(combos) > 8: o.note(f"+{len(combos) - 8} more combo(s) not shown")
 
+    worth = {}
     # ---- 7. tutor worth
     T0 = turns[-1]
     o.h2(f"7. Tutor worth (each library tutor taken out, by T{T0}: played, then best case)")
@@ -1037,6 +1103,48 @@ def main():
             o.note("Best-case columns: points of mean access lost over the key cards and the whole deck.")
         o.note(f"Best case: mean access over the {len(keys)} key cards and the {len(nonbasic)} nonland cards, the commander's own tutoring")
         o.note("left out, every chain free (so tutors look alike); 'specific only' sets the find-anything tutors aside.")
+
+    # ---- 8. tutors to add (played)
+    if not a.no_suggest and played is not None and keys:
+        o.h2(f"8. Tutors to add (the whole card pool, played in this deck, by T{T0})")
+        cands, pool_n, gc_ok, unverified = tutor_candidates(d, keys, yours, d.meta.get("bracket"), a.max_price, a.suggest)
+        if not cands:
+            o.note("no tutor in the pool reaches these key cards within the filters")
+        else:
+            import manasim, io, contextlib
+            pk_names = [(label, [sorted(m) for m in mem]) for src, label, parts, mem in pk_resolved if all(mem)]
+            want = (tuple(yours), tuple((lab, tuple(tuple(p) for p in parts)) for lab, parts in pk_names), tuple(inferred))
+            specs = [(0, False, (), (c["name"],), (), "tutors", (), want) for c, r, t in cands]
+            with contextlib.redirect_stdout(io.StringIO()):
+                runs = manasim.simulate_many(a.deck, a.commander, on_play, played["trials"], max(turns), 7, specs)
+            res = []
+            for (c, r, t), run in zip(cands, runs):
+                m, se = found_paired(run, played, keys, T0)
+                res.append((m, se, c, r, t))
+            res.sort(key=lambda x: -x[0])
+            rows = []
+            for m, se, c, r, t in res:
+                ry = [k for k in r if k in yours]
+                rows.append([c["name"], f"{100 * m:+.0f}" + ("" if abs(m) >= max(2 * se, 0.01) else " ≈"),
+                             f"{len(ry)} yours + {len(r) - len(ry)} inferred", int(c.get("cmc") or 0), how_used(t),
+                             t.dest, mtg.price_str(c) or "—", "GC" if c.get("game_changer") else ""])
+            o.table(["Tutor", "Played: key cards per 100 games", "Reaches", "MV", "How", "Puts it", "Price", "GC"], rows, right=(1, 3))
+            o.note(f"{pool_n} nonland tutors in the pool reach these key cards; {len(cands)} that goldfish.py reads fully were played (half")
+            o.note(f"the most played, half the most efficient: key cards reached per mana), each in a spare inert card's slot, against the")
+            o.note(f"same {played['trials']:,} games (≈: within noise or under 1 per 100)."
+                   + ("" if gc_ok else " Game Changers left out at this bracket.") + (f" Under ${a.max_price:g}." if a.max_price else ""))
+            if unverified:
+                o.note(f"not ranked, because goldfish.py reads them only partly (the games could misjudge them; worth a look by hand): "
+                       + "; ".join(f"{c['name']} ({st_})" for c, r, st_ in unverified[:12]) + (" …" if len(unverified) > 12 else ""))
+            if worth and res and res[0][0] > 0:
+                weakest = min(worth, key=lambda t: worth[t][0])
+                best_c = res[0][2]["name"]
+                with contextlib.redirect_stdout(io.StringIO()):
+                    sw = manasim.simulate_many(a.deck, a.commander, on_play, played["trials"], max(turns), 7,
+                                               [(0, False, (), (best_c,), (), "tutors", (weakest,), want)])[0]
+                m, se = found_paired(sw, played, keys, T0)
+                o.note(f"swap: {weakest} (your weakest tutor, {100 * worth[weakest][0]:+.0f}) → {best_c}: "
+                       f"{100 * m:+.0f} key cards per 100 games" + ("" if abs(m) >= max(2 * se, 0.01) else " (≈ noise)"))
 
 
 if __name__ == "__main__":

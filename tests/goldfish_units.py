@@ -1374,7 +1374,7 @@ def _():
 
 # ---- tutoring from hand and tutors to the top (Zur the Enchanter deck, docs/TUTOR_PLAN.md phase 0, 2026-10-08)
 ZNAMES = ["Zur the Enchanter", "Island", "Plains", "Swamp", "Step Through", "Archaeomancer", "Mystical Tutor",
-          "Solve the Equation", "Long-Term Plans", "Astral Slide"]
+          "Solve the Equation", "Long-Term Plans", "Astral Slide", "Diabolic Intent"]
 ZRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(ZNAMES)}
 ZK = {n: g.compile_card(ZRAW[n], frozenset("WUB")) for n in ZNAMES}
 
@@ -1416,6 +1416,10 @@ def _():
     G = zgame(lands=["Island"], hand=["Mystical Tutor"], lib=["Island"] * 6 + ["Solve the Equation"])
     G.build_pool(); G.cast_loop(activate=False)
     return ZK["Mystical Tutor"] in G.hand and G.held_top
+@check("A tutor the pilot can't use isn't fetched as 'a tutor toward a key card' (Diabolic Intent with nothing to sacrifice)")
+def _():
+    G = zgame(lands=["Island"] * 4, hand=[], lib=["Island"] * 6 + ["Archaeomancer"], keys=["Archaeomancer"])
+    return not G.usable_tutor(ZK["Diabolic Intent"]) and G.want_bonus(ZK["Diabolic Intent"], set()) == 0
 @check("Without an attack-trigger search pending, a tutor to the top is cast in main phase 1")
 def _():
     G = zgame(lands=["Island", "Island", "Island", "Island"], hand=["Mystical Tutor"], lib=["Island"] * 6 + ["Solve the Equation"])
