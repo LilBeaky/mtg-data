@@ -19,6 +19,7 @@ Re-clone every session (sandbox resets). Use git, not the GitHub API, for readin
 | Tutor chains / access odds | `tutors.py` (§6) |
 | Land count and land swaps | `landbase.py` (§6) |
 | Ramp: when the commander / key cards can be cast, what the ramp is worth | `manasim.py` (§6) |
+| How much of a deck the simulation tools play (fidelity) | `fidelity.py` (`docs/FIDELITY_PLAN.md`) |
 | How a deck plays out (win rate, how it wins and loses, real opponents) | `python3 -m fishpond` (§6 → `docs/FISHPOND.md`) |
 | Fast mana/curve reads, swap ladders, disruption ladder | `goldfish.py` (§6 → `docs/GOLDFISH.md`; frozen legacy, still maintained in smoke) |
 | Goldfish parser coverage / regression diff | `goldfish_coverage.py` (`docs/GOLDFISH_ROADMAP.md`) |

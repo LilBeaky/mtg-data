@@ -62,8 +62,14 @@ NUMBER = {"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
           "seven": 7, "eight": 8, "nine": 9, "ten": 10}
 
 SEARCH_RX = re.compile(
-    r"(?:search(?:es)? your library|(?<=each of them )searches their library|(?<=target player )searches their library)"
-    r"(?: and(?:/or)? (?:your )?graveyard)?(?: and/or graveyard)? for "
+    r"(?:search(?:es)? your library|(?<=each of them )searches their library|(?<=target player )searches their library"
+    r"|search(?:es)? your (?:graveyard|hand)[a-z ,/]*?library"                       # graveyard, hand, and/or library
+    r"|(?<=each player )searches their library|(?<=each player may )search their library"
+    r"|(?<=may each )search their library"                                            # any number of target players may each
+    r"|(?<=that creature's controller may )search their library"                     # your creature dies (Pattern of Rebirth)
+    r"|(?<=that player loses 3 life, )searches their library)"                         # Maralen of the Mornsong, Mornsong Aria
+    r"(?: and(?:/or)? (?:your )?graveyard)?(?: and/or graveyard)?"
+    r"(?:,? (?:and/or |or |and )?(?:your )?(?:hand|graveyard|outside the game))* for "
     r"(?P<what>.+?)(?=, (?:put|reveal|then|and|exile|shuffle|where)\b| and put | and reveal | and exile |\. |\.$|\)|$)", re.I)
 DEST_RX = [("battlefield", re.compile(r"onto the battlefield", re.I)),
            ("hand", re.compile(r"into (?:your|its owner's) hand|put (?:that card|it|them|those cards) in your hand", re.I)),
@@ -167,6 +173,12 @@ class Target:
         return " ".join(bits)
 
 
+_NAMES = set()
+def _card_names():
+    """Every card name, lowercased (named-card tutors whose name has a comma)."""
+    if not _NAMES: _NAMES.update(c["name"].lower() for c in mtg.cards())
+    return _NAMES
+
 def parse_target(what, self_card):
     """'an enchantment card with mana value 3 or less' -> Target."""
     raw = what.strip()
@@ -188,6 +200,12 @@ def parse_target(what, self_card):
     m = re.search(r"cards? named (.+?)(?:,| and |$)", low)
     if m and not re.search(r"not named", low):
         t.named = m.group(1).strip().rstrip(".").lower()
+        # a name with a comma (Ajani, Valiant Protector): take the longest comma-joined run that's a real card name
+        rest = low[low.index("named ") + 6:].strip().rstrip(".")
+        parts = [x.strip() for x in rest.split(",")]
+        for i in range(len(parts), 1, -1):
+            cand = ", ".join(parts[:i])
+            if cand in _card_names(): t.named = cand; break
         return t
     for mm in re.finditer(r"not named ([^,]+?)(?= that| with|,|$)", low):
         t.not_named.add(mm.group(1).strip().lower())
@@ -319,8 +337,12 @@ def card_tutors(c):
         prev = None
         for line in text.split("\n"):
             for m in SEARCH_RX.finditer(line):
-                self_target = m.group(0).lower().startswith("searches their")
-                if not self_target and re.search(r"(their|target player's|that player's|an opponent's) library",
+                head = m.group(0).lower()
+                pre = line[max(0, m.start() - 40):m.start()]
+                each = bool(re.search(r"(?:each player (?:may )?|may each |that player loses 3 life, )$", pre, re.I))
+                own_creature = bool(re.search(r"that creature's controller may $", pre, re.I))
+                self_target = head.startswith("searches their") and not each
+                if not self_target and not each and not own_creature and re.search(r"(their|target player's|that player's|an opponent's) library",
                                                  line[max(0, m.start() - 30):m.start() + 25], re.I):
                     continue
                 kind, rep, cond = classify(line, prev, c, is_spell)
@@ -337,7 +359,18 @@ def card_tutors(c):
                 tgt = parse_target(m.group("what"), c)
                 if re.search(r"opponent chooses|target opponent chooses", line, re.I): tgt.approx.append("opponent picks which card you get")
                 if self_target: tgt.approx.append("you must target yourself (the other player also tutors)")
+                if each: tgt.approx.append("each player searches: your opponents tutor too")
+                if own_creature: tgt.approx.append("only when it's your creature")
                 out.append(Tutor(c, fi, kind, tgt, dest, rep, cond, line.strip()))
+            # 'Partner with X (When this creature enters, target player may put X into their hand from their library...)':
+            # the reminder text is a tutor for the partner, with no 'search' in it
+            mp = re.match(r"partner with ([^(\n]+?)\s*(?:\(when this creature enters, target player may put [^)]*? into their hand "
+                          r"from their library|$)", line.strip(), re.I)
+            if mp:
+                tgt = parse_target(f"a card named {mp.group(1).strip()}", c)
+                tgt.named = mp.group(1).strip().lower()             # names with commas (Toothy, Imaginary Friend)
+                tgt.approx.append("target player: you, or an opponent who has the partner")
+                out.append(Tutor(c, fi, "etb", tgt, "hand", False, "enters", line.strip()))
             if not line.strip().startswith("•"): prev = line
     return out
 
@@ -918,6 +951,12 @@ def main():
         if pl:
             o.note(f"played: found (out of the library) by that turn in {played['trials']:,} manasim.py games with lands, ramp, tutors")
             o.note("and draw played and the mana paid; your keys are fetched first, then package pieces, then inferred keys.")
+            try:
+                import manasim
+                fl = manasim.fidelity_line(manasim.role_coverage(manasim.load(a.deck, a.commander)))
+                if fl: o.note(fl + " (played numbers run low where these aren't played)")
+            except Exception:
+                pass
         o.note("Copies: how many copies of the card would give the same odds by that turn" + (" (from played)." if pl else "."))
 
     # ---- 6. packages

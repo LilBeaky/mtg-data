@@ -105,6 +105,52 @@ def _filter_txt(f):
     return " ".join(parts + rest)
 
 
+# ---------------------------------------------------------------- fidelity: are the deck's ramp, draw and tutors played?
+ROLE_TAGS = {
+    "ramp": {"ramp", "mana-rock", "mana-dork", "extra-land", "cost-reducer", "ritual", "land-ramp"},
+    "draw": {"draw", "card-advantage", "pure-draw", "repeatable-pure-draw", "draw-engine", "repeatable-draw", "wheel"},
+}
+ROLE_NAMES = {"ramp": "ramp", "draw": "card draw", "tutor": "tutors"}
+
+def card_roles(c):
+    """The roles a card plays by Scryfall's oracle tags (an independent answer key), plus tutors.py's own reader
+    for tutors: {'ramp', 'draw', 'tutor'} subset."""
+    import tutors as tu
+    tags = tu._tags_by_oid().get(c.get("oracle_id"), set())
+    roles = {r for r, ts in ROLE_TAGS.items() if tags & ts}
+    if any((t == "tutor" or t.startswith("tutor-")) and t not in ("tutor-interaction", "tutor-from-opponent") for t in tags) \
+            or tu.card_tutors(c):
+        roles.add("tutor")
+    return roles
+
+def role_coverage(deck, mode="tutors"):
+    """For the deck's ramp, card draw and tutor cards (card_roles): how many the games play (mode 'ramp': ramp only;
+    'tutors': ramp and card flow). Returns {"counts": {role: (played, total)}, "unplayed": [(name, roles, status)]}."""
+    N, lib, cmdrs, anyc, keys = deck
+    counts = {r: [0, 0] for r in ("ramp", "draw", "tutor")}
+    unplayed = []
+    for q, c, k in list(lib) + [(1, c, k) for c, k in cmdrs]:
+        if k.is_land: continue
+        roles = card_roles(c)
+        if mode == "ramp": roles &= {"ramp"}
+        if not roles: continue
+        plays = accelerates(k) or (mode == "tutors" and plays_in_tutor_mode(k))
+        for r in roles:
+            counts[r][1] += q
+            if plays: counts[r][0] += q
+        if not plays: unplayed.append((c["name"], sorted(roles), k.status))
+    return {"counts": {r: tuple(v) for r, v in counts.items() if v[1]}, "unplayed": sorted(unplayed)}
+
+def fidelity_line(cov, limit=8):
+    """'fidelity: ramp 9/11 played, card draw 2/14, tutors 11/11; not played: ...' (empty when there's nothing to say)."""
+    if not cov["counts"]: return ""
+    parts = [f"{ROLE_NAMES[r]} {p}/{t}" for r, (p, t) in cov["counts"].items()]
+    un = cov["unplayed"]
+    tail = ("; not played: " + "; ".join(f"{n} ({'/'.join(ROLE_NAMES[r] for r in rs)}, {st})" for n, rs, st in un[:limit])
+            + (f" … (+{len(un) - limit})" if len(un) > limit else "")) if un else "; all played"
+    return "fidelity (Scryfall's role tags as the key): " + ", ".join(parts) + " played" + tail
+
+
 # ---------------------------------------------------------------- the game
 class ManaGame(gf.Game):
     """A goldfish game that records land drops and probes the targets at the start of each main phase."""
@@ -444,7 +490,9 @@ def report(res, on_play, lands_only=None, with_draw=None):
     part = [r[0] for r in cov["rows"] if r[2] != "modeled"]
     if part: print(f"  read partially by goldfish.py (--explain shows how): {'; '.join(part)}")
     o = cov["other"]
-    print(f"  not counted: card draw and tutors ({o['draw']} cards, {o['tutor']} of them tutors) that dig for lands or ramp")
+    print(f"  not counted in 'with ramp': card draw and tutors ({o['draw']} cards, {o['tutor']} of them tutors); "
+          f"the '+draw, tutors' row plays them")
+    if res.get("fidelity"): print("  " + res["fidelity"])
 
 
 def lands_only(deck):
@@ -746,12 +794,14 @@ def main():
         print_land_or_ramp(res)
         return
     delta = (a.lands - L0) if a.lands else 0
+    fid = fidelity_line(role_coverage(deck))
     res, lo, wd = simulate_many(a.deck, a.commander, on_play, a.trials, a.turns, a.seed,
                             [(delta, False, a.target), (delta, True, a.target), (delta, False, a.target, (), (), "tutors")], deck=deck)
     cmd = " + ".join(c["name"] for c, _ in cmdrs) or "(no commander)"
     print(f"=== MANASIM: {cmd} | N={res['N']} | {res['lands']} lands"
           + (f" ({'+' if delta > 0 else ''}{delta}: {res['add'] or res['cut']})" if delta else "")
           + f" | {len(res['coverage']['rows'])} accelerants | {'on the play' if on_play else 'on the draw'} ===")
+    res["fidelity"] = fid
     report(res, on_play, lo, wd)
     print("\nLimits: goldfish.py's pilot and card reading; no draw or tutors; no opponents' interaction. "
           "'drops all hit' is the number to check by hand.")

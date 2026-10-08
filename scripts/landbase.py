@@ -374,6 +374,8 @@ def main():
                     f"{pct(base[top]['dev'][T]).strip()} even at {top}")
         print(msg)
         if part: print(f"  read partially by goldfish.py: {'; '.join(part)}. Full list: manasim.py DECK")
+        fl = ms.fidelity_line(ms.role_coverage(deck_ms, mode))
+        if fl: print("  " + fl)
         print(f"  not counted: card draw and tutors that dig for lands or ramp ({cov['other']['draw']} cards)")
     else:
         print(f"  ramp counted (--no-sim): {cheap} pieces at MV ≤2 as a land toward the target turn, all {rocks_all} toward flood"

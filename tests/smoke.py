@@ -151,6 +151,16 @@ def checks():
         dict(name="tutors text tables", cmd=S("tutors.py", DECK, "--trials", "300", "--no-lists"),
              must=["=== TUTORS:", "Puts it", "Targets here", "-----", "Copies T6 (played)", "Only it reaches"],
              must_not=["| Tutor |", "Traceback"]),
+        dict(name="tutors reader wordings", cmd=S("tutors.py", tmp_deck("tutor_words", ["Lore Weaver", "Ley Weaver"],
+                                                   "1 Boonweaver Giant\n1 Bear Umbra\n1 Ajani's Aid\n1 Ajani, Valiant Protector\n"
+                                                   "1 Jungle Wayfinder\n1 Pattern of Rebirth\n1 Grizzly Bears\n40 Island\n20 Forest\n20 Plains"),
+                                         "--trials", "200", "--no-lists", "--md", "--no-played"),
+             must=["| Boonweaver Giant | enters |", "| Lore Weaver (commander) | enters |", "cards named Ley Weaver",
+                   "cards named Ajani, Valiant Protector", "land-only (mana, not analyzed further): Jungle Wayfinder", "| Pattern of Rebirth |"],
+             must_not=["Traceback"]),
+        dict(name="fidelity", cmd=S("fidelity.py", DECK, "decks/Ians_Zur_Wizardcycling.txt", "--md"),
+             must=["# FIDELITY:", "| Deck | Ramp | Card draw | Tutors |", "overall: ramp", "To fix first", "| Card | Copies |"],
+             must_not=["Traceback", "| error |"]),
         dict(name="tutors no-infer", cmd=S("tutors.py", DECK, "--trials", "300", "--no-lists", "--no-infer"),
              must=["## 5. Key cards", "yours ("], must_not=["inferred beyond yours", "Traceback"]),
         # ---- EDHREC snapshots still resolve against today's data
