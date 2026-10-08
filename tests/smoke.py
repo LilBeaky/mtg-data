@@ -167,7 +167,7 @@ def checks():
              must=["== 5b FINDABLE BY", "Idyllic Tutor (MV 3, one-shot, to hand): enchantment"], must_not=["Traceback"]),
         dict(name="tutors to add", cmd=S("tutors.py", "decks/Ians_Zur_Wizardcycling.txt", "--no-lists", "--md", "--played-trials", "300",
                                          "--suggest", "6"),
-             must=["## 8. Tutors to add", "| Tutor | Played: key cards per 100 games | Reaches |", "swap: Long-Term Plans"],
+             must=["## 8. Tutors to add", "| Tutor | Played: key cards per 100 games | Finds (your keys; via: tutors it can fetch) |", "transmute (card MV=2)", "swap: Long-Term Plans"],
              must_not=["Traceback", "| Profane Tutor |", "| Inventors' Fair |"]),
         dict(name="tutors no-infer", cmd=S("tutors.py", DECK, "--trials", "300", "--no-lists", "--no-infer"),
              must=["## 5. Key cards", "yours ("], must_not=["inferred beyond yours", "Traceback"]),

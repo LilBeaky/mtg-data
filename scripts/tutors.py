@@ -1123,12 +1123,17 @@ def main():
                 res.append((m, se, c, r, t))
             res.sort(key=lambda x: -x[0])
             rows = []
+            lib_tutor_names = [x for x in d.tutors if x in d.lib_names and not all(d.land_only(tt) for tt in d.tutors[x])]
             for m, se, c, r, t in res:
                 ry = [k for k in r if k in yours]
+                ri = [k for k in r if k not in yours]
+                chain = sorted(x for x in lib_tutor_names if t.target.matches(d.card[x]))
+                reach = ("all your keys" if len(ry) == len(yours) and yours else "; ".join(ry) or "none of yours")                     + (f" (+{len(ri)} inferred)" if ri else "") + (f"; via {', '.join(chain)}" if chain and not t.target.any else "")
                 rows.append([c["name"], f"{100 * m:+.0f}" + ("" if abs(m) >= max(2 * se, 0.01) else " ≈"),
-                             f"{len(ry)} yours + {len(r) - len(ry)} inferred", int(c.get("cmc") or 0), how_used(t),
+                             reach, int(c.get("cmc") or 0), how_used(t) + (f" ({t.target.describe()})" if not t.target.any else ""),
                              t.dest, mtg.price_str(c) or "—", "GC" if c.get("game_changer") else ""])
-            o.table(["Tutor", "Played: key cards per 100 games", "Reaches", "MV", "How", "Puts it", "Price", "GC"], rows, right=(1, 3))
+            o.table(["Tutor", "Played: key cards per 100 games", "Finds (your keys; via: tutors it can fetch)", "MV", "How (finds)",
+                     "Puts it", "Price", "GC"], rows, right=(1, 3))
             o.note(f"{pool_n} nonland tutors in the pool reach these key cards; {len(cands)} that goldfish.py reads fully were played (half")
             o.note(f"the most played, half the most efficient: key cards reached per mana), each in a spare inert card's slot, against the")
             o.note(f"same {played['trials']:,} games (≈: within noise or under 1 per 100)."
