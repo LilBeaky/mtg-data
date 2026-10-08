@@ -128,7 +128,7 @@ def checks():
                                                                    "1 Rampant Growth\n1 Dragonspeaker Shaman\n1 Terror of the Peaks\n"
                                                                    "1 Shamanic Revelation\n30 Forest\n30 Mountain\n35 Grizzly Bears"),
                                                 "--land-or-ramp", "--max-price", "3"),
-             must=["+1 land (", "verdict: ", "best by commander speed: ", "ramp tried: "], must_not=["Traceback"]),
+             must=["+1 land (", "verdict, Klauth: ", "best for Klauth: ", "Ramp tried: "], must_not=["Traceback"]),
         # ---- stats_math
         dict(name="exact odds", cmd=S("stats_math.py", "99", "10", "7", "1"), must=["= 53.7%"]),
         dict(name="colors per face", cmd=S("stats_math.py", "colors", DECK),

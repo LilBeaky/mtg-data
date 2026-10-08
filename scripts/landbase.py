@@ -21,6 +21,8 @@ landbase.py — land count and land swaps for a Commander deck (mtg-data).
   --trials N          manasim.py games per land count (default 1000)
   --no-sim            exact land-only formulas for the count table (fast; ramp only as a rough +1)
   --no-ramp-pick      skip section 1b (land or ramp; adds ~15s)
+  --no-sim-swaps      swaps by the exact color score alone (no manasim.py games)
+  --swap-options N    color-best swaps the games compare at each step (default 6)
 
 REPORT
   1 Land count   every count from 4 under to 4 over: T mana by turn T and the commander castable
@@ -37,10 +39,13 @@ REPORT
                  in the deck and ranked. "≈ same" = within noise or under 1 point
   2 Colors now   land sources per color and the cards under their on-curve threshold
                  (audit section 2's numbers: 90% for the commander and package pieces, 80% otherwise)
-  3 Plan         lands to add or cut to reach the count, then swaps, chosen greedily by how
-                 much they lift the color odds; untapped beats tapped, and cheap beats expensive
-                 (about $30 weighs the same as "conditionally tapped"), at equal colors
-  4 Before → after   the whole plan at once: count metrics and every flagged card's odds
+  3 Plan         lands to add or cut to reach the count, then swaps: at each step the exact color
+                 score proposes its best --swap-options swaps (untapped beats tapped, cheap beats
+                 expensive at equal colors; about $30 weighs like "conditionally tapped") and
+                 manasim.py games pick the one that brings the commanders down fastest; a swap
+                 that slows a commander beyond noise is never taken
+  4 Before → after   the whole plan at once: count metrics, the plan played in manasim.py games
+                 (T mana by T, each commander by turn), every flagged card's color odds
 
 Adding lands means cutting nonlands; which ones is the user's call, so the plan only says how many.
 Lands that do more than make mana (cycling, creature lands, utility) are never cut unless
@@ -260,6 +265,7 @@ def main():
     ap.add_argument("--no-count", action="store_true"); ap.add_argument("--no-swaps", action="store_true")
     ap.add_argument("--trials", type=int, default=1000); ap.add_argument("--no-sim", action="store_true")
     ap.add_argument("--no-ramp-pick", action="store_true")
+    ap.add_argument("--no-sim-swaps", action="store_true"); ap.add_argument("--swap-options", type=int, default=6)
     a = ap.parse_args()
     _w = mtg.stale_warning()
     if _w: print(_w)
@@ -433,21 +439,60 @@ def main():
         if not x: print("  ! ran out of lands that are safe to cut"); break
         x.qty -= 1; cut.append(x)
 
+    # the plan as names, for manasim.py: lands in (added, swapped in) and out (cut, swapped out)
+    plan_in, plan_out = [p.name for p in added], [x.name for x in cut]
+    def plan_with(x_name=None, p_name=None):
+        pin, pout = list(plan_in), list(plan_out)
+        if x_name:
+            if x_name in pin: pin.remove(x_name)          # swapping out a land this plan added
+            else: pout.append(x_name)
+        if p_name: pin.append(p_name)
+        return pin, pout
+    cmds_ms = sorted(((c["name"], int(c.get("cmc") or 0)) for c, k in cmdrs), key=lambda x: (x[1], x[0]))
+    sim_swaps = bool(deck_ms) and not a.no_sim_swaps
+    swap_notes = []
     if not a.no_swaps:
-        for _ in range(a.swaps):
-            base, best = scorer.score(cur), None
+        cur_run = None
+        for step in range(a.swaps):
+            base = scorer.score(cur)
+            opts = {}
             for x in cur:
                 if not safe_cut(x, cur, a): continue
                 x.qty -= 1
                 for p in cands:
                     if p.cols == x.cols and TAP_COST[p.tapped] >= TAP_COST[x.tapped]: continue
                     y = Land(p.card, 1, p.cols, False); cur.append(y)
-                    s = scorer.score(cur); cur.remove(y)
-                    if best is None or s < best[0]: best = (s, x, p)
+                    sc = scorer.score(cur); cur.remove(y)
+                    if base - sc >= MIN_GAIN and (sc < opts.get((x.name, p.name), (9e9,))[0]):
+                        opts[(x.name, p.name)] = (sc, x, p)
                 x.qty += 1
-            if not best or base - best[0] < MIN_GAIN: break
-            s, x, p = best
+            if not opts: break
+            ranked = sorted(opts.values(), key=lambda o: o[0])
+            pick = ranked[0]
+            if sim_swaps:
+                # the exact color score proposes; manasim.py games (same shuffles) choose by how fast the commanders
+                # come down and T mana by T. A swap that slows a commander beyond noise is never taken.
+                top = ranked[:a.swap_options]
+                specs = ([] if cur_run else [(0, False, (), *plan_with())]) + [(0, False, (), *plan_with(x.name, p.name)) for _, x, p in top]
+                runs = ms.simulate_many(a.deck, a.commander, on_play, a.trials * 2, turns, 3, specs, deck=deck_ms)
+                if not cur_run: cur_run, runs = runs[0], runs[1:]
+                scored = []
+                for (sc, x, p), r in zip(top, runs):
+                    m, se = ms.plan_paired(r, cur_run, cmds_ms) if cmds_ms else (r["dev"][T] - cur_run["dev"][T], 0.0)
+                    scored.append((m, se, sc, x, p, r))
+                ok = [o for o in scored if not (ms.real(o[0], o[1]) and o[0] < 0)]
+                if not ok:
+                    swap_notes.append(f"step {step + 1}: the {len(top)} best color swaps all slow a commander; stopped")
+                    break
+                better = [o for o in ok if ms.real(o[0], o[1]) and o[0] > 0]
+                m, se, sc, x, p, r = max(better, key=lambda o: o[0]) if better else ok[0]
+                if better and (x, p) != (ranked[0][1], ranked[0][2]):
+                    swap_notes.append(f"step {step + 1}: {x.name} → {p.name} chosen over the color-best "
+                                      f"{ranked[0][1].name} → {ranked[0][2].name} (commander {100 * m:+.1f} pts in the games)")
+                pick, cur_run = (sc, x, p), r
+            s_, x, p = pick
             x.qty -= 1; add_land(p); swaps.append((x, p))
+            plan_in, plan_out = plan_with(x.name, p.name)
 
     def price_of(L): return mtg.price(L.card) or 0.0
     def alt(p):
@@ -464,9 +509,10 @@ def main():
         print(f"  cut {len(cut)} land(s), and add {len(cut)} nonland card(s):")
         for x in cut: print(f"    − {x.name} ({x.desc()})")
     if swaps:
-        print(f"  swaps ({len(swaps)}):")
+        print(f"  swaps ({len(swaps)}" + (f"; colors propose the best {a.swap_options}, manasim.py games pick" if sim_swaps else "") + "):")
         for x, p in swaps:
             print(f"    {x.name} ({x.desc()}) → {p.name} {mtg.price_str(p.card) or '(no price)'} ({p.desc()}){alt(p)}")
+    for n_ in swap_notes: print(f"  {n_}")
     cost = sum(price_of(p) for p in added) + sum(price_of(p) for x, p in swaps)
     if added or swaps:
         print(f"  lands bought: ${cost:,.2f} at cheapest printings"
@@ -479,14 +525,27 @@ def main():
     L1 = sum(x.qty for x in cur)
     m0, m1 = table.get(L0) or metrics(L0), table.get(L1) or metrics(L1)
     print("\n## 4. Before → after")
-    print(f"  lands {L0} → {L1} | {T} mana by T{T} {pct(m0['develop']).strip()} → {pct(m1['develop']).strip()} | "
-          f"screw {pct(m0['screw']).strip()} → {pct(m1['screw']).strip()} | flood {pct(m0['flood']).strip()} → {pct(m1['flood']).strip()}"
-          + (f" | cmdr on T{cmd_mv} {pct(m0['cmdr']).strip()} → {pct(m1['cmdr']).strip()}" if cmd_mv else ""))
+    played = bool(deck_ms) and bool(plan_in or plan_out)       # then the plan's own games give development and commanders
+    print(f"  lands {L0} → {L1} | "
+          + ("" if played else f"{T} mana by T{T} {pct(m0['develop']).strip()} → {pct(m1['develop']).strip()} | ")
+          + f"screw {pct(m0['screw']).strip()} → {pct(m1['screw']).strip()} | flood {pct(m0['flood']).strip()} → {pct(m1['flood']).strip()}"
+          + (f" | cmdr on T{cmd_mv} {pct(m0['cmdr']).strip()} → {pct(m1['cmdr']).strip()}" if cmd_mv and not played else ""))
     for col in sorted(anyc):
         b, c2 = sum(L.qty for L in lands if col in L.cols), sum(x.qty for x in cur if col in x.cols)
         if b != c2: print(f"  {col} sources {b} → {c2}")
     tap0 = sum(L.qty for L in lands if L.tapped == "always"); tap1 = sum(x.qty for x in cur if x.tapped == "always")
     if tap0 != tap1: print(f"  lands tapped early {tap0} → {tap1}")
+    if played:
+        before, after = ms.simulate_many(a.deck, a.commander, on_play, a.trials * 3, turns, 5,
+                                         [(0, False, ()), (0, False, (), plan_in, plan_out)], deck=deck_ms)
+        print(f"  the whole plan in manasim.py games ({a.trials * 3:,}, same shuffles; castable by turn):")
+        print(f"    {T} mana by T{T} {pct(before['dev'][T]).strip()} → {pct(after['dev'][T]).strip()}")
+        for name, mv in cmds_ms:
+            ts = [t for t in (mv - 1, mv, mv + 1) if t >= 2]
+            m, se = ms.paired(after, before, name, mv)
+            print(f"    {name}: " + " | ".join(f"T{t} {pct(before['targets'][name]['by'][t]).strip()} → "
+                                             f"{pct(after['targets'][name]['by'][t]).strip()}" for t in ts)
+                  + ("" if ms.real(m, se) else "  (≈ same)"))
     flagged1 = [r for r in rows if scorer.odds(r, cur) < r["threshold"]]
     print(f"  cards under their color threshold: {len(flagged0)} → {len(flagged1)}")
     moved = sorted({r["name"]: r for r in flagged0 + flagged1}.values(), key=lambda r: scorer.odds(r, lands))

@@ -227,10 +227,10 @@ def compile_named(name, anyc):
     return c["name"], k
 
 
-def build(deck, on_play=True, land_delta=0, extra_targets=(), add_cards=()):
+def build(deck, on_play=True, land_delta=0, extra_targets=(), add_cards=(), cut_cards=()):
     """The mana-only goldfish Sim for a loaded deck: lands and accelerants real, the rest inert.
-    land_delta adds basics (or cuts them); add_cards are put in the deck too. Every change takes one
-    existing slot in place (a cut land's slot first, then an inert card's from the end), so every run
+    land_delta adds basics (or cuts them); cut_cards come out by name, add_cards go in. Every change takes
+    one existing slot in place (a cut card's slot first, then an inert card's from the end), so every run
     with the same seed deals the same games except for the changed cards.
     Returns (sim, targets [(name, Card, zone)], names, cache, add, cut)."""
     N, lib, cmdrs, anyc, keys = deck
@@ -239,11 +239,11 @@ def build(deck, on_play=True, land_delta=0, extra_targets=(), add_cards=()):
     for q, c, k in lib:
         cache[c["name"]] = k if (k.is_land or accelerates(k)) else _inert(k)
         names += [c["name"]] * q
-    open_slots = []                                     # slots of cut lands
-    for n, q in cut.items():
-        for _ in range(q):
-            i = max(j for j, x in enumerate(names) if x == n)
-            names[i] = None; open_slots.append(i)
+    open_slots = []                                     # slots of cut cards
+    for n in [n for n, q in cut.items() for _ in range(q)] + list(cut_cards):
+        idx = [j for j, x in enumerate(names) if x == n]
+        if not idx: raise ValueError(f"not in the deck to cut: {n}")
+        names[idx[-1]] = None; open_slots.append(idx[-1])
     inert_slots = [i for i, x in enumerate(names) if x is not None and cache[x].status == "inert"]
     new = [n for n, q in add.items() for _ in range(q)] + list(add_cards)
     for n in new:
@@ -281,12 +281,12 @@ def build(deck, on_play=True, land_delta=0, extra_targets=(), add_cards=()):
 
 
 def simulate(path, commander=None, on_play=True, trials=3000, turns=8, seed=1, land_delta=0, extra_targets=(), deck=None,
-             add_cards=()):
+             add_cards=(), cut_cards=()):
     """Run the mana-only games. Returns a dict: lands, N, dev (P(T mana by T)), mana/lands medians,
     targets {name: {"mv", "zone", "by": {t: p}, "by_hit": {t: (p, share of games)}, "median"}}, coverage."""
     deck = deck or load(path, commander)
     N, lib, cmdrs, anyc, keys = deck
-    sim, tg, names, cache, add, cut = build(deck, on_play, land_delta, extra_targets, add_cards)
+    sim, tg, names, cache, add, cut = build(deck, on_play, land_delta, extra_targets, add_cards, cut_cards)
     T = range(1, turns + 1)
     first = {n: [] for n, _, _ in tg}
     hit = {n: [] for n, _, _ in tg}
@@ -405,19 +405,19 @@ def lands_only(deck):
 # ---------------------------------------------------------------- several runs at once
 _DECKS = {}
 def _worker(job):
-    path, commander, on_play, trials, turns, seed, delta, base, extra, add = job
+    path, commander, on_play, trials, turns, seed, delta, base, extra, add, cut = job
     key = (path, commander)
     if key not in _DECKS: _DECKS[key] = load(path, commander)
     d = _DECKS[key]
     return simulate(path, commander, on_play, trials, turns, seed, delta, extra, deck=lands_only(d) if base else d,
-                    add_cards=add)
+                    add_cards=add, cut_cards=cut)
 
 def simulate_many(path, commander, on_play, trials, turns, seed, specs, deck=None):
-    """specs: [(land_delta, lands_only, extra_targets[, add_cards])]. Same shuffles in every run (the seed), so
-    differences between runs are the deck change, not noise. Runs in parallel processes when there are several;
-    falls back to one process if that isn't possible."""
-    jobs = [(path, commander, on_play, trials, turns, seed, sp[0], sp[1], tuple(sp[2]), tuple(sp[3] if len(sp) > 3 else ()))
-            for sp in specs]
+    """specs: [(land_delta, lands_only, extra_targets[, add_cards[, cut_cards]])]. Same shuffles in every run (the
+    seed), so differences between runs are the deck change, not noise. Runs in parallel processes when there are
+    several; falls back to one process if that isn't possible."""
+    jobs = [(path, commander, on_play, trials, turns, seed, sp[0], sp[1], tuple(sp[2]), tuple(sp[3] if len(sp) > 3 else ()),
+             tuple(sp[4] if len(sp) > 4 else ())) for sp in specs]
     if len(jobs) > 2:
         try:
             from concurrent.futures import ProcessPoolExecutor
@@ -523,9 +523,27 @@ def paired(r, base, cmd_name, mv):
     return m, sd / math.sqrt(n)
 
 
+def plan_score(r, cmds, T):
+    """Commanders' speed (each one's _score, averaged) for a land plan; no commander: T mana by T."""
+    if not cmds: return _score(r, None, 0, T)
+    return sum(_score(r, n, mv, T) for n, mv in cmds) / len(cmds)
+
+
+def plan_paired(r, base, cmds):
+    """paired() for plan_score: game by game over all commanders. (mean difference, standard error)."""
+    import math
+    if not cmds: return 0.0, 1.0
+    a = [sum(xs) / len(cmds) for xs in zip(*(_game_scores(r, n, mv) for n, mv in cmds))]
+    b = [sum(xs) / len(cmds) for xs in zip(*(_game_scores(base, n, mv) for n, mv in cmds))]
+    d = [x - y for x, y in zip(a, b)]
+    n = len(d); m = sum(d) / n
+    sd = math.sqrt(sum((x - m) ** 2 for x in d) / (n - 1)) if n > 1 else 0.0
+    return m, sd / math.sqrt(n)
+
+
 def _score(r, cmd_name, mv, T):
-    """How fast the commander comes down: P(castable) averaged over the turn before curve, on curve and the
-    turn after. No commander: T mana by T for T and T+1."""
+    """How fast a commander comes down: P(castable) averaged over the turn before curve, on curve and the
+    turn after. cmd_name None: T mana by T for T and T+1."""
     if cmd_name and cmd_name in r["targets"]:
         by = r["targets"][cmd_name]["by"]
         ts = [t for t in (mv - 1, mv, mv + 1) if t in by and t >= 1]
@@ -536,36 +554,42 @@ def _score(r, cmd_name, mv, T):
 def land_or_ramp(path, commander, on_play, deck, bracket=None, max_price=None, trials=600, confirm=2000,
                  limit=24, T=3, seed=1):
     """One slot: a land, a ramp card, or a land traded for a ramp card? Every shortlisted ramp card is played in
-    the deck (taking an inert card's slot), the best three are rerun with more games next to: now, +1 land, and
-    the best card in a basic's slot. Returns a dict for print_land_or_ramp."""
+    the deck (taking an inert card's slot) and ranked for each commander independently; the best three for each
+    commander are rerun with more games next to: now, +1 land, and each commander's best card in a basic's slot.
+    Returns a dict for print_land_or_ramp."""
     N, lib, cmdrs, anyc, keys = deck
-    cmd = max(cmdrs, key=lambda x: int(x[0].get("cmc") or 0)) if cmdrs else None
-    cmd_name, mv = (cmd[0]["name"], int(cmd[0].get("cmc") or 0)) if cmd else (None, 0)
-    turns = max(T + 1, mv + 1)
+    cmds = sorted(((c["name"], int(c.get("cmc") or 0)) for c, k in cmdrs), key=lambda x: (x[1], x[0]))   # cast first, first
+    turns = max([T + 1] + [mv + 1 for _, mv in cmds])
     short, notes = ramp_candidates(deck, bracket, max_price, limit)
     if not short: return {"short": [], "notes": notes}
     specs = [(0, False, ())] + [(0, False, (), (n,)) for n, *_ in short]
     runs = simulate_many(path, commander, on_play, trials, turns, seed, specs, deck=deck)
-    base_s = _score(runs[0], cmd_name, mv, T)
-    ranked = sorted(zip(short, runs[1:]), key=lambda x: -_score(x[1], cmd_name, mv, T))
-    top = [x[0] for x in ranked[:3]]
-    has_basic = any(k.is_land and k.basic for q, c, k in lib)
-    specs2 = [(0, False, ()), (1, False, ())] + [(0, False, (), (n,)) for n, *_ in top] \
-        + ([(-1, False, (), (top[0][0],))] if has_basic else [])
+    keys_ = cmds or [(None, 0)]
+    ranked = {}
+    for name, mv in keys_:
+        b = _score(runs[0], name, mv, T)
+        ranked[name] = sorted(((x[0], _score(r, name, mv, T) - b) for x, r in zip(short, runs[1:])), key=lambda x: -x[1])
+    top = []
+    for name, mv in keys_:
+        for n, d in ranked[name][:3]:
+            if n not in top: top.append(n)
+    best_of = {name: ranked[name][0][0] for name, mv in keys_}
+    trades = list(dict.fromkeys(best_of.values())) if any(k.is_land and k.basic for q, c, k in lib) else []
+    specs2 = [(0, False, ()), (1, False, ())] + [(0, False, (), (n,)) for n in top] + [(-1, False, (), (n,)) for n in trades]
     runs2 = simulate_many(path, commander, on_play, confirm, turns, seed + 1, specs2, deck=deck)
-    rows = [("now", runs2[0]), ("+1 land" + _basic_note(runs2[1]) + ", cut a nonland", runs2[1])]
-    verdict = None
-    if cmd_name:
-        land, best = runs2[1], runs2[2]
-        dl, sl = paired(land, runs2[0], cmd_name, mv)
-        db, sb = paired(best, runs2[0], cmd_name, mv)
-        dd, sd = paired(best, land, cmd_name, mv)
-        verdict = {"land": (dl, sl), "best": (db, sb), "best_vs_land": (dd, sd), "best_name": top[0][0]}
-    rows += [(f"+1 {n}, cut a nonland", r) for (n, *_), r in zip(top, runs2[2:2 + len(top)])]
-    if has_basic:
-        rows.append((f"{_basic_note(runs2[-1], cut=True)} → {top[0][0]} (same land count − 1)", runs2[-1]))
-    return {"short": short, "verdict": verdict, "ranked": [(x[0][0], x[0][4], _score(x[1], cmd_name, mv, T) - base_s) for x in ranked],
-            "rows": rows, "cmd": cmd_name, "mv": mv, "T": T, "notes": notes, "trials": trials, "confirm": confirm,
+    base, land = runs2[0], runs2[1]
+    added = dict(zip(top, runs2[2:2 + len(top)]))
+    traded = dict(zip(trades, runs2[2 + len(top):]))
+    rows = [("now", base), ("+1 land" + _basic_note(land) + ", cut a nonland", land)]
+    rows += [(f"+1 {n}, cut a nonland", added[n]) for n in top]
+    rows += [(f"{_basic_note(traded[n], cut=True)} → {n} (land count − 1)", traded[n]) for n in trades]
+    verdicts = {}
+    for name, mv in cmds:
+        best = max(top, key=lambda n: paired(added[n], base, name, mv)[0])
+        verdicts[name] = {"land": paired(land, base, name, mv), "best": paired(added[best], base, name, mv),
+                          "best_vs_land": paired(added[best], land, name, mv), "best_name": best}
+    return {"short": short, "verdicts": verdicts, "ranked": ranked, "rows": rows, "cmds": cmds, "T": T, "notes": notes,
+            "trials": trials, "confirm": confirm,
             "why": {n: w for n, c, k, w, t in short}, "tags": {n: t for n, c, k, w, t in short}}
 
 
@@ -574,54 +598,60 @@ def _basic_note(r, cut=False):
     return (" (" + ", ".join(d) + ")") if d and not cut else (", ".join(d) if d else "a land")
 
 
+def _verdict(v):
+    (dl, sl), (db, sb), (dd, sd) = v["land"], v["best"], v["best_vs_land"]
+    nm = v["best_name"]
+    if real(dd, sd) and dd > 0:
+        return f"{nm} does more than one more land ({100 * db:+.1f} vs {100 * dl:+.1f} pts, averaged over the three turns)"
+    if real(dd, sd):
+        return f"one more land does more than the best ramp card, {nm} ({100 * dl:+.1f} vs {100 * db:+.1f} pts)"
+    if not real(db, sb) and not real(dl, sl):
+        return "neither a land nor a ramp card moves it beyond noise: fill the slot for other reasons"
+    return f"one more land and {nm} do about the same ({100 * dl:+.1f} vs {100 * db:+.1f} pts): pick on flood and what else the card does"
+
+
 def print_land_or_ramp(res, flood_of=None):
-    """flood_of(row label, result) -> flood probability or None (landbase passes its exact formula)."""
+    """flood_of(row label, result) -> flood probability or None (landbase passes its exact formula).
+    Each commander has its own columns (castable by the turn before curve, on curve, the turn after), its own
+    '≈' mark (within noise or under 1 point of now, for that commander), its own verdict and best picks."""
     if not res.get("short"):
         n = res["notes"]
-        print(f"  no ramp candidates (pool {n.get('pool', 0)}, {n.get('partial', 0)} read only partially)"); return
-    cmd, mv, T = res["cmd"], res["mv"], res["T"]
-    cols = [(f"T{t}", t) for t in (mv - 1, mv, mv + 1) if t >= 2] if cmd else []
-    head = "".join(f"{('cmdr ' if i == 0 else '') + lab:>11}" for i, (lab, t) in enumerate(cols))
-    print(f"  {'change':<58}{head}{f'{T} by T{T}':>9}" + (f"{'flood':>8}" if flood_of else "")
-          + ("" if not cmd else f"   ({cmd}, MV {mv}: castable by turn)"))
+        print(f"  no ramp candidates (pool {n.get('pool', 0)})"); return
+    cmds, T = res["cmds"], res["T"]
+    groups = [(name, mv, [t for t in (mv - 1, mv, mv + 1) if t >= 2]) for name, mv in cmds]
+    W = 50
+    short_name = lambda n: n.split(",")[0].split(" // ")[0]
+    top_line = "".join(f"{(short_name(n) + f' (MV {mv})')[:len(ts) * 10 + 2]:<{len(ts) * 10 + 2}}" for n, mv, ts in groups)
+    print(f"  {'':<{W}}{top_line}")
+    head = "".join("".join(f"{'T' + str(t):>10}" for t in ts) + "  " for n, mv, ts in groups)
+    print(f"  {'change (castable by turn)':<{W}}{head}{f'{T} by T{T}':>9}" + (f"{'flood':>8}" if flood_of else ""))
     base = res["rows"][0][1]
     for label, r in res["rows"]:
         cells = ""
-        for lab, t in cols:
-            v, b = r["targets"][cmd]["by"][t], base["targets"][cmd]["by"][t]
-            cells += f"{100 * v:6.1f}%" + (f"{100 * (v - b):+4.0f}" if r is not base else "    ")
+        for name, mv, ts in groups:
+            for t in ts:
+                v, b = r["targets"][name]["by"][t], base["targets"][name]["by"][t]
+                cells += f"{100 * v:6.1f}%" + (f"{100 * (v - b):+3.0f}" if r is not base else "   ")
+            cells += "  " if r is base or real(*paired(r, base, name, mv)) else " ≈"
         dv, db = r["dev"][T], base["dev"][T]
         cells += f"{100 * dv:6.1f}%" + (f"{100 * (dv - db):+3.0f}" if r is not base else "   ")
         fl = flood_of(label, r) if flood_of else None
         if flood_of: cells += f"{100 * fl:7.1f}%" if fl is not None else f"{'':>8}"
-        note = ""
-        if cmd and r is not base:
-            m, se = paired(r, base, cmd, mv)
-            note = "" if real(m, se) else "  ≈ same as now"
-        print(f"  {label[:58]:<58}{cells}{note}")
-    print(f"  ramp tried: {len(res['short'])} of {res['notes']['pool']} legal candidates "
-          f"({res['trials']:,} games each; the table reruns the best with {res['confirm']:,})"
-          + ("" if res["notes"]["gc_ok"] else "; Game Changers left out at this bracket")
+        print(f"  {label[:W]:<{W}}{cells}")
+    print(f"  ≈ = within noise or under 1 point of now, for that commander. Ramp tried: {len(res['short'])} of "
+          f"{res['notes']['pool']} legal candidates ({res['trials']:,} games each; the table reruns the best with "
+          f"{res['confirm']:,})" + ("" if res["notes"]["gc_ok"] else "; Game Changers left out at this bracket")
           + ("; the commander's EDHREC snapshot added its ramp" if res["notes"]["snapshot"] else ""))
-    v = res.get("verdict")
-    if v:
-        (dl, sl), (db, sb), (dd, sd) = v["land"], v["best"], v["best_vs_land"]
-        nm = v["best_name"]
-        if real(dd, sd) and dd > 0:
-            msg = f"{nm} does more for the commander than one more land ({100 * db:+.1f} vs {100 * dl:+.1f} pts, averaged over the three turns)"
-        elif real(dd, sd):
-            msg = f"one more land does more for the commander than the best ramp card, {nm} ({100 * dl:+.1f} vs {100 * db:+.1f} pts)"
-        elif not real(db, sb) and not real(dl, sl):
-            msg = "neither a land nor a ramp card moves the commander beyond noise: fill the slot for other reasons"
-        else:
-            msg = f"one more land and {nm} do about the same for the commander ({100 * dl:+.1f} vs {100 * db:+.1f} pts): pick on flood and what else the card does"
-        print(f"  verdict: {msg}")
-    best = res["ranked"][:8]
-    print("  best by commander speed: " + "; ".join(
-        f"{n} {100 * d:+.1f}" + (f" [{', '.join(res['tags'][n])}]" if res["tags"][n] else "") for n, t, d in best))
-    for n, t, d in best[:3]:
-        print(f"      {n}: {res['why'][n]}")
-
+    for name, mv in cmds:
+        print(f"  verdict, {short_name(name)}: {_verdict(res['verdicts'][name])}")
+    shown = set()
+    for name, mv in (cmds or [(None, 0)]):
+        best = res["ranked"][name][:8]
+        lab = f"best for {short_name(name)}" if name else "best for T3 development"
+        print(f"  {lab}: " + "; ".join(
+            f"{n} {100 * d:+.1f}" + (f" [{', '.join(res['tags'][n])}]" if res["tags"][n] else "") for n, d in best))
+        for n, d in best[:3]:
+            if n not in shown: print(f"      {n}: {res['why'][n]}"); shown.add(n)
 
 def main():
     ap = argparse.ArgumentParser(description="Mana development with ramp (see module docstring)")

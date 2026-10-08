@@ -191,7 +191,7 @@ def print_landbase(path, o, lists):
     for line in r.stdout.splitlines():
         if line.startswith("## "): sec = line[3:5]; continue
         if sec == "1." and re.match(r"\s+(recommendation|no count|⚠ flood|ramp: )", line): out.append(line.strip())
-        elif sec == "1b" and re.match(r"\s+verdict: ", line): out.append("land or ramp " + line.strip())
+        elif sec == "1b" and re.match(r"\s+verdict, ", line): out.append("land or ramp " + line.strip())
         elif sec == "3." and line.strip() and not line.lstrip().startswith("never cut"): out.append(line.strip())
         elif sec == "4." and re.match(r"\s+(lands \d+ → |cards under)", line): out.append(line.strip())
     print("  land base (landbase.py; full table and every card's odds: landbase.py " + path + "):")
