@@ -508,7 +508,7 @@ def packages_report(decklist_path, commander_override=None, on_play=True, turns=
     ts, dc = mtg.deck_combos(sorted(lib_names | cmd_names))
     combos = sorted((v for v in (dc or []) if len(v["cards"]) <= 3),
                     key=lambda v: (len(v["cards"]), -v.get("pop", 0)))
-    extra_combos = max(0, len(combos) - max_combos)
+    extra_combos = 0 if max_combos is None else max(0, len(combos) - max_combos)     # None: every combo
     for v in combos[:max_combos]:
         specs.append(("combo", " + ".join(v["cards"]), v["cards"], v))
     trees = None

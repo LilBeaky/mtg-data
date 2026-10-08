@@ -1,6 +1,6 @@
 # Tutor plan
 
-Status: **phases 0-3 done** (2026-10-08); phase 4 (audit) next. Written 2026-10-08.
+Status: **phases 0-4 done** (2026-10-08). Written 2026-10-08.
 
 ## Goal
 
@@ -170,6 +170,14 @@ swap for your weakest tutor).
   tutor, the best tutor to add.
 - Later, separately: a priorities block at the top of the audit (the few findings that matter most across
   sections). Its own plan when we get there.
+
+**Done 2026-10-08.** Audit 4b is now a table (every Spellbook combo of ≤3 cards, not the first 8), with each
+package's pieces and tutors under it. New 4c runs tutors.py on the same list (`--json` hands the audit the
+numbers): a headline table (key cards, best case → played, biggest dependency per view, strongest and weakest
+tutor played, best tutor to add, the swap, fidelity), a best-vs-played table for every key card widest gap
+first, then tutors.py's whole report as 4c.1–4c.8. `--no-sim` drops the played parts; `--no-tutors` skips 4c.
+Nothing in the report is cut any more: name lists are complete, long table cells wrap instead of ending in "…",
+every dependency, chain route, combo and unverified tutor is listed (the user asked that nothing be swept up).
 
 ## Test decks
 

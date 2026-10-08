@@ -670,10 +670,11 @@ def copies_equiv(N, n, p):
 # ------------------------------------------------------------------ report
 def pct(p): return f"{100 * p:5.1f}%"
 
-def names_list(xs, lists, limit=12):
+def names_list(xs, lists):
+    """Every name, sorted (nothing cut); with --no-lists, just the count."""
     xs = sorted(xs)
     if not lists: return f"{len(xs)} card{'s' if len(xs) != 1 else ''}"
-    return "; ".join(xs[:limit]) + (f" … (+{len(xs) - limit})" if len(xs) > limit else "")
+    return "; ".join(xs)
 
 def played_runs(path, commander, on_play, turns, yours, inferred, packages, lib_tutors, trials=2000, seed=7):
     """manasim.py tutor-mode games: the deck as is, then once per library tutor with that tutor inert (same shuffles).
@@ -763,7 +764,7 @@ def found_paired(r, base, keys, T):
 class Out:
     """The report's one layout: headings, notes, bullet lines and tables. Text (default) prints aligned tables;
     --md prints the same tables as Markdown (they render in the app, on GitHub and in claude.ai)."""
-    WIDTH = 60                                     # widest text column; longer cells are cut with "…"
+    WIDTH = 60                                     # widest text column; longer cells wrap onto more lines
 
     def __init__(self, md=False): self.md = md
 
@@ -785,12 +786,15 @@ class Out:
             for r in rows: print("| " + " | ".join(c.replace("|", "\\|") for c in r) + " |")
             print()
             return
-        cut = lambda c: c if len(c) <= self.WIDTH else c[:self.WIDTH - 1] + "…"
-        rows = [[cut(c) for c in r] for r in rows]
-        w = [max([len(h)] + [len(r[i]) for r in rows]) for i, h in enumerate(headers)]
+        import textwrap
+        wrap = lambda c: textwrap.wrap(c, self.WIDTH, break_on_hyphens=False) or [""] if len(c) > self.WIDTH else [c]
+        rows = [[wrap(c) for c in r] for r in rows]
+        w = [max([len(h)] + [len(x) for r in rows for x in r[i]]) for i, h in enumerate(headers)]
         fmt = lambda cells: "  " + "  ".join(c.rjust(w[i]) if i in right else c.ljust(w[i]) for i, c in enumerate(cells)).rstrip()
         print(fmt(headers)); print("  " + "  ".join("-" * x for x in w))
-        for r in rows: print(fmt(r))
+        for r in rows:
+            for j in range(max(len(c) for c in r)):        # a wrapped cell continues on the next lines, other cells blank
+                print(fmt([c[j] if j < len(c) else "" for c in r]))
 
 
 def how_used(t):
@@ -816,6 +820,7 @@ def main():
     ap.add_argument("--no-suggest", action="store_true", help="skip section 8 (tutors to add)")
     ap.add_argument("--max-price", type=float, help="section 8: candidate tutors at most $N")
     ap.add_argument("--suggest", type=int, default=16, help="section 8: candidates played (default 16)")
+    ap.add_argument("--json", help="also write the headline numbers to this file (audit.py section 4c reads it)")
     a = ap.parse_args()
     if not os.path.exists(a.deck): sys.exit(f"deck file not found: {a.deck}")
     if a.deck.lower().endswith(".dck"): sys.exit("this is a Forge .dck file; pass the .txt list")
@@ -825,6 +830,8 @@ def main():
     if a.trials < 1: sys.exit("--trials must be at least 1")
     on_play, lists = not a.draw, not a.no_lists
     o = Out(a.md)
+    summary = {"turns": turns, "keys": [], "deps": [], "worth": [], "add": [], "swap": None, "played_trials": None,
+               "fidelity": None, "yours": [], "inferred": [], "agree": None, "bad_keys": [], "packages": []}
     d = Deck(a.deck, a.commander)
     cmd = " + ".join(sorted(d.cmd_names)) or "(no commander)"
     o.title(f"TUTORS: {cmd} | {d.N} cards in library | on the {'play' if on_play else 'draw'}")
@@ -866,7 +873,7 @@ def main():
     if lists and targets:
         o.note("targets:")
         for n, tg in targets:
-            if tg: o.bullet(f"{n}: {names_list(tg, lists, 14)}", 1)
+            if tg: o.bullet(f"{n}: {names_list(tg, lists)}", 1)
 
     # ---- 2. chains
     o.h2("2. Chains (tutors that find other tutors; a fetched tutor must land where it still works)")
@@ -895,9 +902,8 @@ def main():
             if key in seen_keys: continue
             seen_keys.add(key)
             ends = sorted({q[-1] for L2, q in chains if tuple(q[:-1]) == key})
-            o.bullet(f"{path_str(p[:-1])} → {names_list(ends, lists, 8)}", 1)
+            o.bullet(f"{path_str(p[:-1])} → {names_list(ends, lists)}", 1)
             shown += 1
-            if shown >= 12: o.bullet("… more omitted", 1); break
     if not links and not chains:
         o.note("none: no tutor here can find another tutor that still works where it lands")
 
@@ -912,12 +918,12 @@ def main():
         one = sorted(x for x in nonbasic if len(R[x]) == 1)
         many = sorted(x for x in nonbasic if len(R[x]) >= 2)
         rows.append([label, len(many), len(one), len(unreach), len(nonbasic)])
-        if unreach: extra.append(f"{label}, draw-only: {names_list(unreach, lists, 40)}")
+        if unreach: extra.append(f"{label}, draw-only: {names_list(unreach, lists)}")
         if one:
             via = {}
             for x in one: via.setdefault(next(iter(R[x])), []).append(x)
             for v, xs in sorted(via.items(), key=lambda kv: -len(kv[1])):
-                extra.append(f"{label}, only via {v}: {names_list(xs, lists, 20)}")
+                extra.append(f"{label}, only via {v}: {names_list(xs, lists)}")
     o.table(["View", "2+ ways", "1 way", "No tutor", "Of"], rows, right=(1, 2, 3, 4))
     for e in extra: o.note(e)
     lands_nb = sorted(x for x in d.lib_names if d.is_land[x] and not d.basic[x])
@@ -932,9 +938,12 @@ def main():
             lost = [x for x in nonbasic if R[x] and not d.reach(x, frozenset({src}), spec)]
             if lost: deps.append((src, lost))
         deps.sort(key=lambda z: (z[0] not in d.cmd_names, -len(z[1]), z[0]))
-        if not deps: rows.append([label, "none", 0, "every tutorable card has two independent starting points"])
-        for src, lost in deps[:10]:
-            rows.append([label, src + (" (commander)" if src in d.cmd_names else ""), len(lost), names_list(lost, lists, 8)])
+        if not deps:
+            rows.append([label, "none", 0, "every tutorable card has two independent starting points"])
+            summary["deps"].append({"view": label, "card": None, "commander": False, "lost": []})
+        for src, lost in deps:
+            rows.append([label, src + (" (commander)" if src in d.cmd_names else ""), len(lost), names_list(lost, lists)])
+            summary["deps"].append({"view": label, "card": src, "commander": src in d.cmd_names, "lost": sorted(lost)})
     o.table(["View", "Without", "Cards cut off", "Which"], rows, right=(2,))
 
     # ---- keys: yours (header lines) and inferred beyond them
@@ -956,14 +965,16 @@ def main():
     for label, parts in pk_specs:
         mem = [sm._part_members(p, d.lib_names | d.cmd_names, trees) for p in parts]
         pk_resolved.append(("header", label, parts, mem))
-    for v in combos[:8]:
+    PLAYED_COMBOS = 8                     # combos the played games try to assemble (more would dilute what the pilot fetches)
+    for i, v in enumerate(combos):
         pk_resolved.append(("combo", " + ".join(v["cards"]), v["cards"], [{x} for x in v["cards"]]))
+    n_played_pk = len(pk_specs) + min(len(combos), PLAYED_COMBOS)
 
     # ---- played games (manasim.py tutor mode)
     lib_tutors = sorted(x for x in d.tutors if x in d.lib_names and not all(d.land_only(t) for t in d.tutors[x]))
     played, dropped_runs = None, {}
     if not a.no_played and (keys or pk_resolved):
-        pk_names = [(label, [sorted(m) for m in mem]) for src, label, parts, mem in pk_resolved if all(mem)]
+        pk_names = [(label, [sorted(m) for m in mem]) for src, label, parts, mem in pk_resolved[:n_played_pk] if all(mem)]
         played, dropped_runs = played_runs(a.deck, a.commander, on_play, turns, yours, inferred, pk_names, lib_tutors,
                                            a.played_trials)
 
@@ -972,6 +983,8 @@ def main():
     if bad_keys: o.note(f"⚠ '# key:' names not in the library: {'; '.join(bad_keys)}")
     agree = [x for x in yours if x in scores and scores[x][0] >= INFER_MIN]
     o.note(f"yours ({len(yours)}, from the header lines): " + ("; ".join(yours) if yours else "none"))
+    summary.update(yours=list(yours), inferred=list(inferred), bad_keys=list(bad_keys),
+                   agree=None if a.no_infer or not yours else len(agree))
     if not a.no_infer:
         if yours:
             o.note(f"inference also picks {len(agree)} of your {len(yours)}"
@@ -1010,6 +1023,9 @@ def main():
             pv = played["found"][x]["by"][T0] if pl and x in played["found"] else access_odds(d, x, T0, on_play, frozenset(d.cmd_names))[0]
             r.append(f"{copies_equiv(d.N, sm.cards_seen(T0, on_play), pv):.1f}")
             rows.append(r)
+            summary["keys"].append({"card": x, "key": r[1], "ways": r[2], "cells": dict(zip(head[3:], r[3:])),
+                                    "best": {T: access_odds(d, x, T, on_play, frozenset(d.cmd_names))[0] for T in turns},
+                                    "played": {T: played["found"][x]["by"][T] for T in turns} if pl and x in played["found"] else None})
         o.table(head, rows, right=tuple(range(2, len(head))))
         o.note("best: the card, or a library card that leads to it, every chain free. specific: without find-anything tutors.")
         o.note("+cmdr: also the commander's own tutor once manasim.py games have it out long enough to use it (a ceiling).")
@@ -1020,6 +1036,7 @@ def main():
                 import manasim
                 fl = manasim.fidelity_line(manasim.role_coverage(manasim.load(a.deck, a.commander)))
                 if fl: o.note(fl + " (played numbers run low where these aren't played)")
+                summary["fidelity"] = fl
             except Exception:
                 pass
         o.note("Copies: how many copies of the card would give the same odds by that turn" + (" (from played)." if pl else "."))
@@ -1027,6 +1044,11 @@ def main():
     # ---- 6. packages
     o.h2("6. Packages (every piece drawn, or reached by a different tutor chain; a repeatable tutor can cover several)")
     rows, notes6 = [], []
+    def head6():
+        h = []
+        for T in turns: h += [f"T{T} drawn", f"T{T} tutors"] + ([f"T{T} specific"] if generic else []) + [f"T{T} +cmdr"] \
+            + ([f"T{T} played"] if played is not None else [])
+        return h
     for src, label, parts, mem in pk_resolved:
         bad = [p for p, m in zip(parts, mem) if not m]
         if bad: notes6.append(f"{label}: no card in the deck matches {'; '.join(bad)}"); continue
@@ -1043,9 +1065,8 @@ def main():
             r.append(pct(package_odds_chains(d, pieces, T, on_play, a.trials)[1]).strip() if cmd_reach else "—")
             if played is not None: r.append(pct(asm["by"][T]).strip() if asm else "—")
         rows.append(r)
-    head = ["Package", "From"]
-    for T in turns: head += [f"T{T} drawn", f"T{T} tutors"] + ([f"T{T} specific"] if generic else []) + [f"T{T} +cmdr"] \
-        + ([f"T{T} played"] if played is not None else [])
+        summary["packages"].append({"label": label, "source": src, "cells": dict(zip(head6(), r[2:]))})
+    head = ["Package", "From"] + head6()
     if rows: o.table(head, rows, right=tuple(range(2, len(head))))
     for n_ in notes6: o.note(n_)
     dropped = sum(1 for v in (dc or []) if len(v["cards"]) <= 3 and tutor_plus_target(v["cards"]))
@@ -1055,7 +1076,9 @@ def main():
     elif rows:
         o.note(f"tutors: drawn or reached through library tutors; +cmdr: the commander's tutoring too, used as often as needed (a")
         o.note(f"ceiling). Sampled, {a.trials:,} games per cell (±~0.5 pts). Spellbook 'combos' that are only a tutor and its target are left out.")
-    if len(combos) > 8: o.note(f"+{len(combos) - 8} more combo(s) not shown")
+    if len(combos) > PLAYED_COMBOS and played is not None:
+        o.note(f"played: the games assemble your package lines and the {PLAYED_COMBOS} smallest, most played combos; the other "
+               f"{len(combos) - PLAYED_COMBOS} show '—' there")
 
     worth = {}
     # ---- 7. tutor worth
@@ -1093,8 +1116,12 @@ def main():
                 r.append(f"{100 * m:+.0f}" + ("" if abs(m) >= max(2 * se, 0.01) else " ≈"))
             r.append(f"{100 * dk:+.1f}")
             if generic: r.append(f"{100 * ks:+.1f}" if ks is not None else "find-anything")
-            r += [f"{100 * da:+.1f}", names_list(only, lists, 6) if only else "—"]
+            r += [f"{100 * da:+.1f}", names_list(only, lists) if only else "—"]
             out.append(r)
+        for dk, ks, da, tname, only in rows:
+            summary["worth"].append({"tutor": tname, "played": worth[tname][0] if tname in worth else None,
+                                     "se": worth[tname][1] if tname in worth else None, "best_keys": dk, "best_all": da,
+                                     "only": only})
         nr = 1 + (1 if pl else 0) + (1 if generic else 0)
         o.table(head, out, right=tuple(range(1, nr + 2)))
         if pl:
@@ -1112,7 +1139,7 @@ def main():
             o.note("no tutor in the pool reaches these key cards within the filters")
         else:
             import manasim, io, contextlib
-            pk_names = [(label, [sorted(m) for m in mem]) for src, label, parts, mem in pk_resolved if all(mem)]
+            pk_names = [(label, [sorted(m) for m in mem]) for src, label, parts, mem in pk_resolved[:n_played_pk] if all(mem)]
             want = (tuple(yours), tuple((lab, tuple(tuple(p) for p in parts)) for lab, parts in pk_names), tuple(inferred))
             specs = [(0, False, (), (c["name"],), (), "tutors", (), want) for c, r, t in cands]
             with contextlib.redirect_stdout(io.StringIO()):
@@ -1129,6 +1156,8 @@ def main():
                 ri = [k for k in r if k not in yours]
                 chain = sorted(x for x in lib_tutor_names if t.target.matches(d.card[x]))
                 reach = ("all your keys" if len(ry) == len(yours) and yours else "; ".join(ry) or "none of yours")                     + (f" (+{len(ri)} inferred)" if ri else "") + (f"; via {', '.join(chain)}" if chain and not t.target.any else "")
+                summary["add"].append({"tutor": c["name"], "played": m, "se": se, "finds": reach, "mv": int(c.get("cmc") or 0),
+                                       "how": how_used(t), "price": mtg.price_str(c) or "—", "gc": bool(c.get("game_changer"))})
                 rows.append([c["name"], f"{100 * m:+.0f}" + ("" if abs(m) >= max(2 * se, 0.01) else " ≈"),
                              reach, int(c.get("cmc") or 0), how_used(t) + (f" ({t.target.describe()})" if not t.target.any else ""),
                              t.dest, mtg.price_str(c) or "—", "GC" if c.get("game_changer") else ""])
@@ -1140,7 +1169,7 @@ def main():
                    + ("" if gc_ok else " Game Changers left out at this bracket.") + (f" Under ${a.max_price:g}." if a.max_price else ""))
             if unverified:
                 o.note(f"not ranked, because goldfish.py reads them only partly (the games could misjudge them; worth a look by hand): "
-                       + "; ".join(f"{c['name']} ({st_})" for c, r, st_ in unverified[:12]) + (" …" if len(unverified) > 12 else ""))
+                       + "; ".join(f"{c['name']} ({st_})" for c, r, st_ in unverified))
             if worth and res and res[0][0] > 0:
                 weakest = min(worth, key=lambda t: worth[t][0])
                 best_c = res[0][2]["name"]
@@ -1148,8 +1177,14 @@ def main():
                     sw = manasim.simulate_many(a.deck, a.commander, on_play, played["trials"], max(turns), 7,
                                                [(0, False, (), (best_c,), (), "tutors", (weakest,), want)])[0]
                 m, se = found_paired(sw, played, keys, T0)
+                summary["swap"] = {"out": weakest, "out_worth": worth[weakest][0], "in": best_c, "played": m, "se": se}
                 o.note(f"swap: {weakest} (your weakest tutor, {100 * worth[weakest][0]:+.0f}) → {best_c}: "
                        f"{100 * m:+.0f} key cards per 100 games" + ("" if abs(m) >= max(2 * se, 0.01) else " (≈ noise)"))
+
+    if a.json:
+        summary["played_trials"] = played["trials"] if played is not None else None
+        summary["commander"] = cmd
+        json.dump(summary, open(a.json, "w", encoding="utf-8"), indent=1, default=str)
 
 
 if __name__ == "__main__":

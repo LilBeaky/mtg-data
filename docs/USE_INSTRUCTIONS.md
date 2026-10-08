@@ -36,7 +36,7 @@ Custom queries only when no tool answers; respect §7. Suggest folding useful on
 
 ## 4. mtg.py and deck files
 
-**Commands:** `card NAME...` · `card -f FILE [--brief]` · `rulings NAME [--grep WORD]` · `tags NAME` · `search [filters] [--full]` · `deck FILE [--all-combos]` · `combos NAME... [--bracket N]` (combos containing all named cards) · `near DECK [--max-price N] [--limit N]` (cards one away from completing a combo: legal, in CI, 2-card completions and over-target brackets flagged; audit §1 shows the top 5) · `gc` · `rule 702.62a` / `rule --grep WORD`.
+**Commands:** `card NAME...` · `card -f FILE [--brief]` · `rulings NAME [--grep WORD]` · `tags NAME` · `search [filters] [--full]` · `deck FILE [--all-combos]` · `combos NAME... [--bracket N]` (combos containing all named cards) · `near DECK [--max-price N] [--limit N]` (cards one away from completing a combo: legal, in CI, 2-card completions and over-target brackets flagged; audit §1 lists them all) · `gc` · `rule 702.62a` / `rule --grep WORD`.
 
 **Search filters:** `--ci UBR` (subset; `C` = colorless) `--text/--type/--name REGEX` `--cmc 3|2-4` `--tag LABEL` `--gc/--no-gc` `--max-price/--min-price N` `--sort price` `--all` (include non-legal) `--limit N`. Default output is names only: search → shortlist → `card`.
 
@@ -65,19 +65,19 @@ Companion: excluded from the count, checked for legality/color identity, include
 The user wants audits as thorough as the tooling allows. Every step exists because an audit went wrong without it.
 
 1. Write the list to a file exactly as given (keep `#tags`); add a header if missing (§4).
-2. `python3 scripts/audit.py deck.txt` (~4s). Fix every `NOT FOUND` first (reskin → alias; new set → verify externally). Note stale pets.
+2. `python3 scripts/audit.py deck.txt` (a few minutes: manasim.py and tutors.py games; `--no-sim --no-tutors` for a ~10s pass). Fix every `NOT FOUND` first (reskin → alias; new set → verify externally). Note stale pets.
 3. No EDHREC snapshot → fetch and transcribe one (§9), then re-run.
 4. Settle K for each role: read the printed card lists. The user's tags win when they cover ≥50% of nonlands; otherwise oracle tags, which **overcount** (candidate lists, not K). Correct with `--k role=N` and re-run. Cost reducers aren't in `ramp`. Treat anything marked ⚠ K-SENSITIVE as unsettled until confirmed. State every K correction in the write-up.
-5. Run the odds that matter for *this* deck's plan (§6), not just the battery. Run tutors.py for tutor-heavy decks; goldfish after the audit if needed.
+5. Run the odds that matter for *this* deck's plan (§6), not just the battery. The audit's §4c already carries tutors.py's whole report; re-run tutors.py alone for `--md`, `--max-price` or other turns.
 6. Pull oracle text only for cards under evaluation, in one `card -f` batch.
 7. Close rules questions with `rulings --grep` / `rule` before writing them up. "I'm not certain" only after the repo can't answer.
 8. Manual bracket items (§8).
 9. Verify every card from EDHREC or memory with `mtg.py card` before recommending it.
 10. Write-up order: findings (interactions, nonbos), then numbers, then a separate EDHREC section. Challenge pets/plan with questions, not cut lists. Push new snapshots/aliases.
 
-**audit.py flags:** `--no-landbase` (skip the land-base run) `--no-sim` (no manasim.py games: exact land-only formulas in §3 and the land-count table) `--bracket N` `--k ROLE=N` (repeatable) `--draw` `--commander` `--snapshot PATH` / `--no-edhrec` `--min N` / `--limit N` (EDHREC diff) `--all-combos` `--no-lists` (re-runs).
+**audit.py flags:** `--no-landbase` (skip the land-base run) `--no-sim` (no manasim.py games: exact land-only formulas in §3 and the land-count table; §4c best case only) `--no-tutors` (skip §4c) `--bracket N` `--k ROLE=N` (repeatable) `--draw` `--commander` `--snapshot PATH` / `--no-edhrec` `--min N` / `--limit N` (EDHREC diff) `--all-combos` `--no-lists` (re-runs).
 
-**Output sections:** 1 legality/bracket (commanders, size, GCs, 2-card combos, extra turns, possible MLD, combos one card away) · 2 mana (landbase.py summary: recommended land count, swap plan, before → after; lands, tapped lands, reducers, ramp, MDFC backs, colors: sources, pip odds, cards under 90%/80% on-curve with fixes; restricted-mana lands listed, not counted; multi-face cards judged by their easiest castable face) · 3 commander on curve (exact land-only floor, then manasim.py games with every accelerant: on curve, a turn early, median turn) · 4 role odds (+ custom tags) · 4b packages (with-tutor odds are a **ceiling**: ignores mana and turns) · 5 density/flood/screw · 6 EDHREC diff · 7 manual checklist.
+**Output sections:** 1 legality/bracket (commanders, size, GCs, 2-card combos, extra turns, possible MLD, combos one card away) · 2 mana (landbase.py summary: recommended land count, swap plan, before → after; lands, tapped lands, reducers, ramp, MDFC backs, colors: sources, pip odds, cards under 90%/80% on-curve with fixes; restricted-mana lands listed, not counted; multi-face cards judged by their easiest castable face) · 3 commander on curve (exact land-only floor, then manasim.py games with every accelerant: on curve, a turn early, median turn) · 4 role odds (+ custom tags) · 4b packages, a table (with-tutor odds are a **ceiling**: ignores mana and turns) · 4c tutors & key cards: a headline (key cards yours + inferred, best case → played, the biggest dependency, strongest and weakest tutor in games, best tutor to add and the swap, fidelity), a best-vs-played table for every key card, then tutors.py's full report as 4c.1–4c.8 · 5 density/flood/screw · 6 EDHREC diff · 7 manual checklist.
 
 ## 6. Analysis tools
 

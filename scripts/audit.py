@@ -18,7 +18,9 @@ OPTIONS
   --no-lists           hide the card list under each role (default: shown)
   --no-landbase        skip the landbase.py summary in section 2 (it adds ~10s, ~25s for 3+ colors)
   --no-sim             no manasim.py games: section 3 and landbase.py's count table use the exact
-                       land-only formulas (faster; ramp only as a rough +1)
+                       land-only formulas (faster; ramp only as a rough +1), and 4c gives tutors.py's
+                       best-case odds only (no played columns, no tutor worth in games, no tutors to add)
+  --no-tutors          skip section 4c (tutors.py; the played games take a few minutes)
 
 SECTIONS
   1 Legality & bracket  mtg.py deck + GC allowance, 2-card combos, extra-turn / MLD flags,
@@ -33,7 +35,12 @@ SECTIONS
   4 Roles & odds        K per role from YOUR #tags > --k overrides > Scryfall oracle tags.
                         Flags K-SENSITIVE roles, where the count source moves the odds >= 15 pts
   4b Packages          Spellbook combos (<= 3 cards) and '# package:' header lines:
-                        odds by T4/T6, natural draws vs. with tutors (a ceiling)
+                        odds by T4/T6, natural draws vs. with tutors (a ceiling), as a table
+  4c Tutors & key cards tutors.py on the same list: a headline (key cards, best case vs played,
+                        widest gaps, the biggest dependency, strongest and weakest tutor, the best
+                        tutor to add and the swap), then tutors.py's full report, every table and list:
+                        tutors, chains, coverage, dependencies, key cards (yours and inferred),
+                        packages with chains, tutor worth, tutors to add
   5 Density & flood     action vs mana in the first 12 cards
   6 EDHREC              edhrec_diff.py against the newest matching snapshot
   7 Manual checklist    what no script here can verify
@@ -53,6 +60,7 @@ SNAPSHOTS_DIR = os.path.join(REPO_ROOT, "snapshots")
 sys.path.insert(0, ROOT)
 import mtg
 import stats_math as sm
+import tutors as tu
 from categories import CATEGORIES, STRICT, AUDIT_ROLES, USER_SYNONYMS
 
 SENSITIVE_PTS = 15
@@ -92,10 +100,9 @@ def slug(name):
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
 
 PETS = set()
-def names_str(items, limit=40):
-    items = sorted(items)
-    out = "; ".join(n + (" [pet]" if n in PETS else "") for n in items[:limit])
-    return out + (f" (+{len(items) - limit} more)" if len(items) > limit else "")
+def names_str(items):
+    """Every name, sorted (nothing cut)."""
+    return "; ".join(n + (" [pet]" if n in PETS else "") for n in sorted(items))
 
 def parse_args(argv):
     o, pos, i = {"k": {}}, [], 0
@@ -111,7 +118,7 @@ def parse_args(argv):
             else:
                 o[a[2:]] = v
             continue
-        if a in ("--draw", "--no-edhrec", "--all-combos", "--no-lists", "--no-landbase", "--no-sim"):
+        if a in ("--draw", "--no-edhrec", "--all-combos", "--no-lists", "--no-landbase", "--no-sim", "--no-tutors"):
             o[a[2:]] = True; i += 1; continue
         pos.append(a); i += 1
     if not pos:
@@ -134,17 +141,15 @@ def print_colors(r, lists=True):
         print("  on-curve colors: nothing flagged (every colored card ≥ 80%, commander and package pieces ≥ 90%)")
         return
     print(f"  on-curve colors flagged ({len(fl)}; given enough lands: lands only / with cheap rocks, dorks, MDFCs):")
-    for row in fl[:10]:
+    for row in fl:
         tag = " [commander]" if row["cmdr"] else " [package]" if row["key"] else ""
         fix = row.get("fix")
         hint = (f" — ~{fix[0]} more {fix[1]} source{'s' if fix[0] > 1 else ''} for {int(row['threshold'] * 100)}%" if fix
                 else " — no single-color land swap of ≤8 fixes it" if "fix" in row else "")
         print(f"    {row['name']} {row['cost']} on T{row['mv']}{tag}: {pct(row['lands'])} / {pct(row['rocks'])}{hint}")
-    if len(fl) > 10:
-        print(f"    +{len(fl) - 10} more under threshold: " + "; ".join(x["name"] for x in fl[10:22]) + (" …" if len(fl) > 22 else ""))
 
 def print_packages(r, on_play):
-    print(f"\n## 4b. Packages (natural draws → with tutors; tutors counted as the piece they find, so a ceiling)")
+    print(f"\n## 4b. Packages (static: natural draws, then with tutors counted as the piece they find, so a ceiling)")
     if "error" in r:
         print(f"  not computed ({r['error']})"); return
     pks = r["packages"]
@@ -152,29 +157,142 @@ def print_packages(r, on_play):
         print("  none: no Spellbook combo of ≤3 cards in the list, and no '# package:' header lines "
               "(e.g. '# package: Engine = ^Myojin of + text:proliferate')")
         return
+    turns = sorted({T for pk in pks for T in pk["odds"]})
+    def tutor_and_target(pk):
+        """A Spellbook 'combo' that's a tutor plus a card it finds (Approach of the Second Sun + Mystical Tutor)."""
+        if pk["source"] != "combo": return False
+        cs = [mtg.find(x)[0] for x in pk["parts"]]
+        return any(a and b and a is not b and any(t.target.matches(b) for t in tu.card_tutors(a)) for a in cs for b in cs)
+    rows, tt = [], []
     for pk in pks:
-        src = "header" if pk["source"] == "header" else "combo"
-        print(f"  [{src}] {pk['label']}")
+        is_tt = tutor_and_target(pk)
+        if is_tt: tt.append(pk["label"])
+        row = [pk["label"], "yours" if pk["source"] == "header" else "Spellbook" + (" (tutor + target)" if is_tt else "")]
+        for T in turns:
+            a, b = pk["odds"].get(T, (None, None))
+            row += [pct(a).strip() if a is not None else "—", pct(b).strip() if b is not None else "—"]
+        rows.append(row)
+    tu.Out().table(["Package", "From"] + [h for T in turns for h in (f"T{T} drawn", f"T{T} with tutors")], rows,
+                   right=tuple(range(2, 2 + 2 * len(turns))))
+    if tt:
+        print(f"  tutor + target: {len(tt)} Spellbook 'combo(s)' are a tutor and a card it finds (the real combo is the target;")
+        print("  4c leaves them out of its packages and counts the target as a key card instead)")
+    print("  each package's pieces and the tutors that find them:")
+    for pk in pks:
+        print(f"    {pk['label']}")
         if pk["unresolved"]:
-            print(f"      no card in the deck matches: {'; '.join(pk['unresolved'])}"); continue
+            print(f"      no card in the deck matches: {'; '.join(pk['unresolved'])} (odds not computed)"); continue
         if pk["overlap"]:
             print("      parts share cards, so the odds aren't computed; make each part distinct"); continue
-        o = pk["odds"]
-        print("      " + " | ".join(f"by T{T} {pct(a)} → {pct(b)}" for T, (a, b) in o.items()))
         cm = [p for p, inc in zip(pk["parts"], pk["in_cmd"]) if inc]
         if cm: print(f"      commander covers: {'; '.join(cm)}")
         for part, ts in pk["tutors"].items():
             members = next(m for p, m in zip(pk["parts"], pk["members"]) if p == part)
-            shown = part if part in members else f"{part} ({len(members)}: {'; '.join(sorted(members)[:6])}{' …' if len(members) > 6 else ''})"
+            shown = part if part in members else f"{part} ({len(members)}: {'; '.join(sorted(members))})"
             print(f"      {shown}: tutors {'; '.join(ts) if ts else 'none'}")
         for part, who in (pk.get("commander_tutors") or {}).items():
-            print(f"      {part}: also fetchable by commander {'; '.join(who)} (not in the odds)")
+            print(f"      {part}: also fetchable by commander {'; '.join(who)} (not in the odds; 4c's +cmdr and played columns count it)")
         v = pk.get("combo")
         if v and v.get("templates"):
             print(f"      also needs: {'; '.join(v['templates'])}")
-    if r["extra_combos"]:
-        print(f"  +{r['extra_combos']} more combo(s) not shown (list them with: mtg.py deck DECK --all-combos)")
-    print("  direct library tutors only; for tutor chains, dependencies and commander paths run: tutors.py DECK")
+    print("  direct library tutors only, no mana; 4c plays the chains, the commander's tutoring and card draw in games")
+
+
+def print_tutors(path, o, lists):
+    """Section 4c: tutors.py on the same list. A headline from its --json numbers, then its whole report."""
+    print("\n## 4c. Tutors & key cards (tutors.py: the tutor graph, best case, then played games)")
+    if o.get("no-tutors"):
+        print(f"  skipped (--no-tutors); run tutors.py {path}"); return
+    import json, tempfile
+    fd, jpath = tempfile.mkstemp(suffix=".json"); os.close(fd)
+    cmd = [sys.executable, os.path.join(ROOT, "tutors.py"), path, "--json", jpath]
+    if o.get("commander"): cmd += ["--commander", o["commander"]]
+    if o.get("draw"): cmd += ["--draw"]
+    if o.get("no-lists"): cmd += ["--no-lists"]
+    if o.get("no-sim"): cmd += ["--no-played"]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if r.returncode != 0:
+            print(f"  ! tutors.py failed: {(r.stderr.strip().splitlines() or ['?'])[-1]}"); return
+        try:
+            s = json.load(open(jpath, encoding="utf-8"))
+        except Exception:
+            s = None
+    finally:
+        try: os.remove(jpath)
+        except OSError: pass
+    if s: print_tutor_headline(s)
+    print("\n  tutors.py's full report (python3 scripts/tutors.py " + path + " --md for the same tables in Markdown):")
+    for line in r.stdout.splitlines():
+        if line.startswith("=== ") and line.endswith(" ==="):
+            print("  " + line[4:-4]); continue
+        m = re.match(r"## (\d+)\. (.*)", line)
+        print(f"### 4c.{m.group(1)} {m.group(2)}" if m else line)
+    if r.stderr.strip():
+        for line in r.stderr.strip().splitlines(): print("  (tutors.py) " + line)
+
+
+def print_tutor_headline(s):
+    """The few numbers to read first, each pointing at the 4c table it comes from."""
+    T = s["turns"][-1]
+    out, rows = tu.Out(), []
+    yours, inferred = s["yours"], s["inferred"]
+    kk = f"{len(yours) + len(inferred)}: {len(yours)} yours ({'; '.join(yours) or 'none'}), {len(inferred)} inferred ({'; '.join(inferred) or 'none'})"
+    if s.get("agree") is not None:
+        kk += f"; inference also picks {s['agree']} of your {len(yours)}"
+    rows.append(["Key cards (4c.5)", kk])
+    if s.get("bad_keys"): rows.append(["⚠ '# key:' not in the library", "; ".join(s["bad_keys"])])
+    keys = s["keys"]
+    pl = [k for k in keys if k.get("played")]
+    if keys:
+        best = sum(k["best"][str(T)] for k in keys) / len(keys)
+        if pl:
+            play = sum(k["played"][str(T)] for k in pl) / len(pl)
+            rows.append([f"Key cards by T{T} (4c.5)", f"best case {100 * best:.0f}% → played {100 * play:.0f}% (mean over "
+                         f"{len(pl)} key cards; {s['played_trials']:,} games)"])
+        else:
+            rows.append([f"Key cards by T{T} (4c.5)", f"best case {100 * best:.0f}% (mean over {len(keys)}; no played games)"])
+    deps = s["deps"]
+    for view in dict.fromkeys(d["view"] for d in deps):
+        top = sorted((d for d in deps if d["view"] == view and d["card"]), key=lambda d: -len(d["lost"]))
+        if not top:
+            rows.append([f"Biggest dependency, {view} (4c.4)", "none: every tutorable card has two independent starting points"])
+        else:
+            d = top[0]
+            rows.append([f"Biggest dependency, {view} (4c.4)",
+                         f"without {d['card']}{' (commander)' if d['commander'] else ''}: {len(d['lost'])} card(s) lose all tutor access"
+                         + (f" (next: {top[1]['card']}, {len(top[1]['lost'])})" if len(top) > 1 else "")])
+    w = [x for x in s["worth"] if x["played"] is not None]
+    if w:
+        w.sort(key=lambda x: -x["played"])
+        sig = lambda x: "" if abs(x["played"]) >= max(2 * x["se"], 0.01) else " ≈ noise"
+        rows.append(["Strongest tutor, played (4c.7)", f"{w[0]['tutor']}: {100 * w[0]['played']:+.0f} key cards per 100 games{sig(w[0])}"])
+        rows.append(["Weakest tutor, played (4c.7)", f"{w[-1]['tutor']}: {100 * w[-1]['played']:+.0f} key cards per 100 games{sig(w[-1])}"])
+    elif s["worth"]:
+        x = max(s["worth"], key=lambda x: x["best_keys"]); y = min(s["worth"], key=lambda x: x["best_keys"])
+        rows.append(["Strongest / weakest tutor, best case (4c.7)",
+                     f"{x['tutor']} {100 * x['best_keys']:+.1f} / {y['tutor']} {100 * y['best_keys']:+.1f} points of key-card access"])
+    if s["add"]:
+        b = max(s["add"], key=lambda x: x["played"])
+        rows.append(["Best tutor to add (4c.8)", f"{b['tutor']} (MV {b['mv']}, {b['price']}{', GC' if b['gc'] else ''}): "
+                     f"{100 * b['played']:+.0f} key cards per 100 games; finds {b['finds']}"])
+    if s.get("swap"):
+        sw = s["swap"]
+        rows.append(["Swap (4c.8)", f"{sw['out']} → {sw['in']}: {100 * sw['played']:+.0f} key cards per 100 games"
+                     + ("" if abs(sw["played"]) >= max(2 * sw["se"], 0.01) else " (≈ noise)")])
+    if s.get("fidelity"): rows.append(["Fidelity (what the games play)", s["fidelity"]])
+    if s.get("played_trials") is None:
+        rows.append(["Played games", "off (--no-sim): best case only; no played columns, no tutor worth in games, "
+                     "no tutors to add (4c.8)"])
+    print("  headline:")
+    out.table(["What", "Finding"], rows)
+    if pl:
+        g = sorted(pl, key=lambda k: -(k["best"][str(T)] - k["played"][str(T)]))
+        print(f"  best case vs played by T{T}, every key card, widest gap first (best case: every chain free, no mana;")
+        print("  played: found in the games, mana paid):")
+        out.table(["Key card", "Key", f"T{T} best", f"T{T} played", "Gap"],
+                  [[k["card"], k["key"], pct(k["best"][str(T)]).strip(), pct(k["played"][str(T)]).strip(),
+                    f"{100 * (k['played'][str(T)] - k['best'][str(T)]):+.0f}"] for k in g], right=(2, 3, 4))
 
 def print_landbase(path, o, lists):
     """landbase.py's recommendation, plan and headline before -> after, run with the audit's options."""
@@ -339,13 +457,13 @@ def main():
         print(f"  one card away: {len(near)} card(s) would complete a Spellbook combo, {len(ntwo)} of them a 2-card combo"
               + (" — adding one changes the bracket read above" if ntwo and bracket and bracket <= 3 else ""))
         if lists:
-            for r in near[:5]: print("    " + mtg.near_line(r, bracket))
+            for r in near: print("    " + mtg.near_line(r, bracket))
         print(f"    full list: mtg.py near {path}")
 
     # ----- colors + packages (stats_math): computed up front, printed in 2, 3 and 4b -----
     cmd_over = o.get("commander")
     try:
-        pkr = sm.packages_report(path, cmd_over, on_play)
+        pkr = sm.packages_report(path, cmd_over, on_play, max_combos=None)
     except Exception as ex:
         pkr = {"error": f"{type(ex).__name__}: {ex}"}
     key_cards = set()
@@ -467,8 +585,8 @@ def main():
             print(f"      {label}: {names_str(names)}")
         if any_user and src != "confirmed":
             extra_o, extra_u = oset[r] - uset[r], uset[r] - oset[r]
-            if user_primary and extra_o and src != "oracle*": print(f"      oracle tags also flag: {names_str(extra_o, 15)}")
-            if user_primary and extra_u: print(f"      only your tags: {names_str(extra_u, 15)}")
+            if user_primary and extra_o and src != "oracle*": print(f"      oracle tags also flag: {names_str(extra_o)}")
+            if user_primary and extra_u: print(f"      only your tags: {names_str(extra_u)}")
         for lab, K2 in alt_ks(r, K, src):
             b = odds(K2)
             swing = 100 * max(abs(a[2] - b[2]), abs(a[3] - b[3]))
@@ -485,10 +603,13 @@ def main():
         for tg, names in sorted(custom.items(), key=lambda kv: -K_of(kv[1])):
             a = odds(K_of(names))
             print(f"  #{tg:<14} K={K_of(names):<3} | opener ≥1 {pct(a[0])} | T4 ≥1 {pct(a[2])} | T6 ≥2 {pct(a[3])}"
-                  + (f"  — {names_str(names, 12)}" if lists else ""))
+                  + (f"  — {names_str(names)}" if lists else ""))
 
     # ----- 4b. packages -----
     print_packages(pkr, on_play)
+
+    # ----- 4c. tutors & key cards -----
+    print_tutors(path, o, lists)
 
     # ----- 5. density & flood -----
     print("\n## 5. Density & flood (first 12 cards ≈ T6 on the play)")
@@ -560,8 +681,8 @@ def main():
     rules_date = re.search(r"(\d{8})", os.path.basename(mtg.RULES_FILE or ""))
     print(f"  - Comprehensive Rules file is dated {rules_date.group(1) if rules_date else '?'} — "
           f"mechanics newer than that need an outside rules check")
-    print("  - These odds are static draws. They don't model draw engines, untaps, cascade, or tutor chains, "
-          "so engine decks run higher than shown after T3. Use a goldfish sim for package questions")
+    print("  - Sections 4, 4b and 5 are static draws. 4c's played columns add tutor chains, the commander's tutoring and card "
+          "draw in games; untap engines, cascade and recursion still aren't modeled, so engine decks can run higher after T3")
 
 
 if __name__ == "__main__":

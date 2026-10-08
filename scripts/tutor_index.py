@@ -116,7 +116,7 @@ def main():
     for t, hits in found[:a.limit]:
         h = hits[0]
         rows.append([t["name"], int(t.get("cmc") or 0), tu.how_used(h), "repeatable" if h.repeatable else "one-shot",
-                     h.dest, h.target.describe()[:40] + (" ⚠" if h.target.approx else ""),
+                     h.dest, h.target.describe() + (" ⚠" if h.target.approx else ""),
                      mtg.price_str(t) or "—", "GC" if t.get("game_changer") else "", t.get("edhrec_rank") or "—"])
     o.table(["Tutor", "MV", "How", "Uses", "Puts it", "Finds", "Price", "GC", "EDHREC rank"], rows, right=(1, 8))
     if len(found) > a.limit: o.note(f"+{len(found) - a.limit} more (--limit)")

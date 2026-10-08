@@ -141,13 +141,13 @@ def role_coverage(deck, mode="tutors"):
         if not plays: unplayed.append((c["name"], sorted(roles), k.status))
     return {"counts": {r: tuple(v) for r, v in counts.items() if v[1]}, "unplayed": sorted(unplayed)}
 
-def fidelity_line(cov, limit=8):
-    """'fidelity: ramp 9/11 played, card draw 2/14, tutors 11/11; not played: ...' (empty when there's nothing to say)."""
+def fidelity_line(cov):
+    """'fidelity: ramp 9/11 played, card draw 2/14, tutors 11/11; not played: ...' (every unplayed card named; empty when
+    there's nothing to say)."""
     if not cov["counts"]: return ""
     parts = [f"{ROLE_NAMES[r]} {p}/{t}" for r, (p, t) in cov["counts"].items()]
     un = cov["unplayed"]
-    tail = ("; not played: " + "; ".join(f"{n} ({'/'.join(ROLE_NAMES[r] for r in rs)}, {st})" for n, rs, st in un[:limit])
-            + (f" … (+{len(un) - limit})" if len(un) > limit else "")) if un else "; all played"
+    tail = ("; not played: " + "; ".join(f"{n} ({'/'.join(ROLE_NAMES[r] for r in rs)}, {st})" for n, rs, st in un)) if un else "; all played"
     return "fidelity (Scryfall's role tags as the key): " + ", ".join(parts) + " played" + tail
 
 
