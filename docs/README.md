@@ -22,7 +22,7 @@ Index of the docs, what each is for, and whether it's live. Keep it current when
 ## Active plans (in priority order)
 
 1. **`FORGE_PLAN.md`** — Fishpond's working plan. Standing rules, how to work on the Windows box, where things stand, and the "Priority list" (memo on lookahead copies, life budget, commander timing, commander combat safety, sacrifice-cost drains, finishers, harness hardening, ...), then the backlog. Finished work lives in git history and `FORGE_ISSUES.md`.
-2. **`LANDBASE_TEMPO_PLAN.md`** — tapped lands turn by turn in `landbase.py`, validated with Fishpond logging. Not started.
+2. **`LANDBASE_TEMPO_PLAN.md`** — tapped lands turn by turn in `landbase.py`, validated with Fishpond logging. Step 1 partly covered by `manasim.py` (see its status line).
 
 ## Frozen (2026-10-01; simulation moved to Forge)
 

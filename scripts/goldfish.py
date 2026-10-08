@@ -3362,6 +3362,19 @@ class Game:
         if k.fetch: return set().union(*(self.colors_of(c) for c in self.sim.land_cards if land_ok(c, k.fetch[0])))
         return set().union(*(u[0] | u[1] for u in k.units)) - {"C"} if k.units else set()
 
+    def color_short(self, hand_lands=True):
+        """Per color: the most pips of it on one card in hand or the command zone, minus the lands (on the battlefield,
+        and in hand unless hand_lands=False) that make it. Land search and the land drop go toward the biggest
+        shortfall (a second Mountain for {1}{R}{R})."""
+        need = {}
+        for k in [c for c in self.hand if not c.is_land] + self.cmd:
+            for col in COLORS:
+                n = sum(1 for p in k.pips if p == {col})
+                if n > need.get(col, 0): need[col] = n
+        if not need: return {}
+        srcs = [self.colors_of(p.k) for p in self.lands] + ([self.colors_of(c) for c in self.hand if c.is_land] if hand_lands else [])
+        return {col: n - sum(1 for s in srcs if col in s) for col, n in need.items()}
+
     def land_colors(self):
         if self.any_lands(): return set(self.sim.anyc)
         return set().union(*(self.colors_of(p.k) for p in self.lands)) if self.lands else set()
@@ -3374,7 +3387,9 @@ class Game:
             return min(md, key=lambda k: self.value(k)) if md else None
         if len(lands) == 1: return lands[0]
         have = self.land_colors()
-        score = lambda k: (len(self.colors_of(k) - have), bool(k.fetch), len(self.colors_of(k)), -len(k.units))
+        short = self.color_short(hand_lands=False)
+        score = lambda k: (len(self.colors_of(k) - have), max((short.get(c, 0) for c in self.colors_of(k)), default=0),
+                           bool(k.fetch), len(self.colors_of(k)), -len(k.units))
         tap = [k for k in lands if self.etapped(k)]
         unt = [k for k in lands if not self.etapped(k)]
         bt = max(tap, key=score) if tap else None
@@ -3405,7 +3420,7 @@ class Game:
                     cands.append((sim.prio(k, "gy"), k, "gy"))
             cands.sort(key=lambda t: t[0])
             for _, k, zone in cands:
-                if min(g_ + len(p_) for g_, p_ in self.options(k, zone)) > avail: continue
+                if min((g_ + len(p_) for g_, p_ in self.options(k, zone)), default=avail + 1) > avail: continue   # no option: an unpayable extra cost
                 if self.try_cast(k, zone): break
             else:
                 if not self.try_ritual(cands): break
@@ -3431,7 +3446,7 @@ class Game:
         for k in set(self.hand):
             if k.is_land or k.hold or k.ritual: continue
             opts = self.options(k, "hand")
-            if min(g_ + len(p_) for g_, p_ in opts) > avail or (k.requires and not self.has(k.requires, k)): continue
+            if min((g_ + len(p_) for g_, p_ in opts), default=avail + 1) > avail or (k.requires and not self.has(k.requires, k)): continue
             if any(self.pay(k, g_, p_, commit=False) for g_, p_ in opts): continue
             n += self.hand.count(k)
         return n
@@ -4022,7 +4037,10 @@ class Game:
                     targets = [c for c in self.lib if land_ok(c, filt)]
                     if not targets: break
                     have = self.land_colors() | {BASIC[tt] for c in self.hand if c.is_land for tt in c.land_types}
-                    pick = max(targets, key=lambda c: (len(self.colors_of(c) - have), not self.etapped(c)))
+                    short = self.color_short()
+                    pick = max(targets, key=lambda c: (len(self.colors_of(c) - have),
+                                                       max((short.get(col, 0) for col in self.colors_of(c)), default=0),
+                                                       not self.etapped(c)))
                     self.lib.remove(pick)
                     if dest == "hand" or (dest == "split" and i == 1): self.hand.append(pick); self.gain(1, name)
                     elif dest == "top": self.lib.append(pick)

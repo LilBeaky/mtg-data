@@ -18,11 +18,23 @@ landbase.py — land count and land swaps for a Commander deck (mtg-data).
                       any-color lands); utility lands are the user's call, not a color fix
   --no-count          keep the current land count
   --no-swaps          land count only
+  --trials N          manasim.py games per land count (default 1000)
+  --no-sim            exact land-only formulas for the count table (fast; ramp only as a rough +1)
+  --no-ramp-pick      skip section 1b (land or ramp; adds ~15s)
 
 REPORT
-  1 Land count   every count from 4 under to 4 over: T mana by turn T (lands, MDFC land backs,
-                 ramp of MV 2 or less), commander on curve, screw, flood, keepable openers;
-                 the recommendation is the smallest count meeting --develop and --screw
+  1 Land count   every count from 4 under to 4 over: T mana by turn T and the commander castable
+                 by its mana value's turn (manasim.py: every land, rock, dork, land search, cost
+                 reducer and ritual goldfish.py reads, played turn by turn), T mana with lands
+                 only, the commander's median turn, screw, flood, keepable openers; what the
+                 ramp is worth in lands; the recommendation is the smallest count meeting
+                 --develop and --screw
+  1b Land or ramp  one slot: one more land, the best ramp cards for this deck, or a basic traded for
+                 the best one; how fast the commander comes down with each, T3 development, flood.
+                 Ramp candidates: legal, in the colors, MV <= 3 (reducers that apply to the commander:
+                 4), Game Changers within the bracket, --max-price; shortlist = reducers that apply
+                 to the commander + the commander's EDHREC snapshot + the most played; each is played
+                 in the deck and ranked. "≈ same" = within noise or under 1 point
   2 Colors now   land sources per color and the cards under their on-curve threshold
                  (audit section 2's numbers: 90% for the commander and package pieces, 80% otherwise)
   3 Plan         lands to add or cut to reach the count, then swaps, chosen greedily by how
@@ -44,6 +56,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 import mtg
 import stats_math as sm
+import manasim as ms
 from audit import is_land, tapped_kind, pct
 
 gf = sm._gf()
@@ -245,6 +258,8 @@ def main():
     ap.add_argument("--lands", type=int); ap.add_argument("--swaps", type=int, default=4)
     ap.add_argument("--max-price", type=float); ap.add_argument("--cut-utility", action="store_true")
     ap.add_argument("--no-count", action="store_true"); ap.add_argument("--no-swaps", action="store_true")
+    ap.add_argument("--trials", type=int, default=1000); ap.add_argument("--no-sim", action="store_true")
+    ap.add_argument("--no-ramp-pick", action="store_true")
     a = ap.parse_args()
     _w = mtg.stale_warning()
     if _w: print(_w)
@@ -268,22 +283,52 @@ def main():
     rows = [dict(r, q=1 if r["cmdr"] else qty.get(r["name"], 1)) for r in colr["rows"]]
     scorer = Scorer(N, rows, on_play)
 
+    n_acc = sum(q for q, c, k in lib if ms.accelerates(k))
     print(f"=== LANDBASE: {' + '.join(c['name'] for c, k in cmdrs) or 'no commander'} | N={N} | {L0} lands"
-          f"{f' + {mdfc} MDFC land backs' if mdfc else ''} | ramp {rocks_all} ({cheap} at MV ≤2) | "
+          f"{f' + {mdfc} MDFC land backs' if mdfc else ''} | ramp {n_acc} ({rocks_all} mana rocks/dorks) | "
           f"{'on the play' if on_play else 'on the draw'} ===")
 
     # ----- 1. land count -----
     T = a.turn
+    deck_ms = None if a.no_sim else ms.load(a.deck, a.commander)
+    turns = max(T, cmd_mv) + 1
+    counts = list(range(max(0, L0 - 4), L0 + 5))
+    sims, base = {}, {}                  # manasim.py games per count: with the ramp, and lands only (same shuffles)
+    if deck_ms:
+        specs = [(Lx - L0, False, ()) for Lx in counts] + [(Lx - L0, True, ()) for Lx in range(counts[0], L0 + 9)]
+        runs = ms.simulate_many(a.deck, a.commander, on_play, a.trials, turns, 1, specs, deck=deck_ms)
+        for (d, lo, _), r in zip(specs, runs): (base if lo else sims)[L0 + d] = r
+    def metrics(Lx):
+        """count_metrics, with development and the commander from manasim.py games (same shuffles at every count)."""
+        m = count_metrics(N, Lx, mdfc, cheap, rocks_all, T, cmd_mv, on_play)
+        m["lands_only"] = count_metrics(N, Lx, mdfc, 0, rocks_all, T, cmd_mv, on_play)["develop"]
+        m["median"] = None
+        if deck_ms:
+            if Lx not in sims:
+                sims[Lx], base[Lx] = ms.simulate_many(a.deck, a.commander, on_play, a.trials, turns, 1,
+                                                      [(Lx - L0, False, ()), (Lx - L0, True, ())], deck=deck_ms)
+            r = sims[Lx]
+            m["develop"] = r["dev"][T]
+            m["lands_only"] = base[Lx]["dev"][T]
+            ct = [t for n, t in r["targets"].items() if t["zone"] == "cmd"]
+            if ct:
+                top = max(ct, key=lambda t: t["mv"])
+                m["cmdr"] = top["by"][cmd_mv] if cmd_mv else None
+                m["median"] = top["median"]
+        return m
     print(f"\n## 1. Land count (targets: {T} mana by T{T} ≥ {a.develop:.0f}%, ≤2 lands by T4 ≤ {a.screw:.0f}%, "
           f"flood ≤ {a.flood:.0f}%)")
-    print(f"  {'lands':>5}  {f'{T} mana by T{T}':>13}  {f'cmdr on T{cmd_mv}' if cmd_mv else '':>12}  {'screw':>6}  {'flood':>6}  {'keep 2–4':>8}")
+    show_med = bool(cmd_mv and deck_ms)
+    print(f"  {'lands':>5}  {f'{T} mana by T{T}':>13}  {'lands only':>10}  {f'cmdr on T{cmd_mv}' if cmd_mv else '':>12}"
+          f"  {'median' if show_med else '':>6}  {'screw':>6}  {'flood':>6}  {'keep 2–4':>8}")
     table = {}
     for Lx in range(max(0, L0 - 4), L0 + 5):
-        m = count_metrics(N, Lx, mdfc, cheap, rocks_all, T, cmd_mv, on_play)
+        m = metrics(Lx)
         table[Lx] = m
         ok = m["develop"] >= a.develop / 100 and m["screw"] <= a.screw / 100
-        print(f"  {Lx:>5}  {pct(m['develop']):>13}  {pct(m['cmdr']) if m['cmdr'] is not None else '':>12}  "
-              f"{pct(m['screw']):>6}  {pct(m['flood']):>6}  {pct(m['keep']):>8}"
+        med = ((f"T{m['median']}" if m["median"] else f">T{turns}") if show_med else "")
+        print(f"  {Lx:>5}  {pct(m['develop']):>13}  {pct(m['lands_only']):>10}  {pct(m['cmdr']) if m['cmdr'] is not None else '':>12}"
+              f"  {med:>6}  {pct(m['screw']):>6}  {pct(m['flood']):>6}  {pct(m['keep']):>8}"
               + ("  ← current" if Lx == L0 else "") + ("" if ok else "  (misses a target)"))
     if a.lands is not None:
         target = a.lands
@@ -302,8 +347,38 @@ def main():
         if table.get(target) and table[target]["flood"] > a.flood / 100:
             print(f"  ⚠ flood at {target} is {pct(table[target]['flood']).strip()}, over the {a.flood:.0f}% cap: "
                   f"trading lands for cheap ramp does both jobs")
-    print(f"  ramp counted: {cheap} pieces at MV ≤2 as a land toward the target turn, all {rocks_all} toward flood"
-          + (f"; {mdfc} MDFC land backs as lands" if mdfc else "") + ". Cost reducers and draw are not counted.")
+    if deck_ms:
+        cov = sims[L0]["coverage"]
+        d0 = table[L0]["develop"]
+        worth = next((Lx for Lx in sorted(base) if Lx >= L0 and base[Lx]["dev"][T] >= d0), None)
+        part = [r[0] for r in cov["rows"] if r[2] != "modeled"]
+        msg = f"  ramp: {len(cov['rows'])} accelerants played turn by turn ({a.trials:,} games per count, about ±1.5 pts)"
+        if mdfc: msg += f"; {mdfc} MDFC land backs as lands"
+        if worth is not None and worth > L0:
+            msg += (f". Toward {T} mana by T{T} they are worth about {worth - L0} land(s): "
+                    f"{L0} lands with this ramp develop like {worth} lands without it")
+        elif worth is None:
+            top = max(base)
+            msg += (f". Toward {T} mana by T{T} no land count matches them: lands alone reach "
+                    f"{pct(base[top]['dev'][T]).strip()} even at {top}")
+        print(msg)
+        if part: print(f"  read partially by goldfish.py: {'; '.join(part)}. Full list: manasim.py DECK")
+        print(f"  not counted: card draw and tutors that dig for lands or ramp ({cov['other']['draw']} cards)")
+    else:
+        print(f"  ramp counted (--no-sim): {cheap} pieces at MV ≤2 as a land toward the target turn, all {rocks_all} toward flood"
+              + (f"; {mdfc} MDFC land backs as lands" if mdfc else "") + ". Cost reducers, land search and draw are not counted.")
+
+    # ----- 1b. land or ramp -----
+    if deck_ms and cmdrs and not a.no_ramp_pick:
+        print("\n## 1b. Land or ramp (one slot; manasim.py games, every option on the same shuffles)")
+        lr = ms.land_or_ramp(a.deck, a.commander, on_play, deck_ms, meta.get("bracket"), a.max_price, T=T)
+        def flood_of(label, r):
+            Lx, rk = L0, rocks_all
+            if label.startswith("+1 land"): Lx += 1
+            elif " → " in label: Lx, rk = L0 - 1, rocks_all + 1
+            elif label.startswith("+1 "): rk += 1
+            return sm.hyper_at_least(N, Lx + mdfc + rk, 12, 8)
+        ms.print_land_or_ramp(lr, flood_of)
 
     # ----- 2. colors now -----
     print("\n## 2. Colors now (land sources; cards under their on-curve threshold, lands only)")
@@ -402,8 +477,7 @@ def main():
 
     # ----- 4. before -> after -----
     L1 = sum(x.qty for x in cur)
-    m0, m1 = table.get(L0) or count_metrics(N, L0, mdfc, cheap, rocks_all, T, cmd_mv, on_play), \
-             table.get(L1) or count_metrics(N, L1, mdfc, cheap, rocks_all, T, cmd_mv, on_play)
+    m0, m1 = table.get(L0) or metrics(L0), table.get(L1) or metrics(L1)
     print("\n## 4. Before → after")
     print(f"  lands {L0} → {L1} | {T} mana by T{T} {pct(m0['develop']).strip()} → {pct(m1['develop']).strip()} | "
           f"screw {pct(m0['screw']).strip()} → {pct(m1['screw']).strip()} | flood {pct(m0['flood']).strip()} → {pct(m1['flood']).strip()}"
@@ -422,8 +496,9 @@ def main():
         print(f"    {r['name']} {r['cost']} on T{r['mv']}: {pct(o0).strip()} → {pct(o1).strip()}"
               + ("" if o1 >= r["threshold"] else f"  (still under {r['threshold']:.0%})") + tag)
     if len(moved) > 15: print(f"    … {len(moved) - 15} more")
-    print("\nLimits: static draws (no card draw, cycling, fetch thinning or land tutors); color odds are lands only and assume "
-          "enough lands; tapped lands are a tie-breaker, not modeled turn by turn. Fishpond games are the real check.")
+    print("\nLimits: development and the commander are manasim.py games (goldfish.py's pilot; no draw or tutors); screw, flood, "
+          "keep and color odds are exact static draws, lands only; tapped lands are a tie-breaker in the swaps. "
+          "Fishpond games are the real check.")
 
 
 PROTECT = set()

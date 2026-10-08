@@ -111,6 +111,24 @@ def checks():
         dict(name="landbase cuts", cmd=S("landbase.py", DECK, "--lands", "29", "--no-swaps"),
              must=["planning for 29 lands", "cut 2 land(s), and add 2 nonland card(s)", "lands 31 → 29"],
              must_not=["− Cavern of Souls", "− Mystic Gate", "swaps (", "Traceback"]),
+        dict(name="landbase no-sim", cmd=S("landbase.py", DECK, "--no-sim", "--no-swaps"),
+             must=["ramp counted (--no-sim)", "recommendation: "], must_not=["Traceback"]),
+        # ---- manasim (ramp turn by turn; a cost reducer counts for the commander it matches)
+        dict(name="manasim", cmd=S("manasim.py", DECK, "--trials", "300"),
+             must=["## 1. Development", "## 2. Castable by", "with ramp", "lands only", "## 3. Coverage", "Sol Ring: +2 C"],
+             must_not=["Traceback"]),
+        dict(name="manasim line", cmd=S("manasim.py", tmp_deck("klauth_line", ["Klauth, Unrivaled Ancient"],
+                                                             "1 Rampant Growth\n1 Dragonspeaker Shaman\n1 Terror of the Peaks\n"
+                                                             "1 Shamanic Revelation\n30 Forest\n30 Mountain"),
+                                        "--turns", "5", "--hand", "Forest; Mountain; Forest; Rampant Growth; Dragonspeaker Shaman; "
+                                        "Terror of the Peaks; Shamanic Revelation", "--draws", "Mountain; Forest; Mountain; Forest"),
+             must=["cast Rampant Growth", "cast Dragonspeaker Shaman", "Klauth, Unrivaled Ancient: first castable T4"],
+             must_not=["Traceback"]),
+        dict(name="manasim land or ramp", cmd=S("manasim.py", tmp_deck("klauth_lr", ["Klauth, Unrivaled Ancient"],
+                                                                   "1 Rampant Growth\n1 Dragonspeaker Shaman\n1 Terror of the Peaks\n"
+                                                                   "1 Shamanic Revelation\n30 Forest\n30 Mountain\n35 Grizzly Bears"),
+                                                "--land-or-ramp", "--max-price", "3"),
+             must=["+1 land (", "verdict: ", "best by commander speed: ", "ramp tried: "], must_not=["Traceback"]),
         # ---- stats_math
         dict(name="exact odds", cmd=S("stats_math.py", "99", "10", "7", "1"), must=["= 53.7%"]),
         dict(name="colors per face", cmd=S("stats_math.py", "colors", DECK),

@@ -16,7 +16,9 @@ OPTIONS
   --min N / --limit N  passed to edhrec_diff.py diff
   --all-combos         passed to mtg.py deck
   --no-lists           hide the card list under each role (default: shown)
-  --no-landbase        skip the landbase.py summary in section 2 (it adds ~3s, ~20s for 3+ colors)
+  --no-landbase        skip the landbase.py summary in section 2 (it adds ~10s, ~25s for 3+ colors)
+  --no-sim             no manasim.py games: section 3 and landbase.py's count table use the exact
+                       land-only formulas (faster; ramp only as a rough +1)
 
 SECTIONS
   1 Legality & bracket  mtg.py deck + GC allowance, 2-card combos, extra-turn / MLD flags,
@@ -25,7 +27,9 @@ SECTIONS
                         count and swap plan (summary), colors: sources
                         per color and every card's odds of having its colors on curve
                         (flagged under 90% for the commander and package pieces, 80% otherwise)
-  3 Commander on curve  lands-only floor, with 1-MV accelerants, and its colors
+  3 Commander on curve  lands-only floor, with 1-MV accelerants, and its colors; then manasim.py games
+                        with every accelerant (rocks, dorks, land search, cost reducers that match
+                        the commander, rituals) and tapped lands: on curve, a turn early, median
   4 Roles & odds        K per role from YOUR #tags > --k overrides > Scryfall oracle tags.
                         Flags K-SENSITIVE roles, where the count source moves the odds >= 15 pts
   4b Packages          Spellbook combos (<= 3 cards) and '# package:' header lines:
@@ -107,7 +111,7 @@ def parse_args(argv):
             else:
                 o[a[2:]] = v
             continue
-        if a in ("--draw", "--no-edhrec", "--all-combos", "--no-lists", "--no-landbase"):
+        if a in ("--draw", "--no-edhrec", "--all-combos", "--no-lists", "--no-landbase", "--no-sim"):
             o[a[2:]] = True; i += 1; continue
         pos.append(a); i += 1
     if not pos:
@@ -179,13 +183,15 @@ def print_landbase(path, o, lists):
     cmd = [sys.executable, os.path.join(ROOT, "landbase.py"), path]
     if o.get("commander"): cmd += ["--commander", o["commander"]]
     if o.get("draw"): cmd += ["--draw"]
+    if o.get("no-sim"): cmd += ["--no-sim"]
     r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if r.returncode != 0:
         print(f"  ! landbase.py failed: {(r.stderr.strip().splitlines() or ['?'])[-1]}"); return
     out, sec = [], None
     for line in r.stdout.splitlines():
         if line.startswith("## "): sec = line[3:5]; continue
-        if sec == "1." and re.match(r"\s+(recommendation|no count|⚠ flood)", line): out.append(line.strip())
+        if sec == "1." and re.match(r"\s+(recommendation|no count|⚠ flood|ramp: )", line): out.append(line.strip())
+        elif sec == "1b" and re.match(r"\s+verdict: ", line): out.append("land or ramp " + line.strip())
         elif sec == "3." and line.strip() and not line.lstrip().startswith("never cut"): out.append(line.strip())
         elif sec == "4." and re.match(r"\s+(lands \d+ → |cards under)", line): out.append(line.strip())
     print("  land base (landbase.py; full table and every card's odds: landbase.py " + path + "):")
@@ -405,6 +411,14 @@ def main():
     print_landbase(path, o, lists)
 
     # ----- 3. commander on curve -----
+    sim, sim_err = None, None
+    if cmdrs and not o.get("no-sim"):
+        try:
+            import manasim
+            sim = manasim.simulate(path, o.get("commander"), on_play, 2000,
+                                   max(4, max(int(c.get("cmc", 0)) for c in cmdrs) + 1), 1)
+        except Exception as e:
+            sim_err = f"{type(e).__name__}: {e}"
     if cmdrs:
         print(f"\n## 3. Commander on curve (treats every land as untapped; {len(always)} always-tapped lands make this slightly optimistic)")
         for c in cmdrs:
@@ -422,6 +436,19 @@ def main():
             if row:
                 print(f"      colors {row['cost']} on T{row['mv']} (given enough lands): {pct(row['lands'])} lands only | "
                       f"{pct(row['rocks'])} with cheap rocks/dorks/MDFCs" + ("  ⚠ under 90%" if row["flag"] else ""))
+            r = (sim or {}).get("targets", {}).get(c["name"]) if m >= 1 else None
+            if r:
+                early = f" | by T{m - 1} {pct(r['by'][m - 1]).strip()}" if m >= 2 else ""
+                print(f"      with ramp (manasim.py, {sim['trials']:,} games: rocks, dorks, land search, matching cost reducers, "
+                      f"rituals, tapped lands): on T{m} {pct(r['by'][m]).strip()}{early} | median "
+                      + (f"T{r['median']}" if r["median"] else f"after T{sim['turns']}"))
+        if sim:
+            part = [x[0] for x in sim["coverage"]["rows"] if x[2] != "modeled"]
+            print(f"  ramp the games use: {len(sim['coverage']['rows'])} cards"
+                  + (f" ({len(part)} read partially: {'; '.join(part)})" if part else "")
+                  + f". Full list, key cards and a hand-checkable line: manasim.py {path}")
+        elif sim_err:
+            print(f"  ! manasim.py failed: {sim_err}")
 
     # ----- 4. roles & odds -----
     t = "play" if on_play else "draw"

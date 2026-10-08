@@ -1,6 +1,14 @@
 # Landbase tempo plan
 
-Status: **not started** (written 2026-10-04). Nothing here has been explored or built yet.
+Status: **step 1 partly covered by `scripts/manasim.py`** (2026-10-08). Written 2026-10-04.
+
+manasim.py (built for ramp, not tempo) plays lands turn by turn with tapped lands, mulligans and
+color-aware land drops, and landbase.py's count table now reads "T mana by T" and "cmdr on T(MV)"
+from it. That covers step 1's "usable mana by T" and "commander on curve, colors + untapped".
+It departs from this plan's step 0: it runs on goldfish.py's engine (its card reading and land
+handling, conditional lands included) instead of a new sim in landbase.py. Still open: "mana lost
+per game", "costly tapped turns", the unrecognized-land list, step 2 (swap scoring still uses
+`TAP_COST`) and step 3.
 
 ## Problem
 
