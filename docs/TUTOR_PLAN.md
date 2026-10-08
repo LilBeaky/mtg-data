@@ -178,6 +178,10 @@ tutor played, best tutor to add, the swap, fidelity), a best-vs-played table for
 first, then tutors.py's whole report as 4c.1–4c.8. `--no-sim` drops the played parts; `--no-tutors` skips 4c.
 Nothing in the report is cut any more: name lists are complete, long table cells wrap instead of ending in "…",
 every dependency, chain route, combo and unverified tutor is listed (the user asked that nothing be swept up).
+Find-anything tutors (any card, or any nonland card) are listed apart everywhere, their targets "everything"
+(the user: they don't need a card-by-card listing). Reader fixes found doing it: "a card with the same name as"
+(Mask of the Mimic, Remembrance, Infernal Tutor's first mode, Frostpyre Arcanist...) finds only extra copies, not
+anything; Grozoth's "that have mana value 9"; Disciple of Deceit's "the same mana value as" now flagged ⚠.
 
 ## Test decks
 

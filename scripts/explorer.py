@@ -367,18 +367,26 @@ def section_findable(c, ep, allowed, lim, out):
     if not found:
         out.append(f"  no tutor in {''.join(sorted(ci)) or 'colorless'} can fetch it (land-only and graveyard tutors left out)")
         out.append(""); return
-    narrow = [x for x in found if not any(t.target.any for t in x[1])]
-    out.append(f"  {len(found)} tutor(s) in {''.join(sorted(ci)) or 'colorless'} can fetch it; {len(narrow)} of them are specific "
-               "(not find-anything), most played first:")
-    for t, hits in (narrow[:lim] + [x for x in found if x not in narrow][:max(0, lim - len(narrow[:lim]))])[:lim]:
+    import tutors as tu
+    narrow = [x for x in found if not any(tu.anything(t) for t in x[1])]
+    anyt = [x for x in found if x not in narrow]
+    where = ''.join(sorted(ci)) or 'colorless'
+    out.append(f"  {len(found)} tutor(s) in {where} can fetch it: {len(narrow)} specific, {len(anyt)} find-anything")
+    if narrow: out.append("  specific, most played first:")
+    for t, hits in narrow[:lim]:
         h = hits[0]
         v = find_view(ep, t["name"]) if ep else None
         co = f" | played with it in {v['num_decks']:,} decks" + (f", lift x{v['lift']:.1f}" if isinstance(v.get("lift"), (int, float)) else "") if v else ""
-        anyc = " [find-anything]" if h.target.any else ""
         out.append(f"    {t['name']} (MV {int(t.get('cmc') or 0)}, {('repeatable' if h.repeatable else 'one-shot')}, to {h.dest}): "
-                   f"{h.target.describe()}{anyc}{' ⚠' if h.target.approx else ''}{' [GC]' if t.get('game_changer') else ''}"
+                   f"{h.target.describe()}{' ⚠' if h.target.approx else ''}{' [GC]' if t.get('game_changer') else ''}"
                    f" {mtg.price_str(t) or ''}{co}")
-    if len(found) > lim: out.append(f"    … +{len(found) - lim} more (tutor_index.py \"{c['name']}\")")
+    if len(narrow) > lim: out.append(f"    … +{len(narrow) - lim} more specific (tutor_index.py \"{c['name']}\")")
+    if anyt:
+        out.append(f"  find-anything (they find every card, so no per-card detail), most played first: "
+                   + "; ".join(t["name"] + (" ⚠" if any(h.target.approx for h in hits) else "") + (" [GC]" if t.get("game_changer") else "")
+                             for t, hits in anyt))
+        if any(h.target.approx for t, hits in anyt for h in hits):
+            out.append("    ⚠: the search has a limit read only loosely (MV ≤ lands, an opponent picks, shares a color...)")
     out.append("")
 
 

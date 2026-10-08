@@ -272,10 +272,13 @@ def print_tutor_headline(s):
         x = max(s["worth"], key=lambda x: x["best_keys"]); y = min(s["worth"], key=lambda x: x["best_keys"])
         rows.append(["Strongest / weakest tutor, best case (4c.7)",
                      f"{x['tutor']} {100 * x['best_keys']:+.1f} / {y['tutor']} {100 * y['best_keys']:+.1f} points of key-card access"])
-    if s["add"]:
-        b = max(s["add"], key=lambda x: x["played"])
-        rows.append(["Best tutor to add (4c.8)", f"{b['tutor']} (MV {b['mv']}, {b['price']}{', GC' if b['gc'] else ''}): "
-                     f"{100 * b['played']:+.0f} key cards per 100 games; finds {b['finds']}"])
+    for label, grp in (("specific", [x for x in s["add"] if not x.get("anything")]),
+                       ("find-anything", [x for x in s["add"] if x.get("anything")])):
+        if grp:
+            b = max(grp, key=lambda x: x["played"])
+            rows.append([f"Best {label} tutor to add (4c.8)", f"{b['tutor']} (MV {b['mv']}, {b['price']}{', GC' if b['gc'] else ''}): "
+                         f"{100 * b['played']:+.0f} key cards per 100 games"
+                         + (f"; finds {b['finds']}" if not b.get("anything") else "")])
     if s.get("swap"):
         sw = s["swap"]
         rows.append(["Swap (4c.8)", f"{sw['out']} → {sw['in']}: {100 * sw['played']:+.0f} key cards per 100 games"

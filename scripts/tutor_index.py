@@ -112,14 +112,22 @@ def main():
     o = tu.Out(a.md)
     found = findable_by(c, ci, a.all)
     o.title(f"FINDABLE BY: {c['name']} | {len(found)} tutor(s) in {''.join(sorted(ci)) if ci else ''.join(c.get('color_identity') or []) or 'colorless'}")
-    rows = []
-    for t, hits in found[:a.limit]:
-        h = hits[0]
-        rows.append([t["name"], int(t.get("cmc") or 0), tu.how_used(h), "repeatable" if h.repeatable else "one-shot",
-                     h.dest, h.target.describe() + (" ⚠" if h.target.approx else ""),
-                     mtg.price_str(t) or "—", "GC" if t.get("game_changer") else "", t.get("edhrec_rank") or "—"])
-    o.table(["Tutor", "MV", "How", "Uses", "Puts it", "Finds", "Price", "GC", "EDHREC rank"], rows, right=(1, 8))
-    if len(found) > a.limit: o.note(f"+{len(found) - a.limit} more (--limit)")
+    spec = [x for x in found if not any(tu.anything(h) for h in x[1])]
+    anyt = [x for x in found if any(tu.anything(h) for h in x[1])]
+    def row(t, h, finds=True):
+        return [t["name"] + ("" if finds or not h.target.approx else " ⚠"), int(t.get("cmc") or 0), tu.how_used(h), "repeatable" if h.repeatable else "one-shot", h.dest] \
+            + ([h.target.describe() + (" ⚠" if h.target.approx else "")] if finds else []) \
+            + [mtg.price_str(t) or "—", "GC" if t.get("game_changer") else "", t.get("edhrec_rank") or "—"]
+    o.note(f"specific tutors ({len(spec)}):")
+    if spec:
+        o.table(["Tutor", "MV", "How", "Uses", "Puts it", "Finds", "Price", "GC", "EDHREC rank"],
+                [row(t, hits[0]) for t, hits in spec[:a.limit]], right=(1, 8))
+    if len(spec) > a.limit: o.note(f"+{len(spec) - a.limit} more specific (--limit)")
+    o.note(f"find-anything tutors ({len(anyt)}; they find every card, this one included):")
+    if anyt:
+        o.table(["Find-anything tutor", "MV", "How", "Uses", "Puts it", "Price", "GC", "EDHREC rank"],
+                [row(t, next(h for h in hits if tu.anything(h)), False) for t, hits in anyt[:a.limit]], right=(1, 7))
+    if len(anyt) > a.limit: o.note(f"+{len(anyt) - a.limit} more find-anything (--limit)")
     o.note("⚠: the tutor's filter is read approximately (MV X, 'shares a type', an opponent picks...). Land-only and")
     o.note("graveyard-destination tutors are left out (--all shows them).")
 

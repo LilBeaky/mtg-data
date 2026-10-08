@@ -16,7 +16,9 @@ abilities, typecycling and landcycling, transmute, commander abilities), builds 
 
 REPORT
   1 Tutors        every tutor effect: how it's used, repeatable or not, where the card
-                  lands, what it can find here, and anything read approximately
+                  lands, what it can find here, and anything read approximately; find-anything
+                  tutors (Demonic Tutor: any card, or any nonland card) in a table of their own,
+                  their targets "everything" rather than a list (the same split in sections 2 and 8)
   2 Chains        tutors that find tutors (Step Through -> Spellseeker -> Cyclonic Rift)
   3 Coverage      how many ways each card can be reached; cards no tutor can find
   4 Dependencies  what loses all tutor access if a card is gone (the commander first)
@@ -116,10 +118,12 @@ class Target:
         self.mv = None; self.power = None; self.tough = None; self.named = None; self.not_named = set()
         self.mana_ability = False; self.permanent = False; self.historic = False; self.flash = False
         self.count = 1; self.approx = []; self.alts = []
+        self.same_name = False      # "a card with the same name as ...": only extra copies (none in a singleton deck)
 
     def broad(self):
         """Finds (nearly) anything: any card, or any nonland card with no other limit."""
         if self.alts: return any(a.broad() for a in self.alts)
+        if self.same_name: return False
         if self.any: return True
         return (self.non <= {"land"} and not (self.types or self.supers or self.subs or self.colors or self.colorless
                 or self.multicolored or self.permanent or self.historic or self.mv or self.power or self.tough
@@ -127,6 +131,7 @@ class Target:
 
     def matches(self, c):
         if self.alts: return any(a.matches(c) for a in self.alts)
+        if self.same_name: return False             # Mask of the Mimic, Remembrance: a second copy, never another card
         if self.named: return c["name"].lower() == self.named
         if c["name"].lower() in self.not_named: return False
         sup, typ, sub = type_parts(c)
@@ -156,6 +161,7 @@ class Target:
     def describe(self):
         if self.alts: return " or ".join(a.describe() for a in self.alts)
         if self.named: return f"cards named {self.named.title()}"
+        if self.same_name: return "another copy of a card you already have (none in a singleton deck)"
         if self.any: bits = ["any card"]
         else:
             bits = []
@@ -224,9 +230,9 @@ def parse_target(what, self_card):
         t.mv = ("==", int(self_card.get("cmc", 0)))
     elif (mm := cut(r"with (?:a )?mana value (\d+) or (less|greater)")):
         t.mv = ("<=" if mm.group(2) == "less" else ">=", int(mm.group(1)))
-    elif (mm := cut(r"with (?:a )?mana value (\d+)\b")):
+    elif (mm := cut(r"(?:with|that (?:have|has)) (?:a )?mana value (\d+)\b")):        # Grozoth: "that have mana value 9"
         t.mv = ("==", int(mm.group(1)))
-    elif (mm := cut(r"(?:with|that each have|each with) (?:a )?mana value (x|equal to|less than|greater than)[^,]*")):
+    elif (mm := cut(r"(?:with|that each have|each with) (?:a |the same )?mana value (x|equal to|less than|greater than|as)[^,]*")):
         t.approx.append("mana value " + mm.group(0).split("value", 1)[1].strip())
     for key in ("power", "toughness"):
         mm = cut(rf"with {key} (\d+) or (less|greater)")
@@ -240,11 +246,12 @@ def parse_target(what, self_card):
     if cut(r"with flash"): t.flash = True
     cut(r"(?:that each have|with) different names")
     for rx, note in ((r"that shares? a (?:creature|card) type[^,]*", "shares a type (read as any)"),
-                     (r"with the same name as [^,]*", "same name as a card in play (read as any)"),
+                     (r"with the same name as [^,]*", None),
                      (r"not named [^,]+?(?= that| with|,|$)", None),
                      (r"from among [^,]*", "restricted pool (read as any)")):
         mm = cut(rx)
         if mm and note: t.approx.append(note)
+        if mm and "same name" in rx: t.same_name = True
     # words before "card(s)" carry types/subtypes/colors; keep original case for subtypes
     head = re.split(r"\bcards?\b", rest, maxsplit=1)[0]
     orig_head = raw[:len(raw)]
@@ -271,7 +278,7 @@ def parse_target(what, self_card):
     if re.search(r"\bwith (?!mana value|power|toughness|a mana ability|flash|different|the same)\w+", rest):
         t.approx.append("unread 'with ...' condition: " + re.search(r"\bwith [^,]*", rest).group(0).strip())
     if not (t.types or t.non or t.supers or t.subs or t.colors or t.colorless or t.multicolored
-            or t.permanent or t.historic or t.mv or t.power or t.tough or t.mana_ability or t.flash):
+            or t.permanent or t.historic or t.mv or t.power or t.tough or t.mana_ability or t.flash or t.same_name):
         t.any = True
     return t
 
@@ -797,6 +804,16 @@ class Out:
                 print(fmt([c[j] if j < len(c) else "" for c in r]))
 
 
+def anything(t):
+    """A find-anything tutor (Demonic Tutor): any card, or any nonland card with no other limit. Its targets are
+    'everything', so the report lists these on their own instead of naming every card."""
+    return t.target.broad()
+
+
+def everything_str(t):
+    return "everything" if t.target.any else "every " + t.target.describe()
+
+
 def how_used(t):
     """Short 'how' for the tutor table: spell, enters, attack trigger, wizardcycling, transmute, activated..."""
     if t.kind == "trigger": return (t.condition or "trigger").replace("whenever ", "").replace("when ", "")
@@ -844,21 +861,29 @@ def main():
     o.h2(f"1. Tutors ({len(main_t)} effects on {len({t.name for t in main_t})} cards; "
          f"{len(land_t)} land-only effects listed separately)")
     order = sorted(main_t, key=lambda t: (t.name not in d.cmd_names, not t.repeatable, t.name))
-    dead, shallow, approx, rows, targets = [], [], [], [], []
+    dead, shallow, approx, rows, targets, any_rows = [], [], [], [], [], []
     for t in order:
         tg = sorted(x for x in d.lib_names if t.target.matches(d.card[x]) and not (x == t.name and d.qty.get(x, 0) < 2))
         nonland = [x for x in tg if not d.is_land[x]]
         nl = len(tg) - len(nonland)
         finds = t.target.describe() + (f" ×{t.target.count}" if t.target.count > 1 else "") + (" ⚠" if t.target.approx else "")
-        rows.append([t.name + (" (commander)" if t.name in d.cmd_names else ""), how_used(t),
-                     "repeatable" if t.repeatable else ("one-shot, re-buyable" if t.rebuy else "one-shot"),
-                     t.dest + (" (no access)" if t.dest in NO_ACCESS else ""), finds,
-                     f"{len(nonland)}" + (f" + {nl} lands" if nl else "")])
-        targets.append((t.name, nonland or tg))
+        row = [t.name + (" (commander)" if t.name in d.cmd_names else ""), how_used(t),
+               "repeatable" if t.repeatable else ("one-shot, re-buyable" if t.rebuy else "one-shot"),
+               t.dest + (" (no access)" if t.dest in NO_ACCESS else "")]
+        if anything(t):
+            any_rows.append(row + [everything_str(t) + (f" ×{t.target.count}" if t.target.count > 1 else "")
+                                   + (" ⚠" if t.target.approx else ""), f"{len(nonland)}" + (f" + {nl} lands" if nl else "")])
+        else:
+            rows.append(row + [finds, f"{len(nonland)}" + (f" + {nl} lands" if nl else "")])
+            targets.append((t.name, nonland or tg))
         if t.target.approx: approx.append(f"{t.name}: {'; '.join(dict.fromkeys(t.target.approx))}")
         if not tg: dead.append(t.name)
         elif len(nonland) <= 2 and not all(d.is_land[x] for x in tg): shallow.append(f"{t.name} ({len(nonland)})")
-    o.table(["Tutor", "How", "Uses", "Puts it", "Finds", "Targets here"], rows, right=(5,))
+    if rows: o.table(["Tutor", "How", "Uses", "Puts it", "Finds", "Targets here"], rows, right=(5,))
+    elif main_t: o.note("specific tutors: none")
+    if any_rows:
+        o.note(f"find-anything tutors ({len(any_rows)}; their targets are everything, so they aren't listed card by card):")
+        o.table(["Find-anything tutor", "How", "Uses", "Puts it", "Finds", "Cards here"], any_rows, right=(5,))
     if not main_t: o.note("no tutors outside land search")
     if land_t: o.note(f"land-only (mana, not analyzed further): {'; '.join(sorted({t.name for t in land_t}))}")
     if d.engines:
@@ -869,41 +894,49 @@ def main():
     if dead: o.note(f"⚠ no targets in this deck: {'; '.join(dead)}")
     if shallow: o.note(f"shallow pools (≤2 nonland targets): {'; '.join(shallow)}")
     generic = sorted({t.name for t in main_t if t.target.broad() and t.dest not in NO_ACCESS})
-    if generic: o.note(f"find-anything tutors: {'; '.join(generic)} (the 'specific only' columns set them aside)")
+    if generic: o.note("the 'specific only' columns below set the find-anything tutors aside")
     if lists and targets:
-        o.note("targets:")
+        o.note("targets of the specific tutors:")
         for n, tg in targets:
             if tg: o.bullet(f"{n}: {names_list(tg, lists)}", 1)
 
     # ---- 2. chains
     o.h2("2. Chains (tutors that find other tutors; a fetched tutor must land where it still works)")
-    links = []
+    links, any_links = [], []
+    any_names = {x for x in d.tutors if any(anything(t) for t in d.tutors[x] if t.dest not in NO_ACCESS)}
     for src, outs in sorted(d.edges.items()):
         found = []
         for u, ts in sorted(outs.items()):
             if u == src or u not in d.tutors or all(d.land_only(t2) for t2 in d.tutors[u]): continue
             if any(t.dest not in NO_ACCESS and any(t2.usable_from(t.dest) for t2 in d.tutors[u] if not d.land_only(t2)) for t in ts):
                 found.append(u)
-        if found: links.append((src, found))
+        if found: (any_links if src in any_names else links).append((src, found))
     reach_all = {x: d.reach(x) for x in d.lib_names}
     if links:
         o.table(["Tutor", "Can find these tutors"],
                 [[src + (" (commander)" if src in d.cmd_names else ""), "; ".join(found)] for src, found in links])
+    if any_links:
+        o.note("find-anything tutors find every tutor: " + "; ".join(src + (" (commander)" if src in d.cmd_names else "")
+                                                                      for src, _ in any_links))
     chains = []
     for x in [y for y in d.lib_names if not d.is_land[y]]:
         for src, p in reach_all[x].items():
             if len(p) >= 3: chains.append((len(p), p))
     if chains:
-        o.note("routes a tutor only gets through another tutor (shortest route to each card):")
         chains.sort(key=lambda z: (-z[0], z[1]))
-        shown, seen_keys = 0, set()
-        for L, p in chains:
+        into_any = sorted({tuple(p[:-1]) for L, p in chains if p[-2] in any_names}, key=lambda k: (-len(k), k))
+        spec = [(L, p) for L, p in chains if p[-2] not in any_names]
+        if spec: o.note("routes a tutor only gets through another tutor (shortest route to each card):")
+        seen_keys = set()
+        for L, p in spec:
             key = tuple(p[:-1])
             if key in seen_keys: continue
             seen_keys.add(key)
-            ends = sorted({q[-1] for L2, q in chains if tuple(q[:-1]) == key})
+            ends = sorted({q[-1] for L2, q in spec if tuple(q[:-1]) == key})
             o.bullet(f"{path_str(p[:-1])} → {names_list(ends, lists)}", 1)
-            shown += 1
+        if into_any:
+            o.note("routes into a find-anything tutor (then everything):")
+            for key in into_any: o.bullet(f"{path_str(list(key))} → everything", 1)
     if not links and not chains:
         o.note("none: no tutor here can find another tutor that still works where it lands")
 
@@ -1149,27 +1182,44 @@ def main():
                 m, se = found_paired(run, played, keys, T0)
                 res.append((m, se, c, r, t))
             res.sort(key=lambda x: -x[0])
-            rows = []
+            rows, any_rows = [], []
             lib_tutor_names = [x for x in d.tutors if x in d.lib_names and not all(d.land_only(tt) for tt in d.tutors[x])]
             for m, se, c, r, t in res:
+                if anything(t):
+                    summary["add"].append({"tutor": c["name"], "played": m, "se": se, "finds": everything_str(t), "anything": True,
+                                           "mv": int(c.get("cmc") or 0), "how": how_used(t), "price": mtg.price_str(c) or "—",
+                                           "gc": bool(c.get("game_changer"))})
+                    any_rows.append([c["name"], f"{100 * m:+.0f}" + ("" if abs(m) >= max(2 * se, 0.01) else " ≈"),
+                                     int(c.get("cmc") or 0), how_used(t), everything_str(t), t.dest, mtg.price_str(c) or "—",
+                                     "GC" if c.get("game_changer") else ""])
+                    continue
                 ry = [k for k in r if k in yours]
                 ri = [k for k in r if k not in yours]
                 chain = sorted(x for x in lib_tutor_names if t.target.matches(d.card[x]))
                 reach = ("all your keys" if len(ry) == len(yours) and yours else "; ".join(ry) or "none of yours")                     + (f" (+{len(ri)} inferred)" if ri else "") + (f"; via {', '.join(chain)}" if chain and not t.target.any else "")
-                summary["add"].append({"tutor": c["name"], "played": m, "se": se, "finds": reach, "mv": int(c.get("cmc") or 0),
+                summary["add"].append({"tutor": c["name"], "played": m, "se": se, "finds": reach, "anything": False, "mv": int(c.get("cmc") or 0),
                                        "how": how_used(t), "price": mtg.price_str(c) or "—", "gc": bool(c.get("game_changer"))})
                 rows.append([c["name"], f"{100 * m:+.0f}" + ("" if abs(m) >= max(2 * se, 0.01) else " ≈"),
                              reach, int(c.get("cmc") or 0), how_used(t) + (f" ({t.target.describe()})" if not t.target.any else ""),
                              t.dest, mtg.price_str(c) or "—", "GC" if c.get("game_changer") else ""])
-            o.table(["Tutor", "Played: key cards per 100 games", "Finds (your keys; via: tutors it can fetch)", "MV", "How (finds)",
-                     "Puts it", "Price", "GC"], rows, right=(1, 3))
+            if rows:
+                o.note("specific tutors:")
+                o.table(["Tutor", "Played: key cards per 100 games", "Finds (your keys; via: tutors it can fetch)", "MV", "How (finds)",
+                         "Puts it", "Price", "GC"], rows, right=(1, 3))
+            if any_rows:
+                o.note("find-anything tutors (every key card, so no list):")
+                o.table(["Find-anything tutor", "Played: key cards per 100 games", "MV", "How", "Finds", "Puts it", "Price", "GC"],
+                        any_rows, right=(1, 2))
             o.note(f"{pool_n} nonland tutors in the pool reach these key cards; {len(cands)} that goldfish.py reads fully were played (half")
             o.note(f"the most played, half the most efficient: key cards reached per mana), each in a spare inert card's slot, against the")
             o.note(f"same {played['trials']:,} games (≈: within noise or under 1 per 100)."
                    + ("" if gc_ok else " Game Changers left out at this bracket.") + (f" Under ${a.max_price:g}." if a.max_price else ""))
             if unverified:
-                o.note(f"not ranked, because goldfish.py reads them only partly (the games could misjudge them; worth a look by hand): "
-                       + "; ".join(f"{c['name']} ({st_})" for c, r, st_ in unverified))
+                is_any = lambda c: any(anything(t) for t in card_tutors(c) if t.dest not in NO_ACCESS)
+                o.note("not ranked, because goldfish.py reads them only partly (the games could misjudge them; worth a look by hand):")
+                for label, grp in (("specific", [x for x in unverified if not is_any(x[0])]),
+                                   ("find-anything", [x for x in unverified if is_any(x[0])])):
+                    if grp: o.bullet(f"{label} ({len(grp)}): " + "; ".join(f"{c['name']} ({st_})" for c, r, st_ in grp), 1)
             if worth and res and res[0][0] > 0:
                 weakest = min(worth, key=lambda t: worth[t][0])
                 best_c = res[0][2]["name"]
