@@ -1330,7 +1330,6 @@ T2_MIS = {
     "if an artifact was discarded, 2 damage to each opponent": ["Reckless Handling"],
     "each player (you too) can't cast more than one spell a turn": ["Rule of Law", "Deafening Silence", "Eidolon of Rhetoric",
                                                                     "High Noon", "Arcane Laboratory"],
-    "puts the card third from the top": ["Long-Term Plans"],
     "an opponent gains control of it (one use)": ["Wishclaw Talisman"],
     "draw only if you created a token this turn": ["Idol of Oblivion"],
     "blink your own creature": ["Ephemerate", "Splash Portal", "Settle Beyond Reality", "Go Ninja Go", "Eternal Acrobat Toast",
@@ -1340,15 +1339,14 @@ TNAMES = [n for ns in T2_MIS.values() for n in ns]
 TRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(TNAMES)}
 TK = {n: g.compile_card(TRAW[n], g.ALL5) for n in TNAMES}
 
-@check("T2 audit: all 20 t2_misreads cards say partial/blank with their 'unread (T2 audit)' note, never fully read")
+@check("T2 audit: all 19 t2_misreads cards say partial/blank with their 'unread (T2 audit)' note, never fully read")
 def _():
-    return len(TK) == 20 and all(TK[n].status in ("partial", "blank") and f"unread (T2 audit): {m}" in TK[n].notes
+    return len(TK) == 19 and all(TK[n].status in ("partial", "blank") and f"unread (T2 audit): {m}" in TK[n].notes
                                  for m, ns in T2_MIS.items() for n in ns)
-@check("T2 audit: Long-Term Plans doesn't tutor to the top; Wishclaw tutors once; Idol of Oblivion's draw is dropped")
+@check("T2 audit: Wishclaw tutors once; Idol of Oblivion's draw is dropped")
 def _():
     wish = TK["Wishclaw Talisman"].ctr_enter
-    return not any(e[0] == "tutor" for e in TK["Long-Term Plans"].spell) and wish and wish[0] == "wish" and wish[1] == 1 \
-        and not any(a["fx"] == [("draw", 1)] for a in TK["Idol of Oblivion"].acts)
+    return wish and wish[0] == "wish" and wish[1] == 1 and not any(a["fx"] == [("draw", 1)] for a in TK["Idol of Oblivion"].acts)
 @check("T2 audit: blinking your own creature is neither held interaction nor stax removal (Ephemerate, Escape Protocol, ...)")
 def _():
     return all(not TK[n].hold and not any(e[0] == "kill_perm" for t in TK[n].trig for e in t[2])
@@ -1373,6 +1371,51 @@ def _():
 @check("Audit 5: 'if N colors of mana were spent ..., ... instead' keeps the card partial (Paragon of Modernity, Spectacular Skywhale)")
 def _():
     return all(A5[n].status == "partial" and any("mana-spent" in x for x in A5[n].notes) for n in ("Paragon of Modernity", "Spectacular Skywhale"))
+
+# ---- tutoring from hand and tutors to the top (Zur the Enchanter deck, docs/TUTOR_PLAN.md phase 0, 2026-10-08)
+ZNAMES = ["Zur the Enchanter", "Island", "Plains", "Swamp", "Step Through", "Archaeomancer", "Mystical Tutor",
+          "Solve the Equation", "Long-Term Plans", "Astral Slide"]
+ZRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(ZNAMES)}
+ZK = {n: g.compile_card(ZRAW[n], frozenset("WUB")) for n in ZNAMES}
+
+def zgame(perms=(), lands=(), hand=(), lib=(), keys=()):
+    args = argparse.Namespace(order=g.ORDER_DEFAULT, draw=False, kill_commander=0, cast_interaction=False)
+    sim = g.Sim([n for n in ZNAMES if n != "Zur the Enchanter"], ["Zur the Enchanter"], args, [], ZK, frozenset("WUB"),
+                want=({ZK[n] for n in keys}, []))
+    G = g.Game(sim, [ZK[n] for n in hand], [ZK[n] for n in lib], random.Random(1))
+    G.turn = 4; G.phase = 4; G.cmd = []
+    G.lands = [g.Perm(ZK[n]) for n in lands]
+    G.perms = [g.Perm(ZK[n]) for n in perms]
+    G._st = None
+    return G
+
+@check("Long-Term Plans tutors any card to third from the top (T2 audit fix kept the tutor)")
+def _():
+    t = [e for e in ZK["Long-Term Plans"].spell if e[0] == "tutor"]
+    return ZK["Long-Term Plans"].status == "modeled" and len(t) == 1 and t[0][2] == "top3"
+@check("Wizardcycling in the main phase for a missing key Wizard (Step Through finds Archaeomancer)")
+def _():
+    G = zgame(lands=["Island", "Island"], hand=["Step Through"], lib=["Island"] * 6 + ["Archaeomancer"], keys=["Archaeomancer"])
+    G.build_pool(); G.cast_loop(activate=False)
+    return ZK["Archaeomancer"] in G.hand and ZK["Step Through"] in G.gy
+@check("No wizardcycling when nothing it can find is wanted (Step Through stays in hand)")
+def _():
+    G = zgame(lands=["Island", "Island"], hand=["Step Through"], lib=["Island"] * 6 + ["Archaeomancer"])
+    G.build_pool(); G.cast_loop(activate=False)
+    return ZK["Step Through"] in G.hand
+@check("A tutor to the top waits until after combat while Zur can attack (its search would shuffle the card away)")
+def _():
+    G = zgame(perms=["Zur the Enchanter"], lands=["Island", "Island"], hand=["Mystical Tutor"],
+              lib=["Island"] * 6 + ["Solve the Equation", "Astral Slide"])
+    G.build_pool(); G.cast_loop(activate=False)
+    held = ZK["Mystical Tutor"] in G.hand and G.held_top
+    G.combat_done = True; G.cast_loop(activate=False)
+    return held and ZK["Mystical Tutor"] not in G.hand
+@check("Without an attack-trigger search pending, a tutor to the top is cast in main phase 1")
+def _():
+    G = zgame(lands=["Island", "Island"], hand=["Mystical Tutor"], lib=["Island"] * 6 + ["Solve the Equation"])
+    G.build_pool(); G.cast_loop(activate=False)
+    return ZK["Mystical Tutor"] not in G.hand
 
 def main():
     fails = 0

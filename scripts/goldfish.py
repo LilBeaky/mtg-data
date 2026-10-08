@@ -2556,8 +2556,8 @@ T2_UNREAD = [
 def t2_misreads(k, lo):
     lo = lo.replace("this creature", "~").replace("this artifact", "~")
     hit = [msg for rx, msg in T2_UNREAD if rx.search(lo)]
-    if "then shuffle and put that card third from the top" in lo:
-        k.spell = [e for e in k.spell if e[0] != "tutor"]; hit.append("puts the card third from the top")
+    if "then shuffle and put that card third from the top" in lo:     # Long-Term Plans: drawn two turns later
+        k.spell = [(e[0], e[1], "top3") + tuple(e[3:]) if e[0] == "tutor" else e for e in k.spell]
     if "an opponent gains control of ~" in lo and k.ctr_enter and k.ctr_enter[0] == "wish":
         k.ctr_enter = ("wish", 1, k.ctr_enter[2]); hit.append("an opponent gains control of it (one use)")
     if "activate only if you created a token this turn" in lo:
@@ -2648,6 +2648,10 @@ def keyword_line(k, L, c):
     gc["exile_after"] = kw != "retrace" and not (kw == "escape" and k.types & PERMANENT)
     k.gycast = gc
     return True
+
+def to_top_tutor(k):
+    """k's spell puts the card it finds on top of the library (Mystical Tutor; Long-Term Plans: third from the top)."""
+    return any(e[0] == "tutor" and isinstance(e[2], str) and e[2].startswith("top") for e in flat(k.spell + k.castfx))
 
 def flat(fxs):
     out = []
@@ -2889,6 +2893,7 @@ class Game:
         self.atk_n = 0; self.atk_turns = 0; self.lost = 0   # attackers this turn; turns you attacked; your creatures lost in combat
         self.ctx_obj = None; self.ctx_opp = None      # the creature / defending player a combat trigger is about
         self.ctx_dmg = 0                              # combat damage the creature(s) of a combat damage trigger just dealt
+        self.held_top = False                   # a tutor-to-top held for main phase 2 (a search would shuffle it away first)
         self.combat_on = False; self.combat_done = False; self.attackers = {}   # attacker Perm -> defending opponent
         self.xcombat = 0; self.xcombats = 0     # additional combats pending this turn / taken this game
         self.pending_untap = []; self.attacked = set()   # untaps waiting for the next combat; creatures that attacked this turn
@@ -3419,12 +3424,30 @@ class Game:
                 if k.gycast and not k.ritual and not (k.hold and not sim.cast_hold) and not (k.alpha and not self.alpha_ok(k)):
                     cands.append((sim.prio(k, "gy"), k, "gy"))
             cands.sort(key=lambda t: t[0])
-            for _, k, zone in cands:
+            # tutoring from hand (typecycling, transmute) toward a wanted card comes after the commander, tracked cards
+            # and ramp, before draw and the rest: otherwise main phase 1 spends the mana and Step Through never cycles
+            tut_at = sim.order.get("draw", len(sim.order))
+            tried = self.dry
+            hold_top = self.shuffle_ahead()
+            for pr, k, zone in cands:
+                if hold_top and to_top_tutor(k):               # after combat: Zur's search would shuffle the card away
+                    self.held_top = True; continue
+                if not tried and pr[0] >= tut_at:
+                    tried = True
+                    if self.hand_act(): break
                 if min((g_ + len(p_) for g_, p_ in self.options(k, zone)), default=avail + 1) > avail: continue   # no option: an unpayable extra cost
                 if self.try_cast(k, zone): break
             else:
+                if not tried and self.hand_act(): continue
                 if not self.try_ritual(cands): break
         if activate: self.activations()
+
+    def shuffle_ahead(self):
+        """A search that shuffles the library is still to come this turn: an attack trigger that tutors or fetches a
+        land (Zur the Enchanter) on a creature that can attack. A card tutored to the top before it would be lost."""
+        if self.combat_done or self.dry: return False
+        return any(TRIG_KIND.get(t[0]) == "combat" and any(e[0] in ("tutor", "land_search") for e in flat(t[2]))
+                   and self.can_attack(p) for p in self.perms for t in p.k.trig)
 
     def try_ritual(self, cands):
         for r in dict.fromkeys(c for c in self.hand if c.ritual):
@@ -3954,6 +3977,13 @@ class Game:
                 elif ab["kind"] == "transmute":
                     if eot or not any(self.want_bonus(c, have) >= 50 and self.sim.tmatch(tut[0][1], c) for c in self.lib):
                         continue
+                elif ab["kind"] == "typecycle" and tut and not eot:
+                    # wizardcycling Step Through for a missing key Wizard: cycle when the best card it finds is wanted
+                    # (a key card, a missing package piece, or a tutor toward one) and worth more than casting the cycler
+                    found = [c for c in self.lib if self.sim.tmatch(tut[0][1], c)]
+                    best = max(found, key=lambda c: self.tutor_value(c, "hand", have), default=None)
+                    if best is None or self.want_bonus(best, have) < 50 or \
+                            self.tutor_value(best, "hand", have) <= self.value(card): continue
                 elif not eot: continue
                 else:
                     need_land = not any(c.is_land for c in self.hand) and len(self.lands) < 7
@@ -5660,7 +5690,7 @@ class Game:
                     p.sick = False
                     if not p.k.no_untap: p.tapped = False            # Mana Vault stays tapped
                 self.drops = 1 + self.st.extra_land
-                self.combat_done = False; self.atk_n = 0
+                self.combat_done = False; self.atk_n = 0; self.held_top = False
                 for q in [q for q in self.perms if q.k.cum_upkeep]:
                     q.ctr = q.ctr or {}; q.ctr["age"] = q.ctr.get("age", 0) + 1
                     if q.ctr["age"] > 3: self.leave(q, "is let go (cumulative upkeep)")
@@ -5706,7 +5736,7 @@ class Game:
                     self.combat()
                 self.xcombat = 0; self.pending_untap = []; self.attacked = set()
                 after = sig()
-                if after[:3] == before[:3] and after[3] <= before[3]: self.activations()   # combat changed nothing castable
+                if after[:3] == before[:3] and after[3] <= before[3] and not self.held_top: self.activations()   # combat changed nothing castable
                 else: self.cast_loop()                                  # main phase 2: what combat drew or made, then activations
                 if self.hand_act(): self.cast_loop(activate=False)       # transmute, then cast what it found
                 while self.hand_act(eot=True): pass                     # leftover mana: cycle dead cards
