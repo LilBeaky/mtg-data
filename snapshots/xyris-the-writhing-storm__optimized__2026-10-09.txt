@@ -1,0 +1,296 @@
+# commander: Xyris, the Writhing Storm
+# variant: optimized
+# url: https://edhrec.com/commanders/xyris-the-writhing-storm/optimized
+# decks: 648
+# fetched: 2026-10-09
+Samut, Hazoret's Champion|16|13|62
+Samut, Tyrant of Naktamun|11|8|62
+Orcrist, Goblin-cleaver|4.2|4|142
+Wizard's Staff|3.7|1|135
+Pia, Aether Ascetic|2.9|-1|68
+Windfall|89|80
+Impact Tremors|81|74
+Purphoros, God of the Forge|75|71
+Winds of Change|72|69
+Skullclamp|68|64
+Goblin Bombardment|67|63
+Birds of Paradise|64|28
+Arcane Denial|63|47
+Cyclonic Rift|61|41
+Fierce Guardianship|59|41
+Seshiro the Anointed|12|10
+Might of the Masses|5.4|5
+Wheel and Deal|44|43
+Throne of the God-Pharaoh|8.5|8
+Whirlpool Warrior|42|40
+Forced Fruition|26|24
+Molten Psyche|51|49
+Khorvath's Fury|11|10
+Vision Skeins|13|12
+Teferi's Puzzle Box|58|55
+Jace's Archivist|56|53
+Agate Instigator|52|50
+Scrawling Crawler|49|46|646
+Enduring Vitality|48|39
+Magus of the Wheel|46|43
+Razorkin Needlehead|40|38
+The Locust God|40|37
+Witty Roastmaster|39|36
+Molten Gatekeeper|39|36
+Craterhoof Behemoth|35|31
+Delighted Halfling|34|17
+Adrix and Nev, Twincasters|32|25
+Psychosis Crawler|28|25
+Faerie Mastermind|27|22
+Kami of the Crescent Moon|26|24
+Sakura-Tribe Elder|22|10
+Hexing Squelcher|22|12|353
+Junk Winder|21|17
+Llanowar Elves|20|4
+Bloom Tender|20|8
+Weftstalker Ardent|20|18|481
+Eternal Witness|17|1
+Edric, Spymaster of Trest|16|14
+Jaheira, Friend of the Forest|16|13
+Ohran Frostfang|15|13
+Consecrated Sphinx|15|11
+Elvish Mystic|15|3
+Simian Spirit Guide|15|10
+Chasm Skulker|14|12
+Elvish Spirit Guide|14|7
+Heartwood Storyteller|12|11
+Roaming Throne|12|3
+Laboratory Maniac|11|8
+Niv-Mizzet, Parun|11|6
+Tinder Wall|10|5
+Kaseto, Orochi Archmage|10|9
+Fyndhorn Elves|10|4
+Seedborn Muse|10|3
+Curiosity Crafter|9.9|9
+Anger|9.3|5
+Ragavan, Nimble Pilferer|8.8|3
+Enduring Courage|7.7|6
+Goblin Anarchomancer|6.9|-4
+Circle of Dreams Druid|6.8|6
+Slash, Reptile Rampager|6.3|6|332
+Azusa, Lost but Seeking|6.0|-2
+Toski, Bearer of Secrets|5.7|4
+Niv-Mizzet, the Firemind|5.6|4
+Lotus Cobra|5.1|-3
+Irma, Part-Time Mutant|5.1|4|297
+Deflecting Swat|56|37
+Heroic Intervention|54|26
+An Offer You Can't Refuse|46|25
+Swan Song|46|31
+Mystical Tutor|45|34
+Beast Within|44|7
+Counterspell|44|11
+Mana Drain|43|31
+Force of Will|35|27
+Worldly Tutor|35|21
+Chaos Warp|31|0
+Force of Negation|23|17
+Pongify|23|11
+Chord of Calling|23|16
+Rapid Hybridization|22|8
+Crop Rotation|20|9
+Negate|20|5
+Growth Spiral|17|-7
+Pact of Negation|16|10
+Tyvar's Stand|16|10
+Flusterstorm|15|7
+Noxious Revival|15|4
+Tamiyo's Safekeeping|15|8
+Veil of Summer|14|7
+Sink into Stupor|13|6
+Battle Hymn|12|12
+Nature's Claim|11|5
+Snakeskin Veil|11|4
+Reality Shift|10|-3
+Force of Vigor|9.1|7
+Dream Fracture|8.5|7
+Valakut Awakening|8.3|6
+Commit // Memory|8.0|7
+Long River's Pull|7.9|6
+Muddle the Mixture|7.7|6
+Mental Misstep|7.7|2
+Mindbreak Trap|7.4|2
+Blossoming Defense|7.3|5
+Into the Flood Maw|7.3|5
+Krosan Grip|7.1|4
+Mystic Reflection|7.1|6
+Red Elemental Blast|6.9|4
+Pyroblast|6.9|4
+Second Harvest|6.6|5
+Vines of Vastwood|6.3|5
+Harmonized Crescendo|6.2|6|353
+Harrow|6.2|-4
+Invigorate|6.2|5
+Simic Charm|6.2|3
+Overprotect|6.0|3
+Echo of Eons|57|55
+Nature's Lore|51|17
+Farseek|49|1
+Three Visits|46|19
+Wheel of Fortune|46|42
+Reforge the Soul|46|44
+Jeska's Will|44|28
+Cultivate|40|-1
+Blasphemous Act|34|0
+Time Reversal|34|32
+Kodama's Reach|30|-1
+Rampant Growth|28|-5
+Prosperity|27|25
+Gamble|23|15
+Finale of Devastation|18|9
+Time Spiral|18|17
+Vandalblast|16|8
+Triumph of the Hordes|15|14
+Minds Aglow|15|13
+Burning Inquiry|14|13
+Timetwister|13|12
+Bala Ged Recovery|12|6
+Wheel of Misfortune|11|10
+Wheel of Fate|8.2|7
+Natural Order|7.6|6
+Skyshroud Claim|6.9|-2
+Day's Undoing|6.8|6
+Raise the Palisade|6.6|4
+Nature's Rhythm|6.4|-1|592
+Sea Gate Restoration|6.2|4
+Tempt with Discovery|6.0|3
+Eldritch Evolution|5.2|0
+Lightning Greaves|58|33
+Swiftfoot Boots|39|14
+Howling Mine|37|34
+Phyrexian Altar|35|34
+Ashnod's Altar|28|26
+Font of Mythos|21|19
+The One Ring|15|8
+Folio of Fancies|14|13
+Combine Chrysalis|11|9
+Temple Bell|11|9
+Coat of Arms|9.1|8
+Eldrazi Monument|7.4|7
+Memory Jar|6.6|6
+Altar of the Brood|5.7|5
+Banner of Kinship|5.4|4|646
+Horn of Greed|5.2|4
+Cryptolith Rite|58|52
+Shared Animosity|47|44
+Rhystic Study|45|27
+Beastmaster Ascension|34|31
+Mystic Remora|32|20
+Parallel Lives|25|20
+Burgeoning|24|21
+Dictate of Kruphix|22|20
+Rites of Flourishing|20|17
+Exploration|18|9
+Underworld Breach|18|11
+Growing Rites of Itlimoc|16|12
+Roar of Resistance|15|14
+Fevered Visions|14|13
+Sylvan Library|14|7
+Springleaf Parade|13|12|353
+Wild Growth|12|2
+Concordant Crossroads|12|11
+Doubling Season|12|5
+Earthcraft|11|9
+Mass Hysteria|11|10
+Utopia Sprawl|8.3|1
+Carpet of Flowers|8.0|4
+Wizard Class|7.3|6
+Rising of the Day|6.9|5
+Teferi's Ageless Insight|6.6|6
+Frostcliff Siege|6.5|-2|599
+Rhythm of the Wild|6.5|-15
+Leyline of Anticipation|6.3|5
+Kindred Discovery|5.9|1
+Opposition|5.2|5
+Xenagos, the Reveler|8.5|8
+Oko, Thief of Crowns|6.3|4
+Jace Beleren|6.2|5
+Jace, Wielder of Mysteries|5.9|5
+Narset, Parter of Veils|5.2|4
+Reliquary Tower|63|33
+Boseiju, Who Endures|41|20
+Three Tree City|33|29
+Ancient Tomb|32|22
+Otawara, Soaring City|32|15
+Gaea's Cradle|29|21
+Mikokoro, Center of the Sea|28|26
+Yavimaya, Cradle of Growth|24|9
+Mistrise Village|22|6|598
+Geier Reach Sanitarium|21|19
+Rogue's Passage|17|1
+Kessig Wolf Run|16|2
+Arena of Glory|12|7
+Evendo, Waking Haven|11|8|480
+Shifting Woodland|9.6|2
+Urza's Saga|9.0|3
+Oran-Rief, the Vastwood|6.5|5
+Alchemist's Refuge|6.0|1
+Command Beacon|6.0|2
+Sol Ring|96|13
+Arcane Signet|85|14
+Thought Vessel|43|33
+Fellwar Stone|28|10
+Talisman of Creativity|26|10
+Talisman of Curiosity|24|9
+Talisman of Impulse|21|6
+Lotus Petal|20|9
+Chrome Mox|19|10
+Mana Vault|17|10
+Decanter of Endless Water|14|11
+Mox Diamond|12|5
+Izzet Signet|9.7|1
+Simic Signet|9.4|0
+Chromatic Lantern|9.3|0
+Gruul Signet|7.9|0
+Mox Opal|5.7|2
+Commander's Sphere|5.1|-2
+Command Tower|97|6
+Stomping Ground|78|30
+Breeding Pool|78|29
+Steam Vents|77|33
+Wooded Foothills|61|26
+Rejuvenating Springs|59|26
+Scalding Tarn|59|27
+Misty Rainforest|58|25
+Exotic Orchard|57|1
+Ketria Triome|57|17
+Training Center|54|25
+Spire Garden|51|22
+Yavimaya Coast|42|7
+Hinterland Harbor|39|-6
+Shivan Reef|37|4
+Sulfur Falls|37|-5
+Volcanic Island|31|16
+Tropical Island|30|15
+Taiga|30|15
+Rootbound Crag|30|-12
+Karplusan Forest|30|2
+Frontier Bivouac|30|-20
+City of Brass|30|19
+Mana Confluence|27|17
+Cinder Glade|27|-14
+Dreamroot Cascade|25|-5
+Stormcarved Coast|23|1
+Rockfall Vale|22|-10
+Flooded Strand|21|9
+Windswept Heath|19|7
+Polluted Delta|19|9
+Reflecting Pool|17|10
+Bloodstained Mire|16|9
+Barkchannel Pathway|16|11
+Verdant Catacombs|16|6
+Prismatic Vista|15|9
+Fabled Passage|14|1
+Riverglide Pathway|13|9
+Cragcrown Pathway|13|8
+Hedge Maze|13|1
+Flooded Grove|13|-3
+Arid Mesa|12|5
+Cascade Bluffs|12|3
+Evolving Wilds|11|-15
+Cavern of Souls|11|3
