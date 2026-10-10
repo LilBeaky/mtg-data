@@ -1,0 +1,16 @@
+# title: Cabal Coffers: unflagged, the AI uses it and doesn't hurt itself (smoke test)
+# card: Cabal Coffers
+# turns: 3
+# expect: Ai\(1\)-P1 played Cabal\ Coffers
+# forbid: Ai\(1\)-P1 (has lost|loses the game)
+# forbid: Life: Ai\(1\)-P1 \d+ > (-?\d)$
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp;Swamp
+p0hand=Cabal Coffers;Swamp;Swamp
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest;Forest;Mountain
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

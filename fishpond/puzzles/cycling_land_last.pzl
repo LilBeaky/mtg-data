@@ -1,0 +1,15 @@
+# title: Cycling lands go last: 3 Islands out, an Island and Remote Isle in hand: the AI plays the Island and keeps the cycler
+# card: (land sequencing: cycling lands)
+# turns: 1
+# expect: played Island
+# forbid: played Remote Isle
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island
+p0hand=Remote Isle;Island;Phantom Warrior
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

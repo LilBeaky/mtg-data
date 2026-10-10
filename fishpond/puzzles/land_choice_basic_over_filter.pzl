@@ -1,0 +1,15 @@
+# title: Land choice, first drop: Island and Sungrass Prairie in hand with Sol Ring: the AI plays the Island (the filter land makes nothing on its own) and casts Sol Ring (Chulane g7 played the Prairie)
+# card: (land choice: mana now)
+# turns: 1
+# expect: played Island
+# expect: cast Sol Ring
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=
+p0hand=Sungrass Prairie;Island;Sol Ring
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

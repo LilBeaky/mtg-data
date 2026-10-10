@@ -1,0 +1,14 @@
+# title: Signet mana is used: Island, Plains and Azorius Signet out, Phantom Warrior ({1}{U}{U}) in hand: the AI pays with the Signet (Plains into it for {W}{U}) and casts the Warrior (Simic Signet sat in hand T2-T7 in Xyris g5)
+# card: Azorius Signet
+# turns: 1
+# expect: cast Phantom Warrior
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Plains;Azorius Signet
+p0hand=Phantom Warrior
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

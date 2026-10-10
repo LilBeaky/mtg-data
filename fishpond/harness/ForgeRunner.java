@@ -167,7 +167,9 @@ public class ForgeRunner {
         @Override public <T extends forge.game.GameEntity> T chooseSingleEntityForEffect(forge.util.collect.FCollectionView<T> optionList,
                 forge.game.player.DelayedReveal delayedReveal, SpellAbility sa, String title, boolean isOptional, Player targetedPlayer,
                 Map<String, Object> params) {
-            T forgePick = super.chooseSingleEntityForEffect(optionList, delayedReveal, sa, title, isOptional, targetedPlayer, params);
+            // a card cast from an effect (cascade, "you may cast", PlayAi.chooseSingleCard) is checked by lookahead here too;
+            // a crash in it is remade without lookahead and counted, like chooseSpellAbilityToPlay (FORGE_PLAN item 7)
+            T forgePick = simRetry(() -> super.chooseSingleEntityForEffect(optionList, delayedReveal, sa, title, isOptional, targetedPlayer, params));
             Player me = getPlayer();
             if (policy == null || (forgePick == null && isOptional) || !PilotPolicy.appliesToDig(sa, optionList, me)) return forgePick;
             List<Card> cands = new ArrayList<>();
@@ -187,8 +189,14 @@ public class ForgeRunner {
         }
 
         @Override public List<SpellAbility> chooseSpellAbilityToPlay() {
+            return simRetry(super::chooseSpellAbilityToPlay);
+        }
+
+        /** Run one AI decision; if Forge's simulation code throws inside it, remake that decision with lookahead off, count it
+         *  (sim_decision_fallbacks) and log where it threw. */
+        <R> R simRetry(java.util.function.Supplier<R> decision) {
             try {
-                return super.chooseSpellAbilityToPlay();
+                return decision.get();
             } catch (RuntimeException e) {
                 AiController a = getAi();
                 AIOption m = a.usesFullSimulation() ? AIOption.USE_FULL_SIMULATION : a.usesHybridSimulation() ? AIOption.USE_HYBRID_SIMULATION : null;
@@ -207,14 +215,14 @@ public class ForgeRunner {
                 StringBuilder stack = new StringBuilder();
                 for (var si : g.getStack()) { if (stack.length() > 0) stack.append(" | "); stack.append(si.getSpellAbility()); }
                 a.setUseSimulation(null);
-                List<SpellAbility> played = null;
-                try { played = super.chooseSpellAbilityToPlay(); return played; }
+                R played = null;
+                try { played = decision.get(); return played; }
                 finally {
                     a.setUseSimulation(m);
                     String entry = "{\"t\": " + ph.getTurn() + ", \"phase\": " + js(String.valueOf(ph.getPhase())) + ", \"seat\": " + js(getPlayer().getName())
                             + ", \"active\": " + js(ph.getPlayerTurn() == null ? "" : ph.getPlayerTurn().getName()) + ", \"mode\": " + js(m.name())
                             + ", \"stack\": " + js(stack.toString()) + ", \"exc\": " + js(String.valueOf(e)) + ", \"at\": " + js(where(e))
-                            + ", \"played\": " + js(played == null || played.isEmpty() ? "(pass)" : String.valueOf(played)) + "}";
+                            + ", \"played\": " + js(played == null || played instanceof List && ((List<?>) played).isEmpty() ? "(pass)" : String.valueOf(played)) + "}";
                     fb.log.add(entry);
                     out.println("#FP-SIMFB " + entry);
                 }

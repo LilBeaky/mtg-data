@@ -1,0 +1,7 @@
+# fishpond override (Forge 2.0.15 script minus AI:RemoveDeck:All): smoke puzzle passes: fishpond/puzzles/smoke_crystal_vein.pzl
+Name:Crystal Vein
+ManaCost:no cost
+Types:Land
+A:AB$ Mana | Cost$ T | Produced$ C | SpellDescription$ Add {C}.
+A:AB$ Mana | Cost$ T Sac<1/CARDNAME> | Produced$ C | Amount$ 2 | SpellDescription$ Add {C}{C}.
+Oracle:{T}: Add {C}.\n{T}, Sacrifice Crystal Vein: Add {C}{C}.

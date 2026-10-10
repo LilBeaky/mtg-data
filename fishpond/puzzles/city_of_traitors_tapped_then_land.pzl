@@ -1,0 +1,15 @@
+# title: City of Traitors already tapped: City and a Swamp out, a Swamp and Phyrexian Rager in hand: the AI taps City for the Rager, then makes its land drop (City's mana is already spent; holding the land gains nothing)
+# card: City of Traitors
+# turns: 1
+# expect: cast Phyrexian Rager
+# expect: played Swamp
+p0life=20
+p1life=20
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=City of Traitors;Swamp
+p0hand=Swamp;Phyrexian Rager
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest

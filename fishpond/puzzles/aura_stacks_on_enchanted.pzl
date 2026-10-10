@@ -1,0 +1,15 @@
+# title: Pump auras stack: Grizzly Bears already wears Ethereal Armor, Llanowar Elves is the other body; Spirit Mantle in hand: the AI casts it on the Bears (Forge skipped enchanted creatures, so Wilson's auras stalled in hand)
+# card: (auras: stacking)
+# turns: 1
+# expect: Spirit Mantle.*Grizzly Bears
+# forbid: Spirit Mantle.*Llanowar Elves
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Forest;Forest;Grizzly Bears|Id:101;Ethereal Armor|AttachedTo:101;Llanowar Elves|SummonSick
+p0hand=Spirit Mantle
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

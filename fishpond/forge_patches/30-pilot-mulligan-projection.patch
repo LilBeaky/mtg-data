@@ -1,0 +1,82 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index f6a5519..5cacbe0 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -2335,6 +2335,8 @@ public class ComputerUtil {
+     // a 7-card hand must also project to cast a commander costing 4+ on time: target turn 4 for 4 mana, turn 5 for 5+,
+     // allowing one turn late. The projection: lands in hand plus the lands the deck should draw (its land share of the
+     // library per draw, no more than one land a turn), plus ramp mana, minus cost reducers that apply to the commander.
++    // Patch 30: commanders that discount themselves (affinity, convoke...) skip the projection; the projection counts ramp the
++    // deck will draw; 7+ mana commanders aim for turn cost - 1.
+     // 6 and 5 cards: the floor only; 4 or fewer: always keep (patch 27, the user's rule: no mulligan below 4; before it a
+     // 5-or-fewer hand under 2 lands went back, chaining Heliod down to 2 cards). -Dfishpond.mulligan=false restores Forge's
+     // rule; each decision prints #FP-MULL.
+@@ -2380,6 +2382,21 @@ public class ComputerUtil {
+         return n;
+     }
+ 
++    /** fishpond patch 30 (D9): the commander's cost shrinks with the board (affinity, convoke, improvise, delve, or a
++     *  ReduceCost static on itself), so a lands-based projection of its turn means nothing. */
++    static boolean pilotSelfDiscounting(final Card commander) {
++        if (commander.hasKeyword(Keyword.AFFINITY) || commander.hasKeyword(Keyword.CONVOKE) || commander.hasKeyword(Keyword.IMPROVISE)
++                || commander.hasKeyword(Keyword.DELVE)) {
++            return true;
++        }
++        for (final StaticAbility st : commander.getStaticAbilities()) {
++            if (st.checkMode(StaticAbilityMode.ReduceCost) && st.getParamOrDefault("ValidCard", "").startsWith("Card.Self")) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     public static boolean pilotWantMulligan(final Player ai, final int cardsToReturn) {
+         final CardCollectionView hand = ai.getCardsIn(ZoneType.Hand);
+         if (hand.isEmpty()) {
+@@ -2426,21 +2443,43 @@ public class ComputerUtil {
+         } else if (finalSize <= 6 || commander == null || commander.getCMC() < 4) {
+             mull = false;
+             why = "floor met";
++        } else if (pilotSelfDiscounting(commander)) {
++            // fishpond patch 30 (D9): affinity, convoke, improvise, delve or a "costs less" of its own: the cost depends on the
++            // board, not the lands (Witherbloom, cost 8 with affinity for creatures, sent back 24 of 25 sevens)
++            mull = false;
++            why = "floor met (commander " + commander.getName() + " discounts itself)";
+         } else {
+             final int cost = Math.max(0, commander.getCMC() - reduce);
+             final CardCollectionView lib = ai.getCardsIn(ZoneType.Library);
+             final double share = lib.isEmpty() ? 0 : (double) CardLists.count(lib, CardPredicates.LANDS) / lib.size();
++            // fishpond patch 30 (D9): ramp the deck will draw: each draw from turn 2 on is ramp at the library's ramp share and
++            // counts from the turn after it's drawn (Klauth threw back 3-land sevens with 13 accelerants in the deck)
++            int libRamp = 0, libRampMana = 0;
++            for (final Card c : lib) {
++                if (c.isLand()) {
++                    continue;
++                }
++                final SpellAbility sp = c.getFirstSpellAbility();
++                if (sp != null && c.getCMC() <= 3 && isRamp(ai, sp)) {
++                    libRamp++;
++                    libRampMana += Math.max(1, rampMana(c));
++                }
++            }
++            final double rampPerDraw = lib.isEmpty() ? 0 : (double) libRampMana / lib.size();
+             projected = 99;
+             for (int t = 1; t <= 12; t++) {
+-                final double mana = Math.min(t, lands + (t - 1) * share) + ramp;
++                final double mana = Math.min(t, lands + (t - 1) * share) + ramp + Math.max(0, t - 2) * rampPerDraw;
+                 if (mana + 0.5 >= cost) {
+                     projected = t;
+                     break;
+                 }
+             }
+-            final int target = commander.getCMC() <= 4 ? 4 : 5;
++            // target turn: 4 for 4 mana, 5 for 5-6, cost - 1 for 7+ (patch 30: Klauth turn 6), one turn of slack. With the
++            // library's ramp counted, a 7-drop deck still sends back 3 lands and no ramp, keeps 4 lands or 3 and a rock
++            final int cmc = commander.getCMC();
++            final int target = cmc <= 4 ? 4 : cmc <= 6 ? 5 : cmc - 1;
+             mull = projected > target + 1;
+-            why = "commander " + commander.getName() + " (cost " + commander.getCMC() + ", -" + reduce + ") projected on turn " + projected + ", target " + target;
++            why = "commander " + commander.getName() + " (cost " + cmc + ", -" + reduce + ", library ramp " + libRamp + ") projected on turn " + projected + ", target " + target;
+         }
+         System.out.println("#FP-MULL {\"player\": \"" + ai.getName() + "\", \"cards\": " + finalSize + ", \"lands\": " + lands + ", \"ramp\": " + ramp
+                 + ", \"reduce\": " + reduce + ", \"mulligan\": " + mull + ", \"why\": \"" + why.replace("\"", "'") + "\"}");

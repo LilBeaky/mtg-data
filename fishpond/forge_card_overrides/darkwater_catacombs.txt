@@ -1,0 +1,6 @@
+# fishpond override (Forge 2.0.15 script minus AI:RemoveDeck:All): smoke puzzle passes: fishpond/puzzles/smoke_darkwater_catacombs.pzl
+Name:Darkwater Catacombs
+ManaCost:no cost
+Types:Land
+A:AB$ Mana | Cost$ 1 T | Produced$ U B | SpellDescription$ Add {U}{B}.
+Oracle:{1}, {T}: Add {U}{B}.
