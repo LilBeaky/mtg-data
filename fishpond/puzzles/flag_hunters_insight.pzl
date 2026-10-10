@@ -1,0 +1,14 @@
+# title: Hunter's Insight: Craw Wurm can attack an empty board: the AI casts it on the Wurm before damage
+# card: Hunter's Insight
+# turns: 1
+# expect: Hunter's Insight.*Craw Wurm
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest;Forest;Forest;Craw Wurm
+p0hand=Hunter's Insight
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

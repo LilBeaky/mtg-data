@@ -1,0 +1,14 @@
+# title: Signal the Clans: creatures in the library: the AI casts it
+# card: Signal the Clans
+# turns: 2
+# expect: cast Signal the Clans
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Mountain;Forest;Mountain
+p0hand=Signal the Clans
+p0library=Grizzly Bears;Hill Giant;Craw Wurm;Gray Ogre;Forest;Mountain;Forest;Mountain;Forest;Mountain;Forest;Mountain
+p1battlefield=Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

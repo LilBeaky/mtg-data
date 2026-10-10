@@ -1,0 +1,15 @@
+# title: Titan's Presence: Ulamog's Crusher in hand to reveal, Serra Angel across: the AI exiles the Angel
+# card: Titan's Presence
+# known_gap: yes
+# turns: 2
+# expect: Titan's Presence.*Serra Angel
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Wastes;Wastes;Wastes;Wastes
+p0hand=Titan's Presence;Ulamog's Crusher
+p0library=Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes
+p1battlefield=Plains;Serra Angel
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

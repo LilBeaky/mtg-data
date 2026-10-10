@@ -1,0 +1,15 @@
+# title: Beast Within: the opponent has Serra Angel; the AI destroys it (not its own land)
+# card: Beast Within
+# turns: 2
+# expect: Beast Within.*Serra Angel
+# forbid: Beast Within.*\[(Forest|Ai\(1\))
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest;Forest;Forest;Forest;Forest
+p0hand=Beast Within
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Plains;Plains;Serra Angel
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

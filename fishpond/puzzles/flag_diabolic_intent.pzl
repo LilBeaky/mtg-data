@@ -1,0 +1,14 @@
+# title: Diabolic Intent: a spare Grizzly Bears to sacrifice: the AI tutors
+# card: Diabolic Intent
+# turns: 2
+# expect: cast Diabolic Intent
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp;Swamp;Grizzly Bears
+p0hand=Diabolic Intent
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Craw Wurm;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

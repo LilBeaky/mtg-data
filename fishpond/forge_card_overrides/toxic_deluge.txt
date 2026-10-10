@@ -1,0 +1,7 @@
+# fishpond override (Forge 2.0.15 script minus AI:RemoveDeck:All): puzzle flag_toxic_deluge passes with patch 32 (X chosen by the pilot); IsCurse$ True added so the AI reads it as a wipe, like Black Sun's Zenith
+Name:Toxic Deluge
+ManaCost:2 B
+Types:Sorcery
+A:SP$ PumpAll | Cost$ 2 B PayLife<X> | ValidCards$ Creature | IsCurse$ True | NumAtt$ -X | NumDef$ -X | SpellDescription$ All creatures get -X/-X until end of turn.
+SVar:X:Count$xPaid
+Oracle:As an additional cost to cast this spell, pay X life.\nAll creatures get -X/-X until end of turn.

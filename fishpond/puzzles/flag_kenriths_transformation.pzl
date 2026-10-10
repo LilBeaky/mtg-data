@@ -1,0 +1,15 @@
+# title: Kenrith's Transformation: goes on the opponent's Serra Angel, never on its own creature
+# card: Kenrith's Transformation
+# turns: 2
+# expect: Kenrith's Transformation targeting \[Serra Angel
+# forbid: Kenrith's Transformation targeting \[Grizzly Bears
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest;Forest;Forest;Grizzly Bears
+p0hand=Kenrith's Transformation
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Plains;Serra Angel
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

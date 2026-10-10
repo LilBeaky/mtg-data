@@ -1,0 +1,16 @@
+# title: Toxic Deluge: no creatures of its own, three across the table: the AI pays enough life to kill them (4), not more, before they attack
+# card: Toxic Deluge
+# turns: 2
+# expect: cast Toxic Deluge
+# expect: Life: Ai\(1\)-P1 40 > 3[0-9]$
+# forbid: Serra Angel.*(attack|assigned)
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp;Swamp;Swamp;Swamp
+p0hand=Toxic Deluge
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Plains;Serra Angel;Craw Wurm;Air Elemental
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

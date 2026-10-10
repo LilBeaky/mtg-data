@@ -1,0 +1,14 @@
+# title: Minions' Murmurs: three creatures at 40 life: the AI draws three
+# card: Minions' Murmurs
+# turns: 2
+# expect: cast Minions' Murmurs
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp;Swamp;Swamp;Swamp;Grizzly Bears;Grizzly Bears;Grizzly Bears
+p0hand=Minions' Murmurs
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

@@ -1,0 +1,16 @@
+# title: Ghostway: the opponent casts Wrath of God into the AI's board: the AI blinks its creatures out
+# card: Ghostway
+# known_gap: yes
+# turns: 2
+# expect: cast Ghostway
+p0life=40
+p1life=40
+turn=4
+activeplayer=p1
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Craw Wurm;Serra Angel
+p0hand=Ghostway
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Plains;Plains;Plains;Plains
+p1hand=Wrath of God
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

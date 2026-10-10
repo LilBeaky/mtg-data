@@ -1,0 +1,16 @@
+# title: Demonic Consultation: the AI casts it and doesn't exile its library away
+# card: Demonic Consultation
+# known_gap: yes
+# turns: 2
+# expect: cast Demonic Consultation
+# forbid: (has lost|loses the game)
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp
+p0hand=Demonic Consultation
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Craw Wurm;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

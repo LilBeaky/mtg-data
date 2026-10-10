@@ -1,0 +1,13 @@
+# title: Goblin Bombardment: the opponent at 3 with three Raging Goblins out: the AI sacrifices them for the kill
+# card: Goblin Bombardment
+# turns: 1
+# expect: activated Goblin Bombardment
+p0life=40
+p1life=3
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Mountain;Mountain;Goblin Bombardment;Raging Goblin;Raging Goblin;Raging Goblin
+p0library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1battlefield=Plains;Wall of Stone
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

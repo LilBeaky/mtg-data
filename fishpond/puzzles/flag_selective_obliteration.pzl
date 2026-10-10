@@ -1,0 +1,14 @@
+# title: Selective Obliteration: a colorless board against three colored creatures: the AI casts it
+# card: Selective Obliteration
+# turns: 2
+# expect: cast Selective Obliteration
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Ulamog's Crusher
+p0hand=Selective Obliteration
+p0library=Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes
+p1battlefield=Plains;Serra Angel;Craw Wurm;Air Elemental
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

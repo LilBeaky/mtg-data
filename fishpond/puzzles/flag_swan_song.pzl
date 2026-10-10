@@ -1,0 +1,16 @@
+# title: Swan Song: the opponent casts Wrath of God into the AI's board: the AI counters it
+# card: Swan Song
+# turns: 1
+# expect: Swan Song.*Wrath of God
+# forbid: Resolve Stack: Wrath of God
+p0life=40
+p1life=40
+turn=4
+activeplayer=p1
+activephase=MAIN1
+p0battlefield=Island;Craw Wurm;Serra Angel
+p0hand=Swan Song
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Plains;Plains;Plains;Plains
+p1hand=Wrath of God
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
