@@ -1,5 +1,5 @@
 diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
-index f6a5519..5cacbe0 100644
+index f6a5519..c68fda3 100644
 --- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
 +++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
 @@ -2335,6 +2335,8 @@ public class ComputerUtil {
@@ -33,7 +33,21 @@ index f6a5519..5cacbe0 100644
      public static boolean pilotWantMulligan(final Player ai, final int cardsToReturn) {
          final CardCollectionView hand = ai.getCardsIn(ZoneType.Hand);
          if (hand.isEmpty()) {
-@@ -2426,21 +2443,43 @@ public class ComputerUtil {
+@@ -2412,8 +2429,11 @@ public class ComputerUtil {
+                 reduce += commanderReduction(c, commander);
+             }
+         }
+-        final boolean floor = lands >= 3 || lands == 2 && ramp >= 2;
+-        final boolean flood = lands >= 6;
++        // the London mulligan bottoms extra lands first (pilotCardsToBottom keeps 4): judge the hand that is kept, not the 7
++        // drawn (patch 30; with patch 27's floor at 5 cards, a 7-land draw was "flooded" again at 5 and went down to 3)
++        final int kept = lands - Math.min(cardsToReturn, Math.max(0, lands - 4));
++        final boolean floor = kept >= 3 || kept == 2 && ramp >= 2;
++        final boolean flood = kept >= 6;
+         boolean mull;
+         String why;
+         int projected = -1;
+@@ -2426,21 +2446,43 @@ public class ComputerUtil {
          } else if (finalSize <= 6 || commander == null || commander.getCMC() < 4) {
              mull = false;
              why = "floor met";
