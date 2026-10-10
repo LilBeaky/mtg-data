@@ -96,8 +96,10 @@ def tapped_kind(c):
     return None
 
 def slug(name):
-    s = name.lower().replace("'", "").replace("\u2019", "")
-    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+    """EDHREC slug, the same as explorer.py's (front face only: a prepare commander like
+    'Sanar, Unfinished Genius // Wild Idea' is 'sanar-unfinished-genius')."""
+    import explorer
+    return explorer.slug(name)
 
 PETS = set()
 def names_str(items):

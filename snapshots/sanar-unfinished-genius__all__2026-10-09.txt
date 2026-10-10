@@ -1,0 +1,281 @@
+# commander: Sanar, Unfinished Genius
+# variant: all
+# url: https://edhrec.com/commanders/sanar-unfinished-genius
+# decks: 1290
+# fetched: 2026-10-09
+Geist of Saint Thalia|9|3|150
+Samut, Tyrant of Naktamun|8|2|118
+Hexhaven Dueling Arena|7|7|122
+Draconic Visitor|7|5|133
+Glamdring, Foe-hammer|5|0|333
+Storm-Kiln Artist|50|10
+Big Score|42|16
+Frantic Search|40|-1
+Stock Up|39|30
+Seize the Spoils|37|30
+Brainstorm|37|-4
+Archmage Emeritus|36|2
+Preordain|34|2
+Prismari Charm|34|22
+Flashback|34|18|1280
+Spellshift|8|8
+Merchant of the Vale|6|6
+Embereth Shieldbreaker|6|6
+Hypnotic Sprite|6|5
+Biblioplex Tomekeeper|5|5
+Skycoach Conductor|13|12|1253
+Mica, Reader of Ruins|24|23|1258
+Maelstrom Artisan|8|8|1280
+Skycoach Waypoint|29|28
+Spellbook Seeker|11|10|1242
+Blazing Firesinger|33|28|1242
+Molten-Core Maestro|31|26
+Abstract Paintmage|31|24|1242
+Goblin Electromancer|29|2
+Prismari, the Inspiration|28|20
+Pinnacle Monk|27|14
+Stormcatch Mentor|27|4
+Goblin Glasswright|26|24|1242
+Galazeth Prismari|26|22
+Guttersnipe|23|-1
+Xorn|22|20
+Harmonized Trio|20|17|1258
+Hexing Squelcher|20|7
+Goldspan Dragon|19|14
+Thunderdrum Soloist|19|16|1280
+Emeritus of Conflict|17|14|1280
+Colorstorm Stallion|16|13
+Emeritus of Ideation|16|12
+Pigment Wrangler|16|15|1242
+Archmage of Runes|16|3
+Displacer Kitten|16|12
+Muse Seeker|15|13|1286
+Dirgur Focusmage|14|9
+Electro, Assaulting Battery|14|4
+Hydro-Channeler|14|12|1242
+Vivi Ornitier|13|1
+Young Pyromancer|13|-1
+Birgi, God of Storytelling|13|-2
+Niv-Mizzet, Parun|12|-13
+Simian Spirit Guide|12|2
+Spectacular Skywhale|12|11|1280
+Thunderclap Drake|12|5
+Dualcaster Mage|11|4
+Exhibition Tidecaller|11|9
+Zaffai and the Tempests|11|7|1286
+Third Path Iconoclast|11|-4
+Elemental Mascot|11|10
+Crime Novelist|11|10
+Inspired Skypainter|11|6
+Veyran, Voice of Duality|10|-11
+Ragavan, Nimble Pilferer|10|1
+Hydroelectric Specimen|9|2
+Archaeomancer|9|7
+Weftstalker Ardent|9|6
+Coruscation Mage|9|-10
+Reckless Fireweaver|9|4
+Encouraging Aviator|8|8|1249
+Tackle Artist|8|8|1242
+Landscape Painter|8|8|1286
+Faerie Mastermind|8|2
+Opt|34|0
+An Offer You Can't Refuse|32|-6
+Counterspell|32|-20
+Prismari Command|32|14
+Return the Favor|28|20
+Lightning Bolt|27|-1
+Consider|27|5
+Abrade|27|6
+Unexpected Windfall|26|10
+Seething Song|24|4
+Sink into Stupor|23|5
+Snap|23|-1
+Chaos Warp|23|-18
+Pongify|22|-5
+Arcane Denial|22|-8
+Traumatic Critique|22|15|1286
+Negate|21|-11
+Swan Song|19|-3
+Pyretic Ritual|19|7
+Dramatic Reversal|19|10
+Cerulean Wisps|17|14
+Mystical Tutor|17|-4
+Brain Freeze|16|6
+Spell Pierce|16|9
+Muddle the Mixture|15|5
+Deflecting Swat|15|-6
+Fierce Guardianship|15|-6
+Desperate Ritual|15|5
+Shore Up|14|7
+Rapid Hybridization|14|-3
+Flusterstorm|14|1
+Cyclonic Rift|14|-9
+Dig Through Time|14|2
+Into the Flood Maw|13|5
+Flare of Duplication|13|9
+Divergent Equation|13|11|1253
+Force of Will|12|0
+Magic Damper|12|6
+Quick Study|12|8
+Reality Shift|11|-2
+Narset's Reversal|11|2
+Octopus Form|11|9
+Choreographed Sparks|11|9|1242
+Borne Upon a Wind|11|4
+Disdainful Stroke|10|8
+Izzet Charm|10|-6
+Redirect Lightning|10|4
+Force of Negation|10|1
+Pact of Negation|10|1
+Mana Drain|9|-7
+Expressive Iteration|33|9
+Strike It Rich|32|19
+Flow State|31|21|1258
+Ponder|29|-7
+Blasphemous Act|28|-11
+Improvisation Capstone|27|19
+Mana Geyser|27|3
+Rapturous Moment|26|17|1280
+Jeska's Will|26|-3
+Faithless Looting|25|-6
+Gitaxian Probe|25|4
+Sleight of Hand|21|15
+Splatter Technique|19|14|1280
+Echocasting Symposium|19|15|1258
+Grapeshot|17|-2
+Mizzix's Mastery|17|-2
+Wisdom of Ages|17|12
+Rite of Flame|13|3
+Crackle with Power|13|4
+Pirate's Pillage|12|5
+Treasure Cruise|12|-2
+Gamble|12|-4
+Solve the Equation|12|-1
+Windfall|11|-12
+Serum Visions|11|-4
+Vandalblast|10|-14
+Past in Flames|10|-1
+Mathemagics|9|7
+Sea Gate Restoration|9|0
+Lórien Revealed|9|3
+Steal the Show|9|6|1286
+Dragonstorm|8|8
+Will of the Jeskai|8|2
+Artistic Process|8|7|1280
+Brass's Bounty|8|1
+Visionary's Dance|8|6|1242
+Procrastinate|7|6
+Hit the Mother Lode|7|2
+Wheel of Fortune|7|-1
+Rite of Replication|7|1
+Dance with Calamity|7|4
+Chain Reaction|6|1
+Empty the Warrens|6|3
+Inspired Tinkering|6|3
+Sundering Eruption|6|0
+Rousing Refrain|6|1
+Fabricate|6|-3
+Season of Weaving|6|2
+Mind's Desire|5|0
+Isochron Scepter|13|6
+Diary of Dreams|11|10
+Lightning Greaves|9|-17
+Ruby Medallion|8|-2
+Sapphire Medallion|8|-1
+The One Ring|6|-2
+Swiftfoot Boots|6|-23
+Primal Amulet|5|1
+Sewer-veillance Cam|5|4
+Thousand-Year Storm|19|4
+Mystic Remora|16|-3
+Underworld Breach|15|2
+Rhystic Study|14|-9
+Freed from the Real|11|10
+Alchemist's Talent|9|7
+Fiery Inscription|8|-1
+Pemmin's Aura|7|6
+Propaganda|7|-8
+Case of the Ransacked Lab|6|0
+Shark Typhoon|6|-1
+Artist's Talent|5|-2
+Ral, Crackling Wit|7|-4
+Saheeli, Sublime Artificer|6|-1
+Mystic Sanctuary|34|7
+Reliquary Tower|23|-25
+Mistrise Village|20|5
+Otawara, Soaring City|19|1
+Lindblum, Industrial Regency|14|6
+Ancient Tomb|10|-1
+Great Hall of the Biblioplex|10|7
+Minamo, School at Water's Edge|9|5
+Urza's Saga|9|1
+Temple of the False God|8|-2
+Restless Spire|7|1
+Emergence Zone|6|3
+Seat of the Synod|6|-5
+Great Furnace|6|-6
+Sol Ring|70|-16
+Arcane Signet|63|-18
+Resonating Lute|46|24|1286
+Talisman of Creativity|42|-11
+Izzet Signet|35|-19
+Tablet of Discovery|32|23|1242
+Fellwar Stone|26|-6
+Lotus Petal|16|3
+Mox Amber|15|5
+Mind Stone|14|-8
+Thought Vessel|13|-22
+Mox Opal|10|2
+Mana Vault|10|1
+Chrome Mox|9|0
+Mox Diamond|8|2
+Bender's Waterskin|8|2
+Lion's Eye Diamond|7|2
+Potioner's Trove|7|6|1242
+Cursed Mirror|7|-1
+Springleaf Drum|6|1
+Everflowing Chalice|5|0
+Pyromancer's Goggles|5|2
+Command Tower|77|-10
+Shivan Reef|58|-2
+Sulfur Falls|58|-10
+Steam Vents|51|1
+Stormcarved Coast|50|5
+Cascade Bluffs|41|-5
+Frostboil Snarl|37|-7
+Training Center|33|-9
+Scalding Tarn|32|1
+Ferrous Lake|28|2
+Exotic Orchard|27|-7
+Scorched Geyser|26|6
+Thundering Falls|26|4
+Turbulent Springs|25|7
+Riverpyre Verge|24|2
+Temple of Epiphany|23|-14
+Fiery Islet|21|-4
+Izzet Boilerworks|21|-13
+Spectacle Summit|18|11
+Volcanic Island|17|2
+Riverglide Pathway|17|-7
+Flooded Strand|16|5
+Misty Rainforest|15|5
+Polluted Delta|14|3
+Fabled Passage|14|3
+Wooded Foothills|14|5
+Terramorphic Expanse|14|2
+Arid Mesa|14|4
+Bloodstained Mire|13|4
+Swiftwater Cliffs|12|-5
+Coastal Peak|12|3
+Spirebluff Canal|11|-3
+Evolving Wilds|10|-6
+Gemstone Caverns|10|2
+City of Brass|9|2
+Mana Confluence|8|1
+Silundi Vision|8|3
+Prismatic Vista|8|2
+Path of Ancestry|8|-6
+Valakut Awakening|8|-1
+Molten Tributary|7|-1
+Prismari Campus|7|2
+Myriad Landscape|7|-7
