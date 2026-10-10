@@ -2,10 +2,10 @@
 
 `test_deck.txt` is a deliberately broken, edge-case-heavy decklist. It is not a real deck.
 
-`smoke.py` runs every tool against it (plus a few throwaway commander decks) and checks exit codes, tracebacks, and expected output. **smoke.py is the source of truth for expected results**; read it for the exact strings. It runs automatically after every daily data refresh and on every push that changes scripts, tests, snapshots, aliases, or goldfish overrides (`.github/workflows/smoke-test.yml`) and records the result in `smoke_status.json`. While that says `fail`, mtg.py and audit.py print a warning in every session.
+`smoke.py` runs every tool against it (plus a few throwaway commander decks) and checks exit codes, tracebacks, and expected output. **smoke.py is the source of truth for expected results**; read it for the exact strings. It runs automatically after every daily data refresh and on every push that changes scripts, tests, snapshots, aliases, or goldfish overrides (`.github/workflows/smoke-test.yml`) and records the result in `smoke_status.json`. While that says `fail`, mtg.py and audit.py print a warning in every session. A run over 25 minutes is recorded as a failure (the workflow stops it), not left as a cancelled run with a stale `pass`. smoke.py sets `MTG_TRIALS_CAP=100` for every check: manasim.py caps each run's games there (and so landbase.py, tutors.py's played columns and the audit), since the smoke test checks that the tools run and print their sections, not their precision; set it yourself to change it.
 
 ```bash
-python3 tests/smoke.py          # ~60s; prints only failures + a summary. --verbose lists every check
+python3 tests/smoke.py          # ~10 min; prints only failures + a summary. --verbose lists every check with its time
 ```
 
 Adding an edge case: add the card to `test_deck.txt` (keep the total at 100 with both commanders), add its expectation to `smoke.py`, run it, push both.

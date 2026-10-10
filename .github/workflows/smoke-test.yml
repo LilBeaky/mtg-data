@@ -2,7 +2,7 @@ name: Smoke test
 
 # Runs every tool against tests/test_deck.txt after each daily data refresh, on pushes that
 # change the tools or their inputs, and on demand.
-# A failure turns this run red and records it in tests/smoke_status.json, which mtg.py
+# A failure (or a run over 25 minutes) turns this run red and records it in tests/smoke_status.json, which mtg.py
 # and audit.py surface as a warning in every session until a later run passes.
 # The status file is only committed when the result changes, so passing days add no commits.
 
@@ -33,7 +33,7 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 35          # the smoke step stops itself at 25 (below), so a slow run is recorded as a failure, never a silent cancel
     steps:
       - uses: actions/checkout@v5
         with:
@@ -47,9 +47,13 @@ jobs:
         id: smoke
         run: |
           set +e                                  # a failing test must still reach the status commit
-          python3 tests/smoke.py --verbose --status tests/smoke_status.json > /tmp/smoke.txt 2>&1
+          timeout 25m python3 tests/smoke.py --verbose --status tests/smoke_status.json > /tmp/smoke.txt 2>&1
           rc=$?
           cat /tmp/smoke.txt
+          if [ "$rc" = "124" ]; then                # timed out: record it, so sessions see a failure instead of a stale pass
+            echo "FAIL  smoke test timed out after 25 minutes" >> /tmp/smoke.txt
+            python3 -c "import json,datetime; json.dump({'status':'fail','since':datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),'failures':['smoke test timed out after 25 minutes (last check finished: see the run log)']}, open('tests/smoke_status.json','w'), indent=1)"
+          fi
           echo "rc=${rc}" >> "$GITHUB_OUTPUT"
           grep -E '^FAIL' /tmp/smoke.txt | while read -r line; do echo "::error::${line}"; done
           exit 0
