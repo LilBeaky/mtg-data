@@ -192,6 +192,13 @@ public class ForgeRunner {
             return simRetry(super::chooseSpellAbilityToPlay);
         }
 
+        /** A spell an effect lets you cast (cascade, "you may cast it"): lookahead checks it in canPlayFromEffectAI before
+         *  anything is played, so a crash there (GameCopier mapping a combat, 2026-10-10: 5 of 16 real-pod games) is
+         *  remade without lookahead like any other decision. */
+        @Override public boolean playSaFromPlayEffect(SpellAbility tgtSA) {
+            return simRetry(() -> super.playSaFromPlayEffect(tgtSA));
+        }
+
         /** Run one AI decision; if Forge's simulation code throws inside it, remake that decision with lookahead off, count it
          *  (sim_decision_fallbacks) and log where it threw. */
         <R> R simRetry(java.util.function.Supplier<R> decision) {
