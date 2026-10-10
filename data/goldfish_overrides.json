@@ -50,5 +50,24 @@
       }
     ],
     "note": "end step: return a creature card to hand (no experience counters, since creatures dying isn't modeled); experience-based reanimation to the battlefield not modeled"
+  },
+  "Shadowborn Apostle": {
+    "activated": [
+      {
+        "cost": "{B}",
+        "sac": true,
+        "fodder": "five Clerics",
+        "do": [
+          "tutor bf a Demon creature card"
+        ]
+      }
+    ],
+    "note": "{B}, sacrifice six Apostles: a Demon onto the battlefield. Read as itself plus five other Clerics (no 'named' filter; in an Apostle deck the Clerics are the Apostles)"
+  },
+  "Scheming Symmetry": {
+    "spell": [
+      "tutor top a card"
+    ],
+    "note": "you put any card on top (the other chosen player's search is an opponent's, not modeled)"
   }
 }

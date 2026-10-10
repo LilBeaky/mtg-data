@@ -134,7 +134,7 @@ def role_coverage(deck, mode="tutors"):
         roles = card_roles(c)
         if mode == "ramp": roles &= {"ramp"}
         if not roles: continue
-        plays = accelerates(k) or (mode == "tutors" and plays_in_tutor_mode(k))
+        plays = accelerates(k) or (mode == "tutors" and (plays_in_tutor_mode(k) or any(map(_card_flow_act, k.hand_acts))))
         for r in roles:
             counts[r][1] += q
             if plays: counts[r][0] += q
@@ -233,15 +233,20 @@ class ManaGame(gf.Game):
         return k not in g.cmd
 
 
+def _card_flow_act(a):
+    """A hand ability that is card flow: cycling's draw, typecycling and transmute's search."""
+    return any(e[0] in ("tutor", "draw") for e in gf.flat(a["fx"]))
+
 def _inert(k, keep_tutor_acts=False):
     """A stand-in for a card that doesn't play here: same mana value (mulligans see the same hand), never cast;
-    landcycling kept (it finds a land drop), and in tutor mode every tutoring hand ability (typecycling, transmute).
-    Tutors still find it by its card (raw), so a key card that isn't played can be fetched and counted as found."""
+    landcycling kept (it finds a land drop), and in tutor mode every card-flow hand ability (cycling, typecycling,
+    transmute: a held counterspell still cycles). goldfish.py values an inert card low, so spare mana at the end of
+    the turn cycles it. Tutors still find it by its card (raw), so a key card that isn't played can be fetched and
+    counted as found."""
     if k.status == "inert": return k
     f = gf.Card(k.name + " (inert)")
     f.mv = k.mv; f.gen = 99; f.raw = k.raw; f.status = "inert"
-    f.hand_acts = [a for a in k.hand_acts if _land_search_act(a)
-                   or (keep_tutor_acts and any(e[0] == "tutor" for e in gf.flat(a["fx"])))]
+    f.hand_acts = [a for a in k.hand_acts if _land_search_act(a) or (keep_tutor_acts and _card_flow_act(a))]
     return f
 
 
@@ -366,10 +371,16 @@ def build(deck, on_play=True, land_delta=0, extra_targets=(), add_cards=(), cut_
     return sim, tg, names, cache, add, cut
 
 
+# MTG_TRIALS_CAP=N caps every run's games (tests/smoke.py sets it: the smoke test checks that the tools run and
+# print their sections, not their precision). Every manasim.py game, so landbase.py's, tutors.py's played columns
+# and the audit's, goes through simulate().
+TRIALS_CAP = int(os.environ.get("MTG_TRIALS_CAP") or 0)
+
 def simulate(path, commander=None, on_play=True, trials=3000, turns=8, seed=1, land_delta=0, extra_targets=(), deck=None,
              add_cards=(), cut_cards=(), mode="ramp", inert_names=(), want=None):
     """Run the mana-only games. Returns a dict: lands, N, dev (P(T mana by T)), mana/lands medians,
     targets {name: {"mv", "zone", "by": {t: p}, "by_hit": {t: (p, share of games)}, "median"}}, coverage."""
+    if TRIALS_CAP: trials = min(trials, TRIALS_CAP)
     deck = deck or load(path, commander)
     N, lib, cmdrs, anyc, keys = deck
     sim, tg, names, cache, add, cut = build(deck, on_play, land_delta, extra_targets, add_cards, cut_cards, mode,

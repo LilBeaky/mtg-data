@@ -2670,10 +2670,16 @@ def categorize(k):
     k.opp_approx = any(t[0] in ("opp_cast", "opp_draw", "opp_second", "opp_land") or t[4] for t in k.trig) \
         or any(e[0] == "cond" and e[1] == "opp_lands" or e[0] == "biorhythm" or e[0] == "wheel" and e[1] == "max"
                or e[0] == "draw" and e[1] == ("opp_hand",) for e in fxs)
-    ramp = (not k.is_land and (k.units or k.cond_units or k.sac_outlets or k.imprint or k.vivid or k.convs or k.untapper)) or kinds & {"land_search", "extra_land", "land_from_hand", "treasure", "reveal_lands"} \
+    trig_fx = flat([e for t in k.trig for e in t[2]])
+    ramp = (not k.is_land and (k.units or k.cond_units or k.sac_outlets or k.imprint or k.vivid or k.convs or k.untapper)) or kinds & {"land_search", "extra_land", "land_from_hand", "treasure", "reveal_lands", "untap_lands"} \
         or any(s[0] in ("lands_any", "lands_any_n", "spend_any", "reduce", "alt", "free", "extra_land",
-                                "mana_mult", "mana_add", "cr_mana", "reduce_dyn") for s in k.statics)
-    draws = kinds & {"draw", "look", "tutor_multi", "wheel"} or any(
+                                "mana_mult", "mana_add", "cr_mana", "reduce_dyn") for s in k.statics) \
+        or not k.is_land and any(e[0] == "mana" for e in trig_fx) \
+        or any(e[0] == "token" and set(e[3]) & LAND_TYPES for e in fxs) \
+        or any(e[0] == "look_f" and e[3] in ("bf", "bf_t") and e[2].types == {"land"} for e in fxs)
+        # ramp, continued: mana from a permanent's trigger (Lotus Cobra's landfall), untapping lands (Beledros),
+        # land tokens (Awaken the Woods' Forest Dryads), lands from the top onto the battlefield (Silverback Elder)
+    draws = kinds & {"draw", "look", "tutor_multi", "wheel", "pay_x_draw"} or any(
         e[0] == "tutor" and e[2] not in ("graveyard", "none") or e[0] == "recur" and e[2] == "hand" for e in fxs)
     k.cat = "ramp" if ramp and not k.ritual else "draw" if draws else "other"
 
@@ -3876,6 +3882,7 @@ class Game:
     def value(self, k):
         """Pilot's sense of a card's worth right now (scry, look, tutor, bottom, discard)."""
         if k.groups and any(gi not in self.first for gi in k.groups): return 100
+        if k.status == "inert": return 15     # manasim.py's stand-in: never cast, worth only its hand abilities (cycling)
         if k.is_land:
             need = min(self.turn + 3, 7) - len(self.lands) - sum(c.is_land for c in self.hand)
             return 70 if need > 0 else 10
