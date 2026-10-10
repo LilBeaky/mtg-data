@@ -1,0 +1,16 @@
+# title: Sunscorched Divide: unflagged, the AI uses it and doesn't hurt itself (smoke test)
+# card: Sunscorched Divide
+# turns: 3
+# expect: Ai\(1\)-P1 played Sunscorched\ Divide
+# forbid: Ai\(1\)-P1 (has lost|loses the game)
+# forbid: Life: Ai\(1\)-P1 \d+ > (-?\d)$
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Mountain;Plains;Mountain
+p0hand=Sunscorched Divide;Mountain;Plains
+p0library=Mountain;Plains;Mountain;Plains;Mountain;Plains;Mountain;Plains;Mountain;Plains;Mountain;Plains;Mountain;Plains
+p1battlefield=Forest;Forest;Mountain
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

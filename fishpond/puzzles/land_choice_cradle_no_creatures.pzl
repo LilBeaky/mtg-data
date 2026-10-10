@@ -1,0 +1,16 @@
+# title: Land choice, Gaea's Cradle with no creatures: a Forest out, Cradle and a Forest in hand with Llanowar Elves and Grizzly Bears: the AI plays the Forest (Cradle adds nothing yet) and casts a creature (Omnath led Cradle in 6 of 25 games)
+# card: (land choice: mana now)
+# turns: 1
+# expect: played Forest
+# expect: cast Grizzly Bears
+# forbid: played Gaea's Cradle
+p0life=40
+p1life=40
+turn=2
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest
+p0hand=Gaea's Cradle;Forest;Grizzly Bears
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

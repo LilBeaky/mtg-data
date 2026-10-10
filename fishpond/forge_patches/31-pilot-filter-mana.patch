@@ -1,0 +1,199 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java b/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java
+index 5f96dea..02414a4 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java
+@@ -3,6 +3,7 @@ package forge.ai;
+ import com.google.common.collect.ArrayListMultimap;
+ import com.google.common.collect.ListMultimap;
+ import com.google.common.collect.Lists;
++import org.apache.commons.lang3.tuple.Pair;
+ import com.google.common.collect.Maps;
+ import com.google.common.collect.Multimap;
+ import com.google.common.collect.MultimapBuilder;
+@@ -595,6 +596,117 @@ public class ComputerUtilMana {
+     }
+ 
+     // returns null if unpayable
++    // ---- fishpond patch 31: Signets and filter lands (D5) ----
++    private static final ThreadLocal<Boolean> PILOT_CONVERTING = ThreadLocal.withInitial(() -> false);
++
++    static boolean pilotConvertOn(final Player ai) {
++        return forge.ai.ability.DrawAi.pilotSeat(ai) && !"false".equals(System.getProperty("fishpond.filterMana"));
++    }
++
++    /** Untapped mana abilities whose cost is mana plus {T} and nothing else (Signets, filter lands, Cabal Coffers). */
++    static List<SpellAbility> pilotConverters(final Player ai, final SpellAbility paying) {
++        final List<SpellAbility> out = new ArrayList<>();
++        for (final Card c : ai.getCardsIn(ZoneType.Battlefield)) {
++            if (c.isTapped() || c == paying.getHostCard()) {
++                continue;
++            }
++            for (final SpellAbility m : c.getManaAbilities()) {
++                if (m.getApi() != ApiType.Mana || m.getManaPart() == null) {
++                    continue;
++                }
++                final Cost cost = m.getPayCosts();
++                if (!cost.hasManaCost() || !cost.hasTapCost()) {
++                    continue;
++                }
++                boolean other = false;
++                for (final CostPart part : cost.getCostParts()) {
++                    if (!(part instanceof CostPartMana) && !(part instanceof CostTap)) {
++                        other = true;
++                    }
++                }
++                m.setActivatingPlayer(ai);
++                if (!other && m.canPlay()) {
++                    out.add(m);
++                }
++            }
++        }
++        return out;
++    }
++
++    /** One entry per mana the ability makes: the colors that mana may be ("W", or "W B" for a combo). */
++    static List<String> pilotConverterOutput(final SpellAbility m) {
++        final List<String> out = new ArrayList<>();
++        final AbilityManaPart mp = m.getManaPart();
++        int amount;
++        try {
++            amount = AbilityUtils.calculateAmount(m.getHostCard(), m.getParamOrDefault("Amount", "1"), m);
++        } catch (RuntimeException e) {
++            amount = 1;
++        }
++        if (mp.isComboMana()) {
++            final String opts = mp.getComboColors(m).trim();
++            for (int i = 0; i < amount && !opts.isEmpty(); i++) {
++                out.add(opts);
++            }
++            return out;
++        }
++        for (int i = 0; i < amount; i++) {
++            for (final String t : mp.getOrigProduced().trim().split("\\s+")) {
++                if (t.length() == 1 && "WUBRGC".contains(t)) {
++                    out.add(t);
++                }
++            }
++        }
++        return out;
++    }
++
++    /** Converters to activate, in order, with the colors each combo should make, so that what's left of the cost (plus their
++     *  own costs) is payable from the plain sources; null if none works. A converter whose card also has a plain mana
++     *  ability adds one generic, since that card counts as a plain source in the test but is tapped for the filter. */
++    static List<Pair<SpellAbility, String>> pilotPlanConverters(final ManaCostBeingPaid cost, final SpellAbility sa, final Player ai,
++            final List<SpellAbility> converters, final boolean checkPlayable, final boolean effect) {
++        final ManaPool pool = ai.getManaPool();
++        ManaCostBeingPaid left = new ManaCostBeingPaid(cost);
++        final List<Pair<SpellAbility, String>> plan = new ArrayList<>();
++        final Set<Card> used = new HashSet<>();
++        for (final SpellAbility m : converters) {
++            if (used.contains(m.getHostCard())) {
++                continue;
++            }
++            final ManaCostBeingPaid next = new ManaCostBeingPaid(left);
++            final StringBuilder choice = new StringBuilder();
++            boolean helped = false;
++            for (final String opts : pilotConverterOutput(m)) {
++                String pick = null;
++                for (final String col : opts.split(" ")) {
++                    if (next.ai_payMana(col, pool)) {
++                        pick = col;
++                        break;
++                    }
++                }
++                helped |= pick != null;
++                if (choice.length() > 0) {
++                    choice.append(' ');
++                }
++                choice.append(pick != null ? pick : opts.split(" ")[0]);
++            }
++            if (!helped) {
++                continue;
++            }
++            next.addManaCost(m.getPayCosts().getTotalMana());
++            if (!getAIPlayableMana(m.getHostCard()).isEmpty()) {
++                next.increaseGenericMana(1);
++            }
++            left = next;
++            used.add(m.getHostCard());
++            plan.add(Pair.of(m, choice.toString()));
++            if (left.isPaid() || payManaCost(new ManaCostBeingPaid(left), sa, ai, true, checkPlayable, effect) != null) {
++                return plan;
++            }
++        }
++        return null;
++    }
++
+     private static List<SpellAbility> payManaCost(final ManaCostBeingPaid cost, final SpellAbility sa, final Player ai, final boolean test, boolean checkPlayable, boolean effect) {
+         if ((sa.isOffering() && sa.getSacrificedAsOffering() == null) || (sa.isEmerge() && sa.getSacrificedAsEmerge() == null)) {
+             // nothing was chosen
+@@ -626,6 +738,68 @@ public class ComputerUtilMana {
+             StaticAbilityManaConvert.manaConvert(manapool, ai, sa.getHostCard(), effect && !sa.isCastFromPlayEffect() ? null : sa);
+         }
+ 
++        // fishpond patch 31: mana abilities that cost mana (Signets, filter lands, Cabal Coffers) are left out of the AI's
++        // sources (getAIPlayableMana). For a pilot seat that can't pay from its other sources, plan which of them to use and,
++        // when paying for real, activate them first so their mana is in the pool.
++        if (!PILOT_CONVERTING.get() && !sa.isManaAbility() && pilotConvertOn(ai)) {
++            final List<SpellAbility> converters = pilotConverters(ai, sa);
++            if (!converters.isEmpty() && cost.getConvertedManaCost() > 0) {
++                PILOT_CONVERTING.set(true);
++                try {
++                    final List<SpellAbility> plain = payManaCost(new ManaCostBeingPaid(cost), sa, ai, true, checkPlayable, effect);
++                    if (plain == null) {
++                        final List<Pair<SpellAbility, String>> plan = pilotPlanConverters(cost, sa, ai, converters, checkPlayable, effect);
++                        if (plan != null) {
++                            if (test) {
++                                return Lists.newArrayList();
++                            }
++                            // what the spell still needs once the converters' mana is in: hold those sources while the
++                            // converters' own costs are paid, so a Signet's {1} isn't paid with the Island the spell needs
++                            final ManaCostBeingPaid spellLeft = new ManaCostBeingPaid(cost);
++                            for (final Pair<SpellAbility, String> step : plan) {
++                                for (final String col : step.getRight().split(" ")) {
++                                    spellLeft.ai_payMana(col, manapool);
++                                }
++                            }
++                            final List<SpellAbility> spellSources = spellLeft.isPaid() ? null
++                                    : payManaCost(new ManaCostBeingPaid(spellLeft), sa, ai, true, checkPlayable, effect);
++                            AiCardMemory.clearMemorySet(ai, MemorySet.PAYS_TAP_COST);
++                            final List<Card> held = new ArrayList<>();
++                            if (spellSources != null) {
++                                for (final SpellAbility src : spellSources) {
++                                    if (!AiCardMemory.isRememberedCard(ai, src.getHostCard(), MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL)) {
++                                        AiCardMemory.rememberCard(ai, src.getHostCard(), MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
++                                        held.add(src.getHostCard());
++                                    }
++                                }
++                            }
++                            try {
++                                for (final Pair<SpellAbility, String> step : plan) {
++                                    final SpellAbility m = step.getLeft();
++                                    if (m.getManaPart().isComboMana()) {
++                                        m.getManaPart().setExpressChoice(step.getRight());
++                                    }
++                                    m.setActivatingPlayer(ai);
++                                    ComputerUtil.playNoStack(ai, m, ai.getGame(), true);
++                                }
++                            } finally {
++                                for (final Card c : held) {
++                                    AiCardMemory.forgetCard(ai, c, MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
++                                }
++                            }
++                        }
++                    } else if (test) {
++                        return plain;
++                    }
++                } finally {
++                    PILOT_CONVERTING.set(false);
++                    // the test runs above remember their sources as paying tap costs; the real payment below must not see that
++                    AiCardMemory.clearMemorySet(ai, MemorySet.PAYS_TAP_COST);
++                    AiCardMemory.clearMemorySet(ai, MemorySet.PAYS_SAC_COST);
++                }
++            }
++        }
++
+         // not worth checking if it makes sense to not spend floating first
+         if (manapool.payManaCostFromPool(cost, sa, test, manaSpentToPay)) {
+             CostPayment.handleOfferings(sa, test, cost.isPaid());

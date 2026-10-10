@@ -1,0 +1,16 @@
+# title: Dimir Signet: unflagged, the AI uses it and doesn't hurt itself (smoke test)
+# card: Dimir Signet
+# turns: 3
+# expect: Ai\(1\)-P1 (cast|activated) Dimir\ Signet
+# forbid: Ai\(1\)-P1 (has lost|loses the game)
+# forbid: Life: Ai\(1\)-P1 \d+ > (-?\d)$
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Island;Swamp;Island;Swamp
+p0hand=Dimir Signet;Swamp;Island
+p0library=Swamp;Island;Swamp;Island;Swamp;Island;Swamp;Island;Swamp;Island;Swamp;Island;Swamp;Island
+p1battlefield=Forest;Forest;Mountain
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,68 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ability/AttachAi.java b/forge-ai/src/main/java/forge/ai/ability/AttachAi.java
+index 06c9320..8b4bd21 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/AttachAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/AttachAi.java
+@@ -1050,6 +1050,37 @@ public class AttachAi extends SpellAbilityAi {
+         return affected != null && (affected.contains(stCheck) || affected.contains("AttachedBy"));
+     }
+ 
++    /** fishpond patch 28 (D4): the pilot's pump-aura target: the best creature, with a bonus for one this seat already
++     *  enchanted or equipped (the user's rule: double-committing to a body is good, a voltron deck wants it) and a smaller
++     *  one for its own commander. Non-creature candidates only when there is no creature. */
++    static Card pilotPumpTarget(final Player ai, final List<Card> prefList) {
++        Card best = null;
++        int bestScore = Integer.MIN_VALUE;
++        for (final Card c : prefList) {
++            if (!c.isCreature()) {
++                continue;
++            }
++            int score = ComputerUtilCard.evaluateCreature(c);
++            int mine = 0;
++            for (final Card a : c.getAttachedCards()) {
++                if (ai.equals(a.getController()) && (a.isAura() || a.isEquipment())) {
++                    mine++;
++                }
++            }
++            if (mine > 0) {
++                score += 60 + 25 * (mine - 1);
++            }
++            if (c.isCommander() && ai.equals(c.getOwner())) {
++                score += 30;
++            }
++            if (score > bestScore) {
++                bestScore = score;
++                best = c;
++            }
++        }
++        return best != null ? best : ComputerUtilCard.getBestAI(prefList);
++    }
++
+     private static Card attachAIPumpPreference(final Player ai, final SpellAbility sa, final List<Card> list, final boolean mandatory, final Card attachSource) {
+         // AI For choosing a Card to Pump
+         Card card = null;
+@@ -1211,8 +1242,12 @@ public class AttachAi extends SpellAbilityAi {
+         // Don't pump cards that will die.
+         prefList = ComputerUtil.getSafeTargets(ai, sa, prefList);
+ 
++        // fishpond patch 28 (D4): a pilot seat stacks pump auras; Forge dropped every creature already enchanted (a card-
++        // disadvantage guard), so once Wilson and Heliod's Pilgrim wore one aura each, Sage's Reverie and Bear Umbra sat
++        // in hand for 7 turns (Wilson g15)
++        final boolean pilotStack = DrawAi.pilotSeat(ai) && !"false".equals(System.getProperty("fishpond.auraStack")) && totPower + totToughness >= 0 && (totPower + totToughness > 0 || !keywords.isEmpty() || grantingAbilities);
+         if (attachSource.isAura()) {
+-            if (!attachSource.getName().equals("Daybreak Coronet")) {
++            if (!attachSource.getName().equals("Daybreak Coronet") && !pilotStack) {
+                 // TODO For Auras like Rancor, that aren't as likely to lead to
+                 // card disadvantage, this check should be skipped
+                 prefList = CardLists.filter(prefList, c -> !c.isEnchanted() || c.hasKeyword(Keyword.HEXPROOF));
+@@ -1254,7 +1289,10 @@ public class AttachAi extends SpellAbilityAi {
+                     return powerBonus + c.getNetPower() > 0 && ComputerUtilCombat.canAttackNextTurn(c);
+                 });
+             }
+-            card = ComputerUtilCard.getBestAI(prefList);
++            card = pilotStack ? pilotPumpTarget(ai, prefList) : ComputerUtilCard.getBestAI(prefList);
++        } else if (pilotStack && (totPower + totToughness > 0 || !keywords.isEmpty()) && prefList.anyMatch(Card::isCreature)) {
++            // a pump that also grants an ability (Spirit Mantle, Ancestral Mask) is still a pump: the best body, not the worst
++            card = pilotPumpTarget(ai, prefList);
+         } else {
+             for (Card pref : prefList) {
+                 if (pref.isLand() && pref.isUntapped()) {

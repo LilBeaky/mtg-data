@@ -1,0 +1,14 @@
+# title: Signets are cast on curve: two lands out, Simic Signet and a 4-drop in hand: the AI casts the Signet
+# card: Simic Signet
+# turns: 1
+# expect: cast Simic Signet
+p0life=40
+p1life=40
+turn=2
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Island
+p0hand=Simic Signet;Craw Wurm
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,14 @@
+# title: Darkwater Catacombs makes blue: a Swamp and Darkwater Catacombs out, Merfolk Looter in hand: the AI pays the Swamp into the Catacombs for {U}{B} and casts the Looter (Araumi g5 cast nothing T3-T6 with Catacombs as a colored source)
+# card: Darkwater Catacombs
+# turns: 1
+# expect: cast Merfolk Looter
+p0life=40
+p1life=40
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Darkwater Catacombs
+p0hand=Merfolk Looter
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

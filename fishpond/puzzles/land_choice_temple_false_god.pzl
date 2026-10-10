@@ -1,0 +1,15 @@
+# title: Land choice, Temple of the False God on 2 lands: Temple and Inventors' Fair in hand with Burnished Hart: the AI plays the Fair (the Temple needs five lands) and casts the Hart (Zhulodok g15 played the Temple holding Sol Ring)
+# card: (land choice: mana now)
+# turns: 1
+# expect: played Inventors' Fair
+# expect: cast Burnished Hart
+p0life=40
+p1life=40
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Wastes;Wastes
+p0hand=Temple of the False God;Inventors' Fair;Burnished Hart
+p0library=Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

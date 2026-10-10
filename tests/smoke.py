@@ -12,7 +12,7 @@ card data (bans, Game Changer list, Spellbook). A failure there may be a real-wo
 rather than a bug: confirm, then update this file. mtg.py prints a warning in every session
 while the recorded status is "fail".
 """
-import datetime, json, os, subprocess, sys, tempfile
+import datetime, json, os, subprocess, sys, tempfile, time
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DECK = "tests/test_deck.txt"
@@ -377,7 +377,8 @@ def run(c):
     try:
         p = subprocess.run([PY] + c["cmd"], cwd=REPO, capture_output=True, text=True, timeout=300,
                            encoding="utf-8", errors="replace",
-                           env={k: v for k, v in os.environ.items() if k != "PYTHONIOENCODING"})   # scripts must set UTF-8 themselves
+                           env={**{k: v for k, v in os.environ.items() if k != "PYTHONIOENCODING"},   # scripts must set UTF-8 themselves
+                                "MTG_TRIALS_CAP": os.environ.get("MTG_TRIALS_CAP", "100")})   # games per run: checks the tools run, not their precision
         out, rc = (p.stdout or "") + (p.stderr or ""), p.returncode
     except subprocess.TimeoutExpired:
         return ["timed out after 300s"]
@@ -393,9 +394,9 @@ def main():
     verbose = "--verbose" in sys.argv
     failures, n = [], 0
     for c in checks():
-        f = run(c); n += 1
+        t0 = time.time(); f = run(c); n += 1; dt = time.time() - t0
         tag = " [data-dependent: may be a real change, confirm before editing]" if c.get("data") else ""
-        if f or verbose: print(f"{'PASS' if not f else 'FAIL'}  {c['name']}" + ("" if not f else tag))
+        if f or verbose: print(f"{'PASS' if not f else 'FAIL'}  {c['name']}  ({dt:.0f}s)" + ("" if not f else tag), flush=True)
         for x in f:
             print(f"      {x}")
             failures.append(f"{c['name']}: {x}" + (" (data-dependent)" if c.get("data") else ""))

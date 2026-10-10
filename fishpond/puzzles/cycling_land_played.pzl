@@ -1,0 +1,14 @@
+# title: Cycling lands are played, not held: 4 Islands out, only cycling lands and a 3-drop in hand (lands out plus in hand reach 6, where stock Forge skipped cycling lands; Zur missed 17 drops this way): the AI plays one
+# card: (land sequencing: cycling lands)
+# turns: 1
+# expect: played (Remote Isle|Fetid Pools|Drifting Meadow)
+p0life=40
+p1life=40
+turn=5
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island
+p0hand=Remote Isle;Fetid Pools;Drifting Meadow;Thought Scour;Phantom Warrior
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

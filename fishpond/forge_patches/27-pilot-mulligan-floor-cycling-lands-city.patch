@@ -1,0 +1,93 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 5af3f5d..5d6906c 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -417,8 +417,15 @@ public class AiController {
+             int max = Math.max(maxCmcInHand, 6);
+             // consider not playing lands if there are enough already and an ability with a discard cost is present
+             if (landsInPlay.size() + landList.size() > max) {
++                final boolean pilot = forge.ai.ability.DrawAi.pilotSeat(player);
+                 for (Card c : allCards) {
++                    if (pilot && c.isInZone(ZoneType.Graveyard)) {
++                        continue;   // fishpond patch 27 (D2): a cycled card in the graveyard isn't a discard outlet
++                    }
+                     for (SpellAbility sa : c.getSpellAbilities()) {
++                        if (pilot && sa.isCycling()) {
++                            continue;
++                        }
+                         Cost payCosts = sa.getPayCosts();
+                         if (payCosts != null) {
+                             for (CostPart part : payCosts.getCostParts()) {
+@@ -460,7 +467,8 @@ public class AiController {
+                 }
+ 
+                 // don't play the land if it has cycling and enough lands are available
+-                if (c.hasKeyword(Keyword.CYCLING)) {
++                // (fishpond patch 27, D2: a pilot seat still plays it, last among its lands; chooseBestLandToPlay)
++                if (c.hasKeyword(Keyword.CYCLING) && !forge.ai.ability.DrawAi.pilotSeat(player)) {
+                     return false;
+                 }
+             }
+@@ -538,6 +546,16 @@ public class AiController {
+             landList = unreflectedLands;
+         }
+ 
++        // fishpond patch 27 (D2): lands that cycle are played last, never held: Forge skipped a cycling land once lands on the
++        // battlefield plus in hand reached max(biggest cost in hand, 6), so Zur missed 17 drops under 6 lands holding only
++        // cycling lands. Any other land goes first; a cycling land when it's all there is.
++        if (forge.ai.ability.DrawAi.pilotSeat(player)) {
++            final CardCollection noCycling = CardLists.filter(landList, l -> !l.getSpellAbilities().anyMatch(SpellAbility::isCycling));
++            if (!noCycling.isEmpty()) {
++                landList = noCycling;
++            }
++        }
++
+         // fishpond patch 26: play a land that enters tapped unless an untapped one lets a spell (or the commander) be cast
+         // this turn that couldn't be otherwise. Forge's own check below uses the mana estimate, which counts lands like
+         // Castle Garenbrig as six mana, so it played untapped lands early whether or not the mana was needed.
+@@ -1178,6 +1196,11 @@ public class AiController {
+         if (sacrificedOnLandDrop(land)) {
+             return sacOnLand.allMatch(Card::isTapped);
+         }
++        // fishpond patch 27 (D3): once every such permanent is tapped this turn its mana is already made, so the land drop
++        // costs nothing (Niv sat on 3 lands T4-T8 holding 4; tap City, then play the land)
++        if (sacOnLand.allMatch(Card::isTapped)) {
++            return true;
++        }
+         if (land.isInZone(ZoneType.Hand) && player.getCardsIn(ZoneType.Hand).size() > player.getMaxHandSize()) {
+             return true;
+         }
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index b5dbbed..f6a5519 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -2335,8 +2335,9 @@ public class ComputerUtil {
+     // a 7-card hand must also project to cast a commander costing 4+ on time: target turn 4 for 4 mana, turn 5 for 5+,
+     // allowing one turn late. The projection: lands in hand plus the lands the deck should draw (its land share of the
+     // library per draw, no more than one land a turn), plus ramp mana, minus cost reducers that apply to the commander.
+-    // 6 cards: the floor only; 5 or fewer: keep with 2+ lands. -Dfishpond.mulligan=false restores Forge's rule;
+-    // each decision prints #FP-MULL.
++    // 6 and 5 cards: the floor only; 4 or fewer: always keep (patch 27, the user's rule: no mulligan below 4; before it a
++    // 5-or-fewer hand under 2 lands went back, chaining Heliod down to 2 cards). -Dfishpond.mulligan=false restores Forge's
++    // rule; each decision prints #FP-MULL.
+     public static boolean pilotMulliganOn() {
+         return !"false".equals(System.getProperty("fishpond.mulligan"));
+     }
+@@ -2416,13 +2417,13 @@ public class ComputerUtil {
+         boolean mull;
+         String why;
+         int projected = -1;
+-        if (finalSize <= 5) {
+-            mull = lands < 2;
+-            why = "5 or fewer cards: keep with 2+ lands";
++        if (finalSize <= 4) {
++            mull = false;   // fishpond patch 27 (D1): 4 cards is the floor, always kept
++            why = "4 or fewer cards: always keep";
+         } else if (!floor || flood) {
+             mull = true;
+             why = flood ? "flood" : "below the floor";
+-        } else if (finalSize == 6 || commander == null || commander.getCMC() < 4) {
++        } else if (finalSize <= 6 || commander == null || commander.getCMC() < 4) {
+             mull = false;
+             why = "floor met";
+         } else {

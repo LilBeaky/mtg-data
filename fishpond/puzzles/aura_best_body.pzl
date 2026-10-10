@@ -1,0 +1,14 @@
+# title: Pump auras pick the best body: a bare Craw Wurm and a Grizzly Bears, Bear Umbra in hand: the AI enchants the Wurm, not the smaller creature
+# card: (auras: target choice)
+# turns: 1
+# expect: Bear Umbra.*Craw Wurm
+p0life=40
+p1life=40
+turn=6
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest;Forest;Forest;Craw Wurm;Grizzly Bears
+p0hand=Bear Umbra
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

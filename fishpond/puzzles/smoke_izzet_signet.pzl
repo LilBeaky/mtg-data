@@ -1,0 +1,16 @@
+# title: Izzet Signet: unflagged, the AI uses it and doesn't hurt itself (smoke test)
+# card: Izzet Signet
+# turns: 3
+# expect: Ai\(1\)-P1 (cast|activated) Izzet\ Signet
+# forbid: Ai\(1\)-P1 (has lost|loses the game)
+# forbid: Life: Ai\(1\)-P1 \d+ > (-?\d)$
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Mountain;Island;Mountain;Island;Mountain
+p0hand=Izzet Signet;Mountain;Island
+p0library=Mountain;Island;Mountain;Island;Mountain;Island;Mountain;Island;Mountain;Island;Mountain;Island;Mountain;Island
+p1battlefield=Forest;Forest;Mountain
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

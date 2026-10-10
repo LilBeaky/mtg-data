@@ -63,3 +63,13 @@ oddities (Lim-Dûl's Vault, Natural Balance, Opposition Agent).
 
 - 2026-10-08: tracker and fidelity lines added; baseline above. tutors.py reader: partner pairs, "graveyard,
   hand, and/or library", "each player may search", own-creature-dies searches, Maralen, names with commas.
+- 2026-10-10: overall ramp 152 → 159/201 (79%), card draw 84 → 95/125 (76%), tutors 119 → 144/155 (93%). Zur card draw
+  2/14 → 10/14, Erebos tutors 7/32 → 32/32. Fixes: (4) done for cycling: manasim.py's inert stand-ins keep their cycling
+  in tutor mode, and goldfish.py values an inert card at 15, so spare mana at end of turn cycles it (Complicate,
+  Neutralize, Miscalculation, Forsake the Worldly, Pest Control, Unearth, Astral Drift, Archfiend of Ifnir); (1)
+  `categorize` files a permanent's triggered mana (Lotus Cobra), untapping lands (Beledros), land tokens (Awaken the
+  Woods), lands from the top onto the battlefield (Silverback Elder) as ramp and pay-X draw (Well of Lost Dreams) as
+  draw; (2) overrides for Shadowborn Apostle ({B}, sacrifice itself and five other Clerics: a Demon onto the battlefield)
+  and Scheming Symmetry (any card to the top). Zur in manasim (1,000 games, +draw/tutors): a key target by T8 81.6% →
+  87.3%, the rest +0.5-2 points. Left on Zur: Necrodominance, Monument to Endurance, Dour Port-Mage, Emeritus of
+  Ideation (parser families, step 3).

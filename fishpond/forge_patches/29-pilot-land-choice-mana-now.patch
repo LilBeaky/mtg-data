@@ -1,0 +1,86 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 5d6906c..2cd5ef5 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -501,6 +501,52 @@ public class AiController {
+         return false;
+     }
+ 
++    /** fishpond patch 29 (D8): the mana land would add this turn if played now (0 if it enters tapped): plain {T} abilities
++     *  with their amount (Gaea's Cradle counts creatures) and "only if you control N lands" checks counting the land itself
++     *  (Temple of the False God); a filter land's {1},{T} nets its output minus the 1, and only when another source can pay
++     *  it. Abilities with other costs or restrictions count 0. */
++    private int pilotLandManaNow(final Card land, final int usableSources) {
++        if (landEntersTapped(land)) {
++            return 0;
++        }
++        int best = 0;
++        for (final SpellAbility m : land.getManaAbilities()) {
++            try {
++                m.setActivatingPlayer(player);
++                int manaCost = 0;
++                boolean ok = true;
++                for (final CostPart part : m.getPayCosts().getCostParts()) {
++                    if (part instanceof CostPartMana) {
++                        manaCost += ((CostPartMana) part).getMana().getCMC();
++                    } else if (!(part instanceof CostTap)) {
++                        ok = false;
++                    }
++                }
++                if (!ok || m.hasParam("CheckSVar") || m.hasParam("Activation") || (manaCost > 0 && usableSources < manaCost)) {
++                    continue;
++                }
++                if (m.hasParam("IsPresent")) {
++                    final String vp = m.getParam("IsPresent");
++                    int n = CardLists.getValidCards(player.getCardsIn(ZoneType.Battlefield), vp, player, land, m).size();
++                    if (land.isValid(vp.split(","), player, land, m)) {
++                        n++;
++                    }
++                    final String cmp = m.getParamOrDefault("PresentCompare", "GE1");
++                    if (!forge.util.Expressions.compare(n, cmp.substring(0, 2), AbilityUtils.calculateAmount(land, cmp.substring(2), m))) {
++                        continue;
++                    }
++                }
++                final String produced = m.getParamOrDefault("Produced", "C");
++                final int per = produced.startsWith("Combo") || produced.startsWith("Any") || produced.startsWith("Chosen") ? 1 : produced.trim().split("\\s+").length;
++                final int amount = AbilityUtils.calculateAmount(land, m.getParamOrDefault("Amount", "1"), m);
++                best = Math.max(best, per * amount - manaCost);
++            } catch (RuntimeException e) {
++                // can't read it: count nothing for this ability
++            }
++        }
++        return best;
++    }
++
+     private Card chooseBestLandToPlay(CardCollection landList) {
+         if (landList.isEmpty()) {
+             return null;
+@@ -603,6 +649,28 @@ public class AiController {
+             }
+         }
+ 
++        // fishpond patch 29 (D8): among the lands still in the running, the ones that make the most mana this turn: Forge ranks
++        // lands by value, so Chulane played Sungrass Prairie over an Island holding Sol Ring, Zhulodok Temple of the False God
++        // on 3 lands, Omnath led Gaea's Cradle with no creatures
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && landList.size() > 1 && !"false".equals(System.getProperty("fishpond.landChoice"))) {
++            final int usable = ComputerUtilMana.getAvailableManaSources(player, true).size();
++            int most = 0;
++            final Map<Card, Integer> now = new HashMap<>();
++            for (final Card land : landList) {
++                final int n = pilotLandManaNow(land, usable);
++                now.put(land, n);
++                most = Math.max(most, n);
++            }
++            final int top = most;
++            if (top > 0) {
++                final CardCollection working = CardLists.filter(landList, l -> now.get(l) == top);
++                if (!working.isEmpty() && (pilotLandsDecided || working.size() < landList.size())) {
++                    landList = working;
++                    pilotLandsDecided = pilotLandsDecided || CardLists.count(landList, this::landEntersTapped) == 0;
++                }
++            }
++        }
++
+         // try to skip lands that enter the battlefield tapped if we might want to play something this turn
+         if (!pilotLandsDecided && !nonLandsInHand.isEmpty()) {
+             CardCollection nonTappedLands = new CardCollection();

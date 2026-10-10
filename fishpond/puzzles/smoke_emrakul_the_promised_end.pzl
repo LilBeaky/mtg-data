@@ -1,0 +1,16 @@
+# title: Emrakul, the Promised End: unflagged, the AI uses it and doesn't hurt itself (smoke test)
+# card: Emrakul, the Promised End
+# turns: 3
+# expect: Ai\(1\)-P1 (cast|activated) Emrakul,\ the\ Promised\ End
+# forbid: Ai\(1\)-P1 (has lost|loses the game)
+# forbid: Life: Ai\(1\)-P1 \d+ > (-?\d)$
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p0hand=Emrakul, the Promised End;Plains;Plains
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest;Mountain
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
