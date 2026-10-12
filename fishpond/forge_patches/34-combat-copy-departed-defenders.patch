@@ -1,0 +1,53 @@
+diff --git a/forge-game/src/main/java/forge/game/combat/Combat.java b/forge-game/src/main/java/forge/game/combat/Combat.java
+index 79f6139..57a8623 100644
+--- a/forge-game/src/main/java/forge/game/combat/Combat.java
++++ b/forge-game/src/main/java/forge/game/combat/Combat.java
+@@ -79,14 +79,28 @@ public class Combat {
+         initConstraints();
+     }
+ 
++    // fishpond patch 34: a defending battle (or planeswalker) that was defeated and left the battlefield mid-combat (Invasion of Ikoria:
++    // exiled, then cast transformed) is still listed as a defender; while it is being cast it is in no zone, so the
++    // lookahead copier can't map it and the copy threw ("Couldn't map <Nothing>", D7). It is no longer in combat, so the
++    // copy leaves it out, with the bands that attacked it (they deal no damage once it's gone).
++    private static boolean departedBattle(GameEntity e) {
++        return e instanceof Card c && !c.isInPlay();   // mid-cast the card has no state (not even its battle type)
++    }
++
+     public Combat(Combat combat, IEntityMap map) {
+         playerWhoAttacks = map.map(combat.playerWhoAttacks);
+         for (GameEntity entry : combat.attackableEntries.get()) {
++            if (departedBattle(entry)) {
++                continue;
++            }
+             attackableEntries.get().add(map.map(entry));
+         }
+ 
+         HashMap<AttackingBand, AttackingBand> bandsMap = new HashMap<>();
+         for (Entry<GameEntity, AttackingBand> entry : combat.attackedByBands.get().entries()) {
++            if (departedBattle(entry.getKey())) {
++                continue;
++            }
+             AttackingBand origBand = entry.getValue();
+             ArrayList<Card> attackers = new ArrayList<>();
+             for (Card c : origBand.getAttackers()) {
+@@ -101,6 +115,9 @@ public class Combat {
+             attackedByBands.get().put(map.map(entry.getKey()), newBand);
+         }
+         for (Entry<AttackingBand, Card> entry : combat.blockedBands.get().entries()) {
++            if (!bandsMap.containsKey(entry.getKey())) {
++                continue;   // fishpond patch 34: a band that attacked a departed battle
++            }
+             blockedBands.get().put(bandsMap.get(entry.getKey()), map.map(entry.getValue()));
+         }
+ 
+@@ -112,6 +129,9 @@ public class Combat {
+         }
+         // Note: Doesn't currently set up lkiCache, since it's just a cache and not strictly needed...
+         for (Table.Cell<Card, GameEntity, Integer> entry : combat.damageMap.get().cellSet()) {
++            if (departedBattle(entry.getColumnKey())) {
++                continue;   // fishpond patch 34
++            }
+             damageMap.get().put(map.map(entry.getRowKey()), map.map(entry.getColumnKey()), entry.getValue());
+         }
+ 

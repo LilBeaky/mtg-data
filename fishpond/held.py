@@ -4,7 +4,9 @@ The harness (ForgeRunner.Watcher) checks every seat's hand at the start of its f
 cast right then (mana, timing and legal targets; that turn's land drop not counted) that is still in hand at its cleanup
 was held that turn. A run of consecutive held turns of one card is a streak (#FP-HELD, streaks of 2+ printed). The meter
 counts streaks of 3+ turns: for most cards, a pilot that sat on a castable card that long missed a play. Instants and
-flash cards are shown apart, since holding up an answer can be right.
+flash cards are shown apart, since holding up an answer can be right. A streak with "unspent" turns (the card's cost
+could still be paid at cleanup: the mana went unused rather than to other plays; runs from 2026-10-12 evening on) is the
+clearest pilot miss, counted apart as "idle".
 
   python -m fishpond held RUN_DIR [RUN_DIR...]    per deck across runs (a folder of runs is searched for games.jsonl)
 """
@@ -34,13 +36,16 @@ def tally(records, hero_name, out=None, min_turns=MIN_TURNS):
         for h in r["held"]:
             if h["turns"] >= min_turns: by_seat[int(h["seat"])].append(h)
         for seat, deck in decks.items():
-            a = out.setdefault(deck, {"games": 0, "games_dead": 0, "streaks": 0, "instant": 0, "cards": Counter(), "inst_cards": Counter()})
+            a = out.setdefault(deck, {"games": 0, "games_dead": 0, "streaks": 0, "idle": 0, "instant": 0, "cards": Counter(),
+                                      "idle_cards": Counter(), "inst_cards": Counter()})
             a["games"] += 1
             hs = by_seat.get(seat, [])
             if any(not h["instant"] for h in hs): a["games_dead"] += 1
             for h in hs:
                 if h["instant"]: a["instant"] += 1; a["inst_cards"][h["card"]] += 1
-                else: a["streaks"] += 1; a["cards"][h["card"]] += 1
+                else:
+                    a["streaks"] += 1; a["cards"][h["card"]] += 1
+                    if h.get("unspent"): a["idle"] += 1; a["idle_cards"][h["card"]] += 1
     return out
 
 
@@ -50,6 +55,8 @@ def lines(agg, top=6):
         n = a["games"]
         s = (f"{deck}: {a['streaks'] / n:.2f} per game, in {100 * a['games_dead'] / n:.0f}% of {n} games"
              + (": " + ", ".join(f"{c} {k}" for c, k in a["cards"].most_common(top)) if a["cards"] else ""))
+        if a["idle"]:
+            s += f" | idle (mana left unused) {a['idle']}: " + ", ".join(f"{c} {k}" for c, k in a["idle_cards"].most_common(4))
         if a["instant"]:
             s += f" | instants/flash held {a['instant']}: " + ", ".join(f"{c} {k}" for c, k in a["inst_cards"].most_common(3))
         rows.append(s)

@@ -489,10 +489,11 @@ public class ForgeRunner {
 
         // Dead-card meter, every seat: a nonland card in hand that its owner could cast at the start of their first main
         // phase (mana, timing and targets; this turn's land drop not counted) and still held at their cleanup is "held"
-        // that turn. Consecutive held turns of one card are one streak, printed as #FP-HELD after the game.
+        // that turn ("unspent" when its cost could still be paid at cleanup: the mana went unused, not to other plays).
+        // Consecutive held turns of one card are one streak, printed as #FP-HELD after the game.
         final Map<Player, Map<Integer, Card>> castableAtMain = new HashMap<>();
         final Map<Player, Integer> seatTurns = new HashMap<>();
-        final Map<Integer, int[]> heldRun = new HashMap<>();     // card id -> {seat turn of the first held turn, held turns, last held turn}
+        final Map<Integer, int[]> heldRun = new HashMap<>();     // card id -> {first held turn, held turns, last held turn, turns with its mana unused}
         final Map<Integer, Player> heldOwner = new HashMap<>();
         final Map<Integer, Card> heldCard = new HashMap<>();
         final List<String> held = new ArrayList<>();
@@ -504,10 +505,15 @@ public class ForgeRunner {
                     sp.setActivatingPlayer(p);
                     if (!sp.canPlay()) continue;
                     if (sp.usesTargeting() && !sp.getTargetRestrictions().hasCandidates(sp)) continue;
-                    if (ComputerUtilMana.canPayManaCost(sp, p, 0, false)) return true;
+                    if (ComputerUtilMana.canPayManaCost(sp, p, xExtra(sp), false)) return true;
                 } catch (Throwable t) { /* a card whose check throws counts as not castable */ }
             }
             return false;
+        }
+
+        /** An X spell counts only with mana for X = 1 (Walking Ballista for 0 isn't a play). */
+        static int xExtra(SpellAbility sp) {
+            return sp.getPayCosts() != null && sp.getPayCosts().hasXInAnyCostPart() ? 1 : 0;
         }
 
         void heldMain(Player p) {
@@ -515,6 +521,17 @@ public class ForgeRunner {
             Map<Integer, Card> now = new HashMap<>();
             for (Card c : p.getCardsIn(ZoneType.Hand)) if (castableNow(c, p)) now.put(c.getId(), c);
             castableAtMain.put(p, now);
+        }
+
+        /** Its mana cost could still be paid now (timing aside): at cleanup, the seat left that much mana unused. */
+        static boolean payableNow(Card c, Player p) {
+            for (SpellAbility sp : c.getSpells()) {
+                try {
+                    sp.setActivatingPlayer(p);
+                    if (ComputerUtilMana.canPayManaCost(sp, p, xExtra(sp), false)) return true;
+                } catch (Throwable t) { /* counts as not payable */ }
+            }
+            return false;
         }
 
         void heldEnd(Player p) {
@@ -525,10 +542,11 @@ public class ForgeRunner {
             for (Card c : p.getCardsIn(ZoneType.Hand)) inHand.add(c.getId());
             for (Map.Entry<Integer, Card> x : now.entrySet()) {
                 if (!inHand.contains(x.getKey())) continue;
+                int unspent = payableNow(x.getValue(), p) ? 1 : 0;
                 int[] r = heldRun.get(x.getKey());
-                if (r != null && r[2] == t - 1) { r[1]++; r[2] = t; continue; }
+                if (r != null && r[2] == t - 1) { r[1]++; r[2] = t; r[3] += unspent; continue; }
                 if (r != null) flushHeld(x.getKey());
-                heldRun.put(x.getKey(), new int[] {t, 1, t});
+                heldRun.put(x.getKey(), new int[] {t, 1, t, unspent});
                 heldOwner.put(x.getKey(), p); heldCard.put(x.getKey(), x.getValue());
             }
             for (Integer id : new ArrayList<>(heldRun.keySet()))    // this seat's streaks that didn't continue this turn end here
@@ -541,7 +559,7 @@ public class ForgeRunner {
             Card c = heldCard.remove(id);
             if (r == null || r[1] < 2) return;                      // single turns aren't printed (the meter counts 3+)
             String seat = p.getName().replaceAll("^Ai\\((\\d+)\\).*", "$1");
-            held.add("{\"seat\": \"" + seat + "\", \"card\": " + js(c.getName()) + ", \"from\": " + r[0] + ", \"turns\": " + r[1]
+            held.add("{\"seat\": \"" + seat + "\", \"card\": " + js(c.getName()) + ", \"from\": " + r[0] + ", \"turns\": " + r[1] + ", \"unspent\": " + r[3]
                     + ", \"instant\": " + (c.isInstant() || c.hasKeyword(forge.game.keyword.Keyword.FLASH)) + ", \"cmc\": " + c.getCMC() + "}");
         }
 

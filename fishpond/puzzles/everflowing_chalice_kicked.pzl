@@ -1,0 +1,15 @@
+# title: Everflowing Chalice on turn 2 (two lands): cast kicked once, and its mana casts a 4-drop on three lands next turn (Forge waited for 4 untapped lands: Zhulodok held it T1-T4, varied_20261012 V02)
+# card: Everflowing Chalice
+# turns: 3
+# expect: cast Everflowing Chalice
+# expect: cast Juggernaut
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Wastes;Wastes
+p0hand=Everflowing Chalice;Juggernaut
+p0library=Wastes;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

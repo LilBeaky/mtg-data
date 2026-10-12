@@ -1,0 +1,149 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiAttackController.java b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+index c0251b6..c2da04c 100644
+--- a/forge-ai/src/main/java/forge/ai/AiAttackController.java
++++ b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+@@ -122,9 +122,38 @@ public class AiAttackController {
+                 attackers.add(c);
+             }
+         }
++        pilotAttackDraws();
+         this.blockers = getPossibleBlockers(oppList, this.attackers, this.nextTurn);
+     }
+ 
++    // fishpond patch 33: attackers whose mandatory draw triggers together would empty the library stay home, the
++    // biggest draws first, unless an empty-library draw wins (ComputerUtil.attackDecks)
++    private void pilotAttackDraws() {
++        if (nextTurn || attackers.isEmpty() || !ComputerUtil.attackDrawsOn() || !forge.ai.ability.DrawAi.pilotSeat(ai)
++                || ComputerUtil.winsOnEmptyLibraryDraw(ai)) {
++            return;
++        }
++        final java.util.Map<Card, Integer> draws = new java.util.HashMap<>();
++        int total = 0;
++        for (final Card c : attackers) {
++            final int d = ComputerUtil.attackDraws(ai, c);
++            if (d > 0 && c.getStaticAbilities().stream().noneMatch(st -> st.checkMode(forge.game.staticability.StaticAbilityMode.MustAttack))) {
++                draws.put(c, d);
++                total += d;
++            }
++        }
++        final int lib = ai.getCardsIn(ZoneType.Library).size();
++        final List<Card> byDraws = new ArrayList<>(draws.keySet());
++        byDraws.sort((a, b) -> draws.get(b) - draws.get(a));
++        for (final Card c : byDraws) {
++            if (lib - total >= 1) {
++                break;
++            }
++            attackers.remove(c);
++            total -= draws.get(c);
++        }
++    }
++
+     public static List<Card> getOpponentCreatures(final Player defender) {
+         List<Card> defenders = defender.getCreaturesInPlay();
+         int totalMana = ComputerUtilMana.getAvailableManaEstimate(defender, true);
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index c68fda3..c1b5316 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -1293,11 +1293,101 @@ public class ComputerUtil {
+         return false;
+     }
+ 
++    // ---- fishpond patch 33: attacks whose own draw triggers deck the attacker ----
++    // Yusri g11 (dummy study, 2026-10-07) attacked with Ancient Silver Dragon at 9 cards (roll a d20, draw that many),
++    // holding Laboratory Maniac and Jace with mana up, and decked. Patch 20 counts draws for casts only. A pilot seat
++    // counts the mandatory draws an attacker's combat-damage or attack triggers give it (a die roll counts its largest
++    // result) and attacks only with creatures whose draws leave a card for the next draw step, unless an empty-library
++    // draw wins already; a permanent that wins on that draw (Laboratory Maniac) is cast in main 1, before such an attack.
++    // -Dfishpond.attackDraws=false turns it off.
++    public static boolean attackDrawsOn() {
++        return !"false".equals(System.getProperty("fishpond.attackDraws"));
++    }
++
++    /** Cards the AI must draw when this creature attacks and deals combat damage to a player (its own triggers and the
++     *  AI's other permanents' triggers that match it). */
++    public static int attackDraws(final Player ai, final Card attacker) {
++        int n = 0;
++        for (final Card host : ai.getCardsIn(ZoneType.Battlefield)) {
++            for (final Trigger t : host.getTriggers()) {
++                if (t.getMode() != TriggerType.DamageDone && t.getMode() != TriggerType.Attacks || t.hasParam("OptionalDecider")) {
++                    continue;
++                }
++                if (t.getMode() == TriggerType.DamageDone && (!"True".equals(t.getParam("CombatDamage"))
++                        || !t.getParamOrDefault("ValidTarget", "").matches("(Player|Opponent).*"))) {
++                    continue;
++                }
++                final String valid = t.getParamOrDefault(t.getMode() == TriggerType.Attacks ? "ValidCard" : "ValidSource", "");
++                if (valid.isEmpty() || !attacker.isValid(valid.split(","), ai, host, null)) {
++                    continue;
++                }
++                final java.util.Map<String, Integer> rolls = new java.util.HashMap<>();
++                for (SpellAbility a = t.ensureAbility(); a != null; a = a.getSubAbility()) {
++                    if (a.getApi() == ApiType.RollDice && a.hasParam("ResultSVar")) {
++                        try {
++                            rolls.put(a.getParam("ResultSVar"), Integer.parseInt(a.getParamOrDefault("Sides", "6")) * Integer.parseInt(a.getParamOrDefault("Amount", "1")));
++                        } catch (NumberFormatException e) {
++                            rolls.put(a.getParam("ResultSVar"), 20);
++                        }
++                    }
++                    final String def = a.getParamOrDefault("Defined", "You");
++                    if (a.getApi() != ApiType.Draw || !"You".equals(def) || a.hasParam("OptionalDecider") || a.hasParam("UpTo")) {
++                        continue;
++                    }
++                    final String num = a.getParamOrDefault("NumCards", "1");
++                    if (rolls.containsKey(num)) {
++                        n += rolls.get(num);
++                        continue;
++                    }
++                    try {
++                        n += Math.max(1, AbilityUtils.calculateAmount(host, num, a));
++                    } catch (RuntimeException e) {
++                        n += 1;
++                    }
++                }
++            }
++        }
++        return n;
++    }
++
++    /** True when this attacker's draws could empty the pilot seat's library with no empty-library win in place. */
++    public static boolean attackDecks(final Player ai, final Card attacker) {
++        if (!attackDrawsOn() || !forge.ai.ability.DrawAi.pilotSeat(ai) || winsOnEmptyLibraryDraw(ai)) {
++            return false;
++        }
++        final int draws = attackDraws(ai, attacker);
++        return draws > 0 && ai.getCardsIn(ZoneType.Library).size() - draws < 1;
++    }
++
++    /** A permanent spell that wins on an empty-library draw (Laboratory Maniac, Jace), while a creature that could attack
++     *  this turn is held back because its draws could deck the seat. */
++    public static boolean winCardBeforeAttack(final Player ai, final SpellAbility sa) {
++        final Card c = sa.getHostCard();
++        if (!attackDrawsOn() || !sa.isSpell() || c == null || !c.isPermanent() || !forge.ai.ability.DrawAi.pilotSeat(ai)
++                || !forge.ai.ability.DrawAi.emptyLibraryWinCard(c) || c.isCreature() && c.getTriggers().stream().anyMatch(
++                        t -> t.getMode() == TriggerType.ChangesZone)) {
++            return false;                                   // Thassa's Oracle wins on entering: patch 10 times that one
++        }
++        final forge.game.phase.PhaseHandler ph = ai.getGame().getPhaseHandler();
++        if (!ph.isPlayerTurn(ai) || ph.getPhase() == null || !ph.getPhase().isBefore(forge.game.phase.PhaseType.COMBAT_DECLARE_ATTACKERS)) {
++            return false;
++        }
++        for (final Card a : ai.getCreaturesInPlay()) {
++            if (forge.game.combat.CombatUtil.canAttack(a) && attackDecks(ai, a)) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     public static boolean castPermanentInMain1(final Player ai, final SpellAbility sa) {
+         final Card card = sa.getHostCard();
+         if (rampFirstOn() && forge.ai.ability.DrawAi.pilotSeat(ai) && isRamp(ai, sa)) {
+             return true;   // fishpond patch 25
+         }
++        if (winCardBeforeAttack(ai, sa)) {
++            return true;   // fishpond patch 33
++        }
+         final CardState cardState = card.isFaceDown() ? card.getState(CardStateName.Original) : card.getCurrentState();
+ 
+         if (card.hasSVar("PlayMain1")) {

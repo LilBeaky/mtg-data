@@ -1,0 +1,16 @@
+# title: guard: Diabolic Tutor with 8 mana, hybrid lookahead: the AI tutors (main 2) and casts what it finds the same turn (patch 35 lets library searches past the one-move check; in this vacuum the old build also passes, the evidence is varied_20261012 V02 g2)
+# card: Diabolic Tutor
+# sim: hybrid
+# turns: 1
+# expect: cast Diabolic Tutor
+# expect: cast (Phyrexian Arena|Sengir Vampire|Vampire Nighthawk|Gray Merchant of Asphodel)
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p0hand=Diabolic Tutor;Swamp;Swamp
+p0library=Swamp;Swamp;Swamp;Phyrexian Arena;Swamp;Sengir Vampire;Swamp;Swamp;Vampire Nighthawk;Swamp;Gray Merchant of Asphodel;Swamp
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

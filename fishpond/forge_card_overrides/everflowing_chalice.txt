@@ -1,0 +1,13 @@
+# fishpond override (Forge 2.0.15 script, NeedsToPlayKickedVar Z GE4 -> GE2): Forge cast it only with 4+ untapped lands, so the 2-mana rock waited for turn 4+ (Zhulodok held it T1-T4, varied_20261012 V02); puzzle fishpond/puzzles/everflowing_chalice_kicked.pzl
+Name:Everflowing Chalice
+ManaCost:0
+Types:Artifact
+K:Multikicker:2
+K:etbCounter:CHARGE:XKicked:no Condition:CARDNAME enters with a charge counter on it for each time it was kicked.
+A:AB$ Mana | Cost$ T | Produced$ C | Amount$ X | SpellDescription$ Add {C} for each charge counter on CARDNAME.
+SVar:X:Count$CardCounters.CHARGE
+SVar:XKicked:Count$TimesKicked
+SVar:NeedsToPlayKickedVar:Z GE2
+SVar:Z:Count$Valid Land.YouCtrl+untapped
+DeckHas:Ability$Counters
+Oracle:Multikicker {2}\nEverflowing Chalice enters with a charge counter on it for each time it was kicked.\n{T}: Add {C} for each charge counter on Everflowing Chalice.

@@ -1,0 +1,15 @@
+# title: Utopia Sprawl (unflagged, color choice given an AILogic): cast on a Forest, and its extra mana casts a 4-drop off three Forests next turn
+# card: Utopia Sprawl
+# turns: 3
+# expect: cast Utopia Sprawl
+# expect: cast Rumbling Baloth
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest;Forest
+p0hand=Utopia Sprawl;Rumbling Baloth
+p0library=Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears
+p1battlefield=Forest;Forest;Mountain
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

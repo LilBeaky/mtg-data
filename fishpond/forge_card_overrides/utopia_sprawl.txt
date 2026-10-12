@@ -1,0 +1,11 @@
+# fishpond override (Forge 2.0.15 script minus AI:RemoveDeck:All, plus AILogic on the color choice: without one ChooseColorAi refuses the card as MissingLogic): puzzle fishpond/puzzles/flag_utopia_sprawl.pzl
+Name:Utopia Sprawl
+ManaCost:G
+Types:Enchantment Aura
+K:Enchant:Forest
+SVar:AttachAILogic:Pump
+K:ETBReplacement:Other:ChooseColor
+SVar:ChooseColor:DB$ ChooseColor | Defined$ You | AILogic$ MostProminentInComputerDeck | SpellDescription$ As CARDNAME enters, choose a color.
+T:Mode$ TapsForMana | ValidCard$ Card.AttachedBy | TriggerZones$ Battlefield | Execute$ TrigMana | Static$ True | TriggerDescription$ Whenever enchanted Forest is tapped for mana, its controller adds an additional one mana of the chosen color.
+SVar:TrigMana:DB$ Mana | Produced$ Chosen | Defined$ TriggeredCardController
+Oracle:Enchant Forest\nAs Utopia Sprawl enters, choose a color.\nWhenever enchanted Forest is tapped for mana, its controller adds an additional one mana of the chosen color.

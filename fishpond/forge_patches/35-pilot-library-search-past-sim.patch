@@ -1,0 +1,47 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 2cd5ef5..b048b6c 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1481,6 +1481,10 @@ public class AiController {
+             if ((sa.getApi() == ApiType.DealDamage || sa.getApi() == ApiType.LoseLife) && ComputerUtil.pilotCheapSacrificeNow(player, sa)) {
+                 return AiPlayDecision.WillPlay;
+             }
++            // fishpond patch 35: a library search's value is hidden from the one-move score
++            if (ComputerUtil.librarySearchPastSim(player, sa)) {
++                return AiPlayDecision.WillPlay;
++            }
+             return OnePlaySafetyChecker.isAcceptable(player, sa) ? AiPlayDecision.WillPlay : AiPlayDecision.HybridSimRejected;
+         }
+ 
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index c1b5316..fa8ba4b 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -1293,6 +1293,27 @@ public class ComputerUtil {
+         return false;
+     }
+ 
++    // ---- fishpond patch 35: library searches past hybrid's one-move check ----
++    // The one-move check scores the board after a play against the board before. A search to hand, to the top of the
++    // library or to the graveyard trades the search card for the found one, which the score can't see (the found card is
++    // hidden information in the copy): it reads as a card lost, and any life paid for the mana (Elves of Deep Shadow)
++    // tips it under the allowance. Witherbloom's Diabolic Tutor was vetoed on every turn it was considered
++    // (varied_20261012 V02 g2: 336 -> -1863 vs -1856, allowance 5). For a pilot seat the tutor policy already judges what
++    // a search fetches, so these searches skip the check. -Dfishpond.searchPastSim=false turns it off.
++    public static boolean librarySearchPastSim(final Player ai, final SpellAbility sa) {
++        if ("false".equals(System.getProperty("fishpond.searchPastSim")) || !forge.ai.ability.DrawAi.pilotSeat(ai)) {
++            return false;
++        }
++        for (SpellAbility a = sa; a != null; a = a.getSubAbility()) {
++            if ((a.getApi() == ApiType.ChangeZone || a.getApi() == ApiType.ChangeZoneAll) && a.hasParam("ChangeType")
++                    && a.getParamOrDefault("Origin", "").contains("Library")
++                    && a.getParamOrDefault("Destination", "").matches("Hand|Library|Graveyard")) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     // ---- fishpond patch 33: attacks whose own draw triggers deck the attacker ----
+     // Yusri g11 (dummy study, 2026-10-07) attacked with Ancient Silver Dragon at 9 cards (roll a d20, draw that many),
+     // holding Laboratory Maniac and Jace with mana up, and decked. Patch 20 counts draws for casts only. A pilot seat

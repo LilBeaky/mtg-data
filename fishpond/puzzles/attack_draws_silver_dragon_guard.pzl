@@ -1,0 +1,15 @@
+# title: guard: Ancient Silver Dragon with 25 cards left attacks (a d20 can't empty the library)
+# card: Ancient Silver Dragon
+# turns: 1
+# sim: hybrid
+# expect: assigned Ancient Silver Dragon .* to attack
+# forbid: has lost trying to draw
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Ancient Silver Dragon;Island;Island;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

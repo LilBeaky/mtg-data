@@ -1,0 +1,16 @@
+# title: Ancient Silver Dragon with 3 cards left and Laboratory Maniac in hand: cast Lab Man before combat, then attack (the draw can only win)
+# card: Ancient Silver Dragon
+# turns: 1
+# sim: hybrid
+# expect: cast Laboratory Maniac
+# forbid: has lost trying to draw
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Ancient Silver Dragon;Island;Island;Island
+p0hand=Laboratory Maniac
+p0library=Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

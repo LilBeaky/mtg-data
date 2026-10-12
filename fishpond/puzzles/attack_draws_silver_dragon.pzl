@@ -1,0 +1,15 @@
+# title: Ancient Silver Dragon with 3 cards left and no win card: its combat-damage trigger draws d20, so it doesn't attack an open player (Yusri g11, dummy study)
+# card: Ancient Silver Dragon
+# turns: 1
+# sim: hybrid
+# forbid: Ancient Silver Dragon .*(attack|Attack)
+# forbid: has lost trying to draw
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Ancient Silver Dragon;Island;Island;Island
+p0library=Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
