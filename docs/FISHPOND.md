@@ -15,6 +15,8 @@ python3 -m fishpond save LIST --name "Ians Zur Wizardcycling"              # sto
 python3 -m fishpond report RUN_DIR [--reparse] [--turns N] [--json]
 python3 -m fishpond show RUN_DIR GAME [--build LABEL] [--log] [--phases]
 python3 -m fishpond held RUN_DIR [RUN_DIR...]          # dead-card meter per deck across runs
+python3 -m fishpond study PODS --out DIR [--games 5] [--seed S] [--lanes 2] [--jobs 5] [--max-minutes M]   # a pod study, resumable
+python3 -m fishpond study --report DIR                 # its per-deck report
 ```
 
 ## Before a run
@@ -80,6 +82,8 @@ On the harness the card-flow table also has `discarded` (hand to graveyard, cycl
 **Opponents section** (pods with real decks): who won the pod (real seats play on after the user's deck dies, so a winner usually emerges), and per opponent deck: games it sat in, the user's win rate in those games, how often it killed the user's deck, how often the user's deck killed it, and how often it won the pod. Then how the user's deck died (route and killing deck) and the killing blows (the card that dealt the biggest share of the final life change). This is the real-opponent replacement for goldfish's disruption ladder.
 
 **Cards section.** Cast rate, median first-cast turn and casts per game for the most-cast cards; key cards with the win rate of games they were cast or entered (an association, not cause); on the harness, cards most often left in hand when the game ended (dead-card candidates); cards never cast, played or seen entering; AI-flagged cards; trigger counts; commander casts per game.
+
+**Studies.** `study PODS --out DIR` plays every pod in a list (`ID|HERO|OPP1|OPP2|OPP3` a line, as `data/fishpond/varied_20261007/pods.txt`) into `DIR/<ID>_<HERO>`, pod k on seed SEED + 100k, in parallel lanes (`--lanes 2 --jobs 5` suits this machine). Rerunning the same line skips finished pods and resumes cut-off ones; `--max-minutes` stops starting pods after that long (a session time limit), and the printed line continues it, here or locally. The report: run validity, then per deck (every seat) single-survivor wins over decided games, undecided games, kills, deaths, how it won, and the dead-card meter.
 
 **Held while castable (dead-card meter, harness, every seat).** At the start of each seat's first main phase the harness checks which nonland cards in its hand it could cast right then (mana, timing, legal targets; that turn's land drop not counted); one still in hand at cleanup was held that turn. The report lists, per deck in the pod, streaks of 3+ held turns per game, the share of games with one, and the cards; instants and flash cards are shown apart (holding an answer can be right). `python -m fishpond held RUN_DIR...` adds the meter up per deck across runs (a folder of runs works). Runs before 2026-10-12 don't have it. The development table's mana column is the mana a seat can make without conditions since 2026-10-12 (Forge's own estimate before: it counted Castle Garenbrig as 6 and Command Tower as 2).
 
