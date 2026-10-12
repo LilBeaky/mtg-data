@@ -1,0 +1,14 @@
+# title: Single Combat: one big creature against four: the AI casts it
+# card: Single Combat
+# turns: 2
+# expect: cast Single Combat
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Serra Angel
+p0hand=Single Combat
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Plains;Serra Angel;Craw Wurm;Air Elemental;Hill Giant
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

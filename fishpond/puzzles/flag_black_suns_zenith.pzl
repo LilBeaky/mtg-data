@@ -1,0 +1,14 @@
+# title: Black Sun's Zenith: no creatures of its own, three across the table: the AI casts it
+# card: Black Sun's Zenith
+# turns: 2
+# expect: cast Black Sun's Zenith
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p0hand=Black Sun's Zenith
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Plains;Serra Angel;Craw Wurm;Air Elemental
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

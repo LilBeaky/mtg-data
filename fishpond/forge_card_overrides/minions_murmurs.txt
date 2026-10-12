@@ -1,0 +1,8 @@
+# fishpond override (Forge 2.0.15 script minus AI:RemoveDeck:All): puzzle flag_minions_murmurs passes (fishpond/puzzles/)
+Name:Minions' Murmurs
+ManaCost:2 B B
+Types:Sorcery
+A:SP$ Draw | NumCards$ X | SpellDescription$ You draw X cards and you lose X life, where X is the number of creatures you control. | SubAbility$ DB1
+SVar:DB1:DB$ LoseLife | LifeAmount$ X
+SVar:X:Count$Valid Creature.YouCtrl
+Oracle:You draw X cards and you lose X life, where X is the number of creatures you control.

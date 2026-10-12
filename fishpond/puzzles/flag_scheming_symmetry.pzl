@@ -1,0 +1,15 @@
+# title: Scheming Symmetry: the AI casts it
+# card: Scheming Symmetry
+# known_gap: yes
+# turns: 2
+# expect: cast Scheming Symmetry
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp
+p0hand=Scheming Symmetry
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Craw Wurm;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

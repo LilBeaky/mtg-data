@@ -1,0 +1,14 @@
+# title: Goblin Bombardment guard: the opponent at 40, Serra Angel the only creature: the AI doesn't sacrifice it
+# card: Goblin Bombardment
+# turns: 2
+# expect: #FP-PUZZLE end
+# forbid: activated Goblin Bombardment
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Mountain;Mountain;Goblin Bombardment;Serra Angel
+p0library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1battlefield=Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

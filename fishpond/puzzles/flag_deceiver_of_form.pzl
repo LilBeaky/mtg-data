@@ -1,0 +1,14 @@
+# title: Deceiver of Form: seven Wastes: the AI casts it
+# card: Deceiver of Form
+# turns: 2
+# expect: cast Deceiver of Form
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes
+p0hand=Deceiver of Form
+p0library=Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes;Wastes
+p1battlefield=Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

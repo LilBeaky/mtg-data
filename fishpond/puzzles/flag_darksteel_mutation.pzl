@@ -1,0 +1,15 @@
+# title: Darksteel Mutation: goes on the opponent's Serra Angel, never on its own creature
+# card: Darksteel Mutation
+# turns: 2
+# expect: Darksteel Mutation targeting \[Serra Angel
+# forbid: Darksteel Mutation targeting \[Grizzly Bears
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains;Grizzly Bears
+p0hand=Darksteel Mutation
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Plains;Serra Angel
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

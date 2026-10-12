@@ -1,0 +1,10 @@
+# fishpond override (Forge 2.0.15 script minus AI:RemoveDeck:All): puzzle flag_divine_reckoning passes (fishpond/puzzles/)
+Name:Divine Reckoning
+ManaCost:2 W W
+Types:Sorcery
+K:Flashback:5 W W
+A:SP$ ChooseCard | Defined$ Player | Amount$ 1 | Choices$ Creature | ControlledByPlayer$ Chooser | Mandatory$ True | SubAbility$ DBDestroyAll | SpellDescription$ Each player chooses a creature they control. Destroy the rest.
+SVar:DBDestroyAll:DB$ DestroyAll | ValidCards$ Creature.!ChosenCard
+SVar:NeedsToPlayVar:Z GE2
+SVar:Z:Count$Valid Creature.OppCtrl
+Oracle:Each player chooses a creature they control. Destroy the rest.\nFlashback {5}{W}{W} (You may cast this card from your graveyard for its flashback cost. Then exile it.)

@@ -1,0 +1,7 @@
+# fishpond override (Forge 2.0.15 script minus AI:RemoveDeck:All): puzzle flag_goblin_bombardment_lethal and flag_goblin_bombardment_guard passes (fishpond/puzzles/)
+Name:Goblin Bombardment
+ManaCost:1 R
+Types:Enchantment
+A:AB$ DealDamage | Cost$ Sac<1/Creature> | ValidTgts$ Any | NumDmg$ 1 | SpellDescription$ CARDNAME deals 1 damage to any target.
+SVar:NonStackingEffect:True
+Oracle:Sacrifice a creature: Goblin Bombardment deals 1 damage to any target.

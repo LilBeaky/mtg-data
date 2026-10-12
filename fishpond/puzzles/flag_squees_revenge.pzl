@@ -1,0 +1,16 @@
+# title: Squee's Revenge: the AI casts it
+# card: Squee's Revenge
+# known_gap: yes
+# turns: 2
+# expect: cast Squee's Revenge
+# forbid: (has lost|loses the game)
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Mountain;Island;Mountain
+p0hand=Squee's Revenge
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

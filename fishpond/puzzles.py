@@ -97,7 +97,7 @@ def write_smoke(name, turns=3):
     if not c: sys.exit(f"fishpond: no card {name!r}")
     cost = c.get("mana_cost") or (c.get("card_faces") or [{}])[0].get("mana_cost", "")
     cols = re.findall(r"\{([WUBRG])", cost) or []
-    lands = [COLOR_LAND[x] for x in cols]
+    lands = [COLOR_LAND[x] for x in cols] + ["Wastes"] * cost.count("{C}")    # {C} needs colorless mana (Eldrazi): Plains can't pay it
     ci = [x for x in (c.get("color_identity") or []) if x in COLOR_LAND] or ["W"]
     while len(lands) < int(c.get("cmc") or 0) + 3: lands.append(COLOR_LAND[ci[len(lands) % len(ci)]])
     is_land = "Land" in (c.get("type_line") or "")

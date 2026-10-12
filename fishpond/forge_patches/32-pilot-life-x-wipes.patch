@@ -1,0 +1,81 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiCostDecision.java b/forge-ai/src/main/java/forge/ai/AiCostDecision.java
+index 666bffe..4c4a46d 100644
+--- a/forge-ai/src/main/java/forge/ai/AiCostDecision.java
++++ b/forge-ai/src/main/java/forge/ai/AiCostDecision.java
+@@ -375,6 +375,11 @@ public class AiCostDecision extends CostDecisionMakerBase {
+ 
+     @Override
+     public PaymentDecision visit(CostPayLife cost) {
++        // fishpond patch 32: a life-paid X the AI chose for a wipe (Toxic Deluge) is lost between the decision and the payment
++        if ("X".equals(cost.getAmount()) && (ability.getXManaCostPaid() == null || ability.getXManaCostPaid() == 0)
++                && forge.ai.ability.PumpAllAi.pilotLifeXApplies(player, ability)) {
++            ability.setXManaCostPaid(forge.ai.ability.PumpAllAi.pilotLifeX(player, ability));
++        }
+         int c = cost.getAbilityAmount(ability);
+         if (!player.canPayLife(c, isEffect(), ability)) {
+             return null;
+diff --git a/forge-ai/src/main/java/forge/ai/ability/PumpAllAi.java b/forge-ai/src/main/java/forge/ai/ability/PumpAllAi.java
+index 8371846..b1c7434 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/PumpAllAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/PumpAllAi.java
+@@ -63,6 +63,15 @@ public class PumpAllAi extends PumpAiBase {
+             }
+         }
+ 
++        // fishpond patch 32: X paid in life (Toxic Deluge); pilotLifeX picks it, AiCostDecision pays it
++        if (pilotLifeXApplies(ai, sa)) {
++            final int x = pilotLifeX(ai, sa);
++            if (x == 0) {
++                return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
++            }
++            sa.setXManaCostPaid(x);
++        }
++
+         final int power = AbilityUtils.calculateAmount(source, sa.getParam("NumAtt"), sa);
+         final int defense = AbilityUtils.calculateAmount(source, sa.getParam("NumDef"), sa);
+         final List<String> keywords = sa.hasParam("KW") ? Arrays.asList(sa.getParam("KW").split(" & ")) : new ArrayList<>();
+@@ -162,4 +171,44 @@ public class PumpAllAi extends PumpAiBase {
+         }
+         return false;
+     }
++
++    /** fishpond patch 32: a -X/-X wipe whose X is paid in life (Toxic Deluge), cast by a pilot seat. Forge never chose X for
++     *  it, so X stayed 0 and the wipe did nothing. */
++    public static boolean pilotLifeXApplies(final Player ai, final SpellAbility sa) {
++        final Cost c = sa.getPayCosts();
++        return sa.getApi() == forge.game.ability.ApiType.PumpAll && sa.isCurse() && DrawAi.pilotSeat(ai) && "-X".equals(sa.getParam("NumDef"))
++                && "Count$xPaid".equals(sa.getSVar("X")) && c != null && c.getCostParts().stream().anyMatch(p -> p instanceof forge.game.cost.CostPayLife);
++    }
++
++    /** The smallest X that kills the most opposing value (every opponent) net of the seat's own losses, spending at most half
++     *  its life and keeping 10; 0 when no X is worth it. */
++    public static int pilotLifeX(final Player ai, final SpellAbility sa) {
++        final Card source = sa.getHostCard();
++        final String valid = sa.getParamOrDefault("ValidCards", "Creature");
++        final int budget = Math.min(ai.getLife() - 10, ai.getLife() / 2);
++        final CardCollection mine = CardLists.getValidCards(ai.getCardsIn(ZoneType.Battlefield), valid, ai, source, sa);
++        final CardCollection theirs = new CardCollection();
++        for (final Player o : ai.getOpponents()) {
++            theirs.addAll(CardLists.getValidCards(o.getCardsIn(ZoneType.Battlefield), valid, ai, source, sa));
++        }
++        int bestX = 0, bestScore = 149;
++        for (int x = 1; x <= budget; x++) {
++            int score = 0;
++            for (final Card c : theirs) {
++                if (c.getNetToughness() <= x) {
++                    score += ComputerUtilCard.evaluateCreature(c);
++                }
++            }
++            for (final Card c : mine) {
++                if (c.getNetToughness() <= x) {
++                    score -= ComputerUtilCard.evaluateCreature(c);
++                }
++            }
++            if (score > bestScore) {
++                bestScore = score;
++                bestX = x;
++            }
++        }
++        return bestX;
++    }
+ }

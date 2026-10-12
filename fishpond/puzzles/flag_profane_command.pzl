@@ -1,0 +1,16 @@
+# title: Profane Command: Craw Wurm in the graveyard, the opponent at 8: the AI casts it
+# card: Profane Command
+# known_gap: yes
+# turns: 2
+# expect: cast Profane Command
+p0life=40
+p1life=8
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p0hand=Profane Command
+p0graveyard=Craw Wurm
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

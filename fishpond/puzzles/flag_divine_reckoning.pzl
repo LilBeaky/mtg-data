@@ -1,0 +1,14 @@
+# title: Divine Reckoning: one creature against three: the AI casts it
+# card: Divine Reckoning
+# turns: 2
+# expect: cast Divine Reckoning
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains;Plains;Plains;Grizzly Bears
+p0hand=Divine Reckoning
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Plains;Serra Angel;Craw Wurm;Air Elemental
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
