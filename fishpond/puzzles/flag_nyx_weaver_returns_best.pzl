@@ -1,0 +1,16 @@
+# title: Nyx Weaver (unflagged) with Living Death and a Swamp in the graveyard: when it exiles itself it returns Living Death, not the land
+# card: Nyx Weaver
+# turns: 3
+# forbid: Nyx Weaver.*Swamp|returns? .*Swamp.* to .*hand
+# forbid: Ai\(1\)-P1 (has lost|loses the game)
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Nyx Weaver;Forest;Forest;Swamp;Swamp;Swamp
+p0graveyard=Swamp;Living Death;Forest
+p0hand=Forest
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

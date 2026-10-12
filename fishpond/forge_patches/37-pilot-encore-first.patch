@@ -1,0 +1,28 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 6b65f52..21695f2 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -2129,6 +2129,15 @@ public class AiController {
+         return chosenSa;
+     }
+ 
++    // fishpond patch 37: an encore activation goes ahead of the seat's other plays. Araumi grants encore for the turn
++    // (patch 13 picks a target the seat can pay for), and the mana was then spent elsewhere: it granted encore to Archon of
++    // Cruelty and cast Singularity Rupture with the mana (varied_20261007 V04, plan item 8). Encore is sorcery speed, so
++    // this only reorders the seat's own main-phase plays.
++    private static boolean encoreNow(final SpellAbility sa) {
++        return sa.getApi() == ApiType.CopyPermanent && "Encore".equals(sa.getParam("PrecostDesc"))
++                && sa.getHostCard() != null && sa.getHostCard().isInZone(ZoneType.Graveyard);
++    }
++
+     private SpellAbility chooseSpellAbilityToPlayFromList(final List<SpellAbility> all, boolean skipCounter) {
+         if (all == null || all.isEmpty())
+             return null;
+@@ -2140,6 +2149,7 @@ public class AiController {
+                 if (ComputerUtil.rampFirstOn() && game.getPhaseHandler().isPlayerTurn(player)) {
+                     all.sort(Comparator.comparing((SpellAbility x) -> !ComputerUtil.isRamp(player, x)));   // fishpond patch 25 (stable)
+                 }
++                all.sort(Comparator.comparing((SpellAbility x) -> !encoreNow(x)));      // fishpond patch 37 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !commanderNow(x)));   // fishpond patch 24 (stable sort)
+             }
+         } catch (IllegalArgumentException ex) {

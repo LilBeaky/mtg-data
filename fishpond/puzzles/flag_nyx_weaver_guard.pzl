@@ -1,0 +1,16 @@
+# title: guard: Nyx Weaver (unflagged) with only lands in the graveyard: it stays on the battlefield (the smoke test saw it exile itself for a Swamp)
+# card: Nyx Weaver
+# turns: 3
+# forbid: activated Nyx Weaver
+# forbid: Ai\(1\)-P1 (has lost|loses the game)
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Nyx Weaver;Forest;Forest;Swamp;Swamp;Swamp
+p0graveyard=Swamp;Forest
+p0hand=Forest
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

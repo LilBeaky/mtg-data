@@ -1,0 +1,18 @@
+# title: Araumi with 12 mana against a big board, Archon of Cruelty in the graveyard and Singularity Rupture in hand: grant encore to the Archon and pay its encore (8) before anything else (varied_20261007 V04: the encore mana went to Singularity Rupture)
+# card: Araumi of the Dead Tide
+# turns: 1
+# sim: hybrid
+# expect: activated Araumi of the Dead Tide
+# expect: activated Archon of Cruelty
+# forbid: cast Singularity Rupture
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Araumi of the Dead Tide;Island;Island;Island;Island;Island;Island;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p0hand=Singularity Rupture
+p0graveyard=Archon of Cruelty;Island;Island;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Serra Angel;Craw Wurm;Shivan Dragon;Forest;Forest
+p1library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island

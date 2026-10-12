@@ -1,0 +1,16 @@
+# title: Greater Good: the opponent casts Murder on the AI's 6/6, and the AI sacrifices it in response to draw six
+# card: Greater Good
+# turns: 1
+# expect: activated Greater Good
+# expect: cast Murder
+p0life=20
+p1life=20
+turn=1
+activeplayer=p1
+activephase=MAIN1
+p0battlefield=Greater Good;Craw Wurm;Forest;Forest;Forest
+p0hand=Grizzly Bears;Grizzly Bears
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Swamp;Swamp;Swamp
+p1hand=Murder
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

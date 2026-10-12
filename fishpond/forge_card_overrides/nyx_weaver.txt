@@ -1,0 +1,10 @@
+# fishpond override (Forge 2.0.15 script minus AI:RemoveDeck:All, plus AITgts$ Card.nonLand on the return): unflagged the AI exiled it to return a land (smoke, and puzzle flag_nyx_weaver_guard); puzzles flag_nyx_weaver_returns_best.pzl, flag_nyx_weaver_guard.pzl
+Name:Nyx Weaver
+ManaCost:1 B G
+Types:Enchantment Creature Spider
+PT:2/3
+K:Reach
+T:Mode$ Phase | Phase$ Upkeep | ValidPlayer$ You | TriggerZones$ Battlefield | Execute$ TrigMill | TriggerDescription$ At the beginning of your upkeep, mill two cards.
+SVar:TrigMill:DB$ Mill | Defined$ You | NumCards$ 2
+A:AB$ ChangeZone | Cost$ 1 B G Exile<1/CARDNAME> | Origin$ Graveyard | Destination$ Hand | TgtPrompt$ Choose target card in your graveyard | ValidTgts$ Card.YouCtrl | AITgts$ Card.nonLand | SpellDescription$ Return target card from your graveyard to your hand.
+Oracle:Reach\nAt the beginning of your upkeep, mill two cards.\n{1}{B}{G}, Exile Nyx Weaver: Return target card from your graveyard to your hand.

@@ -1,0 +1,15 @@
+# title: guard: Greater Good with a healthy 6/6 and nothing threatening it: the AI keeps the creature (and attacks with it)
+# card: Greater Good
+# turns: 1
+# forbid: activated Greater Good
+# expect: Craw Wurm .* to attack|assigned Craw Wurm
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Greater Good;Craw Wurm;Forest;Forest;Forest
+p0hand=Grizzly Bears;Grizzly Bears;Forest
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Swamp;Swamp;Swamp
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

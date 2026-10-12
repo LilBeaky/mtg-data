@@ -1,0 +1,17 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index b048b6c..6b65f52 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1173,6 +1173,12 @@ public class AiController {
+     }
+ 
+     private void noteLoopPlay(final LoopState ls, final SpellAbility sa) {
++        // fishpond patch 36: pumping a creature again and again (firebreathing, Lathliss's +1/+0) is one big attack, not a
++        // loop: counted as one, it stopped on "goal" and the stop kept the pump off in later turns while the lethal
++        // estimate held (varied_20261007 V08 g2, plan item 9)
++        if (sa.getApi() == ApiType.Pump || sa.getApi() == ApiType.PumpAll) {
++            return;
++        }
+         final int n = ls.counts.merge(player.getId() + "#" + countKey(sa), 1, Integer::sum);
+         final String key = loopKey(sa);
+         if (n >= LOOP_CONFIRM && ls.looper == null && !ls.stopped.contains(player.getId() + "#" + key)) {

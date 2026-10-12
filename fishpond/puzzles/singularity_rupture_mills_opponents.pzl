@@ -1,0 +1,16 @@
+# title: Singularity Rupture against a bigger board: the AI casts it and mills its opponents, not itself (varied_20261007 V04 g0: Araumi milled itself 76 -> 37, then 28 -> 8, and decked)
+# card: Singularity Rupture
+# turns: 1
+# expect: cast Singularity Rupture
+# forbid: Ai\(1\)-P1 milled
+# expect: Ai\(2\)-P2 milled
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Grizzly Bears;Island;Island;Swamp;Swamp;Swamp;Island
+p0hand=Singularity Rupture
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Serra Angel;Craw Wurm;Shivan Dragon;Forest;Forest
+p1library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island

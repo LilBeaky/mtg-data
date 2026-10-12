@@ -1,0 +1,15 @@
+# title: guard: Shivan Dragon with 14 Mountains against an open player at 18: the AI pumps it more than ten times, and the loop shortcut never takes the pump for a loop (patch 36; Klauth V08 g2 Lathliss stopped on goal and stayed off). Forge still stops 2 short of lethal with 3 mana up (watch list)
+# card: Shivan Dragon
+# turns: 1
+# sim: hybrid
+# forbid: FP-LOOP.*Shivan Dragon
+# expect: Shivan Dragon .* deals 1[0-9] combat damage
+p0life=20
+p1life=18
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Shivan Dragon;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p0library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1battlefield=Forest;Forest
+p1library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain

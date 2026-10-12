@@ -19,16 +19,51 @@ Working doc for Claude: what is left to build in Fishpond and in what order. Usa
 - **Claude's background tasks die at 2 hours.** Split batches into resumable chunks under that (`run --resume` finishes a cut-off pod), or hand the user the command for long studies (the user's preference as runs grow).
 - **Seeds replay exactly.** One game replays alone from one line of a run's `logs/plan_*.tsv` with ForgeRunner (the command line is in `runner.execute`); the game log is printed only when the game ends. Profile with `-XX:StartFlightRecording=...,settings=profile` and dump mid-turn with `jcmd <pid> JFR.dump`. Since patch 16 games diverge from pre-16 runs on the same seed: compare distributions, not paired games, across that boundary.
 - **Writing a patch:** `~/forge-cache/forge-src-2.0.15` is CRLF and doesn't match the tag; fetch the files with `forge.FORGE_SRC_URL` into a scratch git repo, apply 01..NN, edit, `git diff` > the next patch; procedure and table in FORGE_ISSUES "Patches". To see a debug println, call `fishpond.puzzles.run_one(path)` and grep its lines.
-- **Before pushing:** `python -m fishpond puzzles` (149: 141 pass, 8 known gaps) and `python tests/smoke.py`. Stage only your own files, fetch/rebase, never force. Write findings into this doc as soon as they're known.
+- **Before pushing:** `python -m fishpond puzzles` (162: 154 pass, 8 known gaps) and `python tests/smoke.py`. Stage only your own files, fetch/rebase, never force. Write findings into this doc as soon as they're known.
 - `--sim hybrid` prints hundreds of "AI failed to play" lines a game (lookahead test-casts unaffordable spells): noise, not a stuck card.
 - **Why did the AI not cast X?** Replay the game (`replay.py`-style: one plan line, ForgeRunner) with a debug copy of one class first on the classpath: copy the file from the scratch source tree (or `forge-src-2.0.15` if no patch touches it), add a println, `javac -cp <patched classes>;<forge jar>` into a folder, prepend that folder to `-cp`. Nothing in the repo changes. `AiController.canPlayAndPayFor` printing its `AiPlayDecision` per spell and `OnePlaySafetyChecker.isAcceptable` printing scores found the Wilson aura stall in one replay (2026-10-07).
 
-## Where things stand (2026-10-07)
+## Where things stand (2026-10-12)
 
-- **Built:** harness and cli engines, goldfish-layout reports with Fishpond's sections, resumable runs, puzzles, `compare`, `flags`. Pilot: tutor policy at every seat (with a commander gate), Forge patches 01-32 (crash fixes, big-board blocks, loop shortcut, combat-prediction memo, and pilot patches for cycling, blink, empty-library wins, Wheel, Araumi, City of Traitors, draw-the-library and Approach, Primal Surge, sacrifice fodder, no decking casts, life budget, commander timing and combat safety, ramp first, mulligans and tapped lands, mulligan floor and cycling lands, aura stacking, land choice by mana now, the mulligan projection, Signets and filter lands, life-paid X wipes), 78 card overrides.
-- **Run validity:** the last 80 games (`powermatch_20261007_p16`, `varied_20261007`) had 1 timeout (a Vilis life-payment spiral, item 2), 0 per-decision search fallbacks, and 4 games replayed whole without lookahead after a crash in it (item 7; an earlier count here said 0 because it only looked at per-decision fallbacks); lookahead pauses on prepared cards (#1) about once per 7 games.
-- **Reference runs** (`data/fishpond/`, gitignored): `varied_20261007` (10 pods x 5, every deck 2-3 times, seeds 20261007 + 100 x pod; `pods.txt`, `lane.sh`) is the current baseline; `powermatch_20261007_p16` (6 power-matched pods, seed 1); `pilot_study_20261004` (100 games by bracket, before patches 12-16).
-- **Current single-winner record** (varied, 50 games): Heliod 9/15, Niv 5/10, Klauth 5/15, Ragost 5/15, Witherbloom 5/15, Wilson 4/15, Araumi 3/10, Lumra 3/15, Zhulodok 3/10, Erebos 2/10, Omnath 2/15, Xyris 2/10, Yusri 1/10, Zur 1/10, Chulane 0/10, Jarad 0/15. Small samples: signals, not rates.
+- **Built:** harness and cli engines, goldfish-layout reports with Fishpond's sections, resumable runs, puzzles, `compare`, `flags`, the dead-card meter (`held`). Pilot: tutor policy at every seat (with a commander gate), Forge patches 01-38 (crash fixes, big-board blocks, loop shortcut, combat-prediction memo, the combat copy of a departed battle, and pilot patches for cycling, blink, empty-library wins, Wheel, Araumi, City of Traitors, draw-the-library and Approach, Primal Surge, sacrifice fodder, no decking casts, life budget, commander timing and combat safety, ramp first, mulligans and tapped lands, mulligan floor and cycling lands, aura stacking, land choice by mana now, the mulligan projection, Signets and filter lands, life-paid X wipes, attacks whose draws would deck, library searches past the one-move check, pumps out of loop detection, encore first, sacrificed-power draws), 83 card overrides.
+- **Baseline** (`varied_20261012`: the 10 varied pods x 5 on their old seeds, hybrid, commit 76a155b = patches 01-32 + the meter; 50 games, about 3.7 h of game time, 1 h wall on two lanes): 49 ended naturally, 1 timeout (V05 game 4, a Heliod/Xyris/Lumra/Zur board at 30 min), 0 AI timeouts, 0 games replayed without lookahead, 6 per-decision fallbacks (all the Invasion of Ikoria copy crash, fixed since by patch 34), lookahead paused on prepared cards in 10 games. Since patch 16 games aren't paired with older runs: compare distributions.
+- **Single-winner record** (baseline vs `varied_20261007`; signals, not rates): Zhulodok 5/10 (3/10), Araumi 5/10 (3/10), Heliod 7/15 (9/15), Witherbloom 6/15 (5/15), Wilson 6/15 (4/15), Xyris 4/10 (2/10), Niv 3/10 (5/10), Klauth 4/15 (5/15), Erebos 2/10 (2/10), Chulane 2/10 (0/10), Omnath 2/15 (2/15), Yusri 1/10 (1/10), Jarad 1/15 (0/15), Ragost 1/15 (5/15), Lumra 0/15 (3/15), Zur 0/10 (1/10).
+- **Dead-card meter** (castable at main 1 and still in hand at cleanup, 3+ own turns running, every seat; streaks per seat-game, 1.24 overall): Araumi 2.20, Wilson 2.13, Zur 1.80, Heliod 1.73, Xyris 1.60, Jarad 1.53, Erebos 1.30, Witherbloom 1.27, Chulane 1.20, Zhulodok 1.10, Ragost 1.00, Niv 0.90, Omnath 0.80, Yusri 0.70, Lumra 0.53, Klauth 0.33. Most held: Shadowborn Apostle (Erebos 6), Everflowing Chalice (Zhulodok 5, fixed since), Stinkweed Imp (Jarad 4), Utopia Sprawl (Wilson 3, unflagged since), Shield of the Oversoul (Wilson 3). The baseline's streaks don't say whether the mana went elsewhere; from 2026-10-12 evening each streak also counts the turns its mana was left unused ("idle"), the clean miss.
+- **Post-fix run** (`varied_20261012_p35`: same pods and seeds on patches 01-35 + the Sprawl and Chalice overrides, i.e. before 36-38; 2026-10-12 evening): per-decision lookahead fallbacks **0** (6 in the baseline: patch 34), 0 games replayed, 3 game timeouts (V05 g0, g1; V08 g3; baseline 1) and 2 AI decision timeouts (baseline 0); 5.1 h of game time vs 3.7 h. The extra time is not the new code: V06 rerun alone took 24 min (36 under load, 10 in the baseline), and a JFR profile of its slow game puts 76% of samples in Forge's combat prediction (51% under hybrid's one-move check) and 0.2% in patch 33 plus the meter; the patched games diverged into bigger boards (V05-V08 slower, V01-V04 faster). Big-board time (item 1b, parked) is back as the main cost: worth a look before the 150-game run. Records (signals): Heliod 8/15, Zhulodok 5/10, Niv 4/10, Witherbloom 5/15, Klauth 5/15, Ragost 5/15, Wilson 5/15, Xyris 3/10, Erebos 2/10, Araumi 1/10, Chulane 1/10, Yusri 1/10, Lumra 1/15, Jarad 1/15, Omnath 0/15, Zur 0/10. Meter 1.24 -> 1.15 streaks per seat-game: Zhulodok 1.10 -> 0.30 (Chalice), Witherbloom 1.27 -> 0.53 (tutors, patch 35), Erebos 1.30 -> 0.70. First idle counts (38 streaks with mana left unused): Lumra 8 (Splendid Reclamation, Rishkar's Expertise, Natural Order, Scapeshift, Sylvan Safekeeper), Jarad 5, Witherbloom 4: the next audit's starting list.
+- **Reference runs** (`data/fishpond/`, gitignored): `varied_20261012` (pods and launcher as `varied_20261007`: `pods.txt`, `lane.sh`; `fishpond study data/fishpond/varied_20261007/pods.txt --out DIR --seed 20261007` replays the same study) is the current baseline, `varied_20261012_p35` the post-fix run; `varied_20261007`, `powermatch_20261007_p16`, `pilot_study_20261004` are older.
+
+## Plan as of 2026-10-12 (the user's order)
+
+| # | Item | Status |
+|---|---|---|
+| 0 | Merge the pending branch (D5 second pass, patch 32) | **Done** (bddebb6) |
+| 1 | Fresh baseline + dead-card meter | **Done**: `varied_20261012` above; `fishpond held`, report section, idle flag |
+| 2 | Pilot-error audit of #1 | **Partly done**: findings A-F below, each with game and turn; B fixed (patch 35) |
+| 3 | D6 decks drawing themselves out | **Partly done**: attack-trigger draws (patch 33); Wildspeaker not reproduced in a vacuum; Chulane's turn-level reserve not started |
+| 4 | Remaining flagged cards | **Partly done**: Utopia Sprawl, Greater Good and Nyx Weaver unflagged (an AILogic; patch 38; an AITgts), Everflowing Chalice's hint fixed; Perpetual Timepiece tested and kept flagged (it mills, then exiles itself to shuffle the graveyard back: needs logic for that ability); Scapeshift, Magus of the Candelabra, Sylvan Safekeeper, Autumn's Veil, Lim-Dul's Vault and the 6 known gaps left |
+| 5 | Reports show usable mana | **Done** (with #1): snapshots' `usable`, the report's mana column |
+| 6 | D7 crash root fixes | **Partly done**: Invasion of Ikoria (patch 34; the only crash in the baseline); ChooseCT and the Zhulodok NPE not seen since |
+| 7 | Araumi self-mill/wipe and pump-loop detection (items 8-9 below) | **Done**: Singularity Rupture override (mills opponents), patch 37 (encore first), patch 36 (pumps aren't loops); the wipe's own-board weighing left to Forge's DestroyAllAi (recheck in the next study) |
+| 8 | `fishpond study` command (item 10 below) | **Done**: `fishpond study PODS --out DIR`, `--report DIR` |
+
+### Pilot-error audit (2026-10-12, `varied_20261012`)
+
+Read from the meter's streaks with each seat's plays on those turns (a scratch script; worth folding into `held`). Ordered by how many decks they touch.
+- **A. Main 1 spends the mana main 2 needed.** Forge casts most creatures in main 2, so main-1 plays (auras, activated abilities) use the mana first. Wilson V04 g4 T4: Strong Back in main 1, then Mesa Enchantress (1WW) uncastable; V04 g3 T6-T7: Rogue's Passage activated (5 mana) twice with Kor Spiritdancer, Season of Growth and Shield of the Oversoul castable. Forge has a main-2 reservation (`RESERVE_MANA_FOR_MAIN2_CHANCE=100` in Default.ai) but it only holds sources a few AIs remember (`HELD_MANA_SOURCES_FOR_MAIN2`). A fix changes tempo for every deck: question for the user below.
+- **B. Tutors.** Forge never tutors to hand in main 1 unless the hand is down to one card (`ChangeZoneAi.hiddenOriginCanPlayAI`), so tutors wait for main 2 (in a vacuum it then casts the find, puzzle-checked). Some games show tutors held on idle turns: Witherbloom V02 g2 T5-T7 (5-6 usable mana; Diabolic Tutor and Damnable Pact in hand; cast an Elvish Mystic or nothing), Niv V01 g1 T3 (Grim Tutor), Zur V08 g2 T8 (Personal Tutor), Klauth V08 g3 T3 (Finale of Devastation). **Diagnosed and fixed (patch 35):** a debug replay of Witherbloom V02 g2 (println in `canPlayAndPayFor` and `OnePlaySafetyChecker`) showed Diabolic Tutor and Damnable Pact `CantPlayAi` in main 1 (Forge's hand-size rule) and `HybridSimRejected` in main 2 on every turn: the one-move score read the search as a card lost (-5, the allowance) plus 1 life from Elves of Deep Shadow's mana (-2). Library searches to hand, top of library or graveyard now skip the check at pilot seats; on the replay the tutor is cast on turn 5. Entomb-style searches (Araumi's Buried Alive, audit C) go through the same door, so C may shrink too: check in the next run. Forge's main-1 hand-size rule for tutors is untouched (the find is cast in main 2 with what mana is left).
+- **C. Engine cards ranked below filler.** Araumi held Buried Alive (V04 g3 T4-T6, casting Oriq Loremage and Nimbleclaw Adept instead), Archaeomancer and Panharmonicon (V04 g2 T5-T9); Erebos spends its mana on Erebos's draw over Shadowborn Apostles (6 streaks). The tutor policy's engine graph already knows each deck's engines; it could inform cast order.
+- **D. Everflowing Chalice** never cast before 4 untapped lands (its `NeedsToPlayKickedVar`): fixed by an override.
+- **E. Utopia Sprawl** never cast even unflagged (no AILogic on its color choice): fixed by an override.
+- **F. Known gaps and flagged cards** make up much of the rest (Scheming Symmetry, Profane Command, Nyx Weaver, Perpetual Timepiece, Greater Good, Magus of the Candelabra): expected.
+
+### D6, D7 and flagged cards (2026-10-12)
+
+- **Patch 33 (D6, attack triggers):** puzzles `attack_draws_silver_dragon` (3 cards left, no win card: stays home), `attack_draws_labman_first` (Lab Man cast in main 1, then the attack wins), `attack_draws_silver_dragon_guard` (25 cards: attacks). The first two fail on 01-32 on every seed tried.
+- **Return of the Wildspeaker:** with a 9-power creature and 5 cards left the AI picks the pump mode or doesn't cast it (vacuum, 3 seeds). Klauth g14's deck-out needs a replay of `dummy25_20261007` to see what differed.
+- **Chulane's turn-level reserve:** not started (a replay of a dummy-study loss first).
+- **Greater Good:** debug traces showed two places reading the draw (X = the sacrificed creature's power) as 0 before the sacrifice: DrawAi's "draws nothing" check and its loot check (draw 0, discard 3 = a net loss). Patch 38 estimates X from the creature the sacrifice choice would pick (a threatened one); unflagged.
+- **Patch 34 (D7):** FORGE_ISSUES #2.
+- **JVM crash** (once, GC thread; FORGE_ISSUES "Harness safety net"): not ours; watch for a repeat.
 
 ## Priority list
 
@@ -43,9 +78,9 @@ Ordered by payoff over difficulty (items 5 and 6 done 2026-10-07, worked first a
 | 5 | **Done 2026-10-07** (patches 17, 18, 20) Finisher misses (Primal Surge, Enter the Infinite, Approach) | Medium-high: one fix each | Medium: Chulane 0/10, Yusri 1/10, Zur 1/10 |
 | 6 | **Done 2026-10-07** (patch 19) Sacrifice-cost damage and drains (N10: Jarad, Ragost) | Medium | Medium-high: two decks' whole engine |
 | 7 | Harness hardening | Medium | Medium: protects the big re-runs |
-| 8 | Symmetric self-mill and wipe (N6) + Araumi encore mana | Low-medium | Low-medium: Araumi, any self-mill deck |
-| 9 | Pump abilities in loop detection (N9) | Low | Low: a guard |
-| 10 | `fishpond study` command | Medium (tooling) | Makes 11 cheap and repeatable |
+| 8 | **Done 2026-10-12** (Singularity Rupture override, patch 37) Symmetric self-mill and wipe (N6) + Araumi encore mana | Low-medium | Low-medium: Araumi, any self-mill deck |
+| 9 | **Done 2026-10-12** (patch 36) Pump abilities in loop detection (N9) | Low | Low: a guard |
+| 10 | **Done 2026-10-12** `fishpond study` command | Medium (tooling) | Makes 11 cheap and repeatable |
 | 11 | Re-run: whole study at 8 games a pod; bigger Araumi study | Run time | Measures 1-9 |
 
 ### Next: fixes from the dummy study (2026-10-07 evening; work these before 7-11)
@@ -59,8 +94,8 @@ Ordered by payoff over difficulty (items 5 and 6 done 2026-10-07, worked first a
 | D3 | **Done 2026-10-10** (patch 27) City of Traitors: land drop once City is tapped | Low | Medium: Niv, Lumra |
 | D4 | **Done 2026-10-10** (patch 28) Pump auras stack, on the best body | Low-medium | High: Wilson's whole deck, any voltron |
 | D5 | **Mostly done 2026-10-10** (patches 31-32, 47 overrides; 17 left) The 62 untested AI-flagged cards | Medium (tool exists, 62 smoke puzzles; some need AI logic) | Very high: about 4 dead cards in every deck |
-| D6 | **Deferred** (the user, 2026-10-10: only if easy) Decking checks: variable draws, attack triggers, the whole turn | Medium | Medium: 6 of 400 losses, all to the deck's own engine |
-| D7 | **Partly done 2026-10-10** (harness net on effect casts; root fixes deferred) Crashes: battles in combat, ChooseCT in the copier, Zhulodok NPE | Medium (Claude's lead) | Medium: run validity (7 games replayed without lookahead, 2 lost) |
+| D6 | **Partly done 2026-10-12** (patch 33: attack-trigger draws; the user, 2026-10-10: only if easy) Decking checks: variable draws, attack triggers, the whole turn | Medium | Medium: 6 of 400 losses, all to the deck's own engine |
+| D7 | **Partly done 2026-10-12** (harness net on effect casts; patch 34 roots out the battle in combat) Crashes: battles in combat, ChooseCT in the copier, Zhulodok NPE | Medium (Claude's lead) | Medium: run validity (7 games replayed without lookahead, 2 lost) |
 | D8 | **Done 2026-10-10** (patch 29) Land choice: the land that casts something this turn | Medium-high (Claude's lead) | Medium: turn-1 Sol Ring lost twice, Cradle/Nykthos first |
 | D9 | **Done 2026-10-10** (patch 30) Mulligan projection for expensive or self-discounting commanders | Medium-high | Medium: Witherbloom mulligans 24 of 25 sevens; Klauth too |
 
@@ -164,10 +199,13 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
 
 ## Watch list (seen once, not filed)
 
+- Firebreathing stops short: Shivan Dragon with 14 Mountains against 18 life pumped 11 times (16 damage) and kept 3 mana (puzzle `pump_not_loop_firebreathing`, stock Forge and patched alike): PumpAi's stopping rule.
+
 - Chulane holding 8 cards with 13-20 mana for several turns (`powermatch_20261005` G4 game 1; hand contents aren't logged, needs a replay).
 - Nobody answered Felidar Sovereign at 59 life (`powermatch_20261005` G1 game 1).
 - Yusri's game 3 in the G4 pod logs "cast Enter the Infinite" 11 times in one game, on every build (`finishers_20261007_p20/G4...` worker 3): a recursion loop or a log artifact; check once.
 
 ## Open questions for the user
 
-- (none open; `# commander: hold` closed 2026-10-10: no deck needs it now)
+- **Main-1 spending (audit A, 2026-10-12):** should pilot seats cast their permanent spells in main 1, or reserve the mana of main-2 casts before main-1 auras and activations? It would fix Wilson-style misses in every deck but changes Forge's tempo everywhere (Forge waits for main 2 to keep combat information hidden and mana up for tricks). Options: (a) a general rule, permanents in main 1 unless the seat holds an instant-speed trick it may need; (b) reserve main-2 mana before main-1 non-mana activations and auras only; (c) leave it.
+- (`# commander: hold` closed 2026-10-10: no deck needs it now)

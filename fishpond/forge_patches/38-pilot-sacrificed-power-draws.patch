@@ -1,0 +1,50 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+index 24b1e38..65e204d 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+@@ -124,6 +124,27 @@ public class DrawAi extends SpellAbilityAi {
+     // Laboratory Maniac out (now ComputerUtil.winsOnEmptyLibraryDraw, any such effect); this also covers drawing the
+     // library out to then cast an ETB win card (Enter the Infinite into Thassa's Oracle) or to attack with a creature that
+     // wins with a full hand (Twenty-Toed Toad). Only for the pilot seats.
++    // fishpond patch 38: "draw cards equal to the sacrificed creature's power" (Greater Good) counts the power before
++    // anything is sacrificed, so the draw read as 0 cards and the AI never used it, not even to sacrifice a creature in
++    // response to its removal. A pilot seat counts the power of the creature its sacrifice choice would pick (a
++    // threatened creature, SacMe, cheap fodder: ComputerUtil.getCardPreference "SacCost"); with no such creature the
++    // estimate stays 0 and nothing changes.
++    static int sacrificedPowerEstimate(final Player ai, final SpellAbility sa) {
++        final SpellAbility root = sa.getRootAbility();
++        if (root.getPayCosts() == null) {
++            return 0;
++        }
++        for (final forge.game.cost.CostPart part : root.getPayCosts().getCostParts()) {
++            if (part instanceof CostSacrifice sac && !sac.payCostFromSource()) {
++                final forge.game.card.CardCollection list = forge.game.card.CardLists.getValidCards(ai.getCardsIn(ZoneType.Battlefield),
++                        sac.getType().split(";"), ai, sa.getHostCard(), root);
++                final Card c = ComputerUtil.getCardPreference(ai, sa.getHostCard(), "SacCost", list);
++                return c == null ? 0 : Math.max(0, c.getNetPower());
++            }
++        }
++        return 0;
++    }
++
+     public static boolean selfDeckWins(final Player ai, final SpellAbility sa) {
+         if (!pilotSeat(ai) || ai.cantWin() || sa.usesTargeting() || sa.hasParam("Defined") && !"You".equals(sa.getParam("Defined"))) {
+             return false;
+@@ -427,6 +448,8 @@ public class DrawAi extends SpellAbilityAi {
+                 String numDrawStr = sa.getParam("NumCards");
+                 if (numDrawStr.equals("X") && sa.getSVar(numDrawStr).equals("Count$Converge")) {
+                     numDraw = ComputerUtilMana.getConvergeCount(sa, ai);
++                } else if (sa.getSVar(numDrawStr).startsWith("Sacrificed$CardPower") && pilotSeat(ai)) {
++                    numDraw = sacrificedPowerEstimate(ai, sa);   // fishpond patch 38
+                 } else {
+                     numDraw = AbilityUtils.calculateAmount(source, numDrawStr, sa);
+                 }
+@@ -503,6 +526,8 @@ public class DrawAi extends SpellAbilityAi {
+                 xPaid = true;
+             } else if (sa.getSVar(num).equals("Count$Converge")) {
+                 numCards = ComputerUtilMana.getConvergeCount(sa, ai);
++            } else if (sa.getSVar(num).startsWith("Sacrificed$CardPower") && pilotSeat(ai)) {
++                numCards = sacrificedPowerEstimate(ai, sa);
+             }
+         }
+ 
