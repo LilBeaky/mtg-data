@@ -16,7 +16,7 @@ def _turn_value(g, t, key, cum=False, fill_last=True):
     return vals[-1] if vals else None
 
 APPROX_HARNESS = {
-    "mana": "mana = Forge's own AI estimate of the mana you could make at the start of your main phase (ComputerUtilMana) plus this turn's land drop; unusual sources can be undercounted",
+    "mana": "mana = the mana you could make at the start of your main phase without conditions (mana restricted to some spells, such as Castle Garenbrig's six, isn't counted) plus this turn's land drop; runs before 2026-10-12 show Forge's own estimate (ComputerUtilMana), which counts such mana",
     "colors": "all colors = your untapped mana sources at the start of your main phase plus this turn's land drop can make every color of your commander's identity",
     "extra": "extra = cards drawn during your own turns beyond one a turn (draws on opponents' turns, tutors and other card advantage aren't counted)",
     "spent": "mana spent = mana made by your mana abilities, from the log (variable-amount abilities count 1; rituals aren't mana abilities)",
@@ -68,7 +68,7 @@ def bundle(games, T, groups, commanders, opp_n=3, produced=None, identity=""):
                 cols = set((m_ or {}).get("producible") or "")
                 for ln in drop: cols |= set((produced or {}).get(ln, ""))
                 vals.update({"lands": e_["lands"] if e_ and "lands" in e_ else (m_["lands"] + len(drop) if m_ else len(drop)),
-                             "mana": (max(0, m_["mana"]) if m_ else 0) + min(1, len(drop)),
+                             "mana": (max(0, m_.get("usable", m_["mana"])) if m_ else 0) + min(1, len(drop)),
                              "colors": 1 if set(identity or "") <= cols else 0, "cmd_out": 1 if m_ and m_["cmd_out"] else 0,
                              "extra": extra, "hand": e_["hand"] if e_ else 7, "gy": e_["gy"] if e_ else 0,
                              "disc": (e_ or {}).get("disc", 0), "recur": (e_ or {}).get("recur", 0),

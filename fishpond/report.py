@@ -274,6 +274,8 @@ def print_all(meta, builds, approx_notes=None):
         kb = ex["kills_by"]
         if kb: print("opponent deaths by killer: " + " | ".join(f"{k} {v}" for k, v in kb.most_common()))
         print_opponents(label, records)
+        from . import held
+        held.print_section(records, meta.get("commander") or label)
         print_cards(label, ex, hero, meta, T)
     if len(summaries) > 1:
         extra = []

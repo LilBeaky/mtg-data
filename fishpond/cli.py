@@ -10,6 +10,7 @@
   python3 -m fishpond show RUN_DIR GAME [--log]    one game's parsed record (and its Forge log) for hand audits
   python3 -m fishpond puzzles [NAME...] [-v]       AI behaviour tests: board states in fishpond/puzzles/ (pass/fail)
   python3 -m fishpond compare RUN_A RUN_B          two saved runs side by side (A/B on the same seed and pod: FISHPOND_PILOT=off vs on)
+  python3 -m fishpond held RUN_DIR [RUN_DIR...]    dead-card meter per deck across runs: castable cards held 3+ turns running
   python3 -m fishpond flags [--smoke] [--unflag]   cards Forge's AI won't cast (AI:RemoveDeck:All) across the repo's decks, with
                                                     their status; --smoke writes+runs a smoke puzzle for each untested one,
                                                     --unflag writes an override (fishpond/forge_card_overrides/) for each that passes
@@ -97,6 +98,10 @@ def cmd_puzzles(args):
 def cmd_compare(args):
     from . import compare
     compare.compare(args.a, args.b)
+
+def cmd_held(args):
+    from . import held
+    held.cmd(args.runs)
 
 def cmd_flags(args):
     from . import puzzles as pz
@@ -339,7 +344,7 @@ def cmd_show(args):
               f"attackers {t['atk']} | dmg {t['dmg']} (combat {t['cdmg']}) | life {t['life']} | opps dead {t['dead']}"
               + (" | cmdr out" if t.get("cmd_out") else ""))
         sn = (r.get("snaps") or {}).get(str(t["t"])) or {}
-        if sn.get("main"): print(f"    main phase: lands {sn['main']['lands']} | mana {sn['main']['mana']} ({sn['main']['producible'] or '-'}) | hand {sn['main']['hand']}")
+        if sn.get("main"): print(f"    main phase: lands {sn['main']['lands']} | mana {sn['main'].get('usable', sn['main']['mana'])} ({sn['main']['producible'] or '-'}) | hand {sn['main']['hand']}")
         if sn.get("end"): print(f"    end of turn: hand {sn['end']['hand']} | library {sn['end']['lib']} | graveyard {sn['end']['gy']} | "
                                 f"creatures {sn['end']['creatures']} (power {sn['end']['power']}) | drawn this turn {sn['end']['drawn']}")
     if args.log:
@@ -375,8 +380,9 @@ def main(argv=None):
     z = sub.add_parser("puzzles"); z.add_argument("names", nargs="*"); z.add_argument("-v", "--verbose", action="store_true")
     c = sub.add_parser("compare"); c.add_argument("a"); c.add_argument("b")
     g = sub.add_parser("flags"); g.add_argument("--smoke", action="store_true"); g.add_argument("--unflag", action="store_true")
+    h = sub.add_parser("held"); h.add_argument("runs", nargs="+")
     w = sub.add_parser("show"); w.add_argument("run"); w.add_argument("game", type=int); w.add_argument("--build")
     w.add_argument("--log", action="store_true"); w.add_argument("--phases", action="store_true")
     args = ap.parse_args(argv)
     if not args.cmd: ap.print_help(); return
-    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare}[args.cmd](args)
+    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held}[args.cmd](args)

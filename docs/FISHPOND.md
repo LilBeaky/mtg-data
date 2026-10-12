@@ -14,6 +14,7 @@ python3 -m fishpond run --resume RUN_DIR [--trials N] [--jobs N]   # finish a cu
 python3 -m fishpond save LIST --name "Ians Zur Wizardcycling"              # store a list in decks/ (.txt + Forge .dck)
 python3 -m fishpond report RUN_DIR [--reparse] [--turns N] [--json]
 python3 -m fishpond show RUN_DIR GAME [--build LABEL] [--log] [--phases]
+python3 -m fishpond held RUN_DIR [RUN_DIR...]          # dead-card meter per deck across runs
 ```
 
 ## Before a run
@@ -79,6 +80,8 @@ On the harness the card-flow table also has `discarded` (hand to graveyard, cycl
 **Opponents section** (pods with real decks): who won the pod (real seats play on after the user's deck dies, so a winner usually emerges), and per opponent deck: games it sat in, the user's win rate in those games, how often it killed the user's deck, how often the user's deck killed it, and how often it won the pod. Then how the user's deck died (route and killing deck) and the killing blows (the card that dealt the biggest share of the final life change). This is the real-opponent replacement for goldfish's disruption ladder.
 
 **Cards section.** Cast rate, median first-cast turn and casts per game for the most-cast cards; key cards with the win rate of games they were cast or entered (an association, not cause); on the harness, cards most often left in hand when the game ended (dead-card candidates); cards never cast, played or seen entering; AI-flagged cards; trigger counts; commander casts per game.
+
+**Held while castable (dead-card meter, harness, every seat).** At the start of each seat's first main phase the harness checks which nonland cards in its hand it could cast right then (mana, timing, legal targets; that turn's land drop not counted); one still in hand at cleanup was held that turn. The report lists, per deck in the pod, streaks of 3+ held turns per game, the share of games with one, and the cards; instants and flash cards are shown apart (holding an answer can be right). `python -m fishpond held RUN_DIR...` adds the meter up per deck across runs (a folder of runs works). Runs before 2026-10-12 don't have it. The development table's mana column is the mana a seat can make without conditions since 2026-10-12 (Forge's own estimate before: it counted Castle Garenbrig as 6 and Command Tower as 2).
 
 **Sampling.** A win rate from 20 games is ±22 points at worst; from 50, ±14; from 200, ±7. Quote the interval. For a cut-vs-add question use `--variant` (same seeds and same pods); Forge reshuffles a different list differently, so variant games are paired by seed and pod, not by shuffle. Expect more noise than goldfish's variants and run more games.
 

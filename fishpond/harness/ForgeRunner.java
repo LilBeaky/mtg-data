@@ -376,6 +376,8 @@ public class ForgeRunner {
         for (GameLogEntry e : log) out.println(e);
         for (String s : w.snaps) out.println("#FP-SNAP " + s);
         for (String s : w.tutors) out.println("#FP-TUTOR " + s);
+        w.flushAllHeld();
+        for (String s : w.held) out.println("#FP-HELD " + s);
         for (PilotPolicy pol : policies) for (String s : pol.log) out.println("#FP-POLICY " + s);
         StringBuilder end = new StringBuilder("{\"id\": " + id + ", \"seed\": " + seed + ", \"stop\": " + js(w.stop == null ? "natural" : w.stop)
                 + ", \"ms\": " + ms + ", \"hero_turns\": " + w.heroTurns + ", \"global_turns\": " + w.globalTurns
@@ -485,7 +487,97 @@ public class ForgeRunner {
             else if (heroTurns >= cap) halt("cap");
         }
 
+        // Dead-card meter, every seat: a nonland card in hand that its owner could cast at the start of their first main
+        // phase (mana, timing and targets; this turn's land drop not counted) and still held at their cleanup is "held"
+        // that turn. Consecutive held turns of one card are one streak, printed as #FP-HELD after the game.
+        final Map<Player, Map<Integer, Card>> castableAtMain = new HashMap<>();
+        final Map<Player, Integer> seatTurns = new HashMap<>();
+        final Map<Integer, int[]> heldRun = new HashMap<>();     // card id -> {seat turn of the first held turn, held turns, last held turn}
+        final Map<Integer, Player> heldOwner = new HashMap<>();
+        final Map<Integer, Card> heldCard = new HashMap<>();
+        final List<String> held = new ArrayList<>();
+
+        static boolean castableNow(Card c, Player p) {
+            if (c.isLand()) return false;
+            for (SpellAbility sp : c.getSpells()) {
+                try {
+                    sp.setActivatingPlayer(p);
+                    if (!sp.canPlay()) continue;
+                    if (sp.usesTargeting() && !sp.getTargetRestrictions().hasCandidates(sp)) continue;
+                    if (ComputerUtilMana.canPayManaCost(sp, p, 0, false)) return true;
+                } catch (Throwable t) { /* a card whose check throws counts as not castable */ }
+            }
+            return false;
+        }
+
+        void heldMain(Player p) {
+            int t = seatTurns.merge(p, 1, Integer::sum);
+            Map<Integer, Card> now = new HashMap<>();
+            for (Card c : p.getCardsIn(ZoneType.Hand)) if (castableNow(c, p)) now.put(c.getId(), c);
+            castableAtMain.put(p, now);
+        }
+
+        void heldEnd(Player p) {
+            Map<Integer, Card> now = castableAtMain.remove(p);
+            if (now == null) return;
+            int t = seatTurns.getOrDefault(p, 0);
+            Set<Integer> inHand = new HashSet<>();
+            for (Card c : p.getCardsIn(ZoneType.Hand)) inHand.add(c.getId());
+            for (Map.Entry<Integer, Card> x : now.entrySet()) {
+                if (!inHand.contains(x.getKey())) continue;
+                int[] r = heldRun.get(x.getKey());
+                if (r != null && r[2] == t - 1) { r[1]++; r[2] = t; continue; }
+                if (r != null) flushHeld(x.getKey());
+                heldRun.put(x.getKey(), new int[] {t, 1, t});
+                heldOwner.put(x.getKey(), p); heldCard.put(x.getKey(), x.getValue());
+            }
+            for (Integer id : new ArrayList<>(heldRun.keySet()))    // this seat's streaks that didn't continue this turn end here
+                if (heldOwner.get(id) == p && heldRun.get(id)[2] != t) flushHeld(id);
+        }
+
+        void flushHeld(int id) {
+            int[] r = heldRun.remove(id);
+            Player p = heldOwner.remove(id);
+            Card c = heldCard.remove(id);
+            if (r == null || r[1] < 2) return;                      // single turns aren't printed (the meter counts 3+)
+            String seat = p.getName().replaceAll("^Ai\\((\\d+)\\).*", "$1");
+            held.add("{\"seat\": \"" + seat + "\", \"card\": " + js(c.getName()) + ", \"from\": " + r[0] + ", \"turns\": " + r[1]
+                    + ", \"instant\": " + (c.isInstant() || c.hasKeyword(forge.game.keyword.Keyword.FLASH)) + ", \"cmc\": " + c.getCMC() + "}");
+        }
+
+        void flushAllHeld() { for (Integer id : new ArrayList<>(heldRun.keySet())) flushHeld(id); }
+
+        /** Mana the player can make now without conditions: Forge's estimate minus abilities whose mana is restricted (Castle
+         *  Garenbrig's six counts as none), with a choice of colors counted once (Command Tower's "Combo" made it two). */
+        static int usableMana(Player p) {
+            int total = p.getManaPool().totalMana();
+            boolean free = false;
+            for (Card src : p.getCardsIn(ZoneType.Battlefield)) {
+                int best = 0;
+                for (SpellAbility ma : src.getManaAbilities()) {
+                    try {
+                        ma.setActivatingPlayer(p);
+                        AbilityManaPart mp = ma.getManaPart();
+                        if (mp == null || !mp.getManaRestrictions().isEmpty() || !ma.canPlay()) continue;
+                        int cost = ma.getPayCosts().getCostMana() != null ? ma.getPayCosts().getCostMana().convertAmount() : 0;
+                        String prod = ma.getParamOrDefault("Produced", "");
+                        int kinds = prod.startsWith("Combo") || prod.isEmpty() ? 1 : prod.split(" ").length;
+                        int made = kinds * forge.game.ability.AbilityUtils.calculateAmount(src, ma.getParamOrDefault("Amount", "1"), ma) - cost;
+                        if (cost == 0) free = true;
+                        best = Math.max(best, made);
+                    } catch (Throwable t) { /* skip an ability whose check throws */ }
+                }
+                total += best;
+            }
+            return free ? total : p.getManaPool().totalMana();      // only mana-costed sources: none can start (as Forge assumes)
+        }
+
         @Subscribe public void onPhase(GameEventTurnPhase e) {
+            Player turnOf = g.getPhaseHandler().getPlayerTurn();
+            if (stop == null && turnOf != null && !turnOf.hasLost()) {
+                if (e.phase() == PhaseType.MAIN1) heldMain(turnOf);
+                else if (e.phase() == PhaseType.CLEANUP) heldEnd(turnOf);
+            }
             if (stop == null && !hero.hasLost()) {
                 lastHand = new ArrayList<>();
                 for (Card c : hero.getCardsIn(ZoneType.Hand)) lastHand.add(c.getName());
@@ -561,6 +653,9 @@ public class ForgeRunner {
                 int mana = 0;
                 try { mana = ComputerUtilMana.getAvailableManaEstimate(hero, false); } catch (Throwable t) { mana = -1; }
                 b.append(", \"mana\": ").append(mana);
+                int usable = 0;
+                try { usable = usableMana(hero); } catch (Throwable t) { usable = -1; }
+                b.append(", \"usable\": ").append(usable);
                 Set<String> col = new TreeSet<>();
                 try {
                     for (Card c : ComputerUtilMana.getAvailableManaSources(hero, false)) {
