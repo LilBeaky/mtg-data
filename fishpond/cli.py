@@ -10,6 +10,9 @@
   python3 -m fishpond show RUN_DIR GAME [--log]    one game's parsed record (and its Forge log) for hand audits
   python3 -m fishpond puzzles [NAME...] [-v]       AI behaviour tests: board states in fishpond/puzzles/ (pass/fail)
   python3 -m fishpond compare RUN_A RUN_B          two saved runs side by side (A/B on the same seed and pod: FISHPOND_PILOT=off vs on)
+  python3 -m fishpond study PODS --out DIR [--games N] [--seed S] [--lanes L] [--jobs J] [--max-minutes M]
+                                                    many pods in parallel lanes, resumable, one per-deck report
+                                                    (--report DIR: the report alone; PODS lines 'ID|HERO|OPP1|OPP2|OPP3')
   python3 -m fishpond held RUN_DIR [RUN_DIR...]    dead-card meter per deck across runs: castable cards held 3+ turns running
   python3 -m fishpond flags [--smoke] [--unflag]   cards Forge's AI won't cast (AI:RemoveDeck:All) across the repo's decks, with
                                                     their status; --smoke writes+runs a smoke puzzle for each untested one,
@@ -98,6 +101,12 @@ def cmd_puzzles(args):
 def cmd_compare(args):
     from . import compare
     compare.compare(args.a, args.b)
+
+def cmd_study(args):
+    from . import study
+    if args.report: return study.report(os.path.abspath(args.report))
+    if not args.pods or not args.out: sys.exit("fishpond: study needs PODS and --out DIR (or --report DIR)")
+    study.run_study(args)
 
 def cmd_held(args):
     from . import held
@@ -380,9 +389,13 @@ def main(argv=None):
     z = sub.add_parser("puzzles"); z.add_argument("names", nargs="*"); z.add_argument("-v", "--verbose", action="store_true")
     c = sub.add_parser("compare"); c.add_argument("a"); c.add_argument("b")
     g = sub.add_parser("flags"); g.add_argument("--smoke", action="store_true"); g.add_argument("--unflag", action="store_true")
+    st = sub.add_parser("study"); st.add_argument("pods", nargs="?"); st.add_argument("--out"); st.add_argument("--report")
+    st.add_argument("--games", type=int, default=5); st.add_argument("--seed", type=int, default=1); st.add_argument("--lanes", type=int, default=2)
+    st.add_argument("--jobs", type=int, default=5); st.add_argument("--sim", choices=runner.SIM_MODES, default="hybrid")
+    st.add_argument("--max-minutes", type=float, default=0)
     h = sub.add_parser("held"); h.add_argument("runs", nargs="+")
     w = sub.add_parser("show"); w.add_argument("run"); w.add_argument("game", type=int); w.add_argument("--build")
     w.add_argument("--log", action="store_true"); w.add_argument("--phases", action="store_true")
     args = ap.parse_args(argv)
     if not args.cmd: ap.print_help(); return
-    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held}[args.cmd](args)
+    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "study": cmd_study}[args.cmd](args)
