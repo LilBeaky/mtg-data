@@ -126,7 +126,8 @@ def report(out):
     print(f"\n## study {os.path.basename(out)}: {len(recs)} games in {len(pods)} pods "
           f"({sum(r.get('ms', 0) for r in recs) / 3.6e6:.1f} h of game time)")
     print(f"run validity: ended naturally {len(recs) - sum(stops.values())}" + "".join(f", {k} {v}" for k, v in stops.items())
-          + f"; AI timeouts {sum(r.get('ai_timeouts', 0) for r in recs)}; per-decision lookahead fallbacks "
+          + f"; AI timeouts {sum(r.get('ai_timeouts', 0) for r in recs)} ({sum(r.get('ai_hurried', 0) for r in recs)} finished in hurry mode)"
+          + f"; per-decision lookahead fallbacks "
           f"{sum(e.get('sim_decision_fallbacks', 0) for e in ends)}; games replayed without lookahead "
           f"{sum(1 for e in ends if e.get('sim_fallback'))}; games with lookahead paused (prepared cards) {sum(1 for e in ends if e.get('sim_pauses'))}")
     # per deck: seat-games, single-survivor wins over decided games, kills, deaths, how it won

@@ -1,0 +1,66 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 21695f2..46c326e 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1491,6 +1491,10 @@ public class AiController {
+             if (ComputerUtil.librarySearchPastSim(player, sa)) {
+                 return AiPlayDecision.WillPlay;
+             }
++            // fishpond patch 45: a decision past the AI time limit finishes without the one-move check
++            if (hurry) {
++                return AiPlayDecision.WillPlay;
++            }
+             return OnePlaySafetyChecker.isAcceptable(player, sa) ? AiPlayDecision.WillPlay : AiPlayDecision.HybridSimRejected;
+         }
+ 
+@@ -2138,6 +2142,8 @@ public class AiController {
+                 && sa.getHostCard() != null && sa.getHostCard().isInZone(ZoneType.Graveyard);
+     }
+ 
++    private volatile boolean hurry = false;   // fishpond patch 45
++
+     private SpellAbility chooseSpellAbilityToPlayFromList(final List<SpellAbility> all, boolean skipCounter) {
+         if (all == null || all.isEmpty())
+             return null;
+@@ -2244,11 +2250,39 @@ public class AiController {
+         Thread t = new Thread(future, "Game AI Eval");
+         t.setDaemon(true);
+         t.start();
++        boolean timeoutLogged = false;   // fishpond patch 45
+         try {
+-            return future.get(game.getAITimeout(), TimeUnit.SECONDS);
++            try {
++                return future.get(game.getAITimeout(), TimeUnit.SECONDS);
++            } catch (TimeoutException first) {
++                // fishpond patch 45: the decision ran past the AI time limit. Forge then cancelled it and passed, and on
++                // Java 20+ the eval thread can't be stopped, so it kept running beside the game. Instead the same thread
++                // finishes the decision in hurry mode (no more one-move checks: AiController.saSideEffects) within one more
++                // limit; only if that runs out too does Forge's give-up below happen. Each rescue prints
++                // "AI eval finished in hurry mode" (counted by the harness). -Dfishpond.hurryOnTimeout=false: as before.
++                if ("false".equals(System.getProperty("fishpond.hurryOnTimeout"))) {
++                    throw first;
++                }
++                final StringBuilder at = new StringBuilder("AI eval thread at timeout:");   // counted as an AI timeout either way
++                final StackTraceElement[] st = t.getStackTrace();
++                for (int i = 0; i < Math.min(30, st.length); i++) {
++                    at.append("\n\tat ").append(st[i]);
++                }
++                System.out.println(at);
++                timeoutLogged = true;
++                hurry = true;
++                try {
++                    final SpellAbility rescued = future.get(game.getAITimeout(), TimeUnit.SECONDS);
++                    System.out.println("AI eval finished in hurry mode: " + player.getName() + " turn " + game.getPhaseHandler().getTurn()
++                            + " " + game.getPhaseHandler().getPhase() + " -> " + (rescued == null ? "pass" : rescued.getHostCard()));
++                    return rescued;
++                } finally {
++                    hurry = false;
++                }
++            }
+         } catch (InterruptedException | ExecutionException | TimeoutException e) {
+             e.printStackTrace();
+-            if (e instanceof TimeoutException) {
++            if (e instanceof TimeoutException && !timeoutLogged) {
+                 // log where the eval thread currently is - each timeout doubles as a
+                 // profiler sample for diagnosing remaining AI slowdowns from user logs
+                 StringBuilder sb = new StringBuilder("AI eval thread at timeout:");

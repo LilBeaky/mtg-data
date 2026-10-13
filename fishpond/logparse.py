@@ -177,9 +177,10 @@ def parse_game(lines, seats, hero=1):
     prev_kind = None
 
     hero_cmds = seats[hero].commanders
-    ai_timeouts = 0
+    ai_timeouts = ai_hurried = 0
     for line in lines:
         if line.startswith("AI eval thread at timeout"): ai_timeouts += 1; continue
+        if line.startswith("AI eval finished in hurry mode"): ai_hurried += 1; continue   # Forge patch 45: a timeout rescued
         kind = next((p for p in PREFIXES if line.startswith(p)), None)
         if kind is None: kind = prev_kind if prev_kind in ("Combat:", "Damage:") else None
         else: prev_kind = kind
@@ -388,6 +389,6 @@ def parse_game(lines, seats, hero=1):
         "poison": {str(k): v for k, v in poison.items() if v},
         "final_life": {str(k): v for k, v in life.items()},
         "dmg_src": dict(dsrc), "trig_src": dict(trig_src), "act_src": dict(act_src),
-        "dummy_acts": dummy_acts[:10], "tags": tags, "stopped": stopped, "ai_timeouts": ai_timeouts,
+        "dummy_acts": dummy_acts[:10], "tags": tags, "stopped": stopped, "ai_timeouts": ai_timeouts, "ai_hurried": ai_hurried,
         "outcomes": outcome_lines, "ms": result_ms, "events": events,
     }

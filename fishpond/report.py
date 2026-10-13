@@ -142,8 +142,10 @@ def print_header(meta, records, ex):
               "read the headline win rate as a floor" if l and pilot / l > 0.2 else ""))
     to = [r_.get("ai_timeouts", 0) for r_ in records]
     if any(to):
-        print(f"WARNING: Forge's AI gave up on {sum(to)} decision(s) after its 5 s limit in {sum(1 for x in to if x)} game(s): those "
-              "games depend on machine load and won't replay exactly (the harness raises the limit; the cli engine can't)")
+        hu = sum(r_.get("ai_hurried", 0) for r_ in records)
+        print(f"WARNING: {sum(to)} AI decision(s) ran past Forge's time limit in {sum(1 for x in to if x)} game(s)"
+              + (f" ({hu} finished in hurry mode without the one-move check, Forge patch 45; {sum(to) - hu} given up as a pass)" if hu else "")
+              + ": those games depend on machine load and won't replay exactly (the harness raises the limit to 120 s; the cli engine can't)")
     if ex["dummy"]:
         print(f"WARNING: dummies acted in {len(ex['dummy'])} game(s), e.g. game {ex['dummy'][0][0]}: {ex['dummy'][0][1][:3]}. "
               "A dummy must never cast; check the dummy deck.")
