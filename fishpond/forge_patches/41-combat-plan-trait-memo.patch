@@ -1,0 +1,298 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java
+index 2eb894d..1780abb 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java
+@@ -751,6 +751,7 @@ public class ComputerUtilCombat {
+     private static final ThreadLocal<CombatPlan> PLAN = new ThreadLocal<>();
+ 
+     public static void beginCombatPlan() {
++        forge.game.card.CardState.beginReadScope();   // fishpond patch 41: card trait lists built once per plan
+         if (!PLAN_CACHE) {
+             return;
+         }
+@@ -763,6 +764,7 @@ public class ComputerUtilCombat {
+     }
+ 
+     public static void endCombatPlan() {
++        forge.game.card.CardState.endReadScope();   // fishpond patch 41
+         final CombatPlan p = PLAN.get();
+         if (p != null && --p.depth <= 0) {
+             PLAN.remove();
+diff --git a/forge-game/src/main/java/forge/game/Game.java b/forge-game/src/main/java/forge/game/Game.java
+index 7ffcaf0..e6fdff4 100644
+--- a/forge-game/src/main/java/forge/game/Game.java
++++ b/forge-game/src/main/java/forge/game/Game.java
+@@ -627,7 +627,49 @@ public class Game {
+         return cards;
+     }
+ 
++    // fishpond patch 41: inside a combat plan (CardState.readToken) the cards of the static-ability zones, which every
++    // static-ability helper walks, are listed once per board. The board epoch moves on any zone change (Zone) and
++    // around every static-ability pass (GameAction.checkStaticAbilities); CardState's trait memo reads it too.
++    private final java.util.concurrent.atomic.AtomicLong boardEpoch = new java.util.concurrent.atomic.AtomicLong();
++
++    public long getBoardEpoch() {
++        return boardEpoch.get();
++    }
++
++    public void boardChanged() {
++        boardEpoch.incrementAndGet();
++    }
++
++    private static final class ZonesMemo {
++        final Object token;
++        final long epoch;
++        final CardCollectionView cards;
++
++        ZonesMemo(final Object token, final long epoch, final CardCollectionView cards) {
++            this.token = token;
++            this.epoch = epoch;
++            this.cards = cards;
++        }
++    }
++
++    private ZonesMemo staticZonesMemo;
++
+     public CardCollectionView getCardsIn(final Iterable<ZoneType> zones) {
++        final Object token = zones == ZoneType.STATIC_ABILITIES_SOURCE_ZONES ? forge.game.card.CardState.readToken() : null;
++        if (token == null) {
++            return getCardsIn0(zones);
++        }
++        final long epoch = boardEpoch.get();
++        final ZonesMemo m = staticZonesMemo;
++        if (m != null && m.token == token && m.epoch == epoch) {
++            return m.cards;
++        }
++        final CardCollectionView cards = getCardsIn0(zones);
++        staticZonesMemo = new ZonesMemo(token, epoch, cards);
++        return cards;
++    }
++
++    private CardCollectionView getCardsIn0(final Iterable<ZoneType> zones) {
+         CardCollection cards = new CardCollection();
+         for (final ZoneType z : zones) {
+             if (z == ZoneType.Stack) {
+diff --git a/forge-game/src/main/java/forge/game/GameAction.java b/forge-game/src/main/java/forge/game/GameAction.java
+index 0a7ca0f..de2f886 100644
+--- a/forge-game/src/main/java/forge/game/GameAction.java
++++ b/forge-game/src/main/java/forge/game/GameAction.java
+@@ -1074,6 +1074,14 @@ public class GameAction {
+         checkStaticAbilities(runEvents, Sets.newHashSet(), CardCollection.EMPTY);
+     }
+     public final void checkStaticAbilities(final boolean runEvents, final Set<Card> affectedCards, final CardCollectionView preList) {
++        game.boardChanged();   // fishpond patch 41: abilities change in this pass, so CardState's memo starts over
++        try {
++            checkStaticAbilities0(runEvents, affectedCards, preList);
++        } finally {
++            game.boardChanged();
++        }
++    }
++    private void checkStaticAbilities0(final boolean runEvents, final Set<Card> affectedCards, final CardCollectionView preList) {
+         if (isCheckingStaticAbilitiesOnHold()) {
+             return;
+         }
+diff --git a/forge-game/src/main/java/forge/game/card/CardState.java b/forge-game/src/main/java/forge/game/card/CardState.java
+index 58f5192..217e92b 100644
+--- a/forge-game/src/main/java/forge/game/card/CardState.java
++++ b/forge-game/src/main/java/forge/game/card/CardState.java
+@@ -714,7 +714,123 @@ public class CardState implements GameObject, IHasSVars, ITranslatable {
+         return triggers.add(t);
+     }
+ 
++    // ---- fishpond patch 41: while a combat is being planned (patch 22's beginCombatPlan/endCombatPlan in
++    // ComputerUtilCombat) the block planner asks, for every attacker/blocker pair, dozens of static-ability helpers
++    // (StaticAbilityCombatDamageToughness, AssignNoCombatDamage, CantBlockBy...); each walks every card in the
++    // static-ability zones and rebuilds that card's static-ability list, and ReplacementHandler rebuilds every card's
++    // replacement effects: half of a big-board game's time (JFR, varied_20261012_p35 V06 game 1). The board doesn't
++    // change during a plan, so inside one each card state's two lists, and Game's list of the static-ability zones'
++    // cards, are built once. Only cards in the game's zones are remembered (the AI's pumped and LKI copies change
++    // after they are made), and a game's memo starts over whenever one of its zones changes or a static-ability pass
++    // runs on it (Game.boardChanged; GameAction.checkStaticAbilities: some AI helpers run one to try a card on the
++    // battlefield). The count is per game: lookahead copies and an eval thread left running after an AI timeout
++    // change their own games, not this one.
++    // -Dfishpond.traitMemo=false builds everything every time.
++    private static final boolean TRAIT_MEMO = !"false".equals(System.getProperty("fishpond.traitMemo"));
++
++    private static final class ReadScope {
++        int depth;
++        Object token;                                                   // one per outermost plan
++        final Map<forge.game.Game, LiveCards> live = new java.util.HashMap<>();
++    }
++
++    private static final class LiveCards {                              // a game's cards at one board epoch
++        final long epoch;
++        final Set<Card> cards = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
++
++        LiveCards(final long epoch) {
++            this.epoch = epoch;
++        }
++    }
++
++    private static final ThreadLocal<ReadScope> READ_SCOPE = ThreadLocal.withInitial(ReadScope::new);
++
++    private static final class TraitMemo {
++        final Object token;
++        final long epoch;
++        final Object value;
++
++        TraitMemo(final Object token, final long epoch, final Object value) {
++            this.token = token;
++            this.epoch = epoch;
++            this.value = value;
++        }
++    }
++
++    private TraitMemo staticMemo, replacementMemo, replacementMemoNoRules;
++
++    public static void beginReadScope() {
++        if (TRAIT_MEMO) {
++            final ReadScope s = READ_SCOPE.get();
++            if (s.depth++ == 0) {
++                s.token = new Object();
++            }
++        }
++    }
++
++    public static void endReadScope() {
++        if (TRAIT_MEMO) {
++            final ReadScope s = READ_SCOPE.get();
++            if (s.depth > 0 && --s.depth == 0) {
++                s.token = null;
++                s.live.clear();
++            }
++        }
++    }
++
++    /** The current plan's token, or null outside a plan. */
++    public static Object readToken() {
++        return TRAIT_MEMO ? READ_SCOPE.get().token : null;
++    }
++
++    private boolean inGame(final long epoch) {
++        final forge.game.Game g = card == null ? null : card.getGame();
++        if (g == null) {
++            return false;
++        }
++        final ReadScope s = READ_SCOPE.get();
++        LiveCards live = s.live.get(g);
++        if (live == null || live.epoch != epoch) {
++            final LiveCards found = new LiveCards(epoch);
++            g.forEachCardInGame(c -> {
++                found.cards.add(c);
++                return true;
++            });
++            s.live.put(g, found);
++            live = found;
++        }
++        return live.cards.contains(card);
++    }
++
++    @SuppressWarnings("unchecked")
++    private static <T> T memoHit(final TraitMemo m, final Object token, final long epoch) {
++        return token != null && m != null && m.token == token && m.epoch == epoch ? (T) m.value : null;
++    }
++
++    private TraitMemo memoFor(final Object token, final long epoch, final Object value) {
++        return token != null && inGame(epoch) ? new TraitMemo(token, epoch, value) : null;
++    }
++
++    private long epoch(final Object token) {
++        return token == null || card == null || card.getGame() == null ? 0 : card.getGame().getBoardEpoch();
++    }
++
+     public final FCollectionView<StaticAbility> getStaticAbilities() {
++        final Object token = readToken();
++        final long epoch = epoch(token);
++        final FCollectionView<StaticAbility> hit = memoHit(staticMemo, token, epoch);
++        if (hit != null) {
++            return hit;
++        }
++        final FCollectionView<StaticAbility> result = getStaticAbilities0();
++        final TraitMemo m = memoFor(token, epoch, result);
++        if (m != null) {
++            staticMemo = m;
++        }
++        return result;
++    }
++
++    private FCollectionView<StaticAbility> getStaticAbilities0() {
+         FCollection<StaticAbility> result = new FCollection<>(staticAbilities);
+         if (getStateName().equals(CardStateName.Original)) {
+             if (getCard().hasState(CardStateName.LeftSplit))
+@@ -736,6 +852,25 @@ public class CardState implements GameObject, IHasSVars, ITranslatable {
+         return getReplacementEffects(true);
+     }
+     public FCollectionView<ReplacementEffect> getReplacementEffects(boolean rulesHost) {
++        final Object token = readToken();   // fishpond patch 41
++        final long epoch = epoch(token);
++        final FCollectionView<ReplacementEffect> hit = memoHit(rulesHost ? replacementMemo : replacementMemoNoRules, token, epoch);
++        if (hit != null) {
++            return hit;
++        }
++        final FCollectionView<ReplacementEffect> result = getReplacementEffects0(rulesHost);
++        final TraitMemo m = memoFor(token, epoch, result);
++        if (m != null) {
++            if (rulesHost) {
++                replacementMemo = m;
++            } else {
++                replacementMemoNoRules = m;
++            }
++        }
++        return result;
++    }
++
++    private FCollectionView<ReplacementEffect> getReplacementEffects0(boolean rulesHost) {
+         FCollection<ReplacementEffect> result = new FCollection<>(replacementEffects);
+         // add Split to Original
+         if (getStateName().equals(CardStateName.Original)) {
+diff --git a/forge-game/src/main/java/forge/game/zone/Zone.java b/forge-game/src/main/java/forge/game/zone/Zone.java
+index d34f712..b5239f6 100644
+--- a/forge-game/src/main/java/forge/game/zone/Zone.java
++++ b/forge-game/src/main/java/forge/game/zone/Zone.java
+@@ -61,6 +61,7 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
+             .thenComparing(Card::hasPerpetual);
+ 
+     protected void sort() {
++        game.boardChanged();   // fishpond patch 41: a zone changed, so CardState's memo starts over
+         cardList.sort(COMPARATOR);
+     }
+ 
+@@ -81,6 +82,7 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
+     }
+ 
+     public final void reorder(final Card c, final int index) {
++        game.boardChanged();   // fishpond patch 41
+         cardList.remove(c);
+         cardList.add(index, c);
+     }
+@@ -138,6 +140,7 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
+         }
+ 
+         c.setZone(this);
++        game.boardChanged();   // fishpond patch 41
+ 
+         if ((zoneType == ZoneType.Battlefield || !c.isToken() || c.getCurrentStateName() == CardStateName.PreparedSpell) || (zoneType == ZoneType.Stack && c.getCopiedPermanent() != null)) {
+             if (index == null) {
+@@ -161,12 +164,14 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
+ 
+     public void remove(final Card c) {
+         if (cardList.remove(c)) {
++            game.boardChanged();   // fishpond patch 41
+             onChanged();
+             game.fireEvent(new GameEventZone(zoneType, getPlayer(), EventValueChangeType.Removed, c));
+         }
+     }
+ 
+     public final void setCards(final Iterable<Card> cards) {
++        game.boardChanged();   // fishpond patch 41
+         cardList.clear();
+         for (Card c : cards) {
+             c.setZone(this);
+@@ -178,6 +183,7 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
+ 
+     public final void removeAllCards(boolean forcedWithoutEvents) {
+         if (forcedWithoutEvents) {
++            game.boardChanged();   // fishpond patch 41
+             cardList.clear();
+         } else {
+             for (Card c : cardList) {
