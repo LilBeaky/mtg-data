@@ -1,0 +1,19 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ability/PermanentAi.java b/forge-ai/src/main/java/forge/ai/ability/PermanentAi.java
+index 85451d6..830f6e8 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/PermanentAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/PermanentAi.java
+@@ -34,6 +34,14 @@ public class PermanentAi extends SpellAbilityAi {
+             return false;
+         }
+ 
++        // fishpond patch 40: no "wait for main 2" at pilot seats. Forge held most permanents for main 2, so main-1 auras and
++        // activations spent the mana first and the permanent never came (Wilson: Strong Back, then no mana for Mesa
++        // Enchantress; Rogue's Passage twice with three spells castable; varied_20261012 V04). Only the wait is lifted:
++        // every other check still decides whether and what to cast (the user, 2026-10-12: lift the timing, let it decide).
++        // Flash creatures keep their own timing (PermanentCreatureAi). -Dfishpond.main1Permanents=false restores the wait.
++        if (DrawAi.pilotSeat(ai) && !"false".equals(System.getProperty("fishpond.main1Permanents"))) {
++            return true;
++        }
+         // Wait for Main2 if possible
+         return !ph.is(PhaseType.MAIN1) || !ph.isPlayerTurn(ai) || sa.hasParam("WithoutManaCost") || ComputerUtil.castPermanentInMain1(ai, sa);
+     }

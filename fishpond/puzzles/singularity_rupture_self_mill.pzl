@@ -1,9 +1,9 @@
-# title: Singularity Rupture against a bigger board: the AI casts it and mills its opponents, not itself (varied_20261007 V04 g0: Araumi milled itself 76 -> 37, then 28 -> 8, and decked)
+# title: Singularity Rupture against a bigger board: the AI casts it and mills itself (stock Forge aims its player-choosing Pump at its own player; the user: Araumi's mills always target itself)
 # card: Singularity Rupture
 # turns: 1
 # expect: cast Singularity Rupture
-# forbid: Ai\(1\)-P1 milled
-# expect: Ai\(2\)-P2 milled
+# expect: Ai\(1\)-P1 milled
+# forbid: Ai\(2\)-P2 milled
 p0life=20
 p1life=20
 turn=1

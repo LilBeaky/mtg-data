@@ -279,18 +279,10 @@ public class ForgeRunner {
             rp.setPlayer(lp);
             players.add(rp);
         }
-        // decks whose list says '# commander: hold' (policy.json "commander_hold"): Forge patch 24 doesn't rush them out
-        StringBuilder hold = new StringBuilder();
-        for (int i = 0; i < 4; i++) {
-            File pf = new File(deckDir, f[6 + i] + ".policy.json");
-            if (!pf.exists()) continue;
-            java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"commander_hold\"\\s*:\\s*\\[(.*?)\\]", java.util.regex.Pattern.DOTALL)
-                    .matcher(new String(java.nio.file.Files.readAllBytes(pf.toPath()), java.nio.charset.StandardCharsets.UTF_8));
-            if (!m.find()) continue;
-            java.util.regex.Matcher n = java.util.regex.Pattern.compile("\"([^\"]*)\"").matcher(m.group(1));
-            while (n.find()) hold.append(hold.length() > 0 ? ";" : "").append(n.group(1));
-        }
-        System.setProperty("fishpond.commanderHold", hold.toString());
+        // per-deck pilot switches from each seat's policy.json, as ';'-separated commander names: '# commander: hold'
+        // ("commander_hold": Forge patch 24 doesn't rush them out) and '# mill: self' ("self_mill": patch 39)
+        System.setProperty("fishpond.commanderHold", policyNames(deckDir, f, "commander_hold"));
+        System.setProperty("fishpond.selfMill", policyNames(deckDir, f, "self_mill"));
         Match match = new Match(rules, players, "Fishpond");
         Game game = match.createGame();
         game.setNoGUIUser();
@@ -414,6 +406,20 @@ public class ForgeRunner {
         out.println("#FP-END " + end);
         if (winner != null && !game.getOutcome().isDraw()) out.println("\nGame Result: Game " + id + " ended in " + ms + " ms. " + winner + " has won!");
         else out.println("\nGame Result: Game " + id + " ended in a Draw! Took " + ms + " ms.");
+    }
+
+    static String policyNames(String deckDir, String[] f, String key) throws java.io.IOException {
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < 4; i++) {
+            File pf = new File(deckDir, f[6 + i] + ".policy.json");
+            if (!pf.exists()) continue;
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"" + key + "\"\\s*:\\s*\\[(.*?)\\]", java.util.regex.Pattern.DOTALL)
+                    .matcher(new String(java.nio.file.Files.readAllBytes(pf.toPath()), java.nio.charset.StandardCharsets.UTF_8));
+            if (!m.find()) continue;
+            java.util.regex.Matcher n = java.util.regex.Pattern.compile("\"([^\"]*)\"").matcher(m.group(1));
+            while (n.find()) out.append(out.length() > 0 ? ";" : "").append(n.group(1));
+        }
+        return out.toString();
     }
 
     static String js(String s) {

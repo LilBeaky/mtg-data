@@ -1,0 +1,59 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ability/MillAi.java b/forge-ai/src/main/java/forge/ai/ability/MillAi.java
+index d264f84..a8cbcf9 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/MillAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/MillAi.java
+@@ -87,9 +87,54 @@ public class MillAi extends SpellAbilityAi {
+         return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
+     }
+ 
++    // ---- fishpond patch 39: self-mill decks ----
++    // A deck whose list says '# mill: self' (Araumi: its encores come from the graveyard) aims its targeted mills at
++    // itself; Forge always aimed them at an opponent. The harness lists those seats in -Dfishpond.selfMill (';'-separated
++    // commander names; a player name also matches, for puzzles). A mill that would leave fewer than SELF_MILL_FLOOR cards
++    // in the library isn't used (Forge's own floor for "mill yourself" effects), so the deck doesn't mill itself out.
++    static final int SELF_MILL_FLOOR = 10;
++
++    public static boolean selfMillSeat(final Player ai) {
++        final String v = System.getProperty("fishpond.selfMill", "");
++        if (v.isEmpty() || !DrawAi.pilotSeat(ai)) {
++            return false;
++        }
++        final java.util.List<String> names = java.util.Arrays.asList(v.split(";"));
++        if (names.contains(ai.getName())) {
++            return true;
++        }
++        for (final Card c : ai.getCommanders()) {
++            if (names.contains(c.getName())) {
++                return true;
++            }
++        }
++        return false;
++    }
++
++    private boolean selfMillTarget(final Player ai, final SpellAbility sa, final boolean mandatory) {
++        sa.resetTargets();
++        sa.getTargets().add(ai);
++        final int n = sa.hasParam("NumCards") ? AbilityUtils.calculateAmount(sa.getHostCard(), sa.getParam("NumCards"), sa) : 1;
++        if (ai.getCardsIn(ZoneType.Library).size() - n >= SELF_MILL_FLOOR) {
++            return true;
++        }
++        sa.resetTargets();
++        return false;
++    }
++
+     private boolean targetAI(final Player ai, final SpellAbility sa, final boolean mandatory) {
+         final Card source = sa.getHostCard();
+ 
++        if (sa.usesTargeting() && selfMillSeat(ai) && sa.canTarget(ai)) {
++            if (selfMillTarget(ai, sa, mandatory)) {
++                return true;                               // fishpond patch 39
++            }
++            if (!mandatory) {
++                return false;                              // at the floor: hold it
++            }
++            // a mandatory trigger at the floor: aim it at an opponent as Forge would
++        }
++
+         if (sa.usesTargeting()) {
+             sa.resetTargets();
+             final Map<Player, Integer> list = Maps.newHashMap();

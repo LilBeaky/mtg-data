@@ -1,0 +1,15 @@
+# title: three mana, Mesa Enchantress (3) and Spirit Mantle (2) in hand, a creature out: with Forge's main-2 wait lifted (patch 40) Mesa, the higher-ranked play, is cast in main 1; before, the wait kept it for main 2, the aura took main 1's mana and Mesa never came (Wilson, varied_20261012 V04 g4)
+# card: Mesa Enchantress
+# turns: 1
+# sim: hybrid
+# expect: cast Mesa Enchantress
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Grizzly Bears;Plains;Plains;Forest
+p0hand=Mesa Enchantress;Spirit Mantle
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

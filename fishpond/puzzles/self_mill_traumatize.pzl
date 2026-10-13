@@ -1,0 +1,16 @@
+# title: a '# mill: self' deck (Araumi) with Traumatize and 40 cards left: it mills itself, not an opponent (patch 39)
+# card: Traumatize
+# turns: 1
+# jvm: -Dfishpond.selfMill=Ai(1)-P1
+# expect: Ai\(1\)-P1 milled
+# forbid: Ai\(2\)-P2 milled
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Island
+p0hand=Traumatize
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island

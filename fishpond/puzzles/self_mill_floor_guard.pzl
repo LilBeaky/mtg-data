@@ -1,0 +1,15 @@
+# title: guard: a '# mill: self' deck with Glimpse the Unthinkable and 15 cards left: it doesn't mill itself to 5 (patch 39's floor of 10)
+# card: Glimpse the Unthinkable
+# turns: 1
+# jvm: -Dfishpond.selfMill=Ai(1)-P1
+# forbid: Ai\(1\)-P1 milled
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Swamp;Swamp
+p0hand=Glimpse the Unthinkable
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
