@@ -1,0 +1,69 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiBlockController.java b/forge-ai/src/main/java/forge/ai/AiBlockController.java
+index 9f215a5..884b07f 100644
+--- a/forge-ai/src/main/java/forge/ai/AiBlockController.java
++++ b/forge-ai/src/main/java/forge/ai/AiBlockController.java
+@@ -390,6 +390,9 @@ public class AiBlockController {
+                 if (firstStrikeBlockers.size() > 1) {
+                     CardLists.sortByPowerDesc(firstStrikeBlockers);
+                     for (final Card blocker : firstStrikeBlockers) {
++                        if (gangCap && blockGang.size() >= 2) {
++                            break;   // fishpond patch 42
++                        }
+                         final int damageNeeded = ComputerUtilCombat.getDamageToKill(attacker, false)
+                                 + ComputerUtilCombat.predictToughnessBonusOfAttacker(attacker, blocker, combat, false);
+                         // if the total damage of the blockgang was not enough
+@@ -413,7 +416,7 @@ public class AiBlockController {
+ 
+         attackersLeft = new ArrayList<>(currentAttackers);
+ 
+-        boolean considerTripleBlock = true;
++        boolean considerTripleBlock = !gangCap;   // fishpond patch 42
+ 
+         // Try to block an attacker with two blockers of which only one will die
+         for (final Card attacker : attackersLeft) {
+@@ -810,6 +813,7 @@ public class AiBlockController {
+                     // enough and the new one would deal additional damage
+                     if (damageNeeded > ComputerUtilCombat.totalDamageOfBlockers(attacker, combat.getBlockers(attacker))
+                             && ComputerUtilCombat.dealsDamageAsBlocker(attacker, blocker) > 0
++                            && !(gangCap && combat.getBlockers(attacker).size() >= 2)   // fishpond patch 42
+                             && CombatUtil.canBlock(attacker, blocker, combat)) {
+                         combat.addBlocker(attacker, blocker);
+                     }
+@@ -839,6 +843,7 @@ public class AiBlockController {
+                 final int additionalDamage = ComputerUtilCombat.dealsDamageAsBlocker(attacker, blocker);
+                 if (damageNeeded > currentDamage
+                         && damageNeeded <= currentDamage + additionalDamage
++                        && !(gangCap && combat.getBlockers(attacker).size() >= 2)   // fishpond patch 42
+                         && ComputerUtilCard.evaluateCreature(blocker) + diff < ComputerUtilCard.evaluateCreature(attacker)
+                         && CombatUtil.canBlock(attacker, blocker, combat)
+                         && !ComputerUtilCombat.canDestroyBlockerBeforeFirstStrike(blocker, attacker, false)) {
+@@ -1017,6 +1022,21 @@ public class AiBlockController {
+         }
+     }
+ 
++    // ---- fishpond patch 42: gang blocks capped at two blockers on big boards ----
++    // On a big board the gang search dominates a block plan: the triple-block search tries every pair of extra blockers
++    // for every attacker, and the AI plans blocks many times per decision, so single decisions passed Forge's 120 s AI
++    // limit (varied_20261012_p35 V05 g0/g1; FORGE_PLAN item 1c). Past -Dfishpond.gangCapPairs attackers x blockers (default
++    // 100, about ten attacking into ten; the 95th percentile turn of varied_20261013_p40 has 13 creatures on its biggest
++    // seat), no attacker gets more than two blockers from the gang passes: no triple blocks, a first-strike gang stops at
++    // two, and reinforcing to kill stops at two. Chump blocks against trample (life in danger) are untouched. Smaller
++    // boards are planned exactly as before. The user's call, 2026-10-13. -Dfishpond.gangCapPairs=0 turns it off.
++    private boolean gangCap = false;
++
++    private boolean gangCapApplies() {
++        final int limit = Integer.getInteger("fishpond.gangCapPairs", 100);
++        return limit > 0 && (long) attackersLeft.size() * blockersLeft.size() > limit;
++    }
++
+     private void clearBlockers(final Combat combat, final List<Card> possibleBlockers) {
+         for (final Card blocker : CardLists.filterControlledBy(combat.getAllBlockers(), ai)) {
+             // don't touch other player's blockers
+@@ -1141,6 +1161,7 @@ public class AiBlockController {
+         }
+ 
+         limitBoardSize();
++        gangCap = gangCapApplies();   // fishpond patch 42
+ 
+         // Begin with the weakest blockers
+         CardLists.sortByPowerAsc(blockersLeft);

@@ -1,0 +1,79 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+index 17cfbbe..d3af5b9 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+@@ -841,10 +841,73 @@ public class ComputerUtilCard {
+      * @return creature will be attack
+      */
+     public static boolean doesSpecifiedCreatureAttackAI(final Player ai, final Card card) {
++        // fishpond patch 44: the answer is remembered for the board it was asked on (see attackMemoKey)
++        final String key = "false".equals(System.getProperty("fishpond.attackMemo")) ? null : attackMemoKey(ai, card);
++        if (key != null) {
++            final Boolean known = attackMemo(ai.getGame()).get(key);
++            if (known != null) {
++                return known;
++            }
++        }
+         AiAttackController aiAtk = new AiAttackController(ai, card);
+         Combat combat = new Combat(ai);
+         aiAtk.declareAttackers(combat);
+-        return combat.isAttacking(card);
++        final boolean attacks = combat.isAttacking(card);
++        if (key != null) {
++            attackMemo(ai.getGame()).put(key, attacks);
++        }
++        return attacks;
++    }
++
++    // ---- fishpond patch 44: "would this creature attack?" remembered per board ----
++    // Pump decisions ask it for every creature, and the AI asks again at every priority while the board stands still;
++    // each answer is a full attack plan whose "who must stay home to block" part predicts every opponent's blocks
++    // (the slow V06 turns: PumpAllAi -> shouldPumpCard -> here; FORGE_PLAN item 1c). The answer is kept per game for the
++    // exact board it was asked on: patch 41's board epoch (zone changes, static-ability passes), turn, phase, priority
++    // holder, stack size, every player's life and poison, and every battlefield creature's id, tapped and sick state,
++    // power, toughness, damage and keywords, plus the asked card's own (a pumped copy differs from the card). The
++    // planner draws random numbers (trade chances), so a remembered answer shifts the random stream and games no longer
++    // replay move for move against older runs: compare distributions, as across patches 16 and 21. The user's call,
++    // 2026-10-13. -Dfishpond.attackMemo=false asks every time.
++    private static final java.util.Map<forge.game.Game, java.util.Map<String, Boolean>> ATTACK_MEMO =
++            java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
++
++    private static java.util.Map<String, Boolean> attackMemo(final forge.game.Game g) {
++        return ATTACK_MEMO.computeIfAbsent(g, k -> java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<String, Boolean>(64, 0.75f, true) {
++            @Override
++            protected boolean removeEldestEntry(final java.util.Map.Entry<String, Boolean> e) {
++                return size() > 2000;
++            }
++        }));
++    }
++
++    private static void creatureKey(final StringBuilder b, final Card c) {
++        b.append(c.getId()).append(c.isTapped() ? 'T' : 'u').append(c.isSick() ? 'S' : 'r').append(c.getNetPower()).append('/')
++         .append(c.getNetToughness()).append('d').append(c.getDamage()).append('k').append(c.getKeywords().hashCode()).append(';');
++    }
++
++    private static String attackMemoKey(final Player ai, final Card card) {
++        final forge.game.Game g = ai.getGame();
++        if (g == null || card == null) {
++            return null;
++        }
++        final forge.game.phase.PhaseHandler ph = g.getPhaseHandler();
++        final StringBuilder b = new StringBuilder();
++        b.append(ai.getId()).append('|').append(g.getBoardEpoch()).append('|').append(ph.getTurn()).append(ph.getPhase())
++         .append('|').append(ph.getPriorityPlayer() == null ? -1 : ph.getPriorityPlayer().getId()).append('|')
++         .append(g.getStack().size()).append('|');
++        for (final Player p : g.getPlayers()) {
++            b.append(p.getId()).append(':').append(p.getLife()).append('/').append(p.getPoisonCounters()).append(p.hasLost() ? 'L' : 'a').append(';');
++        }
++        b.append('|');
++        for (final Card c : g.getCardsIn(forge.game.zone.ZoneType.Battlefield)) {
++            if (c.isCreature()) {
++                creatureKey(b, c);
++            }
++        }
++        b.append("|asked:");
++        creatureKey(b, card);
++        return b.toString();
+     }
+ 
+     /**

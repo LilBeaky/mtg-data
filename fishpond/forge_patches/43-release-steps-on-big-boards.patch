@@ -1,0 +1,18 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiAttackController.java b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+index c2da04c..8fef776 100644
+--- a/forge-ai/src/main/java/forge/ai/AiAttackController.java
++++ b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+@@ -454,7 +454,12 @@ public class AiAttackController {
+                     candidates.add(c);
+                 }
+             }
+-            final int steps = Integer.getInteger("fishpond.maxReleaseSteps", 12);
++            // fishpond patch 43: on a big board (candidates x the opponents' attackers past -Dfishpond.gangCapPairs, default
++            // 100, as patch 42) at most -Dfishpond.maxReleaseStepsBig (default 6) groups: each step is a full block
++            // prediction for every opponent (FORGE_PLAN item 1c). The user's call, 2026-10-13. Smaller boards keep 12.
++            final int bigLimit = Integer.getInteger("fishpond.gangCapPairs", 100);
++            final boolean bigBoard = bigLimit > 0 && (long) candidates.size() * opponentsAttackers.size() > bigLimit;
++            final int steps = bigBoard ? Integer.getInteger("fishpond.maxReleaseStepsBig", 6) : Integer.getInteger("fishpond.maxReleaseSteps", 12);
+             int step = steps <= 0 ? 1 : Math.max(1, (candidates.size() + steps - 1) / steps);
+             for (int i = 0; i < candidates.size(); ) {
+                 final List<Card> group = new ArrayList<>(candidates.subList(i, Math.min(candidates.size(), i + step)));
