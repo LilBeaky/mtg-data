@@ -1,0 +1,329 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index f388bcb..87cd82a 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -2095,6 +2095,13 @@ public class AiController {
+                 sa.setSkip(false);
+             }
+         }
++        // fishpond patch 49: a combo the seat has assembled goes first (see comboStep)
++        if (forge.ai.ability.DrawAi.pilotSeat(player)) {
++            final SpellAbility combo = comboStep();
++            if (combo != null) {
++                return combo;
++            }
++        }
+         CardCollection cards = ComputerUtilAbility.getAvailableCards(game, player);
+         cards = ComputerUtilCard.dedupeCards(cards);
+         List<SpellAbility> saList = Lists.newArrayList();
+@@ -2172,6 +2179,253 @@ public class AiController {
+ 
+     private volatile boolean hurry = false;   // fishpond patch 45
+ 
++    // ---- fishpond patch 49: combo lines (win-line audit, study150_20261014_lines) ----
++    // Forge's AI judges one play at a time, so a combo whose first step looks poor on its own never starts. These are the
++    // loops the audit found assembled and not played, recognized by what the cards do (not their names), for every pilot
++    // seat. Each step still goes through patch 15's loop shortcut (noted in chooseSpellAbilityToPlay; stall and cap stops).
++    //  - lifelink counter loop: a "whenever you gain life, put a +1/+1 counter on target creature" engine (Heliod, Sun-Crowned)
++    //    and a creature that pings by removing its own +1/+1 counter (Walking Ballista, Triskelion): give the pinger lifelink
++    //    if it lacks it (Heliod's {1}{W}), then ping the opponent with the least life; the engine's counter goes back on the
++    //    pinger (CountersPutAi reads comboFocus). Heliod + Ballista: available in 12 games, played in 3.
++    //  - creature-cast engine: with a "whenever you cast a creature spell" payoff out (Chulane), cast a creature that returns a
++    //    creature you control when it enters (Shrieking Drake); it returns itself (ChangeZoneAi) and is cast again. 0 of 7.
++    //  - stacked coin flips: with a "whenever a player wins a coin flip, draw a card" engine (Zndrsplt) and a win on drawing
++    //    from an empty library (Laboratory Maniac, Jace), a free flip ability (Frenetic Efreet) is activated again and again
++    //    while its activations wait on the stack. Not with Thassa's Oracle: the number of draws is up to the coins, and
++    //    drawing from an empty library without a replacement loses.
++    // A card that wins right now (its "only when" hint met, with a win effect: Thassa's Oracle at a small enough library)
++    // goes ahead of every other candidate: Forge tries the most expensive spells first, and Yusri spent the turn's mana on
++    // them with Oracle in hand and a one-card library (V09 g2). -Dfishpond.comboLines=false turns all of it off.
++    private static final boolean COMBO_LINES = !"false".equals(System.getProperty("fishpond.comboLines"));
++    private static final Map<Player, Card> COMBO_FOCUS = Collections.synchronizedMap(new WeakHashMap<>());
++    private static final Map<Player, int[]> COMBO_STEPS = Collections.synchronizedMap(new WeakHashMap<>());   // {turn, steps}
++    private static final int COMBO_STEP_CAP = 300;
++
++    /** The card a running combo wants its engine's counters on (CountersPutAi), or null. */
++    public static Card comboFocus(final Player p) {
++        final Card c = COMBO_FOCUS.get(p);
++        return c != null && c.isInPlay() && c.getController() == p ? c : null;
++    }
++
++    private SpellAbility comboStep() {
++        if (!COMBO_LINES) {
++            return null;
++        }
++        final int turn = game.getPhaseHandler().getTurn();
++        final int[] steps = COMBO_STEPS.computeIfAbsent(player, k -> new int[] {turn, 0});
++        if (steps[0] != turn) {
++            steps[0] = turn;
++            steps[1] = 0;
++        }
++        if (steps[1] >= COMBO_STEP_CAP) {
++            return null;
++        }
++        SpellAbility sa = null;
++        try {
++            sa = stackedFlips();
++            if (sa == null && (game.getStack().isEmpty() || !game.getStack().peekAbility().getActivatingPlayer().equals(player))) {
++                sa = lifelinkCounterLoop();
++                if (sa == null) {
++                    sa = creatureCastEngine();
++                }
++            }
++        } catch (final RuntimeException e) {
++            sa = null;        // a combo check that throws is no combo
++        }
++        if (sa != null) {
++            steps[1]++;
++        }
++        return sa;
++    }
++
++    private SpellAbility lifelinkCounterLoop() {
++        boolean engine = false;
++        for (final Card c : player.getCardsIn(ZoneType.Battlefield)) {
++            for (final Trigger t : c.getTriggers()) {
++                if (t.getMode() != TriggerType.LifeGained || !"You".equals(t.getParam("ValidPlayer"))) {
++                    continue;
++                }
++                final SpellAbility ex = t.ensureAbility();
++                if (ex != null && ex.getApi() == ApiType.PutCounter && "P1P1".equals(ex.getParam("CounterType")) && ex.usesTargeting()) {
++                    engine = true;
++                }
++            }
++        }
++        COMBO_FOCUS.remove(player);
++        if (!engine) {
++            return null;
++        }
++        for (final Card s : player.getCreaturesInPlay()) {
++            // it must survive losing a counter (Walking Ballista with one counter would die before the life gain)
++            if (s.getCounters(forge.game.card.CounterEnumType.P1P1) < 1 || s.getNetToughness() - s.getDamage() - 1 < 1) {
++                continue;
++            }
++            SpellAbility ping = null;
++            for (final SpellAbility a : s.getSpellAbilities()) {
++                if (a.isActivatedAbility() && a.getApi() == ApiType.DealDamage && a.usesTargeting() && a.getPayCosts() != null
++                        && a.getPayCosts().hasSpecificCostType(CostRemoveCounter.class) && !a.getPayCosts().hasManaCost()) {
++                    ping = a;
++                }
++            }
++            if (ping == null) {
++                continue;
++            }
++            if (!s.hasKeyword(Keyword.LIFELINK)) {
++                for (final Card g : player.getCardsIn(ZoneType.Battlefield)) {
++                    for (final SpellAbility a : g.getSpellAbilities()) {
++                        if (!a.isActivatedAbility() || a.getApi() != ApiType.Pump || !a.usesTargeting()
++                                || !a.getParamOrDefault("KW", "").contains("Lifelink")) {
++                            continue;
++                        }
++                        a.setActivatingPlayer(player);
++                        if (!a.canPlay() || !a.canTarget(s) || loopStopped(a)) {
++                            continue;
++                        }
++                        a.resetTargets();
++                        a.getTargets().add(s);
++                        if (!ComputerUtilCost.canPayCost(a, player, false)) {
++                            a.resetTargets();
++                            continue;
++                        }
++                        COMBO_FOCUS.put(player, s);
++                        return a;
++                    }
++                }
++                continue;
++            }
++            ping.setActivatingPlayer(player);
++            Player tgt = null;
++            for (final Player o : player.getOpponents()) {
++                if (!o.hasLost() && o.canLoseLife() && ping.canTarget(o) && (tgt == null || o.getLife() < tgt.getLife())) {
++                    tgt = o;
++                }
++            }
++            if (tgt == null || !ping.canPlay()) {
++                continue;
++            }
++            ping.resetTargets();
++            ping.getTargets().add(tgt);
++            if (!ComputerUtilCost.canPayCost(ping, player, false)) {
++                ping.resetTargets();
++                continue;
++            }
++            COMBO_FOCUS.put(player, s);
++            return ping;
++        }
++        return null;
++    }
++
++    /** A "whenever you cast a creature spell" trigger of a permanent the player controls (Chulane, Teller of Tales). */
++    public static boolean hasCreatureCastPayoff(final Player p) {
++        for (final Card c : p.getCardsIn(ZoneType.Battlefield)) {
++            for (final Trigger t : c.getTriggers()) {
++                if (t.getMode() == TriggerType.SpellCast && t.getParamOrDefault("ValidCard", "").contains("Creature")
++                        && "You".equals(t.getParam("ValidActivatingPlayer"))) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
++    /** "When this enters, return a creature you control to its owner's hand" (Shrieking Drake). */
++    private static boolean returnsOwnCreatureOnEnter(final Card c) {
++        for (final Trigger t : c.getTriggers()) {
++            if (t.getMode() != TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))
++                    || !"Card.Self".equals(t.getParam("ValidCard"))) {
++                continue;
++            }
++            final SpellAbility ex = t.ensureAbility();
++            if (ex != null && ex.getApi() == ApiType.ChangeZone && "Battlefield".equals(ex.getParam("Origin"))
++                    && "Hand".equals(ex.getParam("Destination")) && ex.getParamOrDefault("ChangeType", "").startsWith("Creature.YouCtrl")) {
++                return true;
++            }
++        }
++        return false;
++    }
++
++    private SpellAbility creatureCastEngine() {
++        if (!hasCreatureCastPayoff(player)) {
++            return null;
++        }
++        for (final Card c : player.getCardsIn(ZoneType.Hand)) {
++            if (!c.isCreature() || !returnsOwnCreatureOnEnter(c)) {
++                continue;
++            }
++            for (final SpellAbility sp : c.getSpells()) {
++                sp.setActivatingPlayer(player);
++                if (sp.canPlay() && !loopStopped(sp) && ComputerUtilCost.canPayCost(sp, player, false)) {
++                    return sp;
++                }
++            }
++        }
++        return null;
++    }
++
++    private SpellAbility stackedFlips() {
++        if (!ComputerUtil.winsOnEmptyLibraryDraw(player)) {
++            return null;
++        }
++        boolean drawsOnWin = false;
++        for (final Card c : player.getCardsIn(ZoneType.Battlefield)) {
++            for (final Trigger t : c.getTriggers()) {
++                if (t.getMode() == TriggerType.FlippedCoin && "Win".equals(t.getParam("ValidResult"))) {
++                    final SpellAbility ex = t.ensureAbility();
++                    if (ex != null && ex.getApi() == ApiType.Draw) {
++                        drawsOnWin = true;
++                    }
++                }
++            }
++        }
++        if (!drawsOnWin) {
++            return null;
++        }
++        // enough flips that the wins should draw the library out (each win draws one; about half the flips win)
++        int waiting = 0;
++        for (final SpellAbilityStackInstance si : game.getStack()) {
++            if (si.getSpellAbility().getApi() == ApiType.FlipCoin && player.equals(si.getActivatingPlayer())) {
++                waiting++;
++            }
++        }
++        if (waiting >= 2 * player.getCardsIn(ZoneType.Library).size() + 8) {
++            return null;
++        }
++        for (final Card c : player.getCardsIn(ZoneType.Battlefield)) {
++            for (final SpellAbility a : c.getSpellAbilities()) {
++                if (!a.isActivatedAbility() || a.getApi() != ApiType.FlipCoin || a.getPayCosts() == null || !a.getPayCosts().isOnlyManaCost()
++                        || a.getPayCosts().getTotalMana().getCMC() > 0) {
++                    continue;
++                }
++                a.setActivatingPlayer(player);
++                if (a.canPlay()) {
++                    return a;
++                }
++            }
++        }
++        return null;
++    }
++
++    /** A spell that wins the game now: it has a win effect and its own "only when" hint (NeedsToPlay/NeedsToPlayVar) is met. */
++    private boolean winsNow(final SpellAbility sa) {
++        if (!COMBO_LINES || sa == null || !sa.isSpell() || sa.getHostCard() == null) {
++            return false;
++        }
++        final Card c = sa.getHostCard();
++        if (!c.hasSVar("NeedsToPlayVar") && !c.hasSVar("NeedsToPlay")) {
++            return false;
++        }
++        boolean wins = false;
++        for (final Trigger t : c.getTriggers()) {
++            for (SpellAbility x = t.ensureAbility(); x != null && !wins; x = x.getSubAbility()) {
++                wins = x.getApi() == ApiType.WinsGame;
++            }
++        }
++        for (SpellAbility x = sa; x != null && !wins; x = x.getSubAbility()) {
++            wins = x.getApi() == ApiType.WinsGame;
++        }
++        return wins && ComputerUtilCard.checkNeedsToPlayReqs(c, sa) == AiPlayDecision.WillPlay;
++    }
++
+     /** fishpond patch 47: the throwable (or a cause) was thrown inside Forge's lookahead code. */
+     static boolean fromSimulation(Throwable t) {
+         for (; t != null; t = t.getCause()) {
+@@ -2197,6 +2451,7 @@ public class AiController {
+                 }
+                 all.sort(Comparator.comparing((SpellAbility x) -> !encoreNow(x)));      // fishpond patch 37 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !commanderNow(x)));   // fishpond patch 24 (stable sort)
++                all.sort(Comparator.comparing((SpellAbility x) -> !winsNow(x)));        // fishpond patch 49 (stable sort)
+             }
+         } catch (IllegalArgumentException ex) {
+             System.err.println(ex.getMessage());
+diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+index 9e0d11a..cdcdb5f 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+@@ -492,7 +492,10 @@ public class ChangeZoneAi extends SpellAbilityAi {
+         return !sa.usesTargeting() && !sa.isCurse() && Iterables.contains(pDefined, ai)
+                 && ("Hand".equals(destination) || "Battlefield".equals(destination))
+                 && origin != null && origin.size() == 1
+-                && (origin.get(0) == ZoneType.Library || origin.get(0) == ZoneType.Graveyard);
++                && (origin.get(0) == ZoneType.Library || origin.get(0) == ZoneType.Graveyard
++                    // fishpond patch 49: "each player may put a card from their hand onto the battlefield" (Show and Tell):
++                    // an opponent with an empty hand made the AI refuse it, the best case for the caster (1 of 6 games)
++                    || origin.get(0) == ZoneType.Hand && "Battlefield".equals(destination) && forge.ai.ability.DrawAi.pilotSeat(ai));
+     }
+ 
+     /**
+@@ -1594,6 +1597,13 @@ public class ChangeZoneAi extends SpellAbilityAi {
+             String logic = sa.getParamOrDefault("AILogic", "");
+             if ("NeverBounceItself".equals(logic)) {
+                 Card source = sa.getHostCard();
++                // fishpond patch 49: with a "whenever you cast a creature spell" payoff out (Chulane), returning itself is the
++                // point: it is cast again for another trigger (AiController.creatureCastEngine). Chulane + Shrieking Drake
++                // was available in 7 games of study150_20261014_lines and played in none.
++                if (fetchList.contains(source) && forge.ai.ability.DrawAi.pilotSeat(decider)
++                        && forge.ai.AiController.hasCreatureCastPayoff(decider)) {
++                    return source;
++                }
+                 if (fetchList.contains(source) && (fetchList.size() > 1 || !sa.getRootAbility().isMandatory())) {
+                     // For cards that should never be bounced back to hand with their own [e.g. triggered] abilities, such as guild lands.
+                     fetchList.remove(source);
+diff --git a/forge-ai/src/main/java/forge/ai/ability/CountersPutAi.java b/forge-ai/src/main/java/forge/ai/ability/CountersPutAi.java
+index da54ee4..f6813cf 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/CountersPutAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/CountersPutAi.java
+@@ -739,6 +739,14 @@ public class CountersPutAi extends CountersAi {
+ 
+     @Override
+     protected AiAbilityDecision doTriggerNoCost(Player ai, SpellAbility sa, boolean mandatory) {
++        // fishpond patch 49: during a lifelink counter loop (AiController.lifelinkCounterLoop) the counter goes back on the
++        // pinger, or the loop ends after one ping
++        final Card focus = forge.ai.AiController.comboFocus(ai);
++        if (focus != null && sa.usesTargeting() && sa.canTarget(focus)) {
++            sa.resetTargets();
++            sa.getTargets().add(focus);
++            return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
++        }
+         final SpellAbility root = sa.getRootAbility();
+         final Card source = sa.getHostCard();
+         final String aiLogic = sa.getParam("AILogic");

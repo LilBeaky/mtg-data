@@ -1,0 +1,15 @@
+# title: Heliod, Sun-Crowned and Walking Ballista (2 counters) with {1}{W} open, opponent at 20: the AI gives Ballista lifelink and pings until the opponent is dead, each life gain putting the counter back on Ballista (patch 49; study150_20261014_lines: available in 12 games, played in 3)
+# card: Walking Ballista
+# turns: 1
+# sim: hybrid
+# expect: activated Heliod, Sun-Crowned
+# expect: Ai\(1\)-P1 has won
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Heliod, Sun-Crowned;Walking Ballista|Counters:P1P1=2;Plains;Plains
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

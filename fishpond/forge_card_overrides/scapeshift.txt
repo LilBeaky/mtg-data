@@ -1,0 +1,16 @@
+# fishpond override (Forge 2.0.15 script minus AI:RemoveDeck:All, plus an AI hint: cast only when it can replace 7+ lands,
+# i.e. 7+ lands in play and 7+ in the library (D5's smoke test sacrificed 8 lands with none left to fetch), where the lands it
+# fetches trigger landfall and Field of the Dead; win-line audit: Lumra had it castable at 7+ lands in 4 games, cast it in none):
+# puzzle fishpond/puzzles/flag_scapeshift_landfall.pzl
+Name:Scapeshift
+ManaCost:2 G G
+Types:Sorcery
+A:SP$ Sacrifice | Defined$ You | Amount$ SacX | SacValid$ Land | RememberSacrificed$ True | Optional$ True | SubAbility$ DBShift | SpellDescription$ Sacrifice any number of lands. Search your library for up to that many land cards, put them onto the battlefield tapped, then shuffle.
+SVar:DBShift:DB$ ChangeZone | Origin$ Library | Destination$ Battlefield | ChangeType$ Land | ChangeNum$ ShiftX | Tapped$ True | SubAbility$ DBCleanup
+SVar:DBCleanup:DB$ Cleanup | ClearRemembered$ True
+SVar:SacX:Count$Valid Land.YouCtrl
+SVar:ShiftX:Remembered$Amount
+SVar:LibLands:Count$ValidLibrary Land.YouOwn
+SVar:Shift:Count$Valid Land.YouCtrl/LimitMax.LibLands
+SVar:NeedsToPlayVar:Shift GE7
+Oracle:Sacrifice any number of lands. Search your library for up to that many land cards, put them onto the battlefield tapped, then shuffle.

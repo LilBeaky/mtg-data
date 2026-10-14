@@ -1,0 +1,15 @@
+# title: Guard for the Scapeshift override: seven lands in play but only two lands left in the library, so it would sacrifice seven to get two back; the AI holds it
+# card: Scapeshift
+# turns: 1
+# sim: hybrid
+# forbid: cast Scapeshift
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Tireless Provisioner;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p0hand=Scapeshift
+p0library=Field of the Dead;Mosswort Bridge;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

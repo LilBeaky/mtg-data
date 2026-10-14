@@ -1,0 +1,16 @@
+# title: Thassa's Oracle with a one-card library and bigger spells in hand, mana for only one: the win goes first (Yusri cast Nexus of Fate, Prismari and Jin-Gitaxias instead and decked, study150 V09 g2; patch 49)
+# card: Thassa's Oracle
+# turns: 1
+# sim: hybrid
+# expect: cast Thassa's Oracle
+# expect: Ai\(1\)-P1 has won
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Island
+p0hand=Thassa's Oracle;Opt;Divination;Mulldrifter;Air Elemental
+p0library=Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

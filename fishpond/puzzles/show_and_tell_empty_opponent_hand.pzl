@@ -1,0 +1,15 @@
+# title: Show and Tell with a big creature in hand and an opponent holding no cards: the AI casts it (Forge refused whenever another player's hand was empty; patch 49)
+# card: Show and Tell
+# turns: 1
+# sim: hybrid
+# expect: cast Show and Tell
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island
+p0hand=Show and Tell;Jin-Gitaxias, Core Augur
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

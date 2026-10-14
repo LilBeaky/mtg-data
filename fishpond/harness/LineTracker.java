@@ -90,7 +90,11 @@ public class LineTracker {
         List<Line> was = open.remove(p);
         Window w = window.remove(p);
         if (was == null || w == null) return;
-        for (Line l : was) if (l.did.stream().anyMatch(d -> done(w, d, won))) records.get(p).get(l).did.add(openTurn.get(p));
+        for (Line l : was) {
+            Record r = records.get(p).get(l);
+            if (l.did.stream().anyMatch(d -> done(w, d, won))) r.did.add(openTurn.get(p));
+            else if (won) r.avail.remove(openTurn.get(p));     // the seat won before its next turn: the line wasn't needed
+        }
     }
 
     // ---- events from the Watcher ----
@@ -156,6 +160,15 @@ public class LineTracker {
             case "bf": return named(p, ZoneType.Battlefield, name) != null;
             case "hand": return named(p, ZoneType.Hand, name) != null;
             case "gy": return named(p, ZoneType.Graveyard, name) != null;
+            case "castable": {                                  // in hand or the command zone and castable now (not already out)
+                for (ZoneType z : new ZoneType[] {ZoneType.Hand, ZoneType.Command}) {
+                    Card c = named(p, z, name);
+                    if (c == null) continue;
+                    if (c.isLand()) { if (z == ZoneType.Hand && p.canPlayLand(c, false, null)) return true; }
+                    else if (ForgeRunner.Watcher.castableNow(c, p)) return true;
+                }
+                return false;
+            }
             case "ready": {
                 if (named(p, ZoneType.Battlefield, name) != null) return true;
                 for (ZoneType z : new ZoneType[] {ZoneType.Hand, ZoneType.Command}) {
@@ -178,6 +191,7 @@ public class LineTracker {
     int count(Player p, String key) {
         switch (key) {
             case "creatures": return p.getCreaturesInPlay().size();
+            case "life": return p.getLife();
             case "lands": return p.getLandsInPlay().size();
             case "mana": return ForgeRunner.Watcher.usableMana(p);
             case "library": return p.getCardsIn(ZoneType.Library).size();

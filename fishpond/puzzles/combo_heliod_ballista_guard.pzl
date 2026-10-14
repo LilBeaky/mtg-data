@@ -1,0 +1,14 @@
+# title: Guard for the lifelink counter loop: Walking Ballista with ONE counter would die before the life gain puts it back, so the AI doesn't start the loop (patch 49)
+# card: Walking Ballista
+# turns: 1
+# sim: hybrid
+# forbid: activated Walking Ballista
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Heliod, Sun-Crowned;Walking Ballista|Counters:P1P1=1;Plains;Plains
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

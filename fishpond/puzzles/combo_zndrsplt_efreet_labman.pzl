@@ -1,0 +1,15 @@
+# title: Zndrsplt, Eye of Wisdom, Frenetic Efreet and Laboratory Maniac, a five-card library: the AI stacks the free flips until the wins draw past the library, and wins (patch 49)
+# card: Frenetic Efreet
+# turns: 1
+# sim: hybrid
+# expect: activated Frenetic Efreet
+# expect: Ai\(1\)-P1 has won
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zndrsplt, Eye of Wisdom;Frenetic Efreet;Laboratory Maniac;Island;Island
+p0library=Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

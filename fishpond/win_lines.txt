@@ -2,54 +2,57 @@
 # Reviewed with the user 2026-10-14. One line per row:
 #   commander | kind | label | needs | did
 # kind: closer (pieces that should end the game), engine (a state the deck wants to reach and use), plan (a fair deck's plan).
-# Checked at the start of the seat's first main phase every turn; "did" counts if the seat does it before its next turn.
+# Checked at the start of the seat's first main phase every turn; "did" counts if the seat does it before its next turn. A turn
+# on which the seat wins the game anyway doesn't count as available (the line wasn't needed).
 # needs (all must hold, ';'-separated; '/' = any of these cards):
 #   ready:A/B   on the battlefield, or in hand (or the command zone) and castable now (a land: in hand with a land drop left)
+#   castable:A/B   in hand or the command zone and castable now (for lines whose play is casting it: one already out doesn't count)
 #   bf:A/B  hand:A/B  gy:A/B   in that zone
 #   cmd   a commander of the seat is on the battlefield     cmd_attached>=N   cards attached to it
-#   creatures>=N  lands>=N  mana>=N  library<=N  hand>=N  gy_creatures>=N  gy_lands>=N  artifacts>=N
+#   creatures>=N  life>=N  lands>=N  mana>=N  library<=N  hand>=N  gy_creatures>=N  gy_lands>=N  artifacts>=N
 #   hand_cmc>=N   a permanent card of that mana value in hand     big_other>=N   another creature with toughness >= N
 # did (any of, ';'-separated):
 #   cast:A/B[>=N]   spells cast (N times; default 1)       act:A/B[>=N]   abilities activated (stack abilities: not mana)
 #   play:A/B   land played    attack:cmd   attacked with a commander    cast_cmc>=N   a spell of that mana value    win   won the game
 
-Heliod, Sun-Crowned | closer | Heliod + Walking Ballista | bf:Heliod, Sun-Crowned; ready:Walking Ballista | act:Walking Ballista>=4; win
-Heliod, Sun-Crowned | closer | Heliod + Triskelion | bf:Heliod, Sun-Crowned; ready:Triskelion | act:Triskelion>=4; win
-Heliod, Sun-Crowned | closer | Alternate win card | ready:Felidar Sovereign/Test of Endurance | cast:Felidar Sovereign/Test of Endurance
+Heliod, Sun-Crowned | closer | Heliod + Walking Ballista | bf:Heliod, Sun-Crowned; ready:Walking Ballista | act:Walking Ballista>=4
+Heliod, Sun-Crowned | closer | Heliod + Triskelion | bf:Heliod, Sun-Crowned; ready:Triskelion | act:Triskelion>=4
+Heliod, Sun-Crowned | closer | Felidar Sovereign at 40+ life | castable:Felidar Sovereign; life>=40 | cast:Felidar Sovereign
+Heliod, Sun-Crowned | closer | Test of Endurance at 50+ life | castable:Test of Endurance; life>=50 | cast:Test of Endurance
 
 Niv-Mizzet, Ghost Counsel | closer | Sheoldred + Niv | cmd; ready:Sheoldred, the Apocalypse | win
 Niv-Mizzet, Ghost Counsel | closer | Exquisite Blood + Sanguine Bond or Vito | ready:Exquisite Blood; ready:Sanguine Bond/Vito, Thorn of the Dusk Rose | win
-Niv-Mizzet, Ghost Counsel | engine | Bolas's Citadel | ready:Bolas's Citadel | cast:Bolas's Citadel
+Niv-Mizzet, Ghost Counsel | engine | Bolas's Citadel | castable:Bolas's Citadel | cast:Bolas's Citadel
 
-Yusri, Fortune's Flame | closer | Win now: Oracle with a tiny library | ready:Thassa's Oracle; library<=2 | cast:Thassa's Oracle; win
+Yusri, Fortune's Flame | closer | Win now: Oracle with a tiny library | castable:Thassa's Oracle; library<=2 | cast:Thassa's Oracle
 Yusri, Fortune's Flame | closer | Win now: Lab Man or Jace with an empty library | ready:Laboratory Maniac/Jace, Wielder of Mysteries; library<=0 | win
-Yusri, Fortune's Flame | closer | Enter the Infinite | ready:Enter the Infinite | cast:Enter the Infinite
+Yusri, Fortune's Flame | closer | Enter the Infinite | castable:Enter the Infinite | cast:Enter the Infinite
 Yusri, Fortune's Flame | closer | Zndrsplt + Frenetic Efreet | bf:Zndrsplt, Eye of Wisdom; ready:Frenetic Efreet | act:Frenetic Efreet>=5
 Yusri, Fortune's Flame | engine | Yusri attacks (free-cast flips) | cmd | attack:cmd
 Yusri, Fortune's Flame | engine | Yusri attacks with Krark's Thumb | cmd; bf:Krark's Thumb | attack:cmd
-Yusri, Fortune's Flame | engine | Show and Tell a big threat | ready:Show and Tell; hand_cmc>=7 | cast:Show and Tell
+Yusri, Fortune's Flame | engine | Show and Tell a big threat | castable:Show and Tell; hand_cmc>=7 | cast:Show and Tell
 
-Chulane, Teller of Tales | closer | Primal Surge | ready:Primal Surge | cast:Primal Surge
-Chulane, Teller of Tales | closer | Win now: Oracle with a tiny library | ready:Thassa's Oracle; library<=2 | cast:Thassa's Oracle; win
-Chulane, Teller of Tales | engine | Chulane + Shrieking Drake | cmd; ready:Shrieking Drake | cast:Shrieking Drake>=2
+Chulane, Teller of Tales | closer | Primal Surge | castable:Primal Surge | cast:Primal Surge
+Chulane, Teller of Tales | closer | Win now: Oracle with a tiny library | castable:Thassa's Oracle; library<=2 | cast:Thassa's Oracle
+Chulane, Teller of Tales | engine | Chulane + Shrieking Drake | cmd; castable:Shrieking Drake | cast:Shrieking Drake>=2
 
-Witherbloom, the Balancer | closer | Witherbloom + Sprout Swarm | cmd; ready:Sprout Swarm; creatures>=5 | cast:Sprout Swarm>=5
+Witherbloom, the Balancer | closer | Witherbloom + Sprout Swarm | cmd; castable:Sprout Swarm; creatures>=5 | cast:Sprout Swarm>=5
 
-Erebos, God of the Dead | plan | Razaketh or Valgavoth out | ready:Razaketh, the Foulblooded/Valgavoth, Terror Eater | cast:Razaketh, the Foulblooded/Valgavoth, Terror Eater
+Erebos, God of the Dead | plan | Razaketh or Valgavoth out | castable:Razaketh, the Foulblooded/Valgavoth, Terror Eater | cast:Razaketh, the Foulblooded/Valgavoth, Terror Eater
 
 Zur the Enchanter | closer | Triskaidekaphile at a full hand | bf:Triskaidekaphile; hand>=11 | win
-Zur the Enchanter | closer | Approach of the Second Sun | ready:Approach of the Second Sun | cast:Approach of the Second Sun
+Zur the Enchanter | closer | Approach of the Second Sun | castable:Approach of the Second Sun | cast:Approach of the Second Sun
 Zur the Enchanter | engine | Step Through wizardcycling | hand:Step Through; mana>=2 | act:Step Through
 
-Omnath, Locus of Mana | plan | Omnath into Craterhoof or Finale | cmd; ready:Craterhoof Behemoth/Finale of Devastation | cast:Craterhoof Behemoth/Finale of Devastation
+Omnath, Locus of Mana | plan | Omnath into Craterhoof or Finale | cmd; castable:Craterhoof Behemoth/Finale of Devastation | cast:Craterhoof Behemoth/Finale of Devastation
 Omnath, Locus of Mana | plan | Omnath out with 7+ mana: cast something big | cmd; mana>=7 | cast_cmc>=6
 
-Lumra, Bellow of the Woods | plan | Mass land return | ready:Lumra, Bellow of the Woods/Splendid Reclamation; gy_lands>=4 | cast:Lumra, Bellow of the Woods/Splendid Reclamation
-Lumra, Bellow of the Woods | plan | Scapeshift with 7+ lands | ready:Scapeshift; lands>=7 | cast:Scapeshift
+Lumra, Bellow of the Woods | plan | Mass land return | castable:Lumra, Bellow of the Woods/Splendid Reclamation; gy_lands>=4 | cast:Lumra, Bellow of the Woods/Splendid Reclamation
+Lumra, Bellow of the Woods | plan | Scapeshift with 7+ lands | castable:Scapeshift; lands>=7 | cast:Scapeshift
 
-Xyris, the Writhing Storm | engine | Wheel with Xyris or Locust God out | bf:Xyris, the Writhing Storm/The Locust God; ready:Windfall/Echo of Eons/Molten Psyche/Reforge the Soul/Winds of Change/Wheel of Misfortune | cast:Windfall/Echo of Eons/Molten Psyche/Reforge the Soul/Winds of Change/Wheel of Misfortune
+Xyris, the Writhing Storm | engine | Wheel with Xyris or Locust God out | bf:Xyris, the Writhing Storm/The Locust God; castable:Windfall/Echo of Eons/Molten Psyche/Reforge the Soul/Winds of Change/Wheel of Misfortune | cast:Windfall/Echo of Eons/Molten Psyche/Reforge the Soul/Winds of Change/Wheel of Misfortune
 
-Araumi of the Dead Tide | closer | Mortal Combat with 20 creatures in the graveyard | ready:Mortal Combat; gy_creatures>=20 | cast:Mortal Combat
+Araumi of the Dead Tide | closer | Mortal Combat with 20 creatures in the graveyard | castable:Mortal Combat; gy_creatures>=20 | cast:Mortal Combat
 Araumi of the Dead Tide | engine | Xiahou Dun returns Mortal Combat | bf:Xiahou Dun, the One-Eyed; gy:Mortal Combat | act:Xiahou Dun, the One-Eyed
 Araumi of the Dead Tide | engine | Encore a bomb | cmd; gy:Gray Merchant of Asphodel/Gyruda, Doom of Depths/Junji, the Midnight Sky/Archon of Cruelty | act:Gray Merchant of Asphodel/Gyruda, Doom of Depths/Junji, the Midnight Sky/Archon of Cruelty
 
@@ -63,4 +66,4 @@ Klauth, Unrivaled Ancient | plan | Klauth out with 7+ mana: cast something big |
 Wilson, Refined Grizzly | plan | Suited-up Wilson attacks | cmd; cmd_attached>=1 | attack:cmd
 
 Ragost, Deft Gastronaut | plan | Ragost with fodder activates | cmd; artifacts>=2 | act:Ragost, Deft Gastronaut
-Ragost, Deft Gastronaut | closer | Test of Endurance | ready:Test of Endurance | cast:Test of Endurance
+Ragost, Deft Gastronaut | closer | Test of Endurance at 50+ life | castable:Test of Endurance; life>=50 | cast:Test of Endurance

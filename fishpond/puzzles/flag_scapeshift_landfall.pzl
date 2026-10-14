@@ -1,0 +1,16 @@
+# title: Scapeshift with seven lands, Tireless Provisioner out and Field of the Dead plus other lands in the library: the AI casts it, sacrifices its lands and fetches as many, for landfall triggers (override: Forge flags Scapeshift AI:RemoveDeck:All)
+# card: Scapeshift
+# turns: 1
+# sim: hybrid
+# expect: cast Scapeshift
+# expect: Tireless Provisioner
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Tireless Provisioner;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p0hand=Scapeshift
+p0library=Field of the Dead;Mosswort Bridge;Castle Garenbrig;Gaea's Cradle;Command Tower;Exotic Orchard;Yavimaya, Cradle of Growth;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
