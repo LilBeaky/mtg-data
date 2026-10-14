@@ -114,6 +114,20 @@ check("policy priority header", po.priority_list({"priority": ["Astral Slide > S
 _s, _e = lp.harness_lines(['#FP-POLICY {"seat": 1, "gt": 9, "kind": "search", "src": "Zur the Enchanter", "pick": "Astral Slide", "forge": "Grasp of Fate", "layer": "engine", "mode": "policy", "top": []}',
                            '#FP-END {"id": 0, "seed": 1, "stop": "cap", "ms": 1, "hero_turns": 3, "global_turns": 12, "players": {}, "hand": [], "lib": 50}'])
 check("policy log parsed", [(p["pick"], p["layer"]) for p in _e["policy_log"]], [("Astral Slide", "engine")])
+_s, _e = lp.harness_lines(['#FP-LINE {"seat": "1", "commander": "Heliod, Sun-Crowned", "kind": "closer", "line": "Heliod + Triskelion", "avail": [8, 9], "did": [], "won": true}',
+                           '#FP-END {"id": 0, "seed": 1, "stop": "natural", "ms": 1, "hero_turns": 3, "global_turns": 12, "players": {}, "hand": [], "lib": 50}'])
+check("win-line audit parsed", [(x["line"], x["avail"], x["did"]) for x in _e["lines"]], [("Heliod + Triskelion", [8, 9], [])])
+import tempfile as _tf, json as _js
+from fishpond import lines as _ln
+with _tf.TemporaryDirectory() as _d:
+    _run = os.path.join(_d, "V05_test"); os.makedirs(_run)
+    with open(os.path.join(_run, "games.jsonl"), "w", encoding="utf-8") as _fh:
+        for _g, (_av, _did, _won) in enumerate([([8, 9], [], True), ([5], [5], True), ([], [], False)]):
+            _fh.write(_js.dumps({"game": _g, "lines": [{"seat": "1", "commander": "Heliod, Sun-Crowned", "kind": "closer",
+                                                       "line": "Heliod + Triskelion", "avail": _av, "did": _did, "won": _won}]}) + chr(10))
+    _a = _ln.tally([_d])[("Heliod, Sun-Crowned", "closer", "Heliod + Triskelion")]
+check("win-line audit tally", (_a["games"], _a["avail_games"], _a["did_games"], _a["avail_turns"], _a["did_turns"], _a["won_did"], _a["misses"]),
+      (3, 2, 1, 3, 1, 1, ["V05 g0 s1"]))
 
 for f in fails: print("FAIL", f)
 print(f"units: {'all ' if not fails else ''}{count - len(fails)} of {count} passed" if fails else f"units: all {count} passed")

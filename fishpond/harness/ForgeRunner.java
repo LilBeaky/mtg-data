@@ -33,6 +33,9 @@ import forge.game.event.GameEvent;
 import forge.game.event.GameEventCardChangeZone;
 import forge.game.event.GameEventTurnBegan;
 import forge.game.event.GameEventTurnPhase;
+import forge.game.event.GameEventSpellAbilityCast;
+import forge.game.event.GameEventAttackersDeclared;
+import forge.game.event.GameEventLandPlayed;
 import forge.game.phase.PhaseType;
 import forge.game.player.Player;
 import forge.game.player.PlayerOutcome;
@@ -311,6 +314,8 @@ public class ForgeRunner {
         }
         Watcher w = new Watcher(game, hero, cap, colors, playOut);
         w.keys = keys;
+        String wl = System.getProperty("fishpond.winLines");     // win-line audit (fishpond/win_lines.txt)
+        if (wl != null && !wl.isEmpty()) w.lines = new LineTracker(game, new File(wl));
         for (Player p : game.getPlayers())
             if (p.getController() instanceof PlayerControllerAi pc) {
                 AiControllerSim m = pc.getAi().usesFullSimulation() ? AiControllerSim.FULL : pc.getAi().usesHybridSimulation() ? AiControllerSim.HYBRID : null;
@@ -375,6 +380,11 @@ public class ForgeRunner {
         w.flushAllHeld();
         for (String s : w.held) out.println("#FP-HELD " + s);
         for (PilotPolicy pol : policies) for (String s : pol.log) out.println("#FP-POLICY " + s);
+        if (w.lines != null) {
+            List<Player> won = new ArrayList<>();
+            for (Player p : game.getRegisteredPlayers()) if (p.getOutcome() != null && p.getOutcome().hasWon()) won.add(p);
+            for (String s : w.lines.finish(w.stop == null && won.size() == 1 ? won.get(0) : null)) out.println("#FP-LINE " + s);
+        }
         StringBuilder end = new StringBuilder("{\"id\": " + id + ", \"seed\": " + seed + ", \"stop\": " + js(w.stop == null ? "natural" : w.stop)
                 + ", \"ms\": " + ms + ", \"hero_turns\": " + w.heroTurns + ", \"global_turns\": " + w.globalTurns
                 + (w.trace != null ? ", \"trace\": " + js(w.trace) : "")
@@ -471,6 +481,7 @@ public class ForgeRunner {
                 e.getKey().getAi().setUseSimulation(any ? null : e.getValue().option);
         }
         final List<String> snaps = new ArrayList<>();
+        LineTracker lines;                              // win-line audit, null when off
         final long t0 = System.currentTimeMillis();
 
         Watcher(Game g, Player hero, int cap, String colors, boolean playOut) {
@@ -603,7 +614,10 @@ public class ForgeRunner {
         @Subscribe public void onPhase(GameEventTurnPhase e) {
             Player turnOf = g.getPhaseHandler().getPlayerTurn();
             if (stop == null && turnOf != null && !turnOf.hasLost()) {
-                if (e.phase() == PhaseType.MAIN1) heldMain(turnOf);
+                if (e.phase() == PhaseType.MAIN1) {
+                    heldMain(turnOf);
+                    if (lines != null) lines.check(turnOf, seatTurns.getOrDefault(turnOf, 0));
+                }
                 else if (e.phase() == PhaseType.CLEANUP) heldEnd(turnOf);
             }
             if (stop == null && !hero.hasLost()) {
@@ -642,6 +656,25 @@ public class ForgeRunner {
                     + ", \"card\": " + js(name) + ", \"to\": \"" + to.name() + "\", \"land\": " + (c != null && c.isLand())
                     + ", \"key\": " + keys.contains(name) + ", \"keys_left\": " + keysLeft
                     + ", \"turn_of\": " + (g.getPhaseHandler().getPlayerTurn() == hero ? "\"you\"" : "\"opp\"") + "}");
+        }
+
+        // win-line audit: the plays each seat makes after its check (casts and stack abilities, land drops, attacks)
+        @Subscribe public void onCast(GameEventSpellAbilityCast e) {
+            if (lines == null || stop != null || e.si() == null || e.si().isTrigger() || e.sa() == null || e.sa().getHostCard() == null) return;
+            Player p = e.si().getActivatingPlayer() == null ? null : g.getPlayer(e.si().getActivatingPlayer());
+            if (p != null) lines.cast(p, g.findById(e.sa().getHostCard().getId()), e.sa().isSpell());
+        }
+
+        @Subscribe public void onLand(GameEventLandPlayed e) {
+            if (lines == null || stop != null || e.player() == null || e.land() == null) return;
+            lines.land(g.getPlayer(e.player()), g.findById(e.land().getId()));
+        }
+
+        @Subscribe public void onAttack(GameEventAttackersDeclared e) {
+            if (lines == null || stop != null || e.player() == null) return;
+            List<Card> atk = new ArrayList<>();
+            for (var cv : e.attackersMap().values()) { Card c = g.findById(cv.getId()); if (c != null) atk.add(c); }
+            lines.attack(g.getPlayer(e.player()), atk);
         }
 
         @Subscribe public void any(GameEvent e) {

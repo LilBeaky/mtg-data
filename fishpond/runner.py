@@ -229,6 +229,7 @@ def execute(entries, jobs, run_dir, session, quiet=False):
         # ended on a trace-less NullPointerException that was a lookahead crash)
         cmd = ["java", f"-Xmx{xmx_for(jobs, uses_full(entries))}m", "-XX:-OmitStackTraceInFastThrow", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
                *([] if forge.pilot_on() else ["-Dfishpond.policy=off"]), *_pilot_seat_props(run_dir),
+               f"-Dfishpond.winLines={os.path.join(os.path.dirname(os.path.abspath(__file__)), 'win_lines.txt')}",
                *os.environ.get("FISHPOND_JVM", "").split(),   # extra -D switches for A/B runs (e.g. -Dfishpond.commanderRules=false)
                "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "ForgeRunner", os.path.join(deck_dir, ""), pf]
         fh = open(lf, "w", encoding="utf-8")
@@ -259,7 +260,7 @@ def collect(run_dir, plan, builds, pods, hero_ai="Default", opp_ai=("Default",) 
             r.update({"v": 1, "engine": "harness", "forge": forge.FORGE_VERSION, "build": e["label"], "game": e["game"],
                       "seed": e["seed"], "pod": pod_info(opps, opp_ai), "hero_ai": hero_ai, "snaps": snaps, "stop": end.get("stop"),
                       "end": end, "log": os.path.relpath(lf, run_dir), "log_id": end["id"], "tutors": end.get("tutors", []), "policy_log": end.get("policy_log", []),
-                      "loops": end.get("loops", []), "held": end.get("held"),
+                      "loops": end.get("loops", []), "held": end.get("held"), "lines": end.get("lines"),
                       "sim": end.get("sim")})
             if end.get("stop") not in ("natural", "hero_lost") and r["result"] != "loss": r["result"], r["route"] = "draw", None
             r["stopped"] = end.get("stop") in ("timeout",)

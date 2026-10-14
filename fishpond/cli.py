@@ -14,6 +14,7 @@
                                                     many pods in parallel lanes, resumable, one per-deck report
                                                     (--report DIR: the report alone; PODS lines 'ID|HERO|OPP1|OPP2|OPP3')
   python3 -m fishpond held RUN_DIR [RUN_DIR...]    dead-card meter per deck across runs: castable cards held 3+ turns running
+  python3 -m fishpond lines RUN_DIR [RUN_DIR...]   win-line audit: each deck's lines (fishpond/win_lines.txt) available vs played
   python3 -m fishpond flags [--smoke] [--unflag]   cards Forge's AI won't cast (AI:RemoveDeck:All) across the repo's decks, with
                                                     their status; --smoke writes+runs a smoke puzzle for each untested one,
                                                     --unflag writes an override (fishpond/forge_card_overrides/) for each that passes
@@ -111,6 +112,11 @@ def cmd_study(args):
 def cmd_held(args):
     from . import held
     held.cmd(args.runs)
+
+
+def cmd_lines(args):
+    from . import lines
+    lines.cmd(args.runs)
 
 def cmd_flags(args):
     from . import puzzles as pz
@@ -394,8 +400,9 @@ def main(argv=None):
     st.add_argument("--jobs", type=int, default=5); st.add_argument("--sim", choices=runner.SIM_MODES, default="hybrid")
     st.add_argument("--max-minutes", type=float, default=0)
     h = sub.add_parser("held"); h.add_argument("runs", nargs="+")
+    h = sub.add_parser("lines"); h.add_argument("runs", nargs="+")
     w = sub.add_parser("show"); w.add_argument("run"); w.add_argument("game", type=int); w.add_argument("--build")
     w.add_argument("--log", action="store_true"); w.add_argument("--phases", action="store_true")
     args = ap.parse_args(argv)
     if not args.cmd: ap.print_help(); return
-    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "study": cmd_study}[args.cmd](args)
+    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "lines": cmd_lines, "study": cmd_study}[args.cmd](args)
