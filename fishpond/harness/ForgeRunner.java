@@ -182,9 +182,13 @@ public class ForgeRunner {
             return t;
         }
 
+        /** Thrown inside Forge's lookahead, or with no stack to tell (the JVM can drop it; the runner turns that off): such a
+         *  decision is remade without lookahead, and if it was a real crash the remake throws it again. */
         static boolean fromSim(Throwable t) {
-            for (; t != null; t = t.getCause())
+            for (; t != null; t = t.getCause()) {
+                if (t.getStackTrace().length == 0) return true;
                 for (StackTraceElement el : t.getStackTrace()) if (el.getClassName().startsWith("forge.ai.simulation.")) return true;
+            }
             return false;
         }
 

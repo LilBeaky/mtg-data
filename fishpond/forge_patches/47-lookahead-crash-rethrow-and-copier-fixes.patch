@@ -1,0 +1,106 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 46c326e..25e9c3f 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -2144,6 +2144,18 @@ public class AiController {
+ 
+     private volatile boolean hurry = false;   // fishpond patch 45
+ 
++    /** fishpond patch 47: the throwable (or a cause) was thrown inside Forge's lookahead code. */
++    static boolean fromSimulation(Throwable t) {
++        for (; t != null; t = t.getCause()) {
++            for (final StackTraceElement el : t.getStackTrace()) {
++                if (el.getClassName().startsWith("forge.ai.simulation.")) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
+     private SpellAbility chooseSpellAbilityToPlayFromList(final List<SpellAbility> all, boolean skipCounter) {
+         if (all == null || all.isEmpty())
+             return null;
+@@ -2281,6 +2293,14 @@ public class AiController {
+                 }
+             }
+         } catch (InterruptedException | ExecutionException | TimeoutException e) {
++            // fishpond patch 47: a crash inside the lookahead (ai.simulation) of any one candidate play ended the whole
++            // decision here, and Forge passed priority: 97 silent passes in study150_20261014, never counted. It is thrown
++            // on instead, so the harness remakes the decision without lookahead and counts it (sim_decision_fallbacks).
++            // -Dfishpond.simCrashRethrow=false: pass as before.
++            if (e instanceof ExecutionException && e.getCause() instanceof RuntimeException
++                    && !"false".equals(System.getProperty("fishpond.simCrashRethrow")) && fromSimulation(e.getCause())) {
++                throw (RuntimeException) e.getCause();
++            }
+             e.printStackTrace();
+             if (e instanceof TimeoutException && !timeoutLogged) {
+                 // log where the eval thread currently is - each timeout doubles as a
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+index 4e5538c..019b130 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+@@ -169,6 +169,12 @@ public class GameCopier {
+                         if (o instanceof Card && ((Card)o).getZone() == null) {
+                            continue;
+                         }
++                        // fishpond patch 47: likewise a card that has left the game but still points at its last zone (an
++                        // encore token remembered by its "sacrifice at end step" effect after it was gone: "Couldn't map
++                        // Rakshasa Debaser", study150_20261014 V04 g4)
++                        if (o instanceof Card && findCardOrNull((Card) o) == null) {
++                            continue;
++                        }
+                         c.addRemembered(find((GameObject) o));
+                     } else {
+                         System.err.println(c + " Remembered: " + o + "/" + o.getClass());
+diff --git a/forge-game/src/main/java/forge/game/card/CardCopyService.java b/forge-game/src/main/java/forge/game/card/CardCopyService.java
+index 8cb47ab..d182647 100644
+--- a/forge-game/src/main/java/forge/game/card/CardCopyService.java
++++ b/forge-game/src/main/java/forge/game/card/CardCopyService.java
+@@ -254,11 +254,15 @@ public class CardCopyService {
+         // copy EffectSource for description
+         newCopy.setEffectSource(getLKICopy(copyFrom.getEffectSource(), cachedMap));
+ 
+-        if (copyFrom.isFlipCard()) {
++        // fishpond patch 47: the face checks read the printed card (its rules), and a copy can carry a double-faced card's
++        // rules with one face only (a token copy of a transforming card, made by Zhulodok's copies: varied study150_20261014
++        // V02 g10, "CardState.getName() because <parameter1> is null" in copyLastState). Such a card is copied by its current
++        // face, like any single-faced card.
++        if (copyFrom.isFlipCard() && copyFrom.hasState(CardStateName.Flipped)) {
+             newCopy.getState(CardStateName.Original).copyFrom(copyFrom.getState(CardStateName.Original), true);
+             newCopy.addAlternateState(CardStateName.Flipped, false);
+             newCopy.getState(CardStateName.Flipped).copyFrom(copyFrom.getState(CardStateName.Flipped), true);
+-        } else if (copyFrom.isTransformable()) {
++        } else if (copyFrom.isTransformable() && copyFrom.hasState(CardStateName.Backside)) {
+             newCopy.getState(CardStateName.Original).copyFrom(copyFrom.getState(CardStateName.Original), true);
+             newCopy.addAlternateState(CardStateName.Backside, false);
+             newCopy.getState(CardStateName.Backside).copyFrom(copyFrom.getState(CardStateName.Backside), true);
+@@ -270,7 +274,7 @@ public class CardCopyService {
+             newCopy.getState(CardStateName.Original).copyFrom(copyFrom.getState(CardStateName.Original), true);
+             newCopy.addAlternateState(CardStateName.PreparedSpell, false);
+             newCopy.getState(CardStateName.PreparedSpell).copyFrom(copyFrom.getState(CardStateName.PreparedSpell), true);
+-        } else if (copyFrom.isSplitCard()) {
++        } else if (copyFrom.isSplitCard() && copyFrom.hasState(CardStateName.LeftSplit) && copyFrom.hasState(CardStateName.RightSplit)) {
+             newCopy.getState(CardStateName.Original).copyFrom(copyFrom.getState(CardStateName.Original), true);
+             newCopy.addAlternateState(CardStateName.LeftSplit, false);
+             newCopy.getState(CardStateName.LeftSplit).copyFrom(copyFrom.getState(CardStateName.LeftSplit), true);
+diff --git a/forge-game/src/main/java/forge/game/staticability/StaticAbilityContinuous.java b/forge-game/src/main/java/forge/game/staticability/StaticAbilityContinuous.java
+index 4edbc89..4ff0784 100644
+--- a/forge-game/src/main/java/forge/game/staticability/StaticAbilityContinuous.java
++++ b/forge-game/src/main/java/forge/game/staticability/StaticAbilityContinuous.java
+@@ -899,9 +899,12 @@ public final class StaticAbilityContinuous {
+                     }
+                 }
+ 
+-                Player mayPlayController = params.containsKey("MayPlayPlayer") ?
+-                    AbilityUtils.getDefinedPlayers(affectedCard, params.get("MayPlayPlayer"), stAb).get(0) :
+-                    controller;
++                // fishpond patch 47: a prepared card's effect names "EffectSourceController"; once the prepared creature has
++                // left play, the lookahead copy has no effect source and the list was empty (IndexOutOfBounds in GameCopier's
++                // checkStateEffects: 26 decisions in study150_20261014). The effect's controller is that player.
++                final List<Player> mayPlayers = params.containsKey("MayPlayPlayer") ?
++                    AbilityUtils.getDefinedPlayers(affectedCard, params.get("MayPlayPlayer"), stAb) : null;
++                Player mayPlayController = mayPlayers == null || mayPlayers.isEmpty() ? controller : mayPlayers.get(0);
+                 affectedCard.setMayPlay(mayPlayController, mayPlayWithoutManaCost,
+                         mayPlayAltCost != null ? new Cost(mayPlayAltCost, false, affectedCard.equals(hostCard)) : null, mayPlayWithFlash,
+                         mayPlayGrantZonePermissions, stAb);

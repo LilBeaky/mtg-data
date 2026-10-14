@@ -224,7 +224,10 @@ def execute(entries, jobs, run_dir, session, quiet=False):
         pf = os.path.join(log_dir, f"plan_{session}_{j}.tsv")
         with open(pf, "w", encoding="utf-8") as fh: fh.write("\n".join(e["line"] for e in chunk) + "\n")
         lf = os.path.join(log_dir, f"worker_{session}_{j}.log")
-        cmd = ["java", f"-Xmx{xmx_for(jobs, uses_full(entries))}m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
+        # -XX:-OmitStackTraceInFastThrow: the JVM drops the stack of an exception thrown often at one spot, and the harness
+        # reads the stack to tell a lookahead crash (remade without lookahead) from a real one (study150_20261014 V02 g10
+        # ended on a trace-less NullPointerException that was a lookahead crash)
+        cmd = ["java", f"-Xmx{xmx_for(jobs, uses_full(entries))}m", "-XX:-OmitStackTraceInFastThrow", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
                *([] if forge.pilot_on() else ["-Dfishpond.policy=off"]), *_pilot_seat_props(run_dir),
                *os.environ.get("FISHPOND_JVM", "").split(),   # extra -D switches for A/B runs (e.g. -Dfishpond.commanderRules=false)
                "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "ForgeRunner", os.path.join(deck_dir, ""), pf]

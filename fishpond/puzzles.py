@@ -45,7 +45,7 @@ def run_one(path, quiet=True):
     patched = forge.patched_classes(quiet=quiet)
     sf = path + ".state.tmp"
     open(sf, "w", encoding="utf-8").write("\n".join(state) + "\n")
-    cmd = ["java", "-Xmx1500m", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8", *meta.get("jvm", "").split(),
+    cmd = ["java", "-Xmx1500m", "-XX:-OmitStackTraceInFastThrow", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8", *meta.get("jvm", "").split(),
            "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "PuzzleRunner", os.path.abspath(sf),
            str(meta["turns"]), str(meta["seed"]), meta["sim"]]
     try:

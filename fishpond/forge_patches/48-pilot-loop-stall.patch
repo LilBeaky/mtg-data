@@ -1,0 +1,106 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 25e9c3f..f388bcb 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1135,6 +1135,11 @@ public class AiController {
+     // its Saproling loop on every opponent's turn, each round slower than the last). Each start and stop prints #FP-LOOP.
+     static final int LOOP_CONFIRM = 10;
+     private static final int LOOP_MAX = Integer.getInteger("fishpond.loopMax", 1000);
++    // fishpond patch 48: a loop that hasn't brought its owner closer to lethal (loopGap) in LOOP_STALL iterations stops
++    // ("stalled") and stays off while the owner is no closer than when it stalled. Witherbloom's Sprout Swarm loop into
++    // Zhulodok's two Wandering Archaics gave Zhulodok two Saprolings per one of its own and ran to the game's time limit
++    // (study150_20261014 V02 g4: 163 casts, 30 minutes). Every pilot seat, like the rest of the loop shortcut.
++    private static final int LOOP_STALL = Integer.getInteger("fishpond.loopStall", 20);
+ 
+     static final class LoopState {
+         int turn = -1;
+@@ -1142,6 +1147,8 @@ public class AiController {
+         final Set<String> stopped = new HashSet<>();
+         final Map<String, Boolean> danger = new HashMap<>();
+         final Set<String> goalLoops = new HashSet<>();   // the whole game: loops that stopped on lethal
++        final Map<String, Integer> stalledLoops = new HashMap<>();   // patch 48, the whole game: loop -> its owner's gap at the stall
++        int bestGap = Integer.MAX_VALUE, sinceBest = 0;               // patch 48: the running loop's progress
+         Player looper;
+         String key;
+         int iterations;
+@@ -1185,6 +1192,8 @@ public class AiController {
+             ls.looper = player;
+             ls.key = key;
+             ls.iterations = n;
++            ls.bestGap = Integer.MAX_VALUE;
++            ls.sinceBest = 0;
+             System.out.println("#FP-LOOP {\"event\": \"start\", \"player\": \"" + player.getName() + "\", \"turn\": " + ls.turn
+                     + ", \"play\": \"" + sa.getHostCard().getName() + "\", \"land\": " + sa.isLandAbility() + "}");
+         } else if (ls.looper == player && key.equals(ls.key)) {
+@@ -1192,15 +1201,25 @@ public class AiController {
+         } else {
+             return;
+         }
+-        final boolean goal = loopGoalReached(player);
+-        if (goal || ls.iterations >= LOOP_MAX) {
++        final int gap = loopGap(player);
++        final boolean goal = gap <= 0;
++        if (gap < ls.bestGap) {
++            ls.bestGap = gap;
++            ls.sinceBest = 0;
++        } else {
++            ls.sinceBest++;
++        }
++        final boolean stalled = !goal && ls.sinceBest >= LOOP_STALL;
++        if (goal || stalled || ls.iterations >= LOOP_MAX) {
+             ls.stopped.add(player.getId() + "#" + key);
+             if (goal) {
+                 ls.goalLoops.add(player.getId() + "#" + key);
++            } else if (stalled) {
++                ls.stalledLoops.put(player.getId() + "#" + key, gap);
+             }
+             System.out.println("#FP-LOOP {\"event\": \"stop\", \"player\": \"" + player.getName() + "\", \"turn\": " + ls.turn
+                     + ", \"play\": \"" + sa.getHostCard().getName() + "\", \"iterations\": " + ls.iterations
+-                    + ", \"reason\": \"" + (goal ? "goal" : "cap") + "\"}");
++                    + ", \"reason\": \"" + (goal ? "goal" : stalled ? "stalled" : "cap") + "\"}");
+             ls.looper = null;
+             ls.key = null;
+             ls.danger.clear();
+@@ -1209,6 +1228,13 @@ public class AiController {
+ 
+     /** The looper's creatures, after the opponents chump-block its biggest attackers one each, cover their life. */
+     static boolean loopGoalReached(final Player p) {
++        return loopGap(p) <= 0;
++    }
++
++    /** fishpond patch 48: the opponents' life left after the looper's creatures attack and each opposing creature chump-blocks
++     *  one of its biggest attackers (0 or less: lethal), plus the blockers its attackers are still short of (a loop that adds
++     *  attackers into a wider board is making progress before any of them gets through). */
++    static int loopGap(final Player p) {
+         int life = 0, blockers = 0;
+         for (final Player o : p.getOpponents()) {
+             if (o.hasLost()) {
+@@ -1218,7 +1244,7 @@ public class AiController {
+             blockers += o.getCreaturesInPlay().size();
+         }
+         if (life <= 0) {
+-            return true;
++            return life;
+         }
+         final List<Integer> powers = new ArrayList<>();
+         for (final Card c : p.getCreaturesInPlay()) {
+@@ -1229,7 +1255,7 @@ public class AiController {
+         for (int i = blockers; i < powers.size(); i++) {
+             damage += powers.get(i);
+         }
+-        return damage >= life;
++        return life - damage + Math.max(0, blockers - powers.size());
+     }
+ 
+     private boolean loopStopped(final SpellAbility sa) {
+@@ -1238,7 +1264,9 @@ public class AiController {
+         }
+         final LoopState ls = loopState(game);
+         final String k = player.getId() + "#" + loopKey(sa);
+-        return ls.stopped.contains(k) || (ls.goalLoops.contains(k) && loopGoalReached(player));
++        final Integer stallGap = ls.stalledLoops.get(k);   // patch 48
++        return ls.stopped.contains(k) || (ls.goalLoops.contains(k) && loopGoalReached(player))
++                || (stallGap != null && loopGap(player) >= stallGap);
+     }
+ 
+     private boolean inLoop(final SpellAbility sa) {

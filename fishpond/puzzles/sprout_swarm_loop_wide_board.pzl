@@ -1,0 +1,16 @@
+# title: Sprout Swarm repeated into 25 blockers (opponent at 12): no Saproling gets through for 20 casts, but each cast gains an attacker on the blockers, so the loop is progressing; it runs to lethal instead of stopping as stalled (patch 48 guard)
+# card: Sprout Swarm
+# turns: 2
+# sim: hybrid
+# expect: #FP-LOOP .*"stop".*"goal"
+# forbid: #FP-LOOP .*"stalled"
+p0life=20
+p1life=12
+turn=1
+activeplayer=p1
+activephase=END_OF_TURN
+p0battlefield=Witherbloom, the Balancer;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p0hand=Sprout Swarm
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
