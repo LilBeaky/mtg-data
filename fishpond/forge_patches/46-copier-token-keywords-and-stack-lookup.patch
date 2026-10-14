@@ -1,0 +1,64 @@
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+index 28e143b..4e5538c 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+@@ -318,7 +318,20 @@ public class GameCopier {
+     private static final boolean USE_FROM_PAPER_CARD = true;
+     private Card createCardCopy(Game newGame, Player newOwner, Card c, Player aiPlayer) {
+         if (c.isToken() && !c.isImmutable()) {
+-            Card result = new TokenInfo(c).makeOneToken(newOwner, c.getId());
++            // fishpond patch 46: TokenInfo carries a token's keywords but not the script values (SVars) some read, so a
++            // token copy of a card with such a keyword (Urza's Incubator's ETBReplacement:Other:ChooseCT, made by
++            // Zhulodok's spell copies) threw while the lookahead copied the game (varied_20261013_p45 V02 g2, D7 "ChooseCT").
++            // Those tokens are made without keywords; copyCopiableCharacteristics below brings the keywords with their
++            // values. Every other token is made exactly as before.
++            Card result;
++            try {
++                result = new TokenInfo(c).makeOneToken(newOwner, c.getId());
++            } catch (RuntimeException e) {
++                if (e.getMessage() == null || !e.getMessage().startsWith("Error in Keyword")) {
++                    throw e;
++                }
++                result = new TokenInfo(c).makeOneTokenWithoutKeywords(newOwner, c.getId());
++            }
+             new CardCopyService(c).copyCopiableCharacteristics(result, null, null);
+             return result;
+         }
+diff --git a/forge-game/src/main/java/forge/game/card/token/TokenInfo.java b/forge-game/src/main/java/forge/game/card/token/TokenInfo.java
+index 19cf6be..c1f6abd 100644
+--- a/forge-game/src/main/java/forge/game/card/token/TokenInfo.java
++++ b/forge-game/src/main/java/forge/game/card/token/TokenInfo.java
+@@ -154,6 +154,16 @@ public class TokenInfo {
+     public Card makeOneToken(final Player controller) {
+         return makeOneToken(controller, controller.getGame().nextCardId());
+     }
++    /** fishpond patch 46: the token without its keywords, for GameCopier, which copies every copiable characteristic
++     *  (keywords and the script values they read) right after; see GameCopier.createCardCopy. */
++    public Card makeOneTokenWithoutKeywords(final Player controller, int id) {
++        final Card c = toCard(controller.getGame(), id);
++        c.setOwner(controller);
++        c.setGamePieceType(GamePieceType.TOKEN);
++        CardFactoryUtil.setupKeywordedAbilities(c);
++        return c;
++    }
++
+     public Card makeOneToken(final Player controller, int id) {
+         final Game game = controller.getGame();
+         final Card c = toCard(game, id);
+diff --git a/forge-game/src/main/java/forge/game/zone/MagicStack.java b/forge-game/src/main/java/forge/game/zone/MagicStack.java
+index 022dab1..0e7f828 100644
+--- a/forge-game/src/main/java/forge/game/zone/MagicStack.java
++++ b/forge-game/src/main/java/forge/game/zone/MagicStack.java
+@@ -794,6 +794,12 @@ public class MagicStack /* extends MyObservable */ implements Iterable<SpellAbil
+     }
+ 
+     public final SpellAbilityStackInstance getInstanceMatchingSpellAbilityID(final SpellAbility sa) {
++        // fishpond patch 46: Game.onPlayerLost asks this for every stack card's cast ability; a card put on the stack by an
++        // effect inside a lookahead copy (Ugin cast through cascade) has none there, and the null threw (varied_20261013_p45
++        // V09 g1, 2 decisions). No ability matches no instance.
++        if (sa == null) {
++            return null;
++        }
+         for (final SpellAbilityStackInstance si : stack) {
+             if (sa.getId() == si.getSpellAbility().getId()) {
+                 return si;
