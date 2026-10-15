@@ -1,0 +1,14 @@
+# title: Jarad, Golgari Lich Lord with Ghalta, Primal Hunger (12 power) and mana open, opponent at 30: Ghalta attacks, then Jarad eats it in the second main phase (each opponent loses 12) instead of keeping it (Jarad ate in 3 of 16 turns it could, study150_20261014_p51; the user's plan: eat big creatures and bring them back; patch 53)
+# card: Jarad, Golgari Lich Lord
+# turns: 1
+# sim: hybrid
+# expect: activated Jarad, Golgari Lich Lord
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Jarad, Golgari Lich Lord|IsCommander;Ghalta, Primal Hunger;Swamp;Swamp;Forest;Forest
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

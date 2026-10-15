@@ -1,0 +1,14 @@
+# title: Guard for the Jarad rule: only a 3-power creature to eat, opponent at 30: Jarad doesn't eat it (under power 6 and 12 life in all; patch 53)
+# card: Jarad, Golgari Lich Lord
+# turns: 1
+# sim: hybrid
+# forbid: activated Jarad, Golgari Lich Lord
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Jarad, Golgari Lich Lord|IsCommander;Centaur Courser;Swamp;Swamp;Forest;Forest
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,16 @@
+# title: Xyris out, five mana, Reforge the Soul with three other cards in hand (one a castable creature), opponent holding cards: the AI wheels (seven Snakes from the opponent's draws) instead of holding it for a two-card hand (Xyris, study150_20261014_p51 V05 g7: 8 of 28 wheel turns; patch 53)
+# card: Reforge the Soul
+# turns: 1
+# sim: hybrid
+# expect: cast Reforge the Soul
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Xyris, the Writhing Storm|IsCommander;Mountain;Mountain;Mountain;Island;Forest
+p0hand=Reforge the Soul;Razorkin Needlehead;Forest;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1hand=Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

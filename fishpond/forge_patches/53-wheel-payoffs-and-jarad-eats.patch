@@ -1,0 +1,153 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 185601c..6504490 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1044,6 +1044,12 @@ public class AiController {
+         if (commanderNow(sa)) {
+             return AiPlayDecision.WillPlay;   // fishpond patch 24: cast the commander as soon as it's affordable
+         }
++        if (wheelPays(sa)) {
++            return AiPlayDecision.WillPlay;   // fishpond patch 53: a wheel with draw payoffs out
++        }
++        if (bigEatNow(sa)) {
++            return AiPlayDecision.WillPlay;   // fishpond patch 53: Jarad eats something big after combat
++        }
+ 
+         final Card card = sa.getHostCard();
+ 
+@@ -2953,6 +2959,7 @@ public class AiController {
+                 }
+                 all.sort(Comparator.comparing((SpellAbility x) -> !encoreNow(x)));      // fishpond patch 37 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !commanderNow(x)));   // fishpond patch 24 (stable sort)
++                all.sort(Comparator.comparing((SpellAbility x) -> !wheelPays(x)));      // fishpond patch 53 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !cheatsInBig(x)));    // fishpond patch 50 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !winsNow(x)));        // fishpond patch 49 (stable sort)
+             }
+@@ -3740,6 +3747,127 @@ public class AiController {
+         return best >= 7;
+     }
+ 
++    // ---- fishpond patch 53: wheels with draw payoffs (win-line audit: Xyris wheeled in 8 of 28 turns it could, study150_20261014_p51) ----
++    // A spell or ability that makes every player draw (Windfall, Reforge the Soul, Echo of Eons, Winds of Change, Molten Psyche,
++    // Wheel of Misfortune, Magus of the Wheel) refills every opponent's hand, which Forge's AI scores as a loss: the "only when"
++    // hints of Reforge the Soul and Molten Psyche want 2 or fewer cards in the caster's hand, and the one-move check sees the
++    // opponents' new cards. With "whenever an opponent draws" payoffs out (Xyris, the Writhing Storm: a Snake for each card
++    // after the first in a draw step) or "whenever you draw" ones (The Locust God: an Insect), the draws are the point. When
++    // the payoffs would fire WHEEL_PAYOFF times or more, the wheel is played (no hint, no one-move check) and goes ahead of
++    // the other candidates (after a win and Show and Tell). Every pilot seat; the payoffs must be on the battlefield.
++    private static final int WHEEL_PAYOFF = Integer.getInteger("fishpond.wheelPayoff", 5);
++
++    private boolean wheelPays(final SpellAbility sa) {
++        if (sa == null || sa.getHostCard() == null || !forge.ai.ability.DrawAi.pilotSeat(player)) {
++            return false;
++        }
++        Integer fixed = null;
++        boolean wheel = false;
++        final List<SpellAbility> chain = new ArrayList<>();
++        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++            chain.add(x);
++            final SpellAbility rep = x.getAdditionalAbility("RepeatSubAbility");
++            for (SpellAbility y = rep; y != null; y = y.getSubAbility()) {
++                chain.add(y);
++            }
++        }
++        for (final SpellAbility x : chain) {
++            if (x.getApi() == ApiType.Draw) {
++                final String def = x.getParamOrDefault("Defined", "You");
++                if (def.startsWith("Player") || def.equals("Remembered")) {
++                    wheel = true;
++                    final String n = x.getParamOrDefault("NumCards", "1");
++                    if (n.matches("\\d+")) {
++                        fixed = Integer.parseInt(n);
++                    }
++                }
++            }
++        }
++        if (!wheel) {
++            return false;
++        }
++        int oppPay = 0, ownPay = 0;
++        for (final Card c : player.getCardsIn(ZoneType.Battlefield)) {
++            for (final Trigger t : c.getTriggers()) {
++                if (t.getMode() != TriggerType.Drawn) {
++                    continue;
++                }
++                final String vc = t.getParamOrDefault("ValidCard", "") + t.getParamOrDefault("ValidPlayer", "");
++                if (vc.contains("OppOwn") || vc.contains("Opponent")) {
++                    oppPay++;
++                } else if (vc.contains("YouOwn") || vc.contains("YouCtrl") || vc.contains("You")) {
++                    ownPay++;
++                }
++            }
++        }
++        if (oppPay + ownPay == 0) {
++            return false;
++        }
++        int maxHand = player.getCardsIn(ZoneType.Hand).size() - (sa.getHostCard().isInZone(ZoneType.Hand) ? 1 : 0);
++        for (final Player o : player.getOpponents()) {
++            if (!o.hasLost()) {
++                maxHand = Math.max(maxHand, o.getCardsIn(ZoneType.Hand).size());
++            }
++        }
++        int oppDraws = 0;
++        for (final Player o : player.getOpponents()) {
++            if (!o.hasLost()) {
++                oppDraws += fixed != null ? fixed : Math.max(o.getCardsIn(ZoneType.Hand).size(), 0);
++            }
++        }
++        final int ownDraws = fixed != null ? fixed : maxHand;
++        return oppPay * oppDraws + ownPay * ownDraws >= WHEEL_PAYOFF;
++    }
++
++    /** fishpond patch 53: a "sacrifice another creature: each opponent loses life equal to its power" ability (Jarad, Golgari
++     *  Lich Lord) eats the biggest creature it can in the seat's own second main phase, after that creature has attacked:
++     *  the loss hits every opponent, so a 12-power Ghalta drains 36 across three opponents against 12 from its attack. Forge's
++     *  AI played these only for lethal (patch 19 plans that sacrifice); Jarad ate something in 3 of 16 turns it could
++     *  (study150_20261014_p51), and the user's plan for the deck is to eat big creatures and bring them back. Power 6 or
++     *  more and 12 or more life in all; never the commander. */
++    private boolean bigEatNow(final SpellAbility sa) {
++        if (sa == null || !sa.isActivatedAbility() || sa.getApi() != ApiType.LoseLife || sa.getPayCosts() == null
++                || !forge.ai.ability.DrawAi.pilotSeat(player) || !"Player.Opponent".equals(sa.getParam("Defined"))) {
++            return false;
++        }
++        final String svar = sa.getHostCard().getSVar(sa.getParamOrDefault("LifeAmount", ""));
++        if (!svar.startsWith("Sacrificed$Card")) {
++            return false;
++        }
++        final forge.game.phase.PhaseHandler ph = game.getPhaseHandler();
++        if (!ph.is(PhaseType.MAIN2, player) || !game.getStack().isEmpty()) {
++            return false;
++        }
++        int opps = 0;
++        for (final Player o : player.getOpponents()) {
++            if (!o.hasLost() && o.canLoseLife()) {
++                opps++;
++            }
++        }
++        for (final forge.game.cost.CostPart part : sa.getPayCosts().getCostParts()) {
++            if (!(part instanceof CostSacrifice sac) || sac.payCostFromSource() || !"1".equals(sac.getAmount())) {
++                continue;
++            }
++            final CardCollection list = CardLists.filter(CardLists.getValidCards(player.getCardsIn(ZoneType.Battlefield),
++                    sac.getType().split(";"), player, sa.getHostCard(), sa), CardPredicates.canBeSacrificedBy(sa, false));
++            list.remove(sa.getHostCard());
++            Card best = null;
++            int bestValue = 0;
++            for (final Card c : list) {
++                final int v = svar.contains("CardToughness") ? c.getNetToughness() : c.getNetPower();
++                if (!c.isCommander() && c.isCreature() && v > bestValue) {
++                    best = c;
++                    bestValue = v;
++                }
++            }
++            if (best != null && bestValue >= 6 && bestValue * opps >= 12) {
++                ComputerUtil.PLANNED_SAC.put(sa, best);
++                return true;
++            }
++        }
++        return false;
++    }
++
+     /** fishpond patch 50: the ability or one of its sub-abilities wins the game. */
+     static boolean hasWinEffect(final SpellAbility sa) {
+         for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {

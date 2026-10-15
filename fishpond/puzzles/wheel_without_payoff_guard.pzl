@@ -1,0 +1,16 @@
+# title: Guard for the wheel rule: the same hand with no draw payoff out (no Xyris, no Locust God): Reforge the Soul keeps its own hint (two or fewer cards in hand) and isn't cast (patch 53)
+# card: Reforge the Soul
+# turns: 1
+# sim: hybrid
+# forbid: cast Reforge the Soul
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Grizzly Bears;Mountain;Mountain;Mountain;Island;Forest
+p0hand=Reforge the Soul;Razorkin Needlehead;Forest;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1hand=Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

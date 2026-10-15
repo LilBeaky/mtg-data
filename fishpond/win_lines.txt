@@ -13,7 +13,7 @@
 #   bf:A/B  hand:A/B  gy:A/B   in that zone
 #   cmd   a commander of the seat is on the battlefield     cmd_attached>=N   cards attached to it
 #   creatures>=N  life>=N  lands>=N  mana>=N  library<=N  hand>=N  gy_creatures>=N  gy_lands>=N  artifacts>=N
-#   hand_cmc>=N   a permanent card of that mana value in hand     big_other>=N   another creature with toughness >= N
+#   hand_cmc>=N   a permanent card of that mana value in hand     big_other>=N   another creature (not the commander) with power >= N
 # did (any of, ';'-separated):
 #   cast:A/B[>=N]   spells cast (N times; default 1)       act:A/B[>=N]   abilities activated (stack abilities: not mana)
 #   play:A/B   land played    attack:cmd   attacked with a commander    cast_cmc>=N   a spell of that mana value    win   won the game
