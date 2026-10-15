@@ -35,6 +35,7 @@ public class LineTracker {
     final Map<Player, Integer> openTurn = new HashMap<>();
     final Map<Player, Map<Line, Record>> records = new HashMap<>();
     final Map<Player, Integer> cmdFirst = new HashMap<>(), lastTurn = new HashMap<>();   // reach: commander first out, turns seen
+    final Map<Player, Set<Line>> closed = new HashMap<>();    // closers the seat has played: later turns aren't misses
 
     LineTracker(Game g, File spec) {
         this.g = g;
@@ -80,6 +81,7 @@ public class LineTracker {
         List<Line> now = new ArrayList<>();
         List<String> hand = null;
         for (Line l : linesOf(p)) {
+            if (closed.getOrDefault(p, Set.of()).contains(l)) continue;
             boolean ok;
             try { ok = l.needs.stream().allMatch(n -> holds(p, n)); } catch (Throwable e) { ok = false; }
             if (ok) {
@@ -101,10 +103,20 @@ public class LineTracker {
         List<Line> was = open.remove(p);
         Window w = window.remove(p);
         if (was == null || w == null) return;
-        for (Line l : was) {
+        int t = openTurn.get(p);
+        for (Line l : linesOf(p)) {
             Record r = records.get(p).get(l);
-            if (l.did.stream().anyMatch(d -> done(w, d, won))) { r.did.add(openTurn.get(p)); r.hands.remove(openTurn.get(p)); }
-            else if (won) { r.avail.remove(openTurn.get(p)); r.hands.remove(openTurn.get(p)); }   // won anyway: the line wasn't needed
+            boolean did = l.did.stream().filter(d -> !d.equals("win")).anyMatch(d -> done(w, d, won))
+                    || (was.contains(l) && l.did.contains("win") && won);
+            if (was.contains(l)) {
+                if (did) { r.did.add(t); r.hands.remove(t); }
+                else if (won) { r.avail.remove(t); r.hands.remove(t); }   // won anyway: the line wasn't needed
+            } else if (did && !closed.getOrDefault(p, Set.of()).contains(l)) {
+                // the pieces came together after the check (a fifth creature on an opponent's turn, then Sprout Swarm's loop
+                // at instant speed): the play still counts, as an available turn played
+                r.avail.add(t); r.did.add(t);
+            }
+            if (did && l.kind.equals("closer")) closed.computeIfAbsent(p, k -> new HashSet<>()).add(l);
         }
     }
 
