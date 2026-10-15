@@ -129,7 +129,7 @@ def report(out):
           + f"; AI timeouts {sum(r.get('ai_timeouts', 0) for r in recs)} ({sum(r.get('ai_hurried', 0) for r in recs)} finished in hurry mode)"
           + f"; per-decision lookahead fallbacks "
           f"{sum(e.get('sim_decision_fallbacks', 0) for e in ends)}; games replayed without lookahead "
-          f"{sum(1 for e in ends if e.get('sim_fallback'))}; games with lookahead paused (prepared cards) {sum(1 for e in ends if e.get('sim_pauses'))}")
+          f"{sum(1 for e in ends if e.get('sim_fallback'))}; games with lookahead paused (prepared cards or a 150+ permanent board) {sum(1 for e in ends if e.get('sim_pauses'))}")
     # per deck: seat-games, single-survivor wins over decided games, kills, deaths, how it won
     a = defaultdict(lambda: {"games": 0, "decided": 0, "wins": 0, "kills": 0, "deaths": 0, "how": Counter()})
     for r in recs:

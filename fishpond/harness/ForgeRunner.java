@@ -464,11 +464,21 @@ public class ForgeRunner {
         int pauses = 0, pausedTurns = 0;
         final Map<String, Integer> pauseWhy = new TreeMap<>();
 
+        // A board of hundreds of permanents makes every lookahead copy slow: Lumra's Scute Swarm doubling itself and Xyris's
+        // Snakes into Niv's per-creature lifegain each ran a game to the 30-minute limit (study150_20261015_p53 V05 g8,
+        // V06 g4; p51 V06 g11). Lookahead pauses while the battlefield holds SIM_BOARD_CAP permanents or more and resumes
+        // below 80% of it; decisions meanwhile use Forge's own rules, as during a prepared-card pause.
+        static final int SIM_BOARD_CAP = Integer.getInteger("fishpond.simBoardCap", 150);
+
         String unsafeForSim() {
+            int perms = 0;
             for (Player p : g.getPlayers())
-                for (Card c : p.getCardsIn(ZoneType.Battlefield)) if (c.isPrepared()) return "prepared";
+                for (Card c : p.getCardsIn(ZoneType.Battlefield)) { if (c.isPrepared()) return "prepared"; perms++; }
+            if (perms >= (paused && boardPause ? SIM_BOARD_CAP * 4 / 5 : SIM_BOARD_CAP)) { boardPause = true; return "board"; }
+            boardPause = false;
             return null;
         }
+        boolean boardPause = false;
 
         void checkSimSafe() {
             if (simmers.isEmpty()) return;
