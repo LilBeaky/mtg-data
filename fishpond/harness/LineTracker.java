@@ -24,6 +24,7 @@ public class LineTracker {
 
     static final class Record {
         final List<Integer> avail = new ArrayList<>(), did = new ArrayList<>();
+        final Map<Integer, List<String>> hands = new LinkedHashMap<>();   // the seat's hand on turns it missed the line
     }
 
     final Game g;
@@ -33,6 +34,7 @@ public class LineTracker {
     final Map<Player, List<Line>> open = new HashMap<>();       // lines available at the seat's last check
     final Map<Player, Integer> openTurn = new HashMap<>();
     final Map<Player, Map<Line, Record>> records = new HashMap<>();
+    final Map<Player, Integer> cmdFirst = new HashMap<>(), lastTurn = new HashMap<>();   // reach: commander first out, turns seen
 
     LineTracker(Game g, File spec) {
         this.g = g;
@@ -73,11 +75,20 @@ public class LineTracker {
     /** Start of the seat's first main phase (its seat-turn number t): close the last window, open the next. */
     void check(Player p, int t) {
         close(p);
+        lastTurn.put(p, t);
+        if (!cmdFirst.containsKey(p) && cmdOut(p) != null) cmdFirst.put(p, t);
         List<Line> now = new ArrayList<>();
+        List<String> hand = null;
         for (Line l : linesOf(p)) {
             boolean ok;
             try { ok = l.needs.stream().allMatch(n -> holds(p, n)); } catch (Throwable e) { ok = false; }
-            if (ok) { now.add(l); records.get(p).get(l).avail.add(t); }
+            if (ok) {
+                now.add(l);
+                Record r = records.get(p).get(l);
+                r.avail.add(t);
+                if (hand == null) { hand = new ArrayList<>(); for (Card c : p.getCardsIn(ZoneType.Hand)) hand.add(c.getName()); }
+                r.hands.put(t, hand);
+            }
         }
         open.put(p, now);
         openTurn.put(p, t);
@@ -92,8 +103,8 @@ public class LineTracker {
         if (was == null || w == null) return;
         for (Line l : was) {
             Record r = records.get(p).get(l);
-            if (l.did.stream().anyMatch(d -> done(w, d, won))) r.did.add(openTurn.get(p));
-            else if (won) r.avail.remove(openTurn.get(p));     // the seat won before its next turn: the line wasn't needed
+            if (l.did.stream().anyMatch(d -> done(w, d, won))) { r.did.add(openTurn.get(p)); r.hands.remove(openTurn.get(p)); }
+            else if (won) { r.avail.remove(openTurn.get(p)); r.hands.remove(openTurn.get(p)); }   // won anyway: the line wasn't needed
         }
     }
 
@@ -118,17 +129,30 @@ public class LineTracker {
 
     /** After the game: close every open window (the winner's counts its "win") and print one line per seat and line. */
     List<String> finish(Player winner) {
-        for (Player p : g.getRegisteredPlayers()) linesOf(p);
+        for (Player p : g.getRegisteredPlayers()) linesOf(p);   // seats with no lines still get a reach record
         for (Player p : new ArrayList<>(open.keySet())) close(p, p == winner);
         List<String> out = new ArrayList<>();
         for (Map.Entry<Player, Map<Line, Record>> e : records.entrySet()) {
             String seat = e.getKey().getName().replaceAll("^Ai\\((\\d+)\\).*", "$1");
             for (Map.Entry<Line, Record> x : e.getValue().entrySet()) {
                 Line l = x.getKey();
+                StringBuilder hands = new StringBuilder("{");
+                for (Map.Entry<Integer, List<String>> h : x.getValue().hands.entrySet()) {
+                    if (hands.length() > 1) hands.append(", ");
+                    hands.append("\"").append(h.getKey()).append("\": [");
+                    for (int i = 0; i < h.getValue().size(); i++) hands.append(i > 0 ? ", " : "").append(ForgeRunner.js(h.getValue().get(i)));
+                    hands.append("]");
+                }
+                hands.append("}");
                 out.add("{\"seat\": \"" + seat + "\", \"commander\": " + ForgeRunner.js(l.commander) + ", \"kind\": " + ForgeRunner.js(l.kind)
                         + ", \"line\": " + ForgeRunner.js(l.label) + ", \"avail\": " + x.getValue().avail + ", \"did\": " + x.getValue().did
-                        + ", \"won\": " + (e.getKey() == winner) + "}");
+                        + ", \"won\": " + (e.getKey() == winner) + ", \"hands\": " + hands + "}");
             }
+            // reach: one record per seat (kind "reach"): when its commander was first out at a main phase, how many turns it had
+            Player p = e.getKey();
+            String cmd = p.getCommanders().isEmpty() ? "" : p.getCommanders().get(0).getName();
+            out.add("{\"seat\": \"" + seat + "\", \"commander\": " + ForgeRunner.js(cmd) + ", \"kind\": \"reach\", \"line\": \"reach\", \"avail\": [], \"did\": []"
+                    + ", \"won\": " + (p == winner) + ", \"cmd_first\": " + cmdFirst.getOrDefault(p, -1) + ", \"turns\": " + lastTurn.getOrDefault(p, 0) + "}");
         }
         return out;
     }

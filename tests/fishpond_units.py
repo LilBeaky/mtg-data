@@ -128,6 +128,19 @@ with _tf.TemporaryDirectory() as _d:
     _a = _ln.tally([_d])[("Heliod, Sun-Crowned", "closer", "Heliod + Triskelion")]
 check("win-line audit tally", (_a["games"], _a["avail_games"], _a["did_games"], _a["avail_turns"], _a["did_turns"], _a["won_did"], _a["misses"]),
       (3, 2, 1, 3, 1, 1, ["V05 g0 s1"]))
+with _tf.TemporaryDirectory() as _d:
+    _run = os.path.join(_d, "V05_test"); os.makedirs(_run)
+    with open(os.path.join(_run, "games.jsonl"), "w", encoding="utf-8") as _fh:
+        for _g, (_av, _won, _cf, _t) in enumerate([([8], True, 4, 9), ([], False, -1, 6), ([], False, 5, 7)]):
+            _fh.write(_js.dumps({"game": _g, "lines": [
+                {"seat": "1", "commander": "Heliod, Sun-Crowned", "kind": "closer", "line": "Heliod + Triskelion", "avail": _av, "did": [], "won": _won},
+                {"seat": "1", "commander": "Heliod, Sun-Crowned", "kind": "reach", "line": "reach", "avail": [], "did": [], "won": _won,
+                 "cmd_first": _cf, "turns": _t}]}) + chr(10))
+    _r = _ln.reach([_d])["Heliod, Sun-Crowned"]
+    _t = _ln.tally([_d])
+check("reach: lines reached, commander out, turns", (_r["games"], _r["reached"], _r["reached_won"], _r["first"], _r["cmd_first"], _r["cmd_never"], _r["turns"]),
+      (3, 1, 1, [8], [4, 5], 1, [9, 6, 7]))
+check("reach records stay out of the line tally", sorted(k[1] for k in _t), ["closer"])
 
 for f in fails: print("FAIL", f)
 print(f"units: {'all ' if not fails else ''}{count - len(fails)} of {count} passed" if fails else f"units: all {count} passed")

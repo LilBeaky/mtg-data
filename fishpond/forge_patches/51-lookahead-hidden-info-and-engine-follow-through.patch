@@ -1,0 +1,235 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index aa5e571..53395a9 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1148,6 +1148,7 @@ public class AiController {
+         final Map<String, Boolean> danger = new HashMap<>();
+         final Set<String> goalLoops = new HashSet<>();   // the whole game: loops that stopped on lethal
+         final Map<String, Integer> stalledLoops = new HashMap<>();   // patch 48, the whole game: loop -> its owner's gap at the stall
++        final Set<String> libraryLoops = new HashSet<>();            // patch 51, the whole game: loops that stopped near decking
+         int bestGap = Integer.MAX_VALUE, sinceBest = 0;               // patch 48: the running loop's progress
+         Player looper;
+         String key;
+@@ -1201,6 +1202,19 @@ public class AiController {
+         } else {
+             return;
+         }
++        // fishpond patch 51: a loop that draws stops before it decks its owner. Chulane's Drake loop stalled and Forge then
++        // looped Whitemane Lion (cast, return itself, draw) on its own turn and the next until Chulane drew from an empty
++        // library (study150_20261014_p50 V08 g12).
++        if (loopNearsLibraryEnd(sa)) {
++            ls.stopped.add(player.getId() + "#" + key);
++            ls.libraryLoops.add(player.getId() + "#" + key);
++            System.out.println("#FP-LOOP {\"event\": \"stop\", \"player\": \"" + player.getName() + "\", \"turn\": " + ls.turn
++                    + ", \"play\": \"" + sa.getHostCard().getName() + "\", \"iterations\": " + ls.iterations + ", \"reason\": \"library\"}");
++            ls.looper = null;
++            ls.key = null;
++            ls.danger.clear();
++            return;
++        }
+         final int gap = loopGap(player);
+         final boolean goal = gap <= 0;
+         if (gap < ls.bestGap) {
+@@ -1266,7 +1280,31 @@ public class AiController {
+         final String k = player.getId() + "#" + loopKey(sa);
+         final Integer stallGap = ls.stalledLoops.get(k);   // patch 48
+         return ls.stopped.contains(k) || (ls.goalLoops.contains(k) && loopGoalReached(player))
+-                || (stallGap != null && loopGap(player) >= stallGap);
++                || (stallGap != null && loopGap(player) >= stallGap)
++                || (ls.libraryLoops.contains(k) && loopNearsLibraryEnd(sa));   // patch 51
++    }
++
++    /** fishpond patch 51: the play draws (drawsFromCasting) and would leave fewer than LOOP_LIBRARY_FLOOR cards, and no card
++     *  in hand wins from an empty library (winNowSpell casts that one when it wins). */
++    private boolean loopNearsLibraryEnd(final SpellAbility sa) {
++        if (sa == null || sa.isLandAbility() || ComputerUtil.winsOnEmptyLibraryDraw(player)) {
++            return false;
++        }
++        final int draws;
++        try {
++            draws = drawsFromCasting(player, sa, false);
++        } catch (final RuntimeException e) {
++            return false;
++        }
++        if (draws <= 0) {
++            return false;
++        }
++        for (final Card h : player.getCardsIn(ZoneType.Hand)) {
++            if (forge.ai.ability.DrawAi.emptyLibraryWinCard(h)) {
++                return false;
++            }
++        }
++        return player.getCardsIn(ZoneType.Library).size() - draws < LOOP_LIBRARY_FLOOR;
+     }
+ 
+     private boolean inLoop(final SpellAbility sa) {
+@@ -1478,7 +1516,32 @@ public class AiController {
+         return n;
+     }
+ 
++    /** fishpond patch 51: a lifelink counter engine (Heliod, Sun-Crowned) is on the player's battlefield. */
++    static boolean hasLifelinkCounterEngine(final Player p) {
++        for (final Card c : p.getCardsIn(ZoneType.Battlefield)) {
++            for (final Trigger t : c.getTriggers()) {
++                if (t.getMode() != TriggerType.LifeGained || !"You".equals(t.getParam("ValidPlayer"))) {
++                    continue;
++                }
++                final SpellAbility ex = t.ensureAbility();
++                if (ex != null && ex.getApi() == ApiType.PutCounter && "P1P1".equals(ex.getParam("CounterType")) && ex.usesTargeting()) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
+     private AiPlayDecision saSideEffects(final Card card, final SpellAbility sa) {
++        // fishpond patch 51: with Heliod out, Walking Ballista is half the combo, and two counters start the loop with just the
++        // lifelink grant; Forge spent them pinging a mana creature or a Snake token (study150_20261014_p50 V02 g13, V05 g10).
++        // It keeps two unless it is about to die anyway.
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && card != null && sa.isActivatedAbility() && sa.getApi() == ApiType.DealDamage
++                && sa.getPayCosts() != null && sa.getPayCosts().hasSpecificCostType(CostRemoveCounter.class) && !sa.getPayCosts().hasManaCost()
++                && card.isCreature() && card.getCounters(forge.game.card.CounterEnumType.P1P1) <= 2 && hasLifelinkCounterEngine(player)
++                && !ComputerUtil.predictThreatenedObjects(player, null).contains(card)) {
++            return AiPlayDecision.AnotherTime;
++        }
+         if (forge.ai.ability.DrawAi.pilotSeat(player) && player.canLoseLife() && !player.cantLoseForZeroOrLessLife()) {
+             final int lifeCost = lifeCostOf(player, sa);
+             if (lifeCost > 0 && ComputerUtil.aiLifeInDanger(player, true, lifeCost)) {
+@@ -2240,6 +2303,9 @@ public class AiController {
+         SpellAbility sa = null;
+         try {
+             sa = winNowSpell();       // fishpond patch 50
++            if (sa == null) {
++                sa = encoreNow();     // fishpond patch 51
++            }
+             if (sa == null) {
+                 sa = stackedFlips();
+             }
+@@ -2392,7 +2458,12 @@ public class AiController {
+             if (xs <= 0) {
+                 continue;
+             }
+-            final int x = (mana - grant - c.getManaCost().getCMC()) / xs;
++            int x = (mana - grant - c.getManaCost().getCMC()) / xs;
++            if (x < 2) {
++                // fishpond patch 51: not enough for the grant too: X >= 2 now and the loop next turn (p50: Ballista cast for
++                // X=1 and spent on a Llanowar Elves in 4 of 5 misses)
++                x = (mana - c.getManaCost().getCMC()) / xs;
++            }
+             if (x < 2) {
+                 continue;
+             }
+@@ -2486,13 +2557,37 @@ public class AiController {
+     static final class ForgeRunnerMana {
+         static int usable(final Player p) {
+             try {
+-                return ComputerUtilMana.getAvailableManaEstimate(p, false);
++                return ComputerUtilMana.getAvailableManaEstimate(p, true);   // patch 51: untapped sources only
+             } catch (final RuntimeException e) {
+                 return 0;
+             }
+         }
+     }
+ 
++    /** fishpond patch 51: an encore the player can activate now (a graveyard creature card that has encore, Araumi's grant). */
++    private SpellAbility encoreNow() {
++        if (!game.getPhaseHandler().isPlayerTurn(player) || !game.getPhaseHandler().getPhase().isMain() || !game.getStack().isEmpty()) {
++            return null;
++        }
++        SpellAbility best = null;
++        for (final Card c : player.getCardsIn(ZoneType.Graveyard)) {
++            if (!c.isCreature()) {
++                continue;
++            }
++            for (final SpellAbility a : c.getSpellAbilities()) {
++                if (!a.isActivatedAbility() || !a.isKeyword(Keyword.ENCORE)) {
++                    continue;
++                }
++                a.setActivatingPlayer(player);
++                if (a.canPlay() && !loopStopped(a) && ComputerUtilCost.canPayCost(a, player, false)
++                        && (best == null || c.getCMC() > best.getHostCard().getCMC())) {
++                    best = a;
++                }
++            }
++        }
++        return best;
++    }
++
+     /** fishpond patch 50: a spell in hand that wins now (winsNow) and can be cast and paid for. */
+     private SpellAbility winNowSpell() {
+         for (final Card c : player.getCardsIn(ZoneType.Hand)) {
+diff --git a/forge-ai/src/main/java/forge/ai/ability/PumpAi.java b/forge-ai/src/main/java/forge/ai/ability/PumpAi.java
+index 8d9af30..fcf7c12 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/PumpAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/PumpAi.java
+@@ -379,7 +379,8 @@ public class PumpAi extends PumpAiBase {
+         if (ai.getCardsIn(ZoneType.Graveyard).size() <= ai.getOpponents().size()) {
+             return new AiAbilityDecision(0, AiPlayDecision.MissingNeededCards);
+         }
+-        final int mana = ComputerUtilMana.getAvailableManaEstimate(ai, false);
++        // fishpond patch 51: checkPlayable=false counted tapped sources too, and the grant went to a card it couldn't pay for
++        final int mana = ComputerUtilMana.getAvailableManaEstimate(ai, true);
+         final CardCollection options = CardLists.filter(CardUtil.getValidCardsToTarget(sa),
+                 c -> c.isCreature() && c.getOwner() == ai && c.getCMC() <= mana);
+         final Card best = ComputerUtilCard.getBestCreatureAI(options);
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+index 019b130..2f674d0 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+@@ -144,6 +144,15 @@ public class GameCopier {
+         }
+ 
+         copyGameState(newGame, aiPlayer);
++        if (HIDE_HIDDEN && aiPlayer != null && playerMap.get(aiPlayer) != null) {
++            // fishpond patch 51: the order of the AI's own library is hidden from it too (a fixed seed per copy point keeps
++            // runs repeatable and leaves the game's random numbers alone)
++            final forge.game.zone.PlayerZone lib = playerMap.get(aiPlayer).getZone(ZoneType.Library);
++            final List<Card> cards = Lists.newArrayList(lib.getCards());
++            java.util.Collections.shuffle(cards, new java.util.Random(31L * origGame.getId() + 1009L * origPhaseHandler.getTurn()
++                    + cards.size()));
++            lib.setCards(cards);
++        }
+ 
+         for (Player origPlayer : playerMap.keySet()) {
+             if (!origPlayer.isInGame()) {
+@@ -321,6 +330,12 @@ public class GameCopier {
+ 
+     private static PaperCard hidden_info_card = new PaperCard(CardRules.fromScript(Lists.newArrayList("Name:hidden", "Types:Artifact", "Oracle:")), "", CardRarity.Common);
+     private static final boolean PRUNE_HIDDEN_INFO = false;
++    // fishpond patch 51: the lookahead copied every hidden card face up, so the AI simulated with the opponents' hands and
++    // every library's order in view. With Show and Tell, Jin-Gitaxias and an opponent holding Craterhoof, it hard-cast
++    // Prismari instead (it "saw" the Craterhoof; study150_20261014_p50 V09 g0, puzzle show_and_tell_opponent_hand). Now an
++    // opponent's card the AI can't see (hand, library, face down) is a blank in the copy, and the AI's own library keeps its
++    // cards (it knows its deck) in a shuffled order. -Dfishpond.hiddenInfo=true restores the old copy.
++    static final boolean HIDE_HIDDEN = !Boolean.getBoolean("fishpond.hiddenInfo");
+     private static final boolean USE_FROM_PAPER_CARD = true;
+     private Card createCardCopy(Game newGame, Player newOwner, Card c, Player aiPlayer) {
+         if (c.isToken() && !c.isImmutable()) {
+@@ -343,7 +358,8 @@ public class GameCopier {
+         }
+         if (USE_FROM_PAPER_CARD && !c.isImmutable() && c.getPaperCard() != null) {
+             Card newCard;
+-            if (PRUNE_HIDDEN_INFO && aiPlayer != null && !c.getView().canBeShownTo(aiPlayer.getView())) {
++            if ((PRUNE_HIDDEN_INFO || HIDE_HIDDEN && c.getOwner() != null && !c.getOwner().equals(aiPlayer))
++                    && aiPlayer != null && !c.getView().canBeShownTo(aiPlayer.getView())) {
+                 // TODO also check REVEALED_CARDS memory
+                 newCard = new Card(c.getId(), hidden_info_card, newGame);
+                 newCard.setOwner(newOwner);
+diff --git a/forge-ai/src/main/java/forge/ai/ability/PermanentCreatureAi.java b/forge-ai/src/main/java/forge/ai/ability/PermanentCreatureAi.java
+index f36fa58..c5b4b19 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/PermanentCreatureAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/PermanentCreatureAi.java
+@@ -173,6 +173,12 @@ public class PermanentCreatureAi extends PermanentAi {
+         } else {
+             // Doesn't have a ETB trigger and doesn't seem to be good as an ambusher, try to surprise the opp before my turn
+             // TODO: maybe implement a way to reserve mana for this
++            // fishpond patch 51: nothing keeps that mana open, so the creature waited all game: Yusri held Jin-Gitaxias, Core
++            // Augur in 76 of 77 turns across three studies (13 mana open in study150_20261014_p50 V09 g13); Deep Gnome
++            // Terramancer and Yeva, Nature's Herald too. A pilot seat casts it in its own second main phase as well.
++            if (DrawAi.pilotSeat(ai) && ph.is(PhaseType.MAIN2, ai) && game.getStack().isEmpty()) {
++                return true;
++            }
+             return canCastAtOppTurn ? isEOTBeforeMyTurn : isOwnEOT;
+         }
+     }

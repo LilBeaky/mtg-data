@@ -6,6 +6,11 @@ when the seat makes the line's play before its next turn. Each game prints one #
 
   python -m fishpond lines RUN_DIR [RUN_DIR...]    per deck and line across runs (a folder of runs is searched)
 
+Then reach, per deck: how often the seat got to any of its lines at all (not counting the trivial "Yusri attacks") before
+the game ended for it, when its commander was first out at a main phase, and how many
+turns it had. Most losses come before a deck's lines are ever there; the per-line table can't show that. Runs from
+2026-10-15 on carry the commander and turn counts; older runs show "-" there.
+
 Columns: games the line was available in / games the seat played it / turns available / turns played (the rate is per turn),
 the seat's win rate in games the line was available and in games it was played, and up to 5 games where it was available
 and never played (POD gGAME, for `fishpond show` or a log review).
@@ -26,6 +31,7 @@ def tally(paths):
             if not l.strip(): continue
             r = json.loads(l)
             for x in r.get("lines") or []:
+                if x["kind"] == "reach": continue
                 k = (x["commander"], x["kind"], x["line"])
                 a = out.setdefault(k, {"games": 0, "avail_games": 0, "did_games": 0, "avail_turns": 0, "did_turns": 0,
                                        "won_avail": 0, "won_did": 0, "misses": []})
@@ -38,6 +44,49 @@ def tally(paths):
                 elif len(a["misses"]) < 5:
                     a["misses"].append(f"{tag} g{r['game']} s{x['seat']}")
     return out
+
+
+def reach(paths):
+    """{commander: counts} per seat-game: lines reached before the seat's game ended, commander first out, turns."""
+    out = {}
+    for run in runs_under(paths):
+        for l in open(os.path.join(run, "games.jsonl"), encoding="utf-8"):
+            if not l.strip(): continue
+            r = json.loads(l)
+            seats = defaultdict(list)
+            for x in r.get("lines") or []:
+                seats[x["seat"]].append(x)
+            for seat, xs in seats.items():
+                info = next((x for x in xs if x["kind"] == "reach"), None)
+                ls = [x for x in xs if x["kind"] != "reach"]
+                cmd = (info or ls[0] if ls else info)["commander"] if (info or ls) else "?"
+                a = out.setdefault(cmd, {"games": 0, "won": 0, "reached": 0, "reached_won": 0, "first": [], "cmd_first": [],
+                                         "cmd_never": 0, "turns": [], "has_reach": 0})
+                a["games"] += 1
+                won = any(x["won"] for x in xs)
+                a["won"] += won
+                hard = [x for x in ls if not x["line"].startswith("Yusri attacks (free")]   # every line but the trivial one
+                first = min((t for x in hard for t in x["avail"]), default=None)
+                if first is not None:
+                    a["reached"] += 1; a["reached_won"] += won; a["first"].append(first)
+                if info is not None:
+                    a["has_reach"] += 1
+                    a["turns"].append(info["turns"])
+                    if info["cmd_first"] < 0: a["cmd_never"] += 1
+                    else: a["cmd_first"].append(info["cmd_first"])
+    return out
+
+
+def _med(v): return f"{sorted(v)[len(v) // 2]:4d}" if v else "   -"
+
+
+def reach_rows(stats):
+    rows = [f"{'reach':38s} games  won | line reached (won)  first turn | commander out: median turn, never | turns played (median)"]
+    for cmd, a in sorted(stats.items(), key=lambda kv: kv[1]["reached"] / kv[1]["games"]):
+        never = f"{pct(a['cmd_never'], a['has_reach'])}" if a["has_reach"] else "  - "
+        rows.append(f"  {cmd[:36]:36s} {a['games']:5d} {a['won']:4d} | {a['reached']:4d} {pct(a['reached'], a['games'])} ({a['reached_won']:3d})"
+                    f"  {_med(a['first'])}     | {_med(a['cmd_first'])}, {never}           | {_med(a['turns'])}")
+    return rows
 
 
 def pct(a, b): return f"{100 * a / b:3.0f}%" if b else "  - "
@@ -66,3 +115,5 @@ def cmd(paths):
     print("win lines (fishpond/win_lines.txt): available = pieces there at the start of the seat's main phase; "
           "played = the line's play before its next turn")
     for r in lines(s): print(r)
+    print()
+    for r in reach_rows(reach(paths)): print(r)

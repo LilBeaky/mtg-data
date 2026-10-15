@@ -1,0 +1,17 @@
+# title: Show and Tell with an opponent holding Craterhoof: the AI's lookahead can't see that hand, so it still casts Show and Tell into Jin-Gitaxias (Yusri, study150_20261014_p50 V09 g0; patch 51 hides hidden cards from the lookahead)
+# card: Show and Tell
+# turns: 1
+# sim: hybrid
+# expect: cast Show and Tell
+# expect: #FP-PUZZLE end Ai\(1\)-P1 .*Jin-Gitaxias, Core Augur
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Mountain;Mountain;Mountain
+p0hand=Show and Tell;Jin-Gitaxias, Core Augur;Prismari, the Inspiration
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1hand=Craterhoof Behemoth;Forest;Llanowar Elves;Swords to Plowshares
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

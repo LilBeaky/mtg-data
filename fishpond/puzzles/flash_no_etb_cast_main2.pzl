@@ -1,0 +1,16 @@
+# title: Ten mana and Jin-Gitaxias, Core Augur (flash, no enter trigger): the AI casts it on its own turn (second main) and draws seven at its end step; Forge held it for an end step it never kept mana for (Yusri, study150_20261014_p50 V09 g13; patch 51)
+# card: Jin-Gitaxias, Core Augur
+# turns: 1
+# sim: hybrid
+# expect: Add To Stack: Ai\(1\)-P1 cast Jin-Gitaxias, Core Augur
+# expect: Add To Stack: Ai\(1\)-P1 triggered Jin-Gitaxias, Core Augur
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p0hand=Jin-Gitaxias, Core Augur
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

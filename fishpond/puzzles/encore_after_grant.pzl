@@ -1,0 +1,16 @@
+# title: Araumi out, Archon of Cruelty in the graveyard, eight mana and other spells in hand: the AI grants encore and then encores the Archon instead of spending the mana elsewhere (Araumi, study150_20261014_p50 V04 g2; patch 51)
+# card: Araumi of the Dead Tide
+# turns: 1
+# sim: hybrid
+# expect: Add To Stack: Ai\(1\)-P1 activated Archon of Cruelty
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Araumi of the Dead Tide|IsCommander;Swamp;Swamp;Swamp;Swamp;Island;Island;Island;Island
+p0hand=Ashiok, Dream Render;Reef Worm;Swiftfoot Boots
+p0graveyard=Archon of Cruelty;Mire Triton;Island;Swamp;Llanowar Elves
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

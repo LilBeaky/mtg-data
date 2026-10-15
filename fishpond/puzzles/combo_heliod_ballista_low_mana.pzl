@@ -1,0 +1,17 @@
+# title: Heliod out, four mana, Walking Ballista in hand, an opposing Llanowar Elves: the AI casts Ballista for X=2 (the loop runs next turn) and doesn't spend its counters on the Elves (Heliod, study150_20261014_p50 V02 g13; patch 51)
+# card: Walking Ballista
+# turns: 1
+# sim: hybrid
+# expect: cast Walking Ballista
+# forbid: Add To Stack: Ai\(1\)-P1 activated Walking Ballista targeting \[Llanowar
+# expect: #FP-PUZZLE end Ai\(1\)-P1 .*Walking Ballista
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Heliod, Sun-Crowned;Plains;Plains;Plains;Plains
+p0hand=Walking Ballista
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Llanowar Elves;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
