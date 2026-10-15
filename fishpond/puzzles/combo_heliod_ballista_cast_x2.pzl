@@ -1,0 +1,16 @@
+# title: Heliod, Sun-Crowned out and Walking Ballista in hand with six Plains: the AI casts Ballista for X=2, keeps {1}{W} for the lifelink, and pings to the win (it cast Ballista for X=1 in 6 of 11 games, study150_20261014_p49; patch 50)
+# card: Walking Ballista
+# turns: 1
+# sim: hybrid
+# expect: cast Walking Ballista
+# expect: Ai\(1\)-P1 has won
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Heliod, Sun-Crowned;Plains;Plains;Plains;Plains;Plains;Plains
+p0hand=Walking Ballista
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

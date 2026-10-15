@@ -1,4 +1,4 @@
-# title: Chulane, Teller of Tales and Shrieking Drake with three Islands: the Drake returns itself and is cast again, each cast drawing a card and putting a land in (patch 49; study150_20261014_lines: available in 7 games, played in none)
+# title: Chulane, Teller of Tales and Shrieking Drake with three Islands and a 30-card library: the Drake returns itself and is cast again, each cast drawing a card and putting a land in, until 10 cards are left (patches 49-50; study150_20261014_lines: available in 7 games, played in none)
 # card: Shrieking Drake
 # turns: 1
 # sim: hybrid
@@ -11,6 +11,6 @@ activeplayer=p0
 activephase=MAIN1
 p0battlefield=Chulane, Teller of Tales;Island;Island;Island
 p0hand=Shrieking Drake
-p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
 p1battlefield=Forest;Forest
 p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

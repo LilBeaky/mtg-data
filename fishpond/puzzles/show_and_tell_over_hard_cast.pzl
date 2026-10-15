@@ -1,0 +1,16 @@
+# title: Seven mana with Show and Tell, Jin-Gitaxias, Core Augur and Prismari, the Inspiration in hand: the AI casts Show and Tell (into Jin-Gitaxias) instead of hard-casting Prismari with all its mana (Yusri, study150_20261014_p49 V09 g0; patch 50)
+# card: Show and Tell
+# turns: 1
+# sim: hybrid
+# expect: cast Show and Tell
+# expect: #FP-PUZZLE end Ai\(1\)-P1 .*Jin-Gitaxias, Core Augur
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Mountain;Mountain;Mountain
+p0hand=Show and Tell;Jin-Gitaxias, Core Augur;Prismari, the Inspiration
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

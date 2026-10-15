@@ -1,0 +1,14 @@
+# title: Heliod and a one-counter Walking Ballista with six Plains: the AI puts a second counter on it ({4}), gives it lifelink and pings to the win (patch 50)
+# card: Walking Ballista
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 has won
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Heliod, Sun-Crowned;Walking Ballista|Counters:P1P1=1;Plains;Plains;Plains;Plains;Plains;Plains
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,16 @@
+# title: Thassa's Oracle cast with an empty library while Guardian Project is out: the Oracle's win trigger resolves before Guardian Project's draw (Chulane drew from an empty library first, study150_20261014_lines V08 g13; patch 50)
+# card: Thassa's Oracle
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 has won
+# forbid: has lost trying to draw
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Guardian Project;Island;Island;Island;Island
+p0hand=Thassa's Oracle
+p0library=
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

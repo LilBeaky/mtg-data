@@ -1,0 +1,15 @@
+# title: Thassa's Oracle with a 2-card library while Chulane, Silverback Elder and Tatyova are out and a land is in hand: casting it would draw 3 (Chulane, and Tatyova for each land Chulane and Silverback put in), so the AI holds it (patch 50)
+# card: Thassa's Oracle
+# turns: 1
+# sim: hybrid
+# forbid: cast Thassa's Oracle
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Chulane, Teller of Tales;Silverback Elder;Tatyova, Benthic Druid;Island;Island;Island;Island
+p0hand=Thassa's Oracle;Forest
+p0library=Forest;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

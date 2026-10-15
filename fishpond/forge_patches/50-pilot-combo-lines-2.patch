@@ -1,0 +1,309 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 87cd82a..aa5e571 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1348,7 +1348,7 @@ public class AiController {
+         for (SpellAbility a = sa; a != null; a = a.getSubAbility()) {
+             n += drawsForCaster(card, a);
+         }
+-        boolean putsLand = false;   // a cast trigger that may put a land onto the battlefield (Chulane) fires landfall draws too
++        int putsLand = 0;   // lands cast triggers may put onto the battlefield (Chulane, Silverback Elder): each fires landfall draws
+         int landfallDraws = 0;
+         for (final Card c : ai.getCardsIn(ZoneType.Battlefield)) {
+             for (final forge.game.trigger.Trigger t : c.getTriggers()) {
+@@ -1374,7 +1374,24 @@ public class AiController {
+                     n += drawsForCaster(c, a);
+                     if (cast && a.getApi() == ApiType.ChangeZone && "Battlefield".equals(a.getParam("Destination"))
+                             && "Land".equals(a.getParam("ChangeType"))) {
+-                        putsLand = true;
++                        putsLand++;
++                    }
++                    // fishpond patch 50: "look at the top five, you may put a land onto the battlefield" (Silverback Elder) too;
++                    // Chulane cast Thassa's Oracle with Tatyova out, both lands drew, and it decked before the Oracle's trigger
++                    // (study150_20261014_lines V08 g13)
++                    if (cast && a.getApi() == ApiType.Dig && "Battlefield".equals(a.getParam("DestinationZone"))
++                            && a.getParamOrDefault("ChangeValid", "").contains("Land")) {
++                        putsLand++;
++                    }
++                    // a modal trigger (Silverback Elder's "choose one") counts if any of its modes puts a land in
++                    if (cast && a.getApi() == ApiType.Charm && a.hasParam("Choices")) {
++                        for (final String ch : a.getParam("Choices").split(",")) {
++                            final String sv = c.getSVar(ch.trim());
++                            if (sv.contains("Land") && (sv.contains("DestinationZone$ Battlefield") || sv.contains("Destination$ Battlefield"))) {
++                                putsLand++;
++                                break;
++                            }
++                        }
+                     }
+                 }
+             }
+@@ -1388,7 +1405,7 @@ public class AiController {
+                 }
+             }
+         }
+-        return n + (putsLand ? landfallDraws : 0);
++        return n + putsLand * landfallDraws;
+     }
+ 
+     private static int drawsForCaster(final Card host, final SpellAbility a) {
+@@ -2222,7 +2239,10 @@ public class AiController {
+         }
+         SpellAbility sa = null;
+         try {
+-            sa = stackedFlips();
++            sa = winNowSpell();       // fishpond patch 50
++            if (sa == null) {
++                sa = stackedFlips();
++            }
+             if (sa == null && (game.getStack().isEmpty() || !game.getStack().peekAbility().getActivatingPlayer().equals(player))) {
+                 sa = lifelinkCounterLoop();
+                 if (sa == null) {
+@@ -2255,8 +2275,29 @@ public class AiController {
+         if (!engine) {
+             return null;
+         }
++        if (game.getPhaseHandler().isPlayerTurn(player) && game.getPhaseHandler().getPhase() != null
++                && game.getPhaseHandler().getPhase().isMain() && game.getStack().isEmpty()) {
++            final SpellAbility x = castPingerForX();     // fishpond patch 50
++            if (x != null) {
++                return x;
++            }
++        }
+         for (final Card s : player.getCreaturesInPlay()) {
+-            // it must survive losing a counter (Walking Ballista with one counter would die before the life gain)
++            // it must survive losing a counter (Walking Ballista with one counter would die before the life gain); fishpond
++            // patch 50: a pinger that can put a counter on itself ({4} on Ballista) does that first. In study150_20261014_p49
++            // the AI cast Ballista for X=1 with Heliod out in 6 of 11 games, and the loop never started.
++            if (s.getCounters(forge.game.card.CounterEnumType.P1P1) >= 1 && s.getNetToughness() - s.getDamage() - 1 < 1 && pingerOf(s) != null) {
++                for (final SpellAbility a : s.getSpellAbilities()) {
++                    if (a.isActivatedAbility() && a.getApi() == ApiType.PutCounter && "P1P1".equals(a.getParam("CounterType"))
++                            && !a.usesTargeting()) {
++                        a.setActivatingPlayer(player);
++                        if (a.canPlay() && !loopStopped(a) && ComputerUtilCost.canPayCost(a, player, false)) {
++                            COMBO_FOCUS.put(player, s);
++                            return a;
++                        }
++                    }
++                }
++            }
+             if (s.getCounters(forge.game.card.CounterEnumType.P1P1) < 1 || s.getNetToughness() - s.getDamage() - 1 < 1) {
+                 continue;
+             }
+@@ -2294,7 +2335,7 @@ public class AiController {
+                 continue;
+             }
+             ping.setActivatingPlayer(player);
+-            Player tgt = null;
++            Player tgt = null;   // (pingerOf finds this same ability)
+             for (final Player o : player.getOpponents()) {
+                 if (!o.hasLost() && o.canLoseLife() && ping.canTarget(o) && (tgt == null || o.getLife() < tgt.getLife())) {
+                     tgt = o;
+@@ -2315,6 +2356,61 @@ public class AiController {
+         return null;
+     }
+ 
++    /** fishpond patch 50: a creature's "remove a +1/+1 counter: deal damage" ability with no mana cost (Ballista, Triskelion). */
++    private static SpellAbility pingerOf(final Card s) {
++        for (final SpellAbility a : s.getSpellAbilities()) {
++            if (a.isActivatedAbility() && a.getApi() == ApiType.DealDamage && a.usesTargeting() && a.getPayCosts() != null
++                    && a.getPayCosts().hasSpecificCostType(CostRemoveCounter.class) && !a.getPayCosts().hasManaCost()) {
++                return a;
++            }
++        }
++        return null;
++    }
++
++    /** fishpond patch 50: with a lifelink counter engine out, a pinger with X counters in hand (Walking Ballista) is cast for the
++     *  most X that leaves the mana of a lifelink grant open, if that X is at least 2; Forge cast it for X=1. */
++    private SpellAbility castPingerForX() {
++        int grant = -1;
++        for (final Card g : player.getCardsIn(ZoneType.Battlefield)) {
++            for (final SpellAbility a : g.getSpellAbilities()) {
++                if (a.isActivatedAbility() && a.getApi() == ApiType.Pump && a.usesTargeting() && a.getParamOrDefault("KW", "").contains("Lifelink")
++                        && a.getPayCosts() != null && a.getPayCosts().getTotalMana() != null) {
++                    final int c = a.getPayCosts().getTotalMana().getCMC();
++                    grant = grant < 0 ? c : Math.min(grant, c);
++                }
++            }
++        }
++        if (grant < 0) {
++            return null;
++        }
++        final int mana = ForgeRunnerMana.usable(player);
++        for (final Card c : player.getCardsIn(ZoneType.Hand)) {
++            if (!c.isCreature() || pingerOf(c) == null) {
++                continue;
++            }
++            final int xs = c.getManaCost().countX();
++            if (xs <= 0) {
++                continue;
++            }
++            final int x = (mana - grant - c.getManaCost().getCMC()) / xs;
++            if (x < 2) {
++                continue;
++            }
++            for (final SpellAbility sp : c.getSpells()) {
++                sp.setActivatingPlayer(player);
++                if (!sp.canPlay() || loopStopped(sp)) {
++                    continue;
++                }
++                sp.setXManaCostPaid(x);
++                if (ComputerUtilCost.canPayCost(sp, player, false)) {
++                    return sp;
++                }
++                sp.setXManaCostPaid(null);
++            }
++        }
++        return null;
++    }
++
+     /** A "whenever you cast a creature spell" trigger of a permanent the player controls (Chulane, Teller of Tales). */
+     public static boolean hasCreatureCastPayoff(final Player p) {
+         for (final Card c : p.getCardsIn(ZoneType.Battlefield)) {
+@@ -2348,13 +2444,64 @@ public class AiController {
+         if (!hasCreatureCastPayoff(player)) {
+             return null;
+         }
++        // fishpond patch 50: the loop draws (Chulane), and nothing stopped it short of the library's end: Chulane decked itself
++        // 6 times in study150_20261014_p49 (3 before). It stops with LOOP_LIBRARY_FLOOR cards left, unless a card in hand wins
++        // from a small library (Thassa's Oracle) and the mana for it stays open after this cast; winNowSpell casts it once it wins.
++        final int lib = player.getCardsIn(ZoneType.Library).size();
++        Card winCard = null;
++        for (final Card h : player.getCardsIn(ZoneType.Hand)) {
++            if (forge.ai.ability.DrawAi.emptyLibraryWinCard(h)) {
++                winCard = h;
++            }
++        }
+         for (final Card c : player.getCardsIn(ZoneType.Hand)) {
+             if (!c.isCreature() || !returnsOwnCreatureOnEnter(c)) {
+                 continue;
+             }
+             for (final SpellAbility sp : c.getSpells()) {
+                 sp.setActivatingPlayer(player);
+-                if (sp.canPlay() && !loopStopped(sp) && ComputerUtilCost.canPayCost(sp, player, false)) {
++                if (!sp.canPlay() || loopStopped(sp) || !ComputerUtilCost.canPayCost(sp, player, false)) {
++                    continue;
++                }
++                final int draws = drawsFromCasting(player, sp, false);
++                int floor = LOOP_LIBRARY_FLOOR;
++                if (winCard != null) {
++                    final int cost = sp.getPayCosts().getTotalMana().getCMC() + winCard.getCMC();
++                    if (ForgeRunnerMana.usable(player) >= cost) {
++                        floor = 0;
++                    }
++                }
++                if (lib - draws < floor) {
++                    continue;
++                }
++                return sp;
++            }
++        }
++        return null;
++    }
++
++    private static final int LOOP_LIBRARY_FLOOR = Integer.getInteger("fishpond.loopLibraryFloor", 10);
++
++    /** Mana the player can make now, Forge's own estimate (fishpond patch 50). */
++    static final class ForgeRunnerMana {
++        static int usable(final Player p) {
++            try {
++                return ComputerUtilMana.getAvailableManaEstimate(p, false);
++            } catch (final RuntimeException e) {
++                return 0;
++            }
++        }
++    }
++
++    /** fishpond patch 50: a spell in hand that wins now (winsNow) and can be cast and paid for. */
++    private SpellAbility winNowSpell() {
++        for (final Card c : player.getCardsIn(ZoneType.Hand)) {
++            for (final SpellAbility sp : c.getSpells()) {
++                sp.setActivatingPlayer(player);
++                // a card left over after the cast's own draws; a closer count goes through the normal choice (patch 20,
++                // the one-move check), where winsNow still puts it first
++                if (winsNow(sp) && sp.canPlay() && ComputerUtilCost.canPayCost(sp, player, false)
++                        && drawsFromCasting(player, sp, true) < player.getCardsIn(ZoneType.Library).size()) {
+                     return sp;
+                 }
+             }
+@@ -2451,6 +2598,7 @@ public class AiController {
+                 }
+                 all.sort(Comparator.comparing((SpellAbility x) -> !encoreNow(x)));      // fishpond patch 37 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !commanderNow(x)));   // fishpond patch 24 (stable sort)
++                all.sort(Comparator.comparing((SpellAbility x) -> !cheatsInBig(x)));    // fishpond patch 50 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !winsNow(x)));        // fishpond patch 49 (stable sort)
+             }
+         } catch (IllegalArgumentException ex) {
+@@ -3209,9 +3357,44 @@ public class AiController {
+ 
+         result.addAll(mandatoryDiscard);
+ 
++        // fishpond patch 50: a trigger that can win the game (Thassa's Oracle's) resolves first. Guardian Project's draw
++        // triggered with it, went on top, and drew from an empty library before the Oracle could win (V08 g13).
++        if (forge.ai.ability.DrawAi.pilotSeat(player)) {
++            final List<SpellAbility> wins = filterList(result, AiController::hasWinEffect);
++            result.addAll(wins);
++        }
+         return result;
+     }
+ 
++    /** fishpond patch 50: a spell that puts a permanent from its caster's hand onto the battlefield (Show and Tell) with a
++     *  permanent of mana value 7+ in hand to put, worth more than its own cost says. Forge orders candidates by mana value, so
++     *  Yusri hard-cast Prismari (7) with Show and Tell and Jin-Gitaxias (10) in hand, and Show and Tell then couldn't be paid
++     *  for (study150_20261014_p49 V09 g0, 1 of 5 games available). It goes ahead of the others; its own "only when" hint
++     *  (Show and Tell: a 4+ permanent in hand) and the one-move check still apply. */
++    private boolean cheatsInBig(final SpellAbility sa) {
++        if (sa == null || !sa.isSpell() || sa.getApi() != ApiType.ChangeZone || !"Hand".equals(sa.getParam("Origin"))
++                || !"Battlefield".equals(sa.getParam("Destination"))) {
++            return false;
++        }
++        int best = 0;
++        for (final Card c : player.getCardsIn(ZoneType.Hand)) {
++            if (c != sa.getHostCard() && c.isPermanent() && !c.isLand()) {
++                best = Math.max(best, c.getCMC());
++            }
++        }
++        return best >= 7;
++    }
++
++    /** fishpond patch 50: the ability or one of its sub-abilities wins the game. */
++    static boolean hasWinEffect(final SpellAbility sa) {
++        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++            if (x.getApi() == ApiType.WinsGame) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     // TODO move to more common place
+     private static <T> List<T> filterList(List<T> input, Predicate<? super T> pred) {
+         List<T> filtered = input.stream().filter(pred).collect(Collectors.toList());
+diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+index cdcdb5f..1cbdb04 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+@@ -1582,6 +1582,23 @@ public class ChangeZoneAi extends SpellAbilityAi {
+             }
+         }
+ 
++        // fishpond patch 50: a permanent put from its owner's hand onto the battlefield for free (Show and Tell) is the one
++        // with the most mana value: skipping its cost is the point. Forge picked by creature evaluation and put Prismari (7/7,
++        // 7 mana) in over Jin-Gitaxias, Core Augur (10). Lands and other choices are as before.
++        if (destination == ZoneType.Battlefield && origin != null && origin.contains(ZoneType.Hand) && decider != null
++                && forge.ai.ability.DrawAi.pilotSeat(decider)) {
++            Card big = null;
++            for (final Card c : fetchList) {
++                if (c.getOwner() == decider && c.isInZone(ZoneType.Hand) && c.isPermanent() && !c.isLand()
++                        && (big == null || c.getCMC() > big.getCMC())) {
++                    big = c;
++                }
++            }
++            if (big != null && big.getCMC() >= 4) {
++                return big;
++            }
++        }
++
+         // Can we extract this up to SPellAbilityAi for everything to have access to?
+         Card keycardFound = null;
+         for (String keyName : keyCards) {

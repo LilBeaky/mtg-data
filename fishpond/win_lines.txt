@@ -27,7 +27,7 @@ Niv-Mizzet, Ghost Counsel | engine | Bolas's Citadel | castable:Bolas's Citadel 
 Yusri, Fortune's Flame | closer | Win now: Oracle with a tiny library | castable:Thassa's Oracle; library<=2 | cast:Thassa's Oracle
 Yusri, Fortune's Flame | closer | Win now: Lab Man or Jace with an empty library | ready:Laboratory Maniac/Jace, Wielder of Mysteries; library<=0 | win
 Yusri, Fortune's Flame | closer | Enter the Infinite | castable:Enter the Infinite | cast:Enter the Infinite
-Yusri, Fortune's Flame | closer | Zndrsplt + Frenetic Efreet | bf:Zndrsplt, Eye of Wisdom; ready:Frenetic Efreet | act:Frenetic Efreet>=5
+Yusri, Fortune's Flame | closer | Zndrsplt + Frenetic Efreet with Lab Man or Jace | bf:Zndrsplt, Eye of Wisdom; ready:Frenetic Efreet; bf:Laboratory Maniac/Jace, Wielder of Mysteries | act:Frenetic Efreet>=5
 Yusri, Fortune's Flame | engine | Yusri attacks (free-cast flips) | cmd | attack:cmd
 Yusri, Fortune's Flame | engine | Yusri attacks with Krark's Thumb | cmd; bf:Krark's Thumb | attack:cmd
 Yusri, Fortune's Flame | engine | Show and Tell a big threat | castable:Show and Tell; hand_cmc>=7 | cast:Show and Tell

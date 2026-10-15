@@ -1,0 +1,16 @@
+# title: Chulane and Shrieking Drake with an 11-card library and no Oracle: the loop stops with cards left instead of drawing the library out (Chulane decked 6 times in study150_20261014_p49; patch 50)
+# card: Shrieking Drake
+# turns: 2
+# sim: hybrid
+# expect: cast Shrieking Drake
+# forbid: has lost trying to draw
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Chulane, Teller of Tales;Island;Island;Island;Island;Island;Island;Island;Island
+p0hand=Shrieking Drake
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
