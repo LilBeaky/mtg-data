@@ -1,0 +1,17 @@
+# title: Sprout Swarm loop into an opponent whose Soul's Attendant and Auriok Champion gain 2 life for every 1-power Saproling (study150_20261014_p51 V01 g12, Niv-Mizzet): Witherbloom recast with their triggers still on the stack and ran into the board cap; now the triggers resolve between iterations, the loop never brings lethal closer, and it stops (Forge stops casting within about 20 iterations) without jumping (patch 52)
+# card: Sprout Swarm
+# turns: 1
+# sim: hybrid
+# expect: #FP-LOOP .*"start".*"Sprout Swarm"
+# forbid: #FP-LOOP .*"jump"
+# forbid: #FP-LOOP .*"iterations": ([4-9][0-9]|[1-9][0-9][0-9])
+p0life=20
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Witherbloom, the Balancer|IsCommander;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Forest;Forest
+p0hand=Sprout Swarm
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Soul's Attendant;Auriok Champion;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,9 +1,10 @@
-# title: Sprout Swarm repeated into two Soul Wardens: once their life gain resolves between casts, each Saproling gives the opponent 2 life for 1 power, so lethal only gets further away; the loop shortcut stops it as stalled instead of running on (patch 48; the study case was Zhulodok's Wandering Archaics copying each cast, study150_20261014 V02 g4)
+# title: Sprout Swarm repeated into two Soul Wardens: once their life gain resolves between casts, each Saproling gives the opponent 2 life for 1 power, so lethal only gets further away; the loop shortcut stops it as stalled instead of running on (patch 48; the study case was Zhulodok's Wandering Archaics copying each cast, study150_20261014 V02 g4) Since patch 52 the Wardens' triggers resolve between iterations, so the loss shows at once: Forge stops casting within about 20 iterations, before the stall count, and the loop never jumps.
 # card: Sprout Swarm
 # seed: 1
 # turns: 2
 # sim: hybrid
-# expect: #FP-LOOP .*"stop".*"stalled"
+# expect: #FP-LOOP .*"start".*"Sprout Swarm"
+# forbid: #FP-LOOP .*"jump"
 # forbid: #FP-LOOP .*"iterations": ([4-9][0-9]|[1-9][0-9][0-9])
 p0life=20
 p1life=14

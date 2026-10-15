@@ -1,0 +1,17 @@
+# title: Witherbloom's Sprout Swarm loop with Archmage Emeritus (a draw per cast) and Thassa's Oracle in a 30-card library: the unbounded loop jumps; run on the opponent's turn before its own (Forge casts the instant then), it draws down to two cards, its draw step takes one, and it casts the Oracle with one card left to win (the user, 2026-10-15; patch 52)
+# card: Sprout Swarm
+# turns: 4
+# sim: hybrid
+# expect: #FP-LOOP .*"jump".*"reason": "library"
+# expect: cast Thassa's Oracle
+# forbid: lost trying to draw
+p0life=20
+p1life=600
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Witherbloom, the Balancer|IsCommander;Archmage Emeritus;Llanowar Elves;Llanowar Elves;Llanowar Elves;Forest;Forest;Island;Island
+p0hand=Sprout Swarm
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Thassa's Oracle;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

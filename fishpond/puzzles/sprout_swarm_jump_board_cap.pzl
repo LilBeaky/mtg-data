@@ -1,0 +1,16 @@
+# title: Witherbloom's Sprout Swarm loop against an opponent at 600 life (Niv-Mizzet's lifegain table in study150_20261014_p51 V01 g12, where the loop ran out of memory): the loop jumps once to the board cap (200 creatures) and stops, no out-of-memory (patch 52)
+# card: Sprout Swarm
+# turns: 1
+# sim: hybrid
+# expect: #FP-LOOP .*"jump".*"reason": "board"
+# forbid: OutOfMemoryError
+p0life=20
+p1life=600
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Witherbloom, the Balancer|IsCommander;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Forest;Forest
+p0hand=Sprout Swarm
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Grizzly Bears;Grizzly Bears;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

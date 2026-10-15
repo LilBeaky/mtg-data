@@ -1,0 +1,15 @@
+# title: Witherbloom, four creatures and two Forests, Sprout Swarm in hand, opponent at 40 behind 6 blockers: once the loop runs on convoke alone it is unbounded, and it jumps to lethal through the blockers in one step instead of casting Sprout Swarm 50 times (patch 52)
+# card: Sprout Swarm
+# turns: 1
+# sim: hybrid
+# expect: #FP-LOOP .*"jump".*"reason": "goal"
+p0life=20
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Witherbloom, the Balancer|IsCommander;Llanowar Elves;Llanowar Elves;Llanowar Elves;Llanowar Elves;Forest;Forest
+p0hand=Sprout Swarm
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

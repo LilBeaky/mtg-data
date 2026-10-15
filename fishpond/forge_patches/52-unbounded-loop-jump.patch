@@ -1,0 +1,305 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 53395a9..185601c 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1149,10 +1149,12 @@ public class AiController {
+         final Set<String> goalLoops = new HashSet<>();   // the whole game: loops that stopped on lethal
+         final Map<String, Integer> stalledLoops = new HashMap<>();   // patch 48, the whole game: loop -> its owner's gap at the stall
+         final Set<String> libraryLoops = new HashSet<>();            // patch 51, the whole game: loops that stopped near decking
++        final List<int[]> sigs = new ArrayList<>();                  // patch 52: the running loop's state at each iteration
+         int bestGap = Integer.MAX_VALUE, sinceBest = 0;               // patch 48: the running loop's progress
+         Player looper;
+         String key;
+         int iterations;
++        boolean jumped;   // patch 52: the play just chosen was a loop's that has jumped; choose again
+     }
+ 
+     private static final Map<Game, LoopState> LOOPS = Collections.synchronizedMap(new WeakHashMap<>());
+@@ -1195,6 +1197,7 @@ public class AiController {
+             ls.iterations = n;
+             ls.bestGap = Integer.MAX_VALUE;
+             ls.sinceBest = 0;
++            ls.sigs.clear();
+             System.out.println("#FP-LOOP {\"event\": \"start\", \"player\": \"" + player.getName() + "\", \"turn\": " + ls.turn
+                     + ", \"play\": \"" + sa.getHostCard().getName() + "\", \"land\": " + sa.isLandAbility() + "}");
+         } else if (ls.looper == player && key.equals(ls.key)) {
+@@ -1202,6 +1205,16 @@ public class AiController {
+         } else {
+             return;
+         }
++        // fishpond patch 52: a loop that adds the same thing every iteration at no cost jumps to its result (loopJump), and
++        // any loop stops once its owner has LOOP_BOARD_CAP creatures (Witherbloom's second Sprout Swarm loop ran out of
++        // memory: study150_20261014_p51 V01 g12)
++        if (player.getCreaturesInPlay().size() >= LOOP_BOARD_CAP) {
++            stopLoop(ls, sa, key, "board", false);
++            return;
++        }
++        if (LOOP_JUMP && loopJump(ls, sa, key)) {
++            return;
++        }
+         // fishpond patch 51: a loop that draws stops before it decks its owner. Chulane's Drake loop stalled and Forge then
+         // looped Whitemane Lion (cast, return itself, draw) on its own turn and the next until Chulane drew from an empty
+         // library (study150_20261014_p50 V08 g12).
+@@ -1240,6 +1253,237 @@ public class AiController {
+         }
+     }
+ 
++    // ---- fishpond patch 52: unbounded loops jump to their result (the user, 2026-10-15: "here's my loop, response? no?
++    // execute it as many times as it takes") ----
++    // A loop is unbounded when two iterations in a row change the game the same way at no cost: the same untapped mana and
++    // untapped creatures (or more), the same nontoken permanents and graveyard, the opponents' hands, libraries and
++    // permanents unchanged, and each iteration adds something: tokens, opponents' life lost, or cards drawn (drawn cards go
++    // to hand, nothing else leaves it). The opponents had their response windows in the iterations before (patch 15's
++    // shortcut lets them answer the first LOOP_CONFIRM; Forge's own priority passes give them one per iteration until then).
++    // Then the loop's result is applied at once:
++    //   - opponents losing life: every opponent loses the rest of their life (an unbounded drain or ping, Heliod + Ballista);
++    //   - tokens from the loop's own spell (Sprout Swarm): its token effect resolves once for as many iterations as reach
++    //     lethal through blockers (loopGap), at most up to LOOP_BOARD_CAP creatures, and the same share of them is tapped
++    //     as the iterations would have tapped (convoke);
++    //   - draws: down to one card when the player has a card that wins from an empty library (Thassa's Oracle, in hand or
++    //     library: winNowSpell casts it next), else down to LOOP_LIBRARY_FLOOR.
++    // A loop whose iterations don't match, or that adds tokens some other way, keeps running step by step (patch 15).
++    // -Dfishpond.loopJump=false turns it off; -Dfishpond.loopBoardCap sets the cap (200).
++    static final boolean LOOP_JUMP = !"false".equals(System.getProperty("fishpond.loopJump"));
++    static final int LOOP_BOARD_CAP = Integer.getInteger("fishpond.loopBoardCap", 200);
++    private static final int S_MANA = 0, S_UNTAPPED = 1, S_HAND = 2, S_LIB = 3, S_GY = 4, S_PERMS = 5, S_TOKENS = 6, S_LIFE = 7,
++            S_OPP_LIFE = 8, S_OPP_ALIVE = 9, S_OPP_HAND = 10, S_OPP_LIB = 11, S_OPP_PERMS = 12, S_CREATURES = 13, S_GAP = 14,
++            S_TURN = 15, S_PHASE = 16, S_STACK = 17;
++
++    private int[] loopSig() {
++        final int[] s = new int[18];
++        s[S_MANA] = getAvailableManaEstimate(player, true) + player.getManaPool().totalMana();
++        int untapped = 0, tokens = 0;
++        final List<String> perms = new ArrayList<>();
++        for (final Card c : player.getCardsIn(ZoneType.Battlefield)) {
++            if (c.isCreature() && c.isUntapped()) {
++                untapped++;
++            }
++            if (c.isToken()) {
++                tokens++;
++            } else {
++                perms.add(c.getName());
++            }
++        }
++        java.util.Collections.sort(perms);
++        s[S_UNTAPPED] = untapped;
++        s[S_HAND] = player.getCardsIn(ZoneType.Hand).size();
++        s[S_LIB] = player.getCardsIn(ZoneType.Library).size();
++        s[S_GY] = player.getCardsIn(ZoneType.Graveyard).size();
++        s[S_PERMS] = perms.hashCode();
++        s[S_TOKENS] = tokens;
++        s[S_LIFE] = player.getLife();
++        for (final Player o : player.getOpponents()) {
++            if (o.hasLost()) {
++                continue;
++            }
++            s[S_OPP_LIFE] += o.getLife();
++            s[S_OPP_ALIVE]++;
++            s[S_OPP_HAND] += o.getCardsIn(ZoneType.Hand).size();
++            s[S_OPP_LIB] += o.getCardsIn(ZoneType.Library).size();
++            s[S_OPP_PERMS] += o.getCardsIn(ZoneType.Battlefield).size();
++        }
++        s[S_CREATURES] = player.getCreaturesInPlay().size();
++        s[S_GAP] = loopGap(player);
++        s[S_TURN] = game.getPhaseHandler().getTurn();
++        s[S_PHASE] = game.getPhaseHandler().getPhase() == null ? -1 : game.getPhaseHandler().getPhase().ordinal();
++        s[S_STACK] = game.getStack().size();
++        return s;
++    }
++
++    /** The per-iteration change if the last three snapshots show an unbounded loop, else null. */
++    static int[] unboundedDelta(final List<int[]> sigs) {
++        if (sigs.size() < 3) {
++            return null;
++        }
++        final int[] a = sigs.get(sigs.size() - 3), b = sigs.get(sigs.size() - 2), c = sigs.get(sigs.size() - 1);
++        if (a[S_PERMS] != b[S_PERMS] || b[S_PERMS] != c[S_PERMS] || a[S_TURN] != c[S_TURN] || a[S_PHASE] != c[S_PHASE]) {
++            return null;
++        }
++        final int[] d = new int[a.length];
++        for (int i = 0; i < a.length; i++) {
++            if (i == S_PERMS || i == S_GAP || i == S_TURN || i == S_PHASE) {
++                continue;
++            }
++            if (b[i] - a[i] != c[i] - b[i]) {
++                return null;
++            }
++            d[i] = c[i] - b[i];
++        }
++        d[S_GAP] = c[S_GAP] - b[S_GAP];
++        final boolean free = d[S_STACK] == 0 && d[S_MANA] >= 0 && d[S_UNTAPPED] >= 0 && d[S_GY] == 0 && d[S_OPP_ALIVE] == 0 && d[S_OPP_HAND] == 0
++                && d[S_OPP_LIB] == 0 && d[S_OPP_PERMS] == 0 && d[S_LIB] <= 0 && d[S_HAND] == -d[S_LIB];
++        // tokens count as progress only while they bring lethal closer: Saprolings into an opponent's Soul Wardens (2 life
++        // for each 1-power token) are unbounded but pointless, and that loop stops as stalled (patch 48) instead
++        final boolean progress = (d[S_TOKENS] > 0 && d[S_GAP] < 0) || d[S_OPP_LIFE] < 0 || d[S_LIB] < 0;
++        return free && progress ? d : null;
++    }
++
++    private static boolean inSimulation() {
++        for (final StackTraceElement e : Thread.currentThread().getStackTrace()) {
++            if (e.getClassName().startsWith("forge.ai.simulation")) {
++                return true;
++            }
++        }
++        return false;
++    }
++
++    private void stopLoop(final LoopState ls, final SpellAbility sa, final String key, final String reason, final boolean goal) {
++        final String k = player.getId() + "#" + key;
++        ls.stopped.add(k);
++        if (goal) {
++            ls.goalLoops.add(k);
++        } else if (!"library".equals(reason)) {
++            ls.stalledLoops.put(k, loopGap(player));   // off while its owner is no closer than now
++        }
++        System.out.println("#FP-LOOP {\"event\": \"stop\", \"player\": \"" + player.getName() + "\", \"turn\": " + ls.turn
++                + ", \"play\": \"" + sa.getHostCard().getName() + "\", \"iterations\": " + ls.iterations + ", \"reason\": \"" + reason + "\"}");
++        ls.looper = null;
++        ls.key = null;
++        ls.danger.clear();
++        ls.sigs.clear();
++    }
++
++    private boolean loopJump(final LoopState ls, final SpellAbility sa, final String key) {
++        // a snapshot per iteration, between iterations (chooseSpellAbilityToPlay lets a confirmed loop's leftover triggers
++        // resolve first, so each snapshot holds a whole iteration's effect)
++        if (!game.getStack().isEmpty()) {
++            return false;
++        }
++        ls.sigs.add(loopSig());
++        if (ls.sigs.size() > 3) {
++            ls.sigs.remove(0);
++        }
++        final int[] d = unboundedDelta(ls.sigs);
++        if (d == null || inSimulation()) {
++            return false;
++        }
++        final int[] s = ls.sigs.get(ls.sigs.size() - 1);
++        String reason;
++        int cycles = 0, made = 0, drawn = 0;
++        if (d[S_OPP_LIFE] < 0) {
++            // an unbounded drain or ping: every opponent loses
++            for (final Player o : Lists.newArrayList(player.getOpponents())) {
++                if (!o.hasLost() && o.getLife() > 0) {
++                    o.loseLife(o.getLife(), false, false, sa);
++                }
++            }
++            cycles = (s[S_OPP_LIFE] + (-d[S_OPP_LIFE]) - 1) / (-d[S_OPP_LIFE]);
++            reason = "lethal";
++        } else {
++            int n = Integer.MAX_VALUE;
++            SpellAbility tokenSa = null;
++            String tokenReason = null;   // decided from the arithmetic: triggers of the new tokens haven't resolved yet
++            if (d[S_TOKENS] > 0) {
++                for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++                    if (x.getApi() == ApiType.Token) {
++                        tokenSa = x;
++                        break;
++                    }
++                }
++                if (tokenSa == null) {
++                    return false;   // tokens from elsewhere (a trigger): step by step
++                }
++                final int gapStep = -d[S_GAP];
++                final int need = s[S_GAP] <= 0 ? 0 : gapStep > 0 ? (s[S_GAP] + gapStep - 1) / gapStep : Integer.MAX_VALUE;
++                final int room = Math.max(0, (LOOP_BOARD_CAP - s[S_CREATURES]) / d[S_TOKENS]);
++                n = Math.min(need, room);
++                tokenReason = need <= room ? "goal" : "board";
++            }
++            boolean drawBound = false;
++            if (d[S_LIB] < 0) {
++                // with a card that wins from an empty library (Thassa's Oracle) it draws down to one card when that card can
++                // be cast right after (own main phase, its mana open: the loop is free), or to two in the turn just before
++                // the seat's own (its draw step takes one; Forge casts these instant-speed loops on other players' turns);
++                // otherwise to the floor, and the loop can run again later
++                final forge.game.phase.PhaseHandler ph = game.getPhaseHandler();
++                final boolean ownMain = ph.isPlayerTurn(player) && ph.getPhase().isMain();
++                final boolean turnBefore = !ph.isPlayerTurn(player) && player.equals(ph.getNextTurn());
++                int keep = LOOP_LIBRARY_FLOOR;
++                for (final Card c : com.google.common.collect.Iterables.concat(player.getCardsIn(ZoneType.Hand), player.getCardsIn(ZoneType.Library))) {
++                    if (!forge.ai.ability.DrawAi.emptyLibraryWinCard(c)) {
++                        continue;
++                    }
++                    if (ownMain && getAvailableManaEstimate(player, true) >= c.getCMC()) {
++                        keep = 1;
++                        break;
++                    }
++                    if (turnBefore && getAvailableManaEstimate(player, false) >= c.getCMC()) {
++                        keep = 2;
++                    }
++                }
++                final int drawMax = Math.max(0, (s[S_LIB] - keep) / (-d[S_LIB]));
++                drawBound = drawMax <= n;
++                n = Math.min(n, drawMax);
++            }
++            if (n == Integer.MAX_VALUE) {
++                return false;
++            }
++            cycles = n;
++            if (n > 0 && tokenSa != null) {
++                final Set<Card> before = new HashSet<>(player.getCardsIn(ZoneType.Battlefield));
++                final SpellAbility batch = tokenSa.copy(tokenSa.getHostCard(), player, false);
++                final int per = AbilityUtils.calculateAmount(tokenSa.getHostCard(), tokenSa.getParamOrDefault("TokenAmount", "1"), tokenSa);
++                batch.putParam("TokenAmount", String.valueOf(per * n));
++                batch.setSubAbility(null);
++                batch.getApi().getSpellEffect().resolve(batch);
++                final List<Card> fresh = new ArrayList<>();
++                for (final Card c : player.getCardsIn(ZoneType.Battlefield)) {
++                    if (!before.contains(c) && c.isToken()) {
++                        fresh.add(c);
++                    }
++                }
++                made = fresh.size();
++                // the iterations tapped as many creatures as they didn't leave untapped (convoke)
++                int tap = Math.max(0, (d[S_TOKENS] - d[S_UNTAPPED]) * n);
++                for (final Card c : fresh) {
++                    if (tap-- <= 0) {
++                        break;
++                    }
++                    if (c.isCreature()) {
++                        c.setTapped(true);
++                    }
++                }
++            }
++            if (n > 0 && d[S_LIB] < 0) {
++                drawn = player.drawCards(-d[S_LIB] * n, sa, null).size();
++            }
++            game.getAction().checkStateEffects(true);
++            reason = drawBound ? "library" : tokenReason != null ? tokenReason : "jumped";
++        }
++        System.out.println("#FP-LOOP {\"event\": \"jump\", \"player\": \"" + player.getName() + "\", \"turn\": " + ls.turn
++                + ", \"play\": \"" + sa.getHostCard().getName() + "\", \"cycles\": " + cycles + ", \"tokens\": " + made
++                + ", \"drawn\": " + drawn + ", \"reason\": \"" + reason + "\"}");
++        ls.jumped = true;
++        stopLoop(ls, sa, key, reason, "goal".equals(reason) || "lethal".equals(reason));
++        return true;
++    }
++
+     /** The looper's creatures, after the opponents chump-block its biggest attackers one each, cover their life. */
+     static boolean loopGoalReached(final Player p) {
+         return loopGap(p) <= 0;
+@@ -1998,8 +2242,24 @@ public class AiController {
+             return null;
+         }
+         final List<SpellAbility> chosen = chooseSpellAbilityToPlay0();
++        // fishpond patch 52: a confirmed loop lets the triggers its last iteration left on the stack resolve before the next
++        // one (an opponent's Soul's Attendant gaining life for each Saproling: Witherbloom recast in response every time, so
++        // the life gain never counted and the loop chased lethal into the board cap, study150_20261014_p51 V01 g12); then
++        // each iteration's whole effect is on the board for the stall check and the jump
++        if (ls != null && LOOP_JUMP && ls.looper == player && ls.iterations >= LOOP_CONFIRM && !game.getStack().isEmpty()
++                && chosen != null && !chosen.isEmpty() && chosen.get(0) != null && chosen.get(0).getHostCard() != null
++                && loopKey(chosen.get(0)).equals(ls.key)) {
++            return null;
++        }
+         if (ls != null && chosen != null && !chosen.isEmpty() && chosen.get(0) != null && chosen.get(0).getHostCard() != null) {
+             noteLoopPlay(ls, chosen.get(0));
++            if (ls.jumped) {
++                ls.jumped = false;    // fishpond patch 52
++                if (game.isGameOver()) {
++                    return null;
++                }
++                return chooseSpellAbilityToPlay();
++            }
+         }
+         return chosen;
+     }

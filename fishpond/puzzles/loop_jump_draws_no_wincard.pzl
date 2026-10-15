@@ -1,0 +1,16 @@
+# title: The same drawing loop with no card that wins from an empty library: it draws down to the library floor (10 cards left) and stops, never toward decking (patch 52)
+# card: Sprout Swarm
+# turns: 1
+# sim: hybrid
+# expect: #FP-LOOP .*"jump".*"reason": "library"
+# forbid: lost trying to draw
+p0life=20
+p1life=600
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Witherbloom, the Balancer|IsCommander;Archmage Emeritus;Llanowar Elves;Llanowar Elves;Llanowar Elves;Forest;Forest;Island;Island
+p0hand=Sprout Swarm
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Grizzly Bears;Grizzly Bears;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
