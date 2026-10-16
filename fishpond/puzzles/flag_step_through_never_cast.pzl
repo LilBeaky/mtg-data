@@ -1,0 +1,15 @@
+# title: Step Through in hand with five mana, no Wizard left to fetch and two big opposing creatures to bounce, own main phase: the AI never hard-casts it (the user's override, 2026-10-16: it is only ever Wizardcycled; without the override it bounces Serra Angel and Craterhoof)
+# card: Step Through
+# turns: 1
+# sim: hybrid
+# forbid: cast Step Through
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Plains;Swamp
+p0hand=Step Through
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Craterhoof Behemoth;Serra Angel;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

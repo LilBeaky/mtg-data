@@ -1,0 +1,16 @@
+# title: Astral Slide out, six lands, Fetid Pools (a cycling land) the only land in hand: the AI holds it instead of playing it, and cycles it at the end of the turn before its own (Zur played it as a land drop with Drift and Slide out, zur_20261016_p55 V08 g0; patch 56)
+# card: Fetid Pools
+# turns: 2
+# sim: hybrid
+# forbid: Land: Ai\(1\)-P1 played Fetid Pools
+# expect: activated Fetid Pools
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Astral Slide;Island;Island;Island;Plains;Plains;Swamp
+p0hand=Fetid Pools
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Grizzly Bears;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

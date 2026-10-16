@@ -1,0 +1,12 @@
+# fishpond override (Forge 2.0.15 script plus an "only when" hint that is never met): the user, 2026-10-16: "Step Through will
+# never be hard-cast. It will always be Wizardcycled. The card may as well not have text of its own." The AI never casts the
+# spell (Zur hard-cast it 4 times in zur_20261016_p55, bouncing two creatures for 5 mana); Wizardcycling is an ability and is
+# unaffected (Forge patch 55 cycles it as a tutor). Puzzle: flag_step_through_never_cast.
+Name:Step Through
+ManaCost:3 U U
+Types:Sorcery
+K:TypeCycling:Wizard:2
+A:SP$ ChangeZone | TargetMin$ 2 | TargetMax$ 2 | ValidTgts$ Creature | Origin$ Battlefield | Destination$ Hand | SpellDescription$ Return two target creatures to their owners' hands.
+SVar:NeedsToPlayVar:Never GE1
+SVar:Never:Number$0
+Oracle:Return two target creatures to their owners' hands.\nWizardcycling {2} ({2}, Discard this card: Search your library for a Wizard card, reveal it, put it into your hand, then shuffle.)

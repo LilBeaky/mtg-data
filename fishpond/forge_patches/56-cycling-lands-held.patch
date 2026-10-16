@@ -1,0 +1,41 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index b3cc8ca..91b34a7 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -599,6 +599,11 @@ public class AiController {
+             final CardCollection noCycling = CardLists.filter(landList, l -> !l.getSpellAbilities().anyMatch(SpellAbility::isCycling));
+             if (!noCycling.isEmpty()) {
+                 landList = noCycling;
++            } else if (forge.ai.ability.DrawAi.hasCyclingPayoffPublic(player) && player.getLandsInPlay().size() >= CYCLE_HOLD_LANDS) {
++                // fishpond patch 56: with a cycling payoff out (Astral Slide, Astral Drift) and enough lands, a cycling land is
++                // worth more cycled than played: it's held, and DrawAi cycles it at the end of the turn before the seat's own.
++                // Zur played Fetid Pools as its land drop with Drift and Slide out (zur_20261016_p55 V08 g0)
++                landList = new CardCollection();
+             }
+         }
+ 
+@@ -4068,6 +4073,7 @@ public class AiController {
+     // Never a card the deck lists as a key (Astral Slide and Astral Drift cycle too); patch 07's cycling payoff windows
+     // (Astral Slide out) still decide plain cycling then. -Dfishpond.cycleEngine=false turns it off.
+     private static final boolean CYCLE_ENGINE = !"false".equals(System.getProperty("fishpond.cycleEngine"));
++    static final int CYCLE_HOLD_LANDS = Integer.getInteger("fishpond.cycleHoldLands", 6);   // patch 56
+     // The deck's '# key:' cards, from the harness (PilotPolicy.isKey); none in simulated games and puzzles.
+     public static volatile java.util.function.BiPredicate<Player, Card> KEY_CARD;
+ 
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+index db6f60c..568045c 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+@@ -376,6 +376,12 @@ public class DrawAi extends SpellAbilityAi {
+         // Cycling with a cycling payoff out (Astral Slide, Drift Wraith-style triggers): cycle at the moments the payoff
+         // matters instead of holding draws for main 2 (fishpond patch 07).
+         if (sa.isCycling() && pilotSeat(ai) && hasCyclingPayoff(ai)) {
++            // fishpond patch 56: a cycling land held to cycle (AiController's land choice) needs no spare cycler: the end of
++            // the turn before the seat's own is its window too
++            if (sa.getHostCard() != null && sa.getHostCard().isLand() && !ph.isPlayerTurn(ai) && ph.is(PhaseType.END_OF_TURN)
++                    && ai.equals(ph.getNextTurn())) {
++                return true;
++            }
+             return cyclingWindow(ai, ph);
+         }
+         // Sacrificing a creature in response to something dangerous is generally good in any phase
