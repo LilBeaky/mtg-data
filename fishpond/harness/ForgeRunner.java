@@ -328,6 +328,7 @@ public class ForgeRunner {
         w.keys = keys;
         String wl = System.getProperty("fishpond.winLines");     // win-line audit (fishpond/win_lines.txt)
         if (wl != null && !wl.isEmpty()) w.lines = new LineTracker(game, new File(wl));
+        if (!"false".equals(System.getProperty("fishpond.threatLog"))) w.threat = new ThreatModel(game);
         for (Player p : game.getPlayers())
             if (p.getController() instanceof PlayerControllerAi pc) {
                 AiControllerSim m = pc.getAi().usesFullSimulation() ? AiControllerSim.FULL : pc.getAi().usesHybridSimulation() ? AiControllerSim.HYBRID : null;
@@ -399,6 +400,7 @@ public class ForgeRunner {
             for (Player p : game.getRegisteredPlayers()) if (p.getOutcome() != null && p.getOutcome().hasWon()) won.add(p);
             for (String s : w.lines.finish(w.stop == null && won.size() == 1 ? won.get(0) : null)) out.println("#FP-LINE " + s);
         }
+        if (w.threat != null) for (String s : w.threat.log) out.println("#FP-THREAT " + s);
         StringBuilder end = new StringBuilder("{\"id\": " + id + ", \"seed\": " + seed + ", \"stop\": " + js(w.stop == null ? "natural" : w.stop)
                 + ", \"ms\": " + ms + ", \"hero_turns\": " + w.heroTurns + ", \"global_turns\": " + w.globalTurns
                 + (w.trace != null ? ", \"trace\": " + js(w.trace) : "")
@@ -506,6 +508,7 @@ public class ForgeRunner {
         }
         final List<String> snaps = new ArrayList<>();
         LineTracker lines;                              // win-line audit, null when off
+        ThreatModel threat;                             // threat assessment log (phase 1), null when off
         final long t0 = System.currentTimeMillis();
 
         Watcher(Game g, Player hero, int cap, String colors, boolean playOut) {
@@ -641,6 +644,7 @@ public class ForgeRunner {
                 if (e.phase() == PhaseType.MAIN1) {
                     heldMain(turnOf);
                     if (lines != null) lines.check(turnOf, seatTurns.getOrDefault(turnOf, 0));
+                    if (threat != null) { try { threat.check(globalTurns, turnOf); } catch (RuntimeException ex) { /* logging only */ } }
                 }
                 else if (e.phase() == PhaseType.CLEANUP) heldEnd(turnOf);
             }
