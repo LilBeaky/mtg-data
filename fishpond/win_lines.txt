@@ -4,8 +4,8 @@
 #   commander | kind | label | needs | did
 # kind: closer (pieces that should end the game), engine (a state the deck wants to reach and use), plan (a fair deck's plan).
 # Checked at the start of the seat's first main phase every turn; "did" counts if the seat does it before its next turn. A turn
-# on which the seat wins the game anyway doesn't count as available (the line wasn't needed). A play made in a window where the
-# line wasn't available at the check (pieces assembled mid-turn) counts as an available turn played, and once a closer has been
+# on which the seat wins the game anyway doesn't count as available (the line wasn't needed). A closer played in a window where it
+# wasn't available at the check (pieces assembled mid-turn) counts as an available turn played, and once a closer has been
 # played, later turns don't count it (2026-10-15).
 # needs (all must hold, ';'-separated; '/' = any of these cards):
 #   ready:A/B   on the battlefield, or in hand (or the command zone) and castable now (a land: in hand with a land drop left)

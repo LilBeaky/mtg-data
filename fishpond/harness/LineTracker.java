@@ -111,9 +111,11 @@ public class LineTracker {
             if (was.contains(l)) {
                 if (did) { r.did.add(t); r.hands.remove(t); }
                 else if (won) { r.avail.remove(Integer.valueOf(t)); r.hands.remove(t); }   // won anyway: the line wasn't needed (by value, not index)
-            } else if (did && !closed.getOrDefault(p, Set.of()).contains(l)) {
-                // the pieces came together after the check (a fifth creature on an opponent's turn, then Sprout Swarm's loop
-                // at instant speed): the play still counts, as an available turn played
+            } else if (did && l.kind.equals("closer") && !closed.getOrDefault(p, Set.of()).contains(l)) {
+                // a closer whose pieces came together after the check (a fifth creature on an opponent's turn, then Sprout
+                // Swarm's loop at instant speed) still counts, as an available turn played. Closers only: it counts only the
+                // plays, never the mid-turn chances missed, which pushed plans and engines toward 100% (study150_20261015_p53b);
+                // a closer is played once a game, so that one-sidedness costs little there
                 r.avail.add(t); r.did.add(t);
             }
             if (did && l.kind.equals("closer")) closed.computeIfAbsent(p, k -> new HashSet<>()).add(l);
