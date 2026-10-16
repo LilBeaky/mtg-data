@@ -1,0 +1,15 @@
+# title: Guard: the end step of the turn before Zur's, five lands and another land in hand, Drifting Meadow (cycling {2}) in hand: Forge cycles the spare land with mana that would go unused (it did before patch 55; kept as a guard)
+# card: Drifting Meadow
+# turns: 1
+# sim: hybrid
+# expect: activated Drifting Meadow
+p0life=30
+p1life=30
+turn=1
+activeplayer=p1
+activephase=END_OF_TURN
+p0battlefield=Island;Island;Plains;Swamp;Island
+p0hand=Drifting Meadow;Plains
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

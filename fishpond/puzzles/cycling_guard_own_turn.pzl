@@ -1,0 +1,15 @@
+# title: Guard for the cycling rule: the seat's own main phase with a land drop left: Drifting Meadow is played as a land, not cycled (patch 55)
+# card: Drifting Meadow
+# turns: 1
+# sim: hybrid
+# forbid: activated Drifting Meadow
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island
+p0hand=Drifting Meadow
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

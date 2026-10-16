@@ -79,6 +79,7 @@ public final class PilotPolicy {
     // ------------------------------------------------------------------ the commander gate (the user's rule, 2026-10-07)
 
     static final boolean GATE_ON = !"false".equals(System.getProperty("fishpond.tutorGate"));
+    static final double KEY_BONUS = Double.parseDouble(System.getProperty("fishpond.keyBonus", "250"));
 
     /** Mana the player's permanents can make: lands count one each, other mana producers their most (up to 3). */
     static int existingMana(Player me) {
@@ -197,6 +198,8 @@ public final class PilotPolicy {
      *  0.5+) and no payoff of that mechanic is out yet (it turns the engine on: payoff before its fuel), 1 when it feeds a
      *  mechanic whose payoff is out, else 0. Forge orders candidates by it after the trigger payoffs and before its own
      *  mana-value order; a win, Show and Tell and a paying wheel still go first. -Dfishpond.castPlan=false turns it off. */
+    boolean isKey(String name) { return in.keys.contains(name); }   // Forge patch 55: the cycling rule keeps key cards
+
     final int[] castHits = new int[4];   // how often each level was answered (0 = no plan for that spell), for #FP-CASTPLAN
 
     int castPriority(Player me, SpellAbility sa) {
@@ -228,6 +231,8 @@ public final class PilotPolicy {
             Mech mech = in.mechs.get(m);
             if (mech != null && mech.s >= 0.5 && !paidOut.contains(m)) return 2;
         }
+        // a '# key:' card not yet on the battlefield is the deck's plan too: as high as turning an engine on
+        if (in.keys.contains(n) && !field.contains(n) && !c.isCommander()) return 2;
         for (String m : ci.enabler) if (paidOut.contains(m)) return 1;
         return 0;
     }
@@ -302,6 +307,11 @@ public final class PilotPolicy {
             if (ci.flag && (dest != ZoneType.Battlefield || ci.flag_dead)) for (int k = 0; k < s.length; k++) s[k] *= 0.1;
         }
         s[BOOST] = in.boost.getOrDefault(n, 0.0);
+        // the deck's '# key:' cards (the user, 2026-10-16: "if I set a key card in a deck, it's there for a reason, and the
+        // deck is typically designed to play around that card"): a big edge over any other engine or role pick, below a
+        // combo completion and an urgent survival pick. Zur's trigger fetched Escape Protocol over the key Astral Slide/Drift
+        // in about 20 of 30 games on a few points of synergy (study150_20261016_p54). Not for one already on the battlefield.
+        if (in.keys.contains(n) && !b.field.contains(n)) s[BOOST] += KEY_BONUS;
         if (b.field.contains(n) && c.getType().isLegendary()) Arrays.fill(s, 0);   // legend rule: a second copy is useless
         if (forgePick) s[FORGE] = 15;
         return s;

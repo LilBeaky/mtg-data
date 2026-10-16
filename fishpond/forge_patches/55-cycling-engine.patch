@@ -1,0 +1,82 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index e91982f..b3cc8ca 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1047,6 +1047,9 @@ public class AiController {
+         if (wheelPays(sa)) {
+             return AiPlayDecision.WillPlay;   // fishpond patch 53: a wheel with draw payoffs out
+         }
++        if (cycleNow(sa)) {
++            return AiPlayDecision.WillPlay;   // fishpond patch 55: cycling with mana that would go unused
++        }
+         if (bigEatNow(sa)) {
+             return AiPlayDecision.WillPlay;   // fishpond patch 53: Jarad eats something big after combat
+         }
+@@ -4055,6 +4058,51 @@ public class AiController {
+         return true;
+     }
+ 
++    // ---- fishpond patch 55: cycling as an engine (Zur's review, the user's go-ahead 2026-10-16) ----
++    // Zur cycled about once a game from 24 cyclers and wizardcycled Step Through 3 times in 30 games (study150_20261016_p54),
++    // so its Step Through -> Archaeomancer loop never started. Forge cycles to smooth land drops, and typecycling (a library
++    // search) is decided by ChangeZoneAi, which nothing told it was a tutor. In the end step of the turn before the seat's
++    // own, untapped mana would go unused, so a pilot seat
++    //   - typecycles a card whose search has something to find (Step Through finds a Wizard; the pilot policy picks it).
++    // (Forge already cycles a spare cycling land there: puzzle cycling_land_at_end_step guards it.)
++    // Never a card the deck lists as a key (Astral Slide and Astral Drift cycle too); patch 07's cycling payoff windows
++    // (Astral Slide out) still decide plain cycling then. -Dfishpond.cycleEngine=false turns it off.
++    private static final boolean CYCLE_ENGINE = !"false".equals(System.getProperty("fishpond.cycleEngine"));
++    // The deck's '# key:' cards, from the harness (PilotPolicy.isKey); none in simulated games and puzzles.
++    public static volatile java.util.function.BiPredicate<Player, Card> KEY_CARD;
++
++    private boolean isKeyCard(final Card c) {
++        final java.util.function.BiPredicate<Player, Card> f = KEY_CARD;
++        try {
++            return f != null && f.test(player, c);
++        } catch (final RuntimeException e) {
++            return false;
++        }
++    }
++
++    private boolean cycleNow(final SpellAbility sa) {
++        if (!CYCLE_ENGINE || sa == null || !sa.isCycling() || sa.getHostCard() == null || !forge.ai.ability.DrawAi.pilotSeat(player)) {
++            return false;
++        }
++        final Card host = sa.getHostCard();
++        if (!host.isInZone(ZoneType.Hand) || isKeyCard(host)) {
++            return false;
++        }
++        final forge.game.phase.PhaseHandler ph = game.getPhaseHandler();
++        if (ph.isPlayerTurn(player) || !ph.is(PhaseType.END_OF_TURN) || !player.equals(ph.getNextTurn()) || !game.getStack().isEmpty()) {
++            return false;
++        }
++        if (sa.getApi() == ApiType.ChangeZone && "Library".equals(sa.getParam("Origin"))) {
++            try {   // typecycling: is there anything to find?
++                final String type = sa.getParamOrDefault("ChangeType", "Card");
++                return !CardLists.getValidCards(player.getCardsIn(ZoneType.Library), type.split(","), player, host, sa).isEmpty();
++            } catch (final RuntimeException e) {
++                return false;
++            }
++        }
++        return false;
++    }
++
+     // The deck's plan, from the harness (PilotPolicy.castPriority: completes a combo 3, turns an engine on 2, feeds one 1),
+     // for pilot seats in the real game; simulated games have no policy and get 0.
+     public static volatile java.util.function.ToIntBiFunction<Player, SpellAbility> CAST_PRIORITY;
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+index 65e204d..db6f60c 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+@@ -282,6 +282,11 @@ public class DrawAi extends SpellAbilityAi {
+         return overridden.contains(name);
+     }
+ 
++    /** fishpond patch 55: hasCyclingPayoff for AiController's cycling rule. */
++    public static boolean hasCyclingPayoffPublic(Player ai) {
++        return hasCyclingPayoff(ai);
++    }
++
+     /** Does the player control a permanent that triggers when a card is cycled? */
+     static boolean hasCyclingPayoff(Player ai) {
+         for (Card c : ai.getCardsIn(ZoneType.Battlefield)) {

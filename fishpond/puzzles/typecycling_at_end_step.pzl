@@ -1,0 +1,15 @@
+# title: The end step of the turn before Zur's, two Islands untapped, Step Through in hand, Archaeomancer in the library: the AI wizardcycles Step Through (a tutor; the mana would go unused) instead of passing (Zur cycled about once a game and wizardcycled 3 times in 30, study150_20261016_p54; patch 55)
+# card: Step Through
+# turns: 1
+# sim: hybrid
+# expect: activated Step Through
+p0life=30
+p1life=30
+turn=1
+activeplayer=p1
+activephase=END_OF_TURN
+p0battlefield=Zur the Enchanter|IsCommander;Island;Island;Plains;Swamp
+p0hand=Step Through;Plains
+p0library=Island;Archaeomancer;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
