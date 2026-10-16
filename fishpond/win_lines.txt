@@ -1,6 +1,6 @@
 # Win lines per commander, for the win-line audit (`python -m fishpond lines RUN_DIR`; harness/LineTracker.java).
 # Reviewed with the user 2026-10-14; spec fixes from the 2026-10-15 miss review (Xyris's Memory and Magus of the Wheel, Step
-# Through hard-cast as well as cycled, Araumi's Wurmcoil Engine and Kairi). One line per row:
+# Through hard-cast as well as cycled, Araumi's Wurmcoil Engine and Kairi); 2026-10-16: the "7+ mana: cast something big" lines need a 6+ spell in hand. One line per row:
 #   commander | kind | label | needs | did
 # kind: closer (pieces that should end the game), engine (a state the deck wants to reach and use), plan (a fair deck's plan).
 # Checked at the start of the seat's first main phase every turn; "did" counts if the seat does it before its next turn. A turn
@@ -13,7 +13,7 @@
 #   bf:A/B  hand:A/B  gy:A/B   in that zone
 #   cmd   a commander of the seat is on the battlefield     cmd_attached>=N   cards attached to it
 #   creatures>=N  life>=N  lands>=N  mana>=N  library<=N  hand>=N  gy_creatures>=N  gy_lands>=N  artifacts>=N
-#   hand_cmc>=N   a permanent card of that mana value in hand     big_other>=N   another creature (not the commander) with power >= N
+#   hand_cmc>=N   a permanent card of that mana value in hand     hand_spell_cmc>=N   any nonland card of that mana value in hand     big_other>=N   another creature (not the commander) with power >= N
 # did (any of, ';'-separated):
 #   cast:A/B[>=N]   spells cast (N times; default 1)       act:A/B[>=N]   abilities activated (stack abilities: not mana)
 #   play:A/B   land played    attack:cmd   attacked with a commander    cast_cmc>=N   a spell of that mana value    win   won the game
@@ -48,7 +48,7 @@ Zur the Enchanter | closer | Approach of the Second Sun | castable:Approach of t
 Zur the Enchanter | engine | Step Through wizardcycling | hand:Step Through; mana>=2 | act:Step Through; cast:Step Through
 
 Omnath, Locus of Mana | plan | Omnath into Craterhoof or Finale | cmd; castable:Craterhoof Behemoth/Finale of Devastation | cast:Craterhoof Behemoth/Finale of Devastation
-Omnath, Locus of Mana | plan | Omnath out with 7+ mana: cast something big | cmd; mana>=7 | cast_cmc>=6
+Omnath, Locus of Mana | plan | Omnath out with 7+ mana: cast something big | cmd; mana>=7; hand_spell_cmc>=6 | cast_cmc>=6
 
 Lumra, Bellow of the Woods | plan | Mass land return | castable:Lumra, Bellow of the Woods/Splendid Reclamation; gy_lands>=4 | cast:Lumra, Bellow of the Woods/Splendid Reclamation
 Lumra, Bellow of the Woods | plan | Scapeshift with 7+ lands | castable:Scapeshift; lands>=7 | cast:Scapeshift
@@ -61,10 +61,10 @@ Araumi of the Dead Tide | engine | Encore a bomb | cmd; gy:Gray Merchant of Asph
 
 Jarad, Golgari Lich Lord | plan | Jarad eats something big | cmd; big_other>=6 | act:Jarad, Golgari Lich Lord
 
-Zhulodok, Void Gorger | plan | Zhulodok out with 7+ mana: cast something big | cmd; mana>=7 | cast_cmc>=6
+Zhulodok, Void Gorger | plan | Zhulodok out with 7+ mana: cast something big | cmd; mana>=7; hand_spell_cmc>=6 | cast_cmc>=6
 
 Klauth, Unrivaled Ancient | plan | Klauth attacks | cmd | attack:cmd
-Klauth, Unrivaled Ancient | plan | Klauth out with 7+ mana: cast something big | cmd; mana>=7 | cast_cmc>=6
+Klauth, Unrivaled Ancient | plan | Klauth out with 7+ mana: cast something big | cmd; mana>=7; hand_spell_cmc>=6 | cast_cmc>=6
 
 Wilson, Refined Grizzly | plan | Suited-up Wilson attacks | cmd; cmd_attached>=1 | attack:cmd
 

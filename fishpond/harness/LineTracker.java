@@ -239,6 +239,7 @@ public class LineTracker {
             case "gy_lands": return (int) p.getCardsIn(ZoneType.Graveyard).stream().filter(Card::isLand).count();
             case "cmd_attached": { Card c = cmdOut(p); return c == null ? 0 : c.getAttachedCards().size(); }
             case "hand_cmc": return p.getCardsIn(ZoneType.Hand).stream().filter(Card::isPermanent).mapToInt(Card::getCMC).max().orElse(0);
+            case "hand_spell_cmc": return p.getCardsIn(ZoneType.Hand).stream().filter(c -> !c.isLand()).mapToInt(Card::getCMC).max().orElse(0);
             case "big_other": return p.getCreaturesInPlay().stream().filter(c -> !c.isCommander()).mapToInt(Card::getNetPower).max().orElse(0);   // power: Jarad drains by it
             default: throw new IllegalArgumentException("unknown need " + key);
         }
