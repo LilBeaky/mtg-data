@@ -70,6 +70,13 @@ public class ForgeRunner {
         System.setProperty("java.awt.headless", "true");
         GuiBase.setInterface(new GuiDesktop());
         FModel.initialize(null, null);
+        // fishpond patch 54: Forge's cast ordering asks the seat's pilot policy for the deck's plan (PilotPolicy.castPriority);
+        // controllers in simulated games aren't SafeControllerAi and get 0
+        // (set by reflection: the harness compiles against the stock jar, where the field doesn't exist)
+        java.util.function.ToIntBiFunction<Player, forge.game.spellability.SpellAbility> castPlan =
+                (p, sa) -> p.getController() instanceof SafeControllerAi c && c.policy != null ? c.policy.castPriority(p, sa) : 0;
+        try { forge.ai.AiController.class.getField("CAST_PRIORITY").set(null, castPlan); }
+        catch (ReflectiveOperationException e) { out.println("#FP-WARN no cast-plan hook in this Forge build (patch 54)"); }
         String deckDir = args[0];
         Map<String, Deck> decks = new HashMap<>();
         out.println("#FP-READY");
@@ -380,6 +387,8 @@ public class ForgeRunner {
         w.flushAllHeld();
         for (String s : w.held) out.println("#FP-HELD " + s);
         for (PilotPolicy pol : policies) for (String s : pol.log) out.println("#FP-POLICY " + s);
+        for (PilotPolicy pol : policies)    // patch 54's cast ordering: candidate answers by level (none, feeds, turns on, combo)
+            out.println("#FP-CASTPLAN {\"deck\": " + js(pol.in.deck == null ? "" : pol.in.deck) + ", \"levels\": " + Arrays.toString(pol.castHits) + "}");
         if (w.lines != null) {
             List<Player> won = new ArrayList<>();
             for (Player p : game.getRegisteredPlayers()) if (p.getOutcome() != null && p.getOutcome().hasWon()) won.add(p);

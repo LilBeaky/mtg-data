@@ -189,6 +189,49 @@ public final class PilotPolicy {
         return b;
     }
 
+    // ------------------------------------------------------------------ cast ordering (Forge patch 54)
+    static final boolean CAST_ON = !"false".equals(System.getProperty("fishpond.castPlan"));
+
+    /** The deck's plan for a spell about to be cast, from the same intel as the tutor picks: 3 when it completes a combo
+     *  with the other pieces on the battlefield, 2 when it is a payoff of a mechanic the deck is built around (strength
+     *  0.5+) and no payoff of that mechanic is out yet (it turns the engine on: payoff before its fuel), 1 when it feeds a
+     *  mechanic whose payoff is out, else 0. Forge orders candidates by it after the trigger payoffs and before its own
+     *  mana-value order; a win, Show and Tell and a paying wheel still go first. -Dfishpond.castPlan=false turns it off. */
+    final int[] castHits = new int[4];   // how often each level was answered (0 = no plan for that spell), for #FP-CASTPLAN
+
+    int castPriority(Player me, SpellAbility sa) {
+        int p = castPriority0(me, sa);
+        castHits[p]++;
+        return p;
+    }
+
+    int castPriority0(Player me, SpellAbility sa) {
+        if (!CAST_ON || !sa.isSpell()) return 0;
+        Card c = sa.getHostCard();
+        String n = c.getName();
+        CardIntel ci = in.cards.get(n);
+        if (ci == null) return 0;
+        Set<String> field = new HashSet<>();
+        for (Card x : me.getCardsIn(ZoneType.Battlefield)) field.add(x.getName());
+        for (Combo cb : in.combos) {
+            if (!cb.cards.contains(n) || cb.cards.size() < 2) continue;
+            boolean rest = true;
+            for (String x : cb.cards) if (!x.equals(n) && !field.contains(x)) { rest = false; break; }
+            if (rest) return 3;
+        }
+        Set<String> paidOut = new HashSet<>();
+        for (String f : field) {
+            CardIntel fi = in.cards.get(f);
+            if (fi != null) paidOut.addAll(fi.payoff);
+        }
+        for (String m : ci.payoff) {
+            Mech mech = in.mechs.get(m);
+            if (mech != null && mech.s >= 0.5 && !paidOut.contains(m)) return 2;
+        }
+        for (String m : ci.enabler) if (paidOut.contains(m)) return 1;
+        return 0;
+    }
+
     double[] score(Card c, Board b, ZoneType dest, boolean forgePick) {
         double[] s = new double[LAYERS.length];
         String n = c.getName();

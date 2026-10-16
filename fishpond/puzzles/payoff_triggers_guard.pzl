@@ -1,0 +1,15 @@
+# title: Guard for the payoff order: the same hand with no payoff on the battlefield: Forge's own choice stands (the cheaper creature) (patch 54)
+# card: (trigger payoffs)
+# turns: 1
+# sim: hybrid
+# expect: cast Grizzly Bears
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Forest
+p0hand=Divination;Grizzly Bears
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

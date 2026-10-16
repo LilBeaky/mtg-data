@@ -117,6 +117,9 @@ check("policy log parsed", [(p["pick"], p["layer"]) for p in _e["policy_log"]], 
 _s, _e = lp.harness_lines(['#FP-LINE {"seat": "1", "commander": "Heliod, Sun-Crowned", "kind": "closer", "line": "Heliod + Triskelion", "avail": [8, 9], "did": [], "won": true}',
                            '#FP-END {"id": 0, "seed": 1, "stop": "natural", "ms": 1, "hero_turns": 3, "global_turns": 12, "players": {}, "hand": [], "lib": 50}'])
 check("win-line audit parsed", [(x["line"], x["avail"], x["did"]) for x in _e["lines"]], [("Heliod + Triskelion", [8, 9], [])])
+_s, _e = lp.harness_lines(['#FP-CASTPLAN {"deck": "Xyris, the Writhing Storm", "levels": [40, 3, 2, 0]}',
+                           '#FP-END {"id": 0, "seed": 1, "stop": "natural", "ms": 1, "hero_turns": 3, "global_turns": 12, "players": {}, "hand": [], "lib": 50}'])
+check("cast-plan counts parsed", _e["castplan"], [{"deck": "Xyris, the Writhing Storm", "levels": [40, 3, 2, 0]}])
 import tempfile as _tf, json as _js
 from fishpond import lines as _ln
 with _tf.TemporaryDirectory() as _d:

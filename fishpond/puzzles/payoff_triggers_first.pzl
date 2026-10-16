@@ -1,0 +1,16 @@
+# title: Archmage Emeritus and Witherbloom Apprentice out (each fires on an instant or sorcery cast), three mana, Divination and Grizzly Bears in hand: the AI casts Divination (two payoffs: a draw and a drain) over the cheaper creature that fires nothing (patch 54)
+# card: (trigger payoffs)
+# turns: 1
+# sim: hybrid
+# expect: cast Divination
+# forbid: cast Grizzly Bears
+p0life=20
+p1life=20
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Archmage Emeritus;Witherbloom Apprentice;Island;Island;Forest
+p0hand=Divination;Grizzly Bears
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

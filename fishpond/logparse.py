@@ -70,7 +70,7 @@ def _play(s):
 def harness_lines(lines):
     """The harness's own lines in a game block: (snaps {hero turn: {'main': {...}, 'end': {...}}}, end info or None)."""
     import json
-    snaps, end, tutors, searches, policy, loops, held, wl = {}, None, [], {}, [], [], [], []
+    snaps, end, tutors, searches, policy, loops, held, wl, castplan = {}, None, [], {}, [], [], [], [], []
     for line in lines:
         if line.startswith("#FP-SNAP "):
             s = json.loads(line[9:])
@@ -83,6 +83,8 @@ def harness_lines(lines):
             held.append(json.loads(line[9:]))
         elif line.startswith("#FP-LINE "):                # win-line audit, one per seat and line (harness/LineTracker.java)
             wl.append(json.loads(line[9:]))
+        elif line.startswith("#FP-CASTPLAN "):            # cast ordering by the deck's plan, per policy seat (Forge patch 54)
+            castplan.append(json.loads(line[13:]))
         elif line.startswith("#FP-LOOP "):                # loop shortcut start/stop, any seat (Forge patch 15)
             loops.append(json.loads(line[9:]))
         elif line.startswith("#FP-SEARCH "):             # one lookahead search (patch 06): size, time, whether the budget cut it
@@ -107,6 +109,7 @@ def harness_lines(lines):
     if end is not None: end["loops"] = loops
     if end is not None: end["held"] = held
     if end is not None: end["lines"] = wl
+    if end is not None: end["castplan"] = castplan
     if end is not None: end["policy_log"] = policy      # pilot policy decisions, every seat (harness/PilotPolicy.java)
     if end is not None: end["searches"] = searches       # per seat name
     if end is not None: end["tutors"] = tutors      # the hero's library searches and digs into hand or play

@@ -1,0 +1,242 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 6504490..e91982f 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1050,6 +1050,13 @@ public class AiController {
+         if (bigEatNow(sa)) {
+             return AiPlayDecision.WillPlay;   // fishpond patch 53: Jarad eats something big after combat
+         }
++        // fishpond patch 54: a spell that fires PAYOFF_PAST_SIM+ of the seat's own payoff triggers skips its card logic's
++        // timing (Forge's draw spells wait for the second main phase or an opponent's end step, and the mana went to a
++        // creature first); only for spells with nothing for that logic to choose (no targets, X or modes). The hint, the
++        // life budget, the decking guard and the one-move check's payoff exemption still run (saSideEffects).
++        if (sa.isSpell() && simpleSpell(sa) && payoffUnits(sa) >= PAYOFF_PAST_SIM) {
++            return saSideEffects(sa.getHostCard(), sa);
++        }
+ 
+         final Card card = sa.getHostCard();
+ 
+@@ -1849,6 +1856,11 @@ public class AiController {
+             if (ComputerUtil.librarySearchPastSim(player, sa)) {
+                 return AiPlayDecision.WillPlay;
+             }
++            // fishpond patch 54: a play that fires two or more of the seat's own payoff triggers (payoffUnits) is worth
++            // more than the one-move board score says; its hint, the life budget and the decking guard above still apply
++            if (payoffUnits(sa) >= PAYOFF_PAST_SIM) {
++                return AiPlayDecision.WillPlay;
++            }
+             // fishpond patch 45: a decision past the AI time limit finishes without the one-move check
+             if (hurry) {
+                 return AiPlayDecision.WillPlay;
+@@ -2959,6 +2971,13 @@ public class AiController {
+                 }
+                 all.sort(Comparator.comparing((SpellAbility x) -> !encoreNow(x)));      // fishpond patch 37 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !commanderNow(x)));   // fishpond patch 24 (stable sort)
++                final Map<SpellAbility, Integer> pay = new HashMap<>(), prio = new HashMap<>();
++                for (final SpellAbility x : all) {
++                    pay.put(x, payoffUnits(x));
++                    prio.put(x, castPriority(x));
++                }
++                all.sort(Comparator.comparing((SpellAbility x) -> -pay.get(x)));         // fishpond patch 54, trigger payoffs (stable)
++                all.sort(Comparator.comparing((SpellAbility x) -> -prio.get(x)));        // fishpond patch 54, the deck's plan (stable)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !wheelPays(x)));      // fishpond patch 53 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !cheatsInBig(x)));    // fishpond patch 50 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !winsNow(x)));        // fishpond patch 49 (stable sort)
+@@ -3816,6 +3835,10 @@ public class AiController {
+             }
+         }
+         final int ownDraws = fixed != null ? fixed : maxHand;
++        // patch 54: canPlaySa returns before the decking guard for a wheel, so it keeps a card past its own draws here
++        if (player.getCardsIn(ZoneType.Library).size() <= ownDraws && !ComputerUtil.winsOnEmptyLibraryDraw(player)) {
++            return false;
++        }
+         return oppPay * oppDraws + ownPay * ownDraws >= WHEEL_PAYOFF;
+     }
+ 
+@@ -3868,6 +3891,186 @@ public class AiController {
+         return false;
+     }
+ 
++    // ---- fishpond patch 54: trigger payoffs and the deck's plan (the user, 2026-10-16: "run some of these engines better") ----
++    // Every engine miss fixed so far had one cause: Forge judges a play by what it does itself, not by what it sets off on
++    // the seat's own battlefield (Xyris's Snakes from a wheel, Chulane's draw from a creature, Mirkwood Bats' drain from a
++    // token, Jarad's drain on every opponent). payoffUnits counts the seat's own triggers a play would fire, when the
++    // trigger does something for the seat (draws, tokens, life, counters, mana, damage or life loss to opponents, digs):
++    //   casting a spell (SpellCast: Chulane, Archmage Emeritus, Beast Whisperer), a permanent or land entering (ChangesZone
++    //   to the battlefield: Soul Warden, Impact Tremors, landfall), tokens made (TokenCreated, creature tokens entering:
++    //   Mirkwood Bats), cards drawn (Drawn: The Locust God), life gained (LifeGained: Heliod), a sacrifice paid
++    //   (Sacrificed: Blood Artist), a land put onto the battlefield by an effect (landfall from ramp).
++    // Candidates that fire more go first (trigger first, then the rest: it is how a player sequences), and a play that fires
++    // PAYOFF_PAST_SIM or more skips the one-move check. Every pilot seat. -Dfishpond.payoffPastSim sets the threshold (2).
++    private static final int PAYOFF_PAST_SIM = Integer.getInteger("fishpond.payoffPastSim", 2);
++    private static final java.util.EnumSet<ApiType> PAYOFF_APIS = java.util.EnumSet.of(ApiType.Draw, ApiType.Token,
++            ApiType.GainLife, ApiType.LoseLife, ApiType.DealDamage, ApiType.PutCounter, ApiType.PutCounterAll, ApiType.Mana,
++            ApiType.Dig, ApiType.Scry, ApiType.Surveil, ApiType.Pump, ApiType.PumpAll, ApiType.CopyPermanent, ApiType.Untap,
++            ApiType.ChangeZone);
++
++    /** The trigger's effect does something for its controller (to an opponent, for damage and life loss). */
++    private static boolean beneficialTrigger(final Trigger t) {
++        final SpellAbility ex = t.ensureAbility();
++        if (ex == null) {
++            return false;
++        }
++        for (SpellAbility x = ex; x != null; x = x.getSubAbility()) {
++            final ApiType api = x.getApi();
++            if (api == null || !PAYOFF_APIS.contains(api)) {
++                continue;
++            }
++            if (api == ApiType.LoseLife || api == ApiType.DealDamage) {
++                final String who = x.getParamOrDefault("Defined", "") + x.getParamOrDefault("ValidTgts", "");
++                if (who.contains("Opponent") || who.contains("Player") || who.contains("Any")) {
++                    return true;
++                }
++                continue;
++            }
++            if (api == ApiType.Draw && x.getParamOrDefault("Defined", "You").contains("Opponent")) {
++                continue;
++            }
++            return true;
++        }
++        return false;
++    }
++
++    private boolean validFor(final Trigger t, final String key, final Card c, final Card source) {
++        final String v = t.getParam(key);
++        if (v == null) {
++            return true;
++        }
++        try {
++            return c.isValid(v.split(","), player, source, null);
++        } catch (final RuntimeException e) {
++            return false;
++        }
++    }
++
++    int payoffUnits(final SpellAbility sa) {
++        if (sa == null || sa.getHostCard() == null || !forge.ai.ability.DrawAi.pilotSeat(player)) {
++            return 0;
++        }
++        try {
++            final Card host = sa.getHostCard();
++            final boolean spell = sa.isSpell(), land = sa.isLandAbility();
++            final boolean enters = (spell && host.isPermanent()) || land;
++            boolean draws = false, tokens = false, lifegain = false, landEnters = false;
++            for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++                final ApiType api = x.getApi();
++                if (api == ApiType.Draw && !x.getParamOrDefault("Defined", "You").contains("Opponent")) {
++                    draws = true;
++                } else if (api == ApiType.Token && x.getParamOrDefault("TokenOwner", "You").equals("You")) {
++                    tokens = true;
++                } else if (api == ApiType.GainLife && x.getParamOrDefault("Defined", "You").equals("You")) {
++                    lifegain = true;
++                } else if (api == ApiType.ChangeZone && "Battlefield".equals(x.getParam("Destination"))
++                        && x.getParamOrDefault("ChangeType", "").contains("Land")) {
++                    landEnters = true;
++                }
++            }
++            boolean sacrifices = false;
++            if (sa.getPayCosts() != null) {
++                for (final forge.game.cost.CostPart part : sa.getPayCosts().getCostParts()) {
++                    if (part instanceof CostSacrifice) {
++                        sacrifices = true;
++                    }
++                }
++            }
++            int n = 0;
++            for (final Card c : player.getCardsIn(ZoneType.Battlefield)) {
++                for (final Trigger t : c.getTriggers()) {
++                    final TriggerType mode = t.getMode();
++                    if (mode != TriggerType.SpellCast && mode != TriggerType.SpellCastOrCopy && mode != TriggerType.ChangesZone && mode != TriggerType.TokenCreated
++                            && mode != TriggerType.Drawn && mode != TriggerType.LifeGained && mode != TriggerType.Sacrificed) {
++                        continue;
++                    }
++                    if (!beneficialTrigger(t)) {
++                        continue;
++                    }
++                    switch (mode) {
++                        case SpellCast:
++                        case SpellCastOrCopy:   // magecraft (Archmage Emeritus, Witherbloom Apprentice)
++                            if (spell && validFor(t, "ValidCard", host, c) && t.getParamOrDefault("ValidActivatingPlayer", "You").contains("You")) {
++                                n++;
++                            }
++                            break;
++                        case ChangesZone:
++                            if (!"Battlefield".equals(t.getParam("Destination"))) {
++                                break;
++                            }
++                            final String vc = t.getParamOrDefault("ValidCard", "");
++                            if (vc.contains("OppCtrl") || vc.contains("OppOwn")) {
++                                break;
++                            }
++                            if (enters && validFor(t, "ValidCard", host, c)) {
++                                n++;
++                            } else if (tokens && vc.contains("Creature") && !vc.contains("nonToken") && !vc.contains("Self")) {
++                                n++;
++                            } else if (landEnters && vc.contains("Land") && !vc.contains("Self")) {
++                                n++;
++                            }
++                            break;
++                        case TokenCreated:
++                            if (tokens) {
++                                n++;
++                            }
++                            break;
++                        case Drawn:
++                            if (draws && !t.getParamOrDefault("ValidCard", "").contains("OppOwn")) {
++                                n++;
++                            }
++                            break;
++                        case LifeGained:
++                            if (lifegain && t.getParamOrDefault("ValidPlayer", "You").contains("You")) {
++                                n++;
++                            }
++                            break;
++                        case Sacrificed:
++                            if (sacrifices) {
++                                n++;
++                            }
++                            break;
++                        default:
++                            break;
++                    }
++                }
++            }
++            return n;
++        } catch (final RuntimeException e) {
++            return 0;
++        }
++    }
++
++    /** Nothing for the card's own AI logic to choose: no targets, no X, no modes, through the whole chain. */
++    private static boolean simpleSpell(final SpellAbility sa) {
++        if (sa.getHostCard().getManaCost().countX() > 0) {
++            return false;
++        }
++        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++            if (x.usesTargeting() || x.getApi() == ApiType.Charm || x.getApi() == ApiType.ChooseNumber
++                    || x.getApi() == ApiType.ChooseType || x.getApi() == ApiType.ChooseColor || x.getApi() == null) {
++                return false;
++            }
++        }
++        return true;
++    }
++
++    // The deck's plan, from the harness (PilotPolicy.castPriority: completes a combo 3, turns an engine on 2, feeds one 1),
++    // for pilot seats in the real game; simulated games have no policy and get 0.
++    public static volatile java.util.function.ToIntBiFunction<Player, SpellAbility> CAST_PRIORITY;
++
++    private int castPriority(final SpellAbility sa) {
++        final java.util.function.ToIntBiFunction<Player, SpellAbility> f = CAST_PRIORITY;
++        if (f == null || sa == null || sa.getHostCard() == null || !forge.ai.ability.DrawAi.pilotSeat(player)) {
++            return 0;
++        }
++        try {
++            return f.applyAsInt(player, sa);
++        } catch (final RuntimeException e) {
++            return 0;
++        }
++    }
++
+     /** fishpond patch 50: the ability or one of its sub-abilities wins the game. */
+     static boolean hasWinEffect(final SpellAbility sa) {
+         for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
