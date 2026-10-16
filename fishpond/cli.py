@@ -249,10 +249,13 @@ def cmd_resume(args):
     import glob
     session = f"s{len({os.path.basename(f).split('_')[1] for f in glob.glob(os.path.join(run_dir, 'logs', 'plan_*_*.tsv'))}) + 1}"
     full = "full" in (meta.get("sim"), meta.get("opp_sim"))
-    wall = runner.execute(todo, args.jobs or runner.default_jobs(full), run_dir, session, args.quiet)
+    # the run's own job count when none is given: a resumed study pod ran 8 JVMs instead of 5, each with less heap, and Xyris's
+    # Snake boards ran out of memory (balance_20261016: 32 games)
+    jobs = args.jobs or meta.get("jobs") or runner.default_jobs(full)
+    wall = runner.execute(todo, jobs, run_dir, session, args.quiet)
     records, missing = runner.collect(run_dir, plan, builds, pods, meta.get("hero_ai", "Default"), meta.get("opp_ai", ["Default"] * 3))
     meta.update(wall=meta.get("wall", 0) + wall, trials=len({e["game"] for e in plan}), complete=not missing,
-                jobs=args.jobs or runner.default_jobs(full))
+                jobs=jobs)
     runner.save(run_dir, meta, records)
     _report(meta, records, builds, args.json, run_dir)
 

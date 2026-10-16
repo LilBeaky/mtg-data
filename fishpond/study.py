@@ -68,7 +68,7 @@ def run_study(args):
                    "--trials", str(args.games), "--seed", str(args.seed + 100 * k), "--sim", args.sim, "--opp-sim", args.sim,
                    "--jobs", str(args.jobs), "--quiet", "--out", d]
         else:
-            cmd = [sys.executable, "-m", "fishpond", "run", "--resume", d]
+            cmd = [sys.executable, "-m", "fishpond", "run", "--resume", d, "--jobs", str(args.jobs)]   # same JVMs (and heap) as a start
         todo.put((pid, d, cmd, st))
     n = todo.qsize()
     print(f"fishpond study: {len(pods)} pods, {len(pods) - n} done, {n} to run on {args.lanes} lane(s) x {args.jobs} JVMs -> {out}")
