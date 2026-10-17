@@ -1,0 +1,16 @@
+# title: The end of the opponent's turn, the AI's next: the hold lifts and the AI spends the mana it kept on Inspiration (patch 58: kept mana is spent at the end of the turn before its own)
+# card: Inspiration
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Inspiration
+p0life=30
+p1life=30
+turn=1
+activeplayer=p1
+activephase=END_OF_TURN
+p0battlefield=Island;Island;Island;Island
+p0hand=Counterspell;Inspiration
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Plains;Plains;Plains;Plains;Soul Warden;Essence Warden;Ajani's Pridemate
+p1hand=Serra Angel
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

@@ -52,6 +52,7 @@ public class PuzzleRunner {
         }
         Match match = new Match(rules, players, "Puzzle");
         Game game = match.createGame();
+        ThreatModel.register(game);
         game.setNoGUIUser();
         fb.game = game;
         State state = new State();

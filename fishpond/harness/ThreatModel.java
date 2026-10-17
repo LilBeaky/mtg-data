@@ -1,7 +1,11 @@
+import forge.ai.ComputerUtilMana;
 import forge.game.Game;
 import forge.game.ability.ApiType;
 import forge.game.card.Card;
+import forge.game.cost.Cost;
 import forge.game.keyword.Keyword;
+import forge.game.phase.PhaseHandler;
+import forge.game.phase.PhaseType;
 import forge.game.player.Player;
 import forge.game.replacement.ReplacementEffect;
 import forge.game.replacement.ReplacementType;
@@ -274,21 +278,39 @@ public final class ThreatModel {
     // ---------------------------------------------------------------- on demand, for decisions (phase 2)
     static PilotPolicy policyOf(Player p) { return p.getController() instanceof ForgeRunner.SafeControllerAi c ? c.policy : null; }
 
-    /** p's threat now (no growth term: that needs history), scored as check() does; cached per game, turn, phase and stack. */
+    /** The games the harness plays (ForgeRunner, PuzzleRunner). Forge's lookahead plays copies of them (ai.simulation.GameCopier,
+     *  same lobby players, so the same SafeControllerAi and policy); the hooks answer 0 there: each copy is a new Game, so the
+     *  per-game cache missed and every lookahead decision rescored every seat (games ran about 75% longer on the p57 pods). */
+    static final Set<Game> REAL = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
+
+    static void register(Game g) { REAL.add(g); }
+
+    /** p's threat now (no growth term: that needs history), scored as check() does; cached per game, turn, phase and stack,
+     *  with the card and spell answers that depend on it (keyed "c|viewer|card id", "s|viewer|card id"). */
     static final Map<Game, Object[]> CACHE = Collections.synchronizedMap(new WeakHashMap<>());
 
-    static double threatNow(Player p) {
-        Game g = p.getGame();
-        String key = g.getPhaseHandler().getTurn() + "|" + g.getPhaseHandler().getPhase() + "|" + g.getStack().size();
+    @SuppressWarnings("unchecked")
+    static Map<Object, Object> cache(Game g) {
+        String key = g.getPhaseHandler().getTurn() + "|" + g.getPhaseHandler().getPhase() + "|" + g.getStack().size()
+                + "|" + g.getCardsIn(ZoneType.Battlefield).size();
         Object[] c = CACHE.get(g);
-        if (c == null || !key.equals(c[0])) { c = new Object[] {key, new HashMap<Player, Double>()}; CACHE.put(g, c); }
-        @SuppressWarnings("unchecked") Map<Player, Double> m = (Map<Player, Double>) c[1];
-        Double v = m.get(p);
+        if (c == null || !key.equals(c[0])) { c = new Object[] {key, new HashMap<Object, Object>()}; CACHE.put(g, c); }
+        return (Map<Object, Object>) c[1];
+    }
+
+    static double threatNow(Player p) { return parts(p)[T_THREAT]; }
+
+    static final int T_THREAT = 0, T_COMBO = 1, T_CLOCK = 2, T_PAYOFFS = 3, T_CYCLES = 4, T_MANA = 5;
+
+    /** p's threat now and its parts {threat, combo, clock, payoffs, cycles, mana}, cached like the rest. */
+    static double[] parts(Player p) {
+        Map<Object, Object> m = cache(p.getGame());
+        double[] v = (double[]) m.get(p);
         if (v == null) { v = score(p); m.put(p, v); }
         return v;
     }
 
-    static double score(Player p) {
+    static double[] score(Player p) {
         List<Player> alive = new ArrayList<>();
         for (Player x : p.getGame().getPlayers()) if (!x.hasLost()) alive.add(x);
         Set<String> field = new HashSet<>();
@@ -306,7 +328,7 @@ public final class ThreatModel {
         int clock = new ThreatModel(p.getGame()).clockTurns(p);
         double t = combo + eng + mana + res + (clock <= 20 ? 50.0 / clock : 0);
         if (clock <= 1) t = Math.max(t, 110); else if (clock <= 2) t = Math.max(t, 100);
-        return t;
+        return new double[] {t, combo, clock, eg[0], eg[2], mana};
     }
 
     static double comboScore(PilotPolicy pol, Set<String> field, int hand) {
@@ -369,24 +391,49 @@ public final class ThreatModel {
     }
 
     /** How much removing permanent c matters to viewer (0-100): its controller's threat relative to viewer's other opponents,
-     *  times its role: a combo piece, engine links and cycles, the commander, a big mana source, its share of the clock, the
-     *  deck's '# key:' card. Public information only (the deck lists are known; no hidden card is looked at). */
+     *  times its role: a combo piece, engine links and cycles, a big mana source, its share of the clock, the
+     *  deck's '# key:' card; a commander loses points (commanderPenalty). Public information only (the deck lists are known; no hidden card is looked at). */
     public static double cardThreat(Player viewer, Card c) {
         Player o = c.getController();
-        if (o == null || o == viewer || !o.isOpponentOf(viewer)) return 0;
+        if (o == null || o == viewer || !o.isOpponentOf(viewer) || !REAL.contains(viewer.getGame())) return 0;
+        Map<Object, Object> m = cache(viewer.getGame());
+        String k = "c|" + viewer.getId() + "|" + c.getId();
+        Double v = (Double) m.get(k);
+        if (v == null) { v = cardThreat0(viewer, c, o); m.put(k, v); }
+        return v;
+    }
+
+    static double cardThreat0(Player viewer, Card c, Player o) {
         PilotPolicy pol = policyOf(o);
         Set<String> field = new HashSet<>();
         for (Card x : o.getCardsIn(ZoneType.Battlefield)) field.add(x.getName());
         double imp = 0;
         int[] m = new int[2];
-        if (inCombo(pol, c.getName(), field, m)) imp += m[0] == 0 ? (m[1] == 1 ? 70 : 40) : m[0] == 1 ? 30 : 0;
+        boolean combo = inCombo(pol, c.getName(), field, m);
+        if (combo) imp += m[0] == 0 ? (m[1] == 1 ? 70 : 40) : m[0] == 1 ? 30 : 0;
         int[] cl = cardLinks(c, o);
         imp += Math.min(30, 10 * cl[0]) + (cl[1] == 1 ? 25 : 0);
-        if (c.isCommander()) imp += 15;
         if (!c.getManaAbilities().isEmpty() && c.getMaxManaProduced() >= 3) imp += 15;
         if (c.isCreature()) imp += Math.min(25, 2 * Math.max(0, c.getNetCombatDamage()));
         if (pol != null && pol.in.keys.contains(c.getName())) imp += 20;
-        return Math.min(100, imp) * (0.4 + 0.6 * relative(viewer, o));
+        double v = Math.min(100, imp) * (0.4 + 0.6 * relative(viewer, o));
+        if (c.isCommander()) {
+            boolean necessary = (combo && m[0] == 0) || cl[1] == 1 || (c.isCreature() && parts(o)[T_CLOCK] <= 2);
+            v -= commanderPenalty(c, o, necessary);
+        }
+        return v;
+    }
+
+    /** Removing a commander mostly buys tempo: it goes back to the command zone and comes back for 2 more (the user,
+     *  2026-10-17: often a bad play because it can be recast, sometimes necessary, so a gradient). Points off the removal
+     *  weight by how cheaply its owner recasts it next turn: 12 with 2+ mana to spare, 7 just affordable, 3 when the tax puts
+     *  it out of reach next turn; none when removing it is necessary anyway (it completes a combo on the battlefield, it is
+     *  part of an engine cycle, or its owner's board kills within two turns). Forge adds 4 x this to its target priority, so
+     *  12 is 48 points against a 5/5's ~200: a nudge, not a veto. (Replaces a flat +15 for being the commander.) */
+    static double commanderPenalty(Card c, Player o, boolean necessary) {
+        if (necessary) return 0;
+        int spare = manaCapacity(o) - (c.getCMC() + 2 * c.getOwner().getCommanderCast(c));
+        return spare >= 2 ? 12 : spare >= 0 ? 7 : 3;
     }
 
     /** How much countering spell sa matters to viewer (0-100): a win effect 100; completing a known combo, the deck's key card,
@@ -394,6 +441,7 @@ public final class ThreatModel {
     public static double spellThreat(Player viewer, SpellAbility sa) {
         Player o = sa.getActivatingPlayer();
         Card c = sa.getHostCard();
+        if (!REAL.contains(viewer.getGame())) return -1;
         if (o == null || c == null || o == viewer || !o.isOpponentOf(viewer)) return 0;
         for (SpellAbility x : chain(sa)) if (x.getApi() == ApiType.WinsGame) return 100;
         PilotPolicy pol = policyOf(o);
@@ -418,7 +466,127 @@ public final class ThreatModel {
         return Math.min(100, v) * (0.4 + 0.6 * relative(viewer, o));
     }
 
-    /** Sets Forge's threat hooks (patch 57), by reflection: the harness compiles against the stock jar. */
+    // ---------------------------------------------------------------- phase 3: mana posture (patch 58)
+    // When does a seat keep mana up instead of tapping out? (the user, 2026-10-16) When it holds an instant-speed answer that
+    // fits the opponent closest to winning, that opponent is close, the seat isn't the leader itself (the leader pushes) and
+    // nobody else at the table is set to answer it (another deck with 6+ instant-speed answers and 2+ mana up) unless the
+    // threat is very close (a 1-turn clock, a completed combo, an engine cycle). "Close" is calibrated on 24k logged
+    // seat-turns: a 2-turn clock won within a round 20% of the time, a completed combo 26%, an engine cycle 22%, 3+ payoffs
+    // 19%, a 30-mana lead 31%, against a 3% base; one missing combo piece only 9%, but that is what counterspells are for.
+    // Counterspells fit a combo a piece away or closer, a mana lead and an engine still being built; removal fits a cycle, a
+    // 2-turn clock, a completed combo and an engine. Mana kept and not needed is spent at the end of the turn before the
+    // seat's own (cycling, instants, flash).
+    static final boolean HOLD_ON = !"false".equals(System.getProperty("fishpond.holdMana"));
+
+    /** An instant-speed answer: 1 a counterspell, 2 targeted removal of a permanent (destroy, exile, bounce, sacrifice,
+     *  damage to a creature); 0 otherwise. */
+    static int answerKind(Card c) {
+        if (!(c.isInstant() || c.hasKeyword(Keyword.FLASH))) return 0;
+        int kind = 0;
+        for (SpellAbility sa : c.getSpells())
+            for (SpellAbility x : chain(sa)) {
+                ApiType api = x.getApi();
+                if (api == ApiType.Counter) return 1;
+                if (api == null || !x.usesTargeting()) continue;
+                if (api == ApiType.Destroy || api == ApiType.Sacrifice
+                        || (api == ApiType.ChangeZone && "Battlefield".equals(x.getParam("Origin")))
+                        || (api == ApiType.DealDamage && x.getParamOrDefault("ValidTgts", "").contains("Creature"))) kind = 2;
+            }
+        return kind;
+    }
+
+    static final Map<Game, Map<Player, Integer>> DECK_ANSWERS = Collections.synchronizedMap(new WeakHashMap<>());
+
+    /** Instant-speed answers in p's deck: its list, every zone counted together (deck knowledge, no hidden card located). */
+    static int deckAnswers(Player p) {
+        Map<Player, Integer> m = DECK_ANSWERS.computeIfAbsent(p.getGame(), k -> new HashMap<>());
+        Integer v = m.get(p);
+        if (v == null) {
+            int n = 0;
+            for (ZoneType z : new ZoneType[] {ZoneType.Library, ZoneType.Hand, ZoneType.Graveyard, ZoneType.Battlefield,
+                    ZoneType.Exile, ZoneType.Command})
+                for (Card c : p.getCardsIn(z)) if (c.getOwner() == p && answerKind(c) > 0) n++;
+            m.put(p, v = n);
+        }
+        return v;
+    }
+
+    /** A seat's hold: the answer it keeps mana for, its cost, the opponent it is for and why. */
+    record Posture(int keep, String answer, Player threat, String why) { }
+
+    static final Posture NONE = new Posture(0, null, null, null);
+
+    static Posture posture(Player ai) {
+        Map<Object, Object> m = cache(ai.getGame());
+        String k = "h|" + ai.getId();
+        Posture v = (Posture) m.get(k);
+        if (v == null) { v = posture0(ai); m.put(k, v); }
+        return v == NONE ? null : v;
+    }
+
+    static Posture posture0(Player ai) {
+        PhaseHandler ph = ai.getGame().getPhaseHandler();
+        if ((ph.is(PhaseType.END_OF_TURN) || ph.is(PhaseType.CLEANUP)) && ph.getNextTurn() == ai) return NONE;   // spend it now
+        List<Card> answers = new ArrayList<>();
+        for (Card c : ai.getCardsIn(ZoneType.Hand)) if (answerKind(c) > 0) answers.add(c);
+        if (answers.isEmpty()) return NONE;
+        Player top = null;
+        double best = -1;
+        for (Player o : ai.getOpponents()) if (!o.hasLost() && threatNow(o) > best) { best = threatNow(o); top = o; }
+        if (top == null || threatNow(ai) >= best) return NONE;   // the leader pushes
+        double[] t = parts(top);
+        boolean veryClose = t[T_CLOCK] <= 1 || t[T_COMBO] >= 90 || t[T_CYCLES] >= 1;
+        boolean close = veryClose || t[T_CLOCK] <= 2 || t[T_COMBO] >= 40 || t[T_PAYOFFS] >= 3 || t[T_MANA] >= 30;
+        if (!close) return NONE;
+        if (!veryClose)
+            for (Player o : ai.getOpponents())
+                if (o != top && !o.hasLost() && deckAnswers(o) >= 6 && ComputerUtilMana.getAvailableManaEstimate(o, false) >= 2)
+                    return NONE;   // someone else is set to answer it
+        boolean counterFits = t[T_COMBO] >= 40 || t[T_MANA] >= 30 || t[T_PAYOFFS] >= 3;
+        boolean removalFits = t[T_CYCLES] >= 1 || t[T_CLOCK] <= 2 || t[T_COMBO] >= 90 || t[T_PAYOFFS] >= 3;
+        int sources = 0;
+        for (Card c : ai.getCardsIn(ZoneType.Battlefield)) if (!c.getManaAbilities().isEmpty()) sources++;
+        Card pick = null;
+        for (Card c : answers) {
+            int kind = answerKind(c);
+            if (c.getCMC() > sources || !((kind == 1 && counterFits) || (kind == 2 && removalFits))) continue;
+            if (pick == null || c.getCMC() < pick.getCMC()) pick = c;
+        }
+        if (pick == null) return NONE;
+        String why = t[T_CYCLES] >= 1 ? "cycle" : t[T_COMBO] >= 90 ? "combo" : t[T_CLOCK] <= 2 ? "clock"
+                : t[T_COMBO] >= 40 ? "combo-1" : t[T_MANA] >= 30 ? "mana" : "payoffs";
+        return new Posture(Math.max(1, pick.getCMC()), pick.getName(), top, why);
+    }
+
+    /** Holds per game, one per seat, turn, phase and refused spell: printed as #FP-HOLD at the game's end. */
+    static final Map<Game, LinkedHashSet<String>> HOLDS = Collections.synchronizedMap(new WeakHashMap<>());
+
+    /** Patch 58's hook: does ai keep its mana up instead of playing sa? */
+    public static boolean holdBlocks(Player ai, SpellAbility sa) {
+        if (!HOLD_ON || sa == null || !REAL.contains(ai.getGame()) || sa.isManaAbility() || sa.isLandAbility()) return false;
+        Card host = sa.getHostCard();
+        if (host != null && sa.isSpell() && answerKind(host) > 0) return false;   // the answers themselves
+        Cost cost = sa.getPayCosts();
+        if (cost == null || cost.getTotalMana() == null) return false;
+        int cmc = cost.getTotalMana().getCMC();
+        boolean x = cost.getTotalMana().countX() > 0;
+        if (cmc == 0 && !x) return false;
+        Posture p = posture(ai);
+        if (p == null) return false;
+        for (SpellAbility y : chain(sa)) if (y.getApi() == ApiType.WinsGame) return false;
+        PilotPolicy pol = policyOf(ai);
+        if (pol != null && pol.castPriority0(ai, sa) >= 3) return false;   // its own combo goes ahead
+        int avail = ComputerUtilMana.getAvailableManaEstimate(ai, false);
+        if (avail < p.keep() || (!x && avail - cmc >= p.keep())) return false;   // nothing to keep, or enough left after it
+        Game g = ai.getGame();
+        HOLDS.computeIfAbsent(g, k -> new LinkedHashSet<>()).add("{\"t\": " + g.getPhaseHandler().getTurn() + ", \"seat\": \""
+                + seat(ai) + "\", \"phase\": \"" + g.getPhaseHandler().getPhase() + "\", \"answer\": " + ForgeRunner.js(p.answer())
+                + ", \"keep\": " + p.keep() + ", \"threat\": \"" + seat(p.threat()) + "\", \"why\": \"" + p.why() + "\", \"refused\": "
+                + ForgeRunner.js(host == null ? "?" : host.getName()) + "}");
+        return true;
+    }
+
+    /** Sets Forge's threat hooks (patches 57 and 58), by reflection: the harness compiles against the stock jar. */
     static void installHooks() {
         java.util.function.ToDoubleBiFunction<Player, Card> ct = ThreatModel::cardThreat;
         java.util.function.ToDoubleBiFunction<Player, SpellAbility> st = ThreatModel::spellThreat;
@@ -427,6 +595,12 @@ public final class ThreatModel {
             forge.ai.AiController.class.getField("SPELL_THREAT").set(null, st);
         } catch (ReflectiveOperationException e) {
             ForgeRunner.out.println("#FP-WARN no threat hooks in this Forge build (patch 57)");
+        }
+        java.util.function.BiPredicate<Player, SpellAbility> hold = ThreatModel::holdBlocks;
+        try {
+            forge.ai.AiController.class.getField("HOLD_MANA").set(null, hold);
+        } catch (ReflectiveOperationException e) {
+            ForgeRunner.out.println("#FP-WARN no mana-posture hook in this Forge build (patch 58)");
         }
     }
 

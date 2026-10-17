@@ -1,0 +1,41 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index f55f267..e32a7e1 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1046,6 +1046,9 @@ public class AiController {
+         if (!sa.canCastTiming(player)) {
+             return AiPlayDecision.TimingRestrictions;
+         }
++        if (holdMana(player, sa)) {
++            return AiPlayDecision.AnotherTime;   // fishpond patch 58: mana kept up for an answer
++        }
+         if (commanderNow(sa)) {
+             return AiPlayDecision.WillPlay;   // fishpond patch 24: cast the commander as soon as it's affordable
+         }
+@@ -4139,6 +4142,26 @@ public class AiController {
+         }
+     }
+ 
++    // ---- fishpond patch 58: threat assessment, phase 3: mana posture (the user, 2026-10-16) ----
++    // The harness decides when a pilot seat keeps mana up for an instant-speed answer in its hand (ThreatModel.holdBlocks: an
++    // opponent close to winning that the answer fits, the seat not leading itself, nobody else at the table set to answer it)
++    // and refuses spells and abilities that would tap below the answer's cost; its own combo and win effects still go. The
++    // hold lifts at the end of the turn before its own. Simulated games: the harness answers false. -Dfishpond.holdMana=false
++    // turns it off (harness side).
++    public static volatile java.util.function.BiPredicate<Player, SpellAbility> HOLD_MANA;
++
++    static boolean holdMana(final Player p, final SpellAbility sa) {
++        final java.util.function.BiPredicate<Player, SpellAbility> f = HOLD_MANA;
++        if (!THREAT_PLAY || f == null || !forge.ai.ability.DrawAi.pilotSeat(p)) {
++            return false;
++        }
++        try {
++            return f.test(p, sa);
++        } catch (final RuntimeException e) {
++            return false;
++        }
++    }
++
+     public static double spellThreatOf(final Player viewer, final SpellAbility sa) {
+         final java.util.function.ToDoubleBiFunction<Player, SpellAbility> f = SPELL_THREAT;
+         if (!THREAT_PLAY || f == null || viewer == null || sa == null || !forge.ai.ability.DrawAi.pilotSeat(viewer)) {

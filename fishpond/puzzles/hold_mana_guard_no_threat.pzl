@@ -1,0 +1,16 @@
+# title: Guard for hold_mana_for_counter: the opponent has only a Grizzly Bears out; the AI casts Air Elemental (nothing close enough to keep Counterspell mana for; patch 58)
+# card: Counterspell
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Air Elemental
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Island
+p0hand=Counterspell;Air Elemental
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Plains;Plains;Plains;Plains;Grizzly Bears
+p1hand=Serra Angel
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

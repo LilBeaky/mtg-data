@@ -71,7 +71,7 @@ public class ForgeRunner {
         GuiBase.setInterface(new GuiDesktop());
         FModel.initialize(null, null);
         // fishpond patch 54: Forge's cast ordering asks the seat's pilot policy for the deck's plan (PilotPolicy.castPriority);
-        // controllers in simulated games aren't SafeControllerAi and get 0
+        // (the lookahead's game copies keep the same lobby players, so their seats get it too)
         // (set by reflection: the harness compiles against the stock jar, where the field doesn't exist)
         java.util.function.ToIntBiFunction<Player, forge.game.spellability.SpellAbility> castPlan =
                 (p, sa) -> p.getController() instanceof SafeControllerAi c && c.policy != null ? c.policy.castPriority(p, sa) : 0;
@@ -325,6 +325,7 @@ public class ForgeRunner {
                 m = pc.getAi().usesFullSimulation() ? "full" : pc.getAi().usesHybridSimulation() ? "hybrid" : "off";
             simOn.put(seat, m);
         }
+        ThreatModel.register(game);   // patch 57's hooks answer for this game, not for the lookahead's copies of it
         Watcher w = new Watcher(game, hero, cap, colors, playOut);
         w.keys = keys;
         String wl = System.getProperty("fishpond.winLines");     // win-line audit (fishpond/win_lines.txt)
@@ -402,6 +403,8 @@ public class ForgeRunner {
             for (String s : w.lines.finish(w.stop == null && won.size() == 1 ? won.get(0) : null)) out.println("#FP-LINE " + s);
         }
         if (w.threat != null) for (String s : w.threat.log) out.println("#FP-THREAT " + s);
+        Set<String> holds = ThreatModel.HOLDS.remove(game);     // patch 58: spells refused to keep mana up for an answer
+        if (holds != null) for (String s : holds) out.println("#FP-HOLD " + s);
         StringBuilder end = new StringBuilder("{\"id\": " + id + ", \"seed\": " + seed + ", \"stop\": " + js(w.stop == null ? "natural" : w.stop)
                 + ", \"ms\": " + ms + ", \"hero_turns\": " + w.heroTurns + ", \"global_turns\": " + w.globalTurns
                 + (w.trace != null ? ", \"trace\": " + js(w.trace) : "")

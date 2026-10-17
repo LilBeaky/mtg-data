@@ -1,0 +1,16 @@
+# title: The opponent has three payoffs out (Soul Warden, Essence Warden, Ajani's Pridemate); the AI, with five Islands, Counterspell and Air Elemental, keeps UU up instead of tapping out for the Elemental (the threat model: mana posture; patch 58)
+# card: Counterspell
+# turns: 1
+# sim: hybrid
+# forbid: Ai\(1\)-P1 cast Air Elemental
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Island
+p0hand=Counterspell;Air Elemental
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Plains;Plains;Plains;Plains;Soul Warden;Essence Warden;Ajani's Pridemate
+p1hand=Serra Angel
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
