@@ -227,3 +227,42 @@ The user's two calls after phase 3:
 Puzzles: `threat_counter_fed_wheel` (Reforge the Soul into Xyris and Psychosis Crawler: countered; the previous build let it
 resolve on both seeds, spell threat 15, under the keep-the-counter line) and `threat_counter_fed_enters` (Grizzly Bears into
 four lifegain-on-enter creatures: countered on both seeds; the previous build countered on one of two, Forge's own roll).
+
+## 2026-10-17: 100-game study (`study100_20261017_p58e`, commit f202764)
+
+Pods V05-V09 at 20 games each, every pod on its p56 seed (games 0-14 pair with `study150_20261016_p56`). 100 of 100 ended
+naturally, 0 AI timeouts; 10 per-decision lookahead fallbacks in 8 games (p56: 1 game on these pods): 6 are a Forge crash in
+the lookahead's game copy (`CopyPermanentEffect.getProtoType` -> `CardFactory.readCard`: a copied token has no card data, so
+copying it inside a simulation throws; Xyris games), 2 are GameCopier "couldn't map" (a Snake token, Decorum Dissertation).
+Each fallback remakes that one decision without lookahead; p57/p58 runs on these pods showed the same count.
+
+Win rate per deck, p56 (15 games a pod) -> now (20 a pod):
+
+| Deck | p56 | now |
+|---|---|---|
+| Heliod | 20/30 (67%) | 29/40 (72%) |
+| Niv-Mizzet | 9/15 (60%) | 8/20 (40%) |
+| Witherbloom | 7/15 (47%) | 8/20 (40%) |
+| Xyris | 9/30 (30%) | 13/40 (32%) |
+| Klauth | 5/15 (33%) | 6/20 (30%) |
+| Erebos | 7/15 (47%) | 6/20 (30%) |
+| Wilson | 3/15 (20%) | 5/20 (25%) |
+| Zhulodok | 3/15 (20%) | 5/20 (25%) |
+| Yusri | 2/30 (7%) | 7/40 (18%) |
+| Chulane | 3/15 (20%) | 3/20 (15%) |
+| Lumra | 4/30 (13%) | 4/40 (10%) |
+| Omnath | 1/15 (7%) | 2/20 (10%) |
+| Zur | 1/30 (3%) | 3/40 (8%) |
+| Ragost | 0/15 | 1/20 (5%) |
+| Jarad | 1/15 (7%) | 0/20 |
+
+The interaction decks moved up (Yusri 7% -> 18%, Zur 3% -> 8%) and Niv and Erebos down; at these sizes each of those is one or
+two standard errors, so a direction, not a result. Heliod is still the strongest deck by far (it wins V05 and V07 three games in
+four).
+
+Counterspells: Zur 8 (2 of 6 traceable at the top threat), Yusri 5 (2 of 2), Witherbloom 2, Wilson 1, Zhulodok 1; p56 on the
+same pods: Zur 7 (2 of 5), Yusri 4 (2 of 2), Zhulodok 4, Witherbloom 3, Heliod 1. Holds: 32 episodes in 100 games, the held
+answer cast in 9, the threat winning during a hold in 2; "a combo piece away" still starts most holds (14 of 32).
+
+Found: Zur's hold refused wizardcycling Step Through 9 times. Step Through is a key card that is only ever wizardcycled (the
+user's override), and the key-card exemption covered casting it, not its cycling.

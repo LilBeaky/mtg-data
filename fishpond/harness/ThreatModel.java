@@ -717,8 +717,8 @@ public final class ThreatModel {
         // engine piece (cast plan level 2+) or a big spell (Yusri held Counterspell over Nexus of Fate, Jin-Gitaxias and Enter
         // the Infinite; Zur over Triskaidekaphile, Astral Drift and itself, 2026-10-17)
         PilotPolicy pol = policyOf(ai);
-        if (host != null && sa.isSpell() && (host.isCommander() || host.getCMC() >= 6 || (pol != null && pol.isKey(host.getName()))))
-            return false;
+        if (host != null && sa.isSpell() && (host.isCommander() || host.getCMC() >= 6)) return false;
+        if (host != null && pol != null && pol.isKey(host.getName())) return false;   // cast or used: Step Through is only ever wizardcycled
         if (pol != null && pol.castPriority0(ai, sa) >= 2) return false;
         if (sa.isCycling() && cyclingPayoff(ai)) return false;   // cycling into Astral Drift is the engine itself
         int avail = ComputerUtilMana.getAvailableManaEstimate(ai, false);
