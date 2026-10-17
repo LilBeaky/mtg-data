@@ -1,0 +1,15 @@
+# title: The end of the opponent's turn; it has Serra Angel, Craw Wurm, Hill Giant and Rhythm of the Wild; the AI has seven Islands and Cyclonic Rift: it overloads it (each nonland permanent it doesn't control back to hand). An overloaded spell keeps its single-target API, so the bounce AI never saw it as a wipe (patch 61)
+# card: Cyclonic Rift
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Cyclonic Rift$
+p0life=30
+p1life=30
+turn=1
+activeplayer=p1
+activephase=END_OF_TURN
+p0battlefield=Island;Island;Island;Island;Island;Island;Island
+p0hand=Cyclonic Rift
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest;Forest;Forest;Forest;Serra Angel;Craw Wurm;Hill Giant;Rhythm of the Wild
+p1library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island

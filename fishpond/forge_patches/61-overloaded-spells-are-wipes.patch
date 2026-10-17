@@ -1,0 +1,113 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index e32a7e1..af7c2cd 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1049,6 +1049,11 @@ public class AiController {
+         if (holdMana(player, sa)) {
+             return AiPlayDecision.AnotherTime;   // fishpond patch 58: mana kept up for an answer
+         }
++        // fishpond patch 61: an overloaded spell is a wipe (Cyclonic Rift for 7): judged across the table like one; the
++        // single-target AI it would otherwise reach never weighed "each permanent you don't control"
++        if (ComputerUtilCard.Wipe.overloaded(sa) && ComputerUtilCard.Wipe.applies(player, sa) && ComputerUtilCard.Wipe.isWipe(sa)) {
++            return ComputerUtilCard.Wipe.judge(player, sa).decision();
++        }
+         if (commanderNow(sa)) {
+             return AiPlayDecision.WillPlay;   // fishpond patch 24: cast the commander as soon as it's affordable
+         }
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+index d5fbc60..aede0e9 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+@@ -609,13 +609,37 @@ public class ComputerUtilCard {
+                     && !"Always".equals(sa.getParam("AILogic"));
+         }
+ 
++        /** fishpond patch 61: an overloaded spell (Cyclonic Rift, Vandalblast, Mizzium Mortars) keeps its single-target API
++         *  with "each" in place of "target" (Defined$ Valid ...): it is the matching "all" effect. */
++        static boolean overloaded(final SpellAbility sa) {
++            return sa.isAlternativeCost(forge.game.spellability.AlternativeCost.Overload)
++                    && sa.getParamOrDefault("Defined", "").startsWith("Valid");
++        }
++
++        /** The mass-removal kind of an ability: its API, or for an overloaded one the matching "all" API (null otherwise). */
++        static ApiType kind(final SpellAbility sa) {
++            if (sa == null || sa.getApi() == null) {
++                return null;
++            }
++            if (overloaded(sa)) {
++                switch (sa.getApi()) {
++                    case ChangeZone: return ApiType.ChangeZoneAll;
++                    case Destroy: return ApiType.DestroyAll;
++                    case DealDamage: return ApiType.DamageAll;
++                    default: return null;
++                }
++            }
++            return sa.getApi();
++        }
++
+         /** Mass-removal API of one ability (no subs): DestroyAll, SacrificeAll, DamageAll, ChangeZoneAll from the battlefield or
+-         *  graveyards that nothing returns. */
++         *  graveyards that nothing returns; overloaded spells as their "all" effect (patch 61). */
+         public static boolean isWipe(final SpellAbility sa) {
+-            if (sa == null || sa.getApi() == null) {
++            final ApiType k = kind(sa);
++            if (k == null) {
+                 return false;
+             }
+-            switch (sa.getApi()) {
++            switch (k) {
+                 case DestroyAll: case SacrificeAll: case DamageAll:
+                     return true;
+                 case ChangeZoneAll: {
+@@ -623,7 +647,7 @@ public class ComputerUtilCard {
+                     if (dest.equals("Battlefield") || !(origin.equals("Battlefield") || origin.equals("Graveyard"))) {
+                         return false;
+                     }
+-                    final String type = sa.getParamOrDefault("ChangeType", "Card");
++                    final String type = overloaded(sa) ? sa.getParam("Defined") : sa.getParamOrDefault("ChangeType", "Card");
+                     if (type.contains("YouCtrl") || type.contains("YouOwn")) {
+                         return false;   // its own permanents only: a save or a blink (Ghostway), not removal
+                     }
+@@ -665,9 +689,11 @@ public class ComputerUtilCard {
+         public static java.util.Map<Player, java.util.Set<Card>> hits(final Player ai, final SpellAbility sa) {
+             final java.util.Map<Player, java.util.Set<Card>> out = new java.util.HashMap<>();
+             final Card source = sa.getHostCard();
++            final ApiType api = kind(sa);
+             final String origin = sa.getParamOrDefault("Origin", "Battlefield");
+-            final boolean gy = sa.getApi() == ApiType.ChangeZoneAll && origin.equals("Graveyard");
+-            String valid = sa.getApi() == ApiType.ChangeZoneAll ? sa.getParamOrDefault("ChangeType", "Card") : sa.getParamOrDefault("ValidCards", "");
++            final boolean gy = api == ApiType.ChangeZoneAll && origin.equals("Graveyard");
++            String valid = overloaded(sa) ? sa.getParam("Defined").replaceFirst("^Valid\\S*\\s+", "")
++                    : api == ApiType.ChangeZoneAll ? sa.getParamOrDefault("ChangeType", "Card") : sa.getParamOrDefault("ValidCards", "");
+             if (valid.isEmpty()) {
+                 valid = "Creature";
+             }
+@@ -675,7 +701,7 @@ public class ComputerUtilCard {
+             final String matchValid = valid.replace(".!ChosenCard", "").replace("+!ChosenCard", "").replace(".nonChosenCard", "")
+                     .replace("+nonChosenCard", "");
+             int dmg = 0;
+-            if (sa.getApi() == ApiType.DamageAll) {
++            if (api == ApiType.DamageAll) {
+                 try {
+                     dmg = AbilityUtils.calculateAmount(source, sa.getParam("NumDmg"), sa);
+                 } catch (final RuntimeException e) {
+@@ -699,7 +725,7 @@ public class ComputerUtilCard {
+                         lost.add(c);
+                         continue;
+                     }
+-                    switch (sa.getApi()) {
++                    switch (api) {
+                         case DestroyAll:
+                             if (c.hasKeyword(Keyword.INDESTRUCTIBLE) || c.getCounters(CounterEnumType.SHIELD) > 0
+                                     || (!sa.hasParam("NoRegen") && c.getShieldCount() > 0)) {
+@@ -732,8 +758,8 @@ public class ComputerUtilCard {
+         }
+ 
+         static double loss(final Player ai, final Player p, final java.util.Collection<Card> cards, final SpellAbility sa) {
+-            final boolean bounce = sa != null && sa.getApi() == ApiType.ChangeZoneAll && "Hand".equals(sa.getParam("Destination"));
+-            final boolean gy = sa != null && sa.getApi() == ApiType.ChangeZoneAll && "Graveyard".equals(sa.getParam("Origin"));
++            final boolean bounce = sa != null && kind(sa) == ApiType.ChangeZoneAll && "Hand".equals(sa.getParam("Destination"));
++            final boolean gy = sa != null && kind(sa) == ApiType.ChangeZoneAll && "Graveyard".equals(sa.getParam("Origin"));
+             double v = 0;
+             for (final Card c : cards) {
+                 v += gy ? (c.isCreature() ? 15 : 8) : bounce && !c.isToken() ? 0.4 * value(ai, c) : value(ai, c);

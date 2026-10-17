@@ -70,7 +70,7 @@ def _play(s):
 def harness_lines(lines):
     """The harness's own lines in a game block: (snaps {hero turn: {'main': {...}, 'end': {...}}}, end info or None)."""
     import json
-    snaps, end, tutors, searches, policy, loops, held, wl, castplan, threat, hold = {}, None, [], {}, [], [], [], [], [], [], []
+    snaps, end, tutors, searches, policy, loops, held, wl, castplan, threat, hold, wipe = {}, None, [], {}, [], [], [], [], [], [], [], []
     for line in lines:
         if line.startswith("#FP-SNAP "):
             s = json.loads(line[9:])
@@ -85,6 +85,9 @@ def harness_lines(lines):
             wl.append(json.loads(line[9:]))
         elif line.startswith("#FP-THREAT "):              # threat assessment per turn, every seat (harness/ThreatModel.java)
             threat.append(json.loads(line[11:]))
+        elif line.startswith("#FP-WIPE "):                # a board wipe judged across the table, cast or refused (Forge patch 60)
+            try: wipe.append(json.loads(line[9:]))
+            except ValueError: pass
         elif line.startswith("#FP-HOLD "):                # a spell refused to keep mana up for an answer (Forge patch 58)
             hold.append(json.loads(line[9:]))
         elif line.startswith("#FP-CASTPLAN "):            # cast ordering by the deck's plan, per policy seat (Forge patch 54)
@@ -116,6 +119,7 @@ def harness_lines(lines):
     if end is not None: end["castplan"] = castplan
     if end is not None: end["threat"] = threat
     if end is not None: end["hold"] = hold
+    if end is not None: end["wipe"] = wipe
     if end is not None: end["policy_log"] = policy      # pilot policy decisions, every seat (harness/PilotPolicy.java)
     if end is not None: end["searches"] = searches       # per seat name
     if end is not None: end["tutors"] = tutors      # the hero's library searches and digs into hand or play

@@ -1,0 +1,15 @@
+# title: The AI's two creatures wear auras; the opponent has three unenchanted creatures; the AI casts Winds of Rath (destroy creatures that aren't enchanted): its own board survives (patch 60: matched by the card's own filter, what the caster keeps counted)
+# card: Winds of Rath
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Winds of Rath
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains;Plains;Grizzly Bears|Id:101;Holy Strength|AttachedTo:101;Centaur Courser|Id:102;Holy Strength|AttachedTo:102
+p0hand=Winds of Rath
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest;Forest;Forest;Serra Angel;Hill Giant;Trained Armodon
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

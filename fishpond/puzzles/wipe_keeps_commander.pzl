@@ -1,0 +1,15 @@
+# title: Slash the Ranks (destroy creatures and planeswalkers except commanders): the AI's commander Craw Wurm survives, its Grizzly Bears dies; the opponent loses three creatures; it casts it (patch 60: wiping around its commander, what it keeps counted)
+# card: Slash the Ranks
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Slash the Ranks
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains;Plains;Forest;Craw Wurm|IsCommander;Grizzly Bears
+p0hand=Slash the Ranks
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest;Forest;Forest;Serra Angel;Hill Giant;Trained Armodon
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

@@ -1,0 +1,432 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+index 63f7214..d5fbc60 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+@@ -589,6 +589,323 @@ public class ComputerUtilCard {
+         return Aggregates.itemWithMax(list, c -> evaluateRemovalTargetPriority(ai, c));
+     }
+ 
++    /**
++     * fishpond patch 60: board wipes, judged across the whole table (the user, 2026-10-17). Forge's mass-removal logic
++     * (DestroyAllAi.doMassRemovalLogic) returned on the first opponent in seat order, comparing the caster's losses with that
++     * one player's, so a wipe aimed at the third seat's board never saw it; modal wipes picked modes one at a time. Here each
++     * player's loss is the value of what it would really lose (destroy: not indestructible, shielded or regenerating, an
++     * umbra aura dies in its creature's place; exile and sacrifice: everything matched; a bounce: a token's whole value, a
++     * card's tempo; damage: what it kills; "each player keeps one": its best is kept; a commander counts 0.6, it comes back;
++     * an opponent's engine piece adds 4 x its threat weight). The caster casts when every opponent loses a little more than it
++     * does or one loses a lot more, and never when it loses as much as anyone; keeping the best board afterwards (Wilson wiping
++     * around himself) lowers the bar. Pilot seats; others keep Forge's logic.
++     */
++    public static final class Wipe {
++        public static final double SMALL = 40, NET_MIN = 200, BIG = 400;
++        static final java.util.Set<String> LOGGED = java.util.Collections.synchronizedSet(new java.util.LinkedHashSet<>());
++
++        public static boolean applies(final Player ai, final SpellAbility sa) {
++            return sa != null && !sa.usesTargeting() && forge.ai.ability.DrawAi.pilotSeat(ai)
++                    && !"Always".equals(sa.getParam("AILogic"));
++        }
++
++        /** Mass-removal API of one ability (no subs): DestroyAll, SacrificeAll, DamageAll, ChangeZoneAll from the battlefield or
++         *  graveyards that nothing returns. */
++        public static boolean isWipe(final SpellAbility sa) {
++            if (sa == null || sa.getApi() == null) {
++                return false;
++            }
++            switch (sa.getApi()) {
++                case DestroyAll: case SacrificeAll: case DamageAll:
++                    return true;
++                case ChangeZoneAll: {
++                    final String origin = sa.getParamOrDefault("Origin", ""), dest = sa.getParamOrDefault("Destination", "");
++                    if (dest.equals("Battlefield") || !(origin.equals("Battlefield") || origin.equals("Graveyard"))) {
++                        return false;
++                    }
++                    final String type = sa.getParamOrDefault("ChangeType", "Card");
++                    if (type.contains("YouCtrl") || type.contains("YouOwn")) {
++                        return false;   // its own permanents only: a save or a blink (Ghostway), not removal
++                    }
++                    for (SpellAbility x = sa.getSubAbility(); x != null; x = x.getSubAbility()) {
++                        if (x.getApi() == ApiType.ChangeZone || x.getApi() == ApiType.ChangeZoneAll) {
++                            if ("Battlefield".equals(x.getParam("Destination"))) {
++                                return false;   // exiled and returned: a blink
++                            }
++                        }
++                    }
++                    return true;
++                }
++                default:
++                    return false;
++            }
++        }
++
++        static double value(final Player ai, final Card c) {
++            double v;
++            if (c.isCreature()) {
++                v = evaluateCreature(c);
++            } else if (c.isPlaneswalker()) {
++                v = 100 + 10 * c.getCurrentLoyalty();
++            } else if (c.isLand()) {
++                v = 60;
++            } else {
++                v = c.isToken() ? 25 : 60 + 30 * c.getCMC();
++            }
++            if (c.isCommander()) {
++                v *= 0.6;
++            }
++            if (c.getController() != null && c.getController().isOpponentOf(ai)) {
++                v += 4 * Math.max(0, AiController.cardThreatOf(ai, c));
++            }
++            return v;
++        }
++
++        /** What each player loses to one wipe ability: cards by player. */
++        public static java.util.Map<Player, java.util.Set<Card>> hits(final Player ai, final SpellAbility sa) {
++            final java.util.Map<Player, java.util.Set<Card>> out = new java.util.HashMap<>();
++            final Card source = sa.getHostCard();
++            final String origin = sa.getParamOrDefault("Origin", "Battlefield");
++            final boolean gy = sa.getApi() == ApiType.ChangeZoneAll && origin.equals("Graveyard");
++            String valid = sa.getApi() == ApiType.ChangeZoneAll ? sa.getParamOrDefault("ChangeType", "Card") : sa.getParamOrDefault("ValidCards", "");
++            if (valid.isEmpty()) {
++                valid = "Creature";
++            }
++            final boolean keepOne = valid.contains("ChosenCard");   // Divine Reckoning, Single Combat: each player keeps one
++            final String matchValid = valid.replace(".!ChosenCard", "").replace("+!ChosenCard", "").replace(".nonChosenCard", "")
++                    .replace("+nonChosenCard", "");
++            int dmg = 0;
++            if (sa.getApi() == ApiType.DamageAll) {
++                try {
++                    dmg = AbilityUtils.calculateAmount(source, sa.getParam("NumDmg"), sa);
++                } catch (final RuntimeException e) {
++                    dmg = 0;
++                }
++            }
++            for (final Player p : ai.getGame().getPlayers()) {
++                if (p.hasLost()) {
++                    continue;
++                }
++                final java.util.Set<Card> lost = new java.util.LinkedHashSet<>();
++                CardCollection cards = CardLists.getValidCards(p.getCardsIn(gy ? ZoneType.Graveyard : ZoneType.Battlefield),
++                        matchValid, source.getController(), source, sa);
++                if (keepOne && !cards.isEmpty()) {
++                    final Card keep = Aggregates.itemWithMax(cards, c -> (int) value(p, c));
++                    cards = new CardCollection(cards);
++                    cards.remove(keep);
++                }
++                for (final Card c : cards) {
++                    if (gy) {
++                        lost.add(c);
++                        continue;
++                    }
++                    switch (sa.getApi()) {
++                        case DestroyAll:
++                            if (c.hasKeyword(Keyword.INDESTRUCTIBLE) || c.getCounters(CounterEnumType.SHIELD) > 0
++                                    || (!sa.hasParam("NoRegen") && c.getShieldCount() > 0)) {
++                                break;
++                            }
++                            Card umbra = null;
++                            for (final Card a : c.getEnchantedBy()) {
++                                if (a.hasKeyword(Keyword.UMBRA_ARMOR)) {
++                                    umbra = a;
++                                    break;
++                                }
++                            }
++                            lost.add(umbra != null ? umbra : c);
++                            break;
++                        case DamageAll:
++                            if (c.isCreature() && !c.hasKeyword(Keyword.INDESTRUCTIBLE)
++                                    && ComputerUtilCombat.predictDamageTo(c, dmg, source, false) >= ComputerUtilCombat.getDamageToKill(c, false)) {
++                                lost.add(c);
++                            } else if (c.isPlaneswalker() && dmg >= c.getCurrentLoyalty()) {
++                                lost.add(c);
++                            }
++                            break;
++                        default:
++                            lost.add(c);
++                    }
++                }
++                out.put(p, lost);
++            }
++            return out;
++        }
++
++        static double loss(final Player ai, final Player p, final java.util.Collection<Card> cards, final SpellAbility sa) {
++            final boolean bounce = sa != null && sa.getApi() == ApiType.ChangeZoneAll && "Hand".equals(sa.getParam("Destination"));
++            final boolean gy = sa != null && sa.getApi() == ApiType.ChangeZoneAll && "Graveyard".equals(sa.getParam("Origin"));
++            double v = 0;
++            for (final Card c : cards) {
++                v += gy ? (c.isCreature() ? 15 : 8) : bounce && !c.isToken() ? 0.4 * value(ai, c) : value(ai, c);
++            }
++            return v;
++        }
++
++        static double board(final Player ai, final Player p) {
++            double v = 0;
++            for (final Card c : p.getCardsIn(ZoneType.Battlefield)) {
++                if (!c.isLand()) {
++                    v += value(ai, c);
++                }
++            }
++            return v;
++        }
++
++        /** The table's verdict on losses (by player): cast, wait for main 2, or refuse; also the margin, for mode choice. */
++        public static AiAbilityDecision decide(final Player ai, final SpellAbility sa, final java.util.Map<Player, Double> loss,
++                final double[] marginOut, final boolean quiet) {
++            final Game game = ai.getGame();
++            final double self = loss.getOrDefault(ai, 0.0);
++            double maxOpp = 0, minOpp = Double.MAX_VALUE, net = 0, remainOpp = 0;
++            int opps = 0;
++            for (final Player o : ai.getOpponents()) {
++                if (o.hasLost()) {
++                    continue;
++                }
++                opps++;
++                final double l = loss.getOrDefault(o, 0.0);
++                maxOpp = Math.max(maxOpp, l);
++                minOpp = Math.min(minOpp, l);
++                net += Math.max(0, l - self);
++                remainOpp = Math.max(remainOpp, board(ai, o) - l);
++            }
++            if (opps == 0) {
++                minOpp = 0;
++            }
++            final double remainSelf = board(ai, ai) - self;
++            final boolean keeps = remainSelf >= 150 && remainSelf > remainOpp;   // it keeps the best board (Wilson around himself)
++            final double small = keeps ? SMALL / 2 : SMALL, netMin = keeps ? NET_MIN / 2 : NET_MIN, big = keeps ? BIG / 2 : BIG;
++            if (marginOut != null) {
++                marginOut[0] = net + (keeps ? remainSelf - remainOpp : 0);
++            }
++            String verdict;
++            AiAbilityDecision d;
++            if (!quiet && game.getPhaseHandler().is(PhaseType.COMBAT_DECLARE_BLOCKERS) && game.getCombat() != null
++                    && ComputerUtilCombat.lifeInSeriousDanger(ai, game.getCombat()) && maxOpp > 0) {
++                verdict = "danger";
++                d = new AiAbilityDecision(100, AiPlayDecision.WillPlay);
++            } else if (self >= maxOpp) {
++                verdict = "refuse: it loses as much as anyone";
++                d = new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
++            } else if ((minOpp - self >= small && net >= netMin) || maxOpp - self >= big) {
++                // its own creatures that die anyway attack first, unless it keeps a board to attack into the empty table with
++                if (!quiet && self > 0 && !keeps && game.getPhaseHandler().isPlayerTurn(ai) && game.getPhaseHandler().getPhase().isBefore(PhaseType.MAIN2)
++                        && sa.isSpell() && !sa.getHostCard().isInstant() && !sa.getHostCard().hasKeyword(Keyword.FLASH)) {
++                    verdict = "wait for main 2";
++                    d = new AiAbilityDecision(0, AiPlayDecision.WaitForMain2);
++                } else {
++                    verdict = minOpp - self >= small && net >= netMin ? "cast: everyone loses more" : "cast: one loses a lot more";
++                    d = new AiAbilityDecision(100, AiPlayDecision.WillPlay);
++                }
++            } else {
++                verdict = "refuse: not enough";
++                d = new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
++            }
++            if (!quiet) {
++                log(ai, sa, self, loss, keeps, verdict);
++            }
++            return d;
++        }
++
++        static void log(final Player ai, final SpellAbility sa, final double self, final java.util.Map<Player, Double> loss,
++                final boolean keeps, final String verdict) {
++            final Game game = ai.getGame();
++            final StringBuilder sb = new StringBuilder("#FP-WIPE {\"t\": " + game.getPhaseHandler().getTurn() + ", \"seat\": \""
++                    + ai.getName() + "\", \"card\": \"" + sa.getHostCard().getName().replace("\"", "") + "\", \"self\": " + Math.round(self)
++                    + ", \"opp\": {");
++            boolean first = true;
++            for (final Player o : ai.getOpponents()) {
++                if (o.hasLost()) {
++                    continue;
++                }
++                sb.append(first ? "" : ", ").append("\"").append(o.getName()).append("\": ").append(Math.round(loss.getOrDefault(o, 0.0)));
++                first = false;
++            }
++            sb.append("}, \"keeps\": ").append(keeps).append(", \"verdict\": \"").append(verdict).append("\"}");
++            final String line = sb.toString();
++            final String key = game.getId() + "|" + game.getPhaseHandler().getTurn() + "|" + ai.getName() + "|" + sa.getHostCard().getName() + "|" + verdict;
++            if (LOGGED.add(key)) {
++                if (LOGGED.size() > 5000) {
++                    LOGGED.clear();
++                }
++                System.out.println(line);
++            }
++        }
++
++        /** One wipe ability, judged. */
++        public static AiAbilityDecision judge(final Player ai, final SpellAbility sa) {
++            final java.util.Map<Player, java.util.Set<Card>> hits = hits(ai, sa);
++            final java.util.Map<Player, Double> loss = new java.util.HashMap<>();
++            for (final java.util.Map.Entry<Player, java.util.Set<Card>> e : hits.entrySet()) {
++                loss.put(e.getKey(), loss(ai, e.getKey(), e.getValue(), sa));
++            }
++            if (APPROVED.containsKey(sa)) {
++                return new AiAbilityDecision(100, AiPlayDecision.WillPlay);   // a mode of a modal wipe, judged with its set
++            }
++            return decide(ai, sa, loss, null, false);
++        }
++
++        /** Modes a modal wipe chose as a set (chooseModes): each is fine on its own check. */
++        static final java.util.Map<SpellAbility, Boolean> APPROVED = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
++
++        /** Modal wipes (Austere Command: two of four; Farewell: one to four): every legal set of modes, judged together (a card
++         *  two modes hit counts once); the best that passes, or null when none does. */
++        public static java.util.List<forge.game.spellability.AbilitySub> chooseModes(final Player ai, final SpellAbility sa, final java.util.List<forge.game.spellability.AbilitySub> choices,
++                final int min, final int num) {
++            final int n = choices.size();
++            if (n > 10) {
++                return null;
++            }
++            java.util.List<forge.game.spellability.AbilitySub> best = null;
++            java.util.Map<Player, Double> bestLoss = null;
++            double bestMargin = -1;
++            for (int mask = 1; mask < (1 << n); mask++) {
++                final int k = Integer.bitCount(mask);
++                if (k < Math.max(1, min) || k > num) {
++                    continue;
++                }
++                final java.util.List<forge.game.spellability.AbilitySub> pick = new java.util.ArrayList<>();
++                final java.util.Map<Player, java.util.Set<Card>> union = new java.util.HashMap<>();
++                final java.util.Map<Player, Double> gyLoss = new java.util.HashMap<>();
++                for (int i = 0; i < n; i++) {
++                    if ((mask & (1 << i)) == 0) {
++                        continue;
++                    }
++                    final forge.game.spellability.AbilitySub sub = choices.get(i);
++                    sub.setActivatingPlayer(ai);
++                    pick.add(sub);
++                    final boolean gy = sub.getApi() == ApiType.ChangeZoneAll && "Graveyard".equals(sub.getParam("Origin"));
++                    for (final java.util.Map.Entry<Player, java.util.Set<Card>> e : hits(ai, sub).entrySet()) {
++                        if (gy) {
++                            gyLoss.merge(e.getKey(), loss(ai, e.getKey(), e.getValue(), sub), Double::sum);
++                        } else {
++                            union.computeIfAbsent(e.getKey(), p -> new java.util.LinkedHashSet<>()).addAll(e.getValue());
++                        }
++                    }
++                }
++                final java.util.Map<Player, Double> loss = new java.util.HashMap<>(gyLoss);
++                for (final java.util.Map.Entry<Player, java.util.Set<Card>> e : union.entrySet()) {
++                    loss.merge(e.getKey(), loss(ai, e.getKey(), e.getValue(), null), Double::sum);
++                }
++                final double[] margin = new double[1];
++                final AiAbilityDecision d = decide(ai, sa, loss, margin, true);
++                if (d.willingToPlay() && margin[0] > bestMargin) {
++                    bestMargin = margin[0];
++                    best = pick;
++                    bestLoss = loss;
++                }
++            }
++            if (best != null) {
++                for (final forge.game.spellability.AbilitySub sub : best) {
++                    APPROVED.put(sub, Boolean.TRUE);
++                }
++                decide(ai, sa, bestLoss, null, false);   // logged once, for the chosen set
++            }
++            return best;
++        }
++
++    }
++
+     private static int evaluateRemovalTargetPriority(final Player ai, final Card c) {
+         int value;
+         if (c.isCreature()) {
+diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAllAi.java b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAllAi.java
+index fd18621..19630f4 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAllAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAllAi.java
+@@ -28,6 +28,13 @@ public class ChangeZoneAllAi extends SpellAbilityAi {
+         final ZoneType destination = ZoneType.smartValueOf(sa.getParam("Destination"));
+         final ZoneType origin = ZoneType.listValueOf(sa.getParam("Origin")).get(0);
+         final String aiLogic = sa.getParamOrDefault("AILogic" ,"");
++        if (origin.equals(ZoneType.Battlefield) && aiLogic.isEmpty() && ComputerUtilCard.Wipe.applies(ai, sa)
++                && ComputerUtilCard.Wipe.isWipe(sa)) {
++            if (abCost != null && !ComputerUtilCost.checkLifeCost(ai, abCost, source, 4, sa)) {
++                return new AiAbilityDecision(0, AiPlayDecision.CostNotAcceptable);
++            }
++            return ComputerUtilCard.Wipe.judge(ai, sa);   // fishpond patch 60: an exile or bounce wipe, the whole table
++        }
+ 
+         if (abCost != null) {
+             // AI currently disabled for these costs
+diff --git a/forge-ai/src/main/java/forge/ai/ability/CharmAi.java b/forge-ai/src/main/java/forge/ai/ability/CharmAi.java
+index 54bff03..cbc4b1b 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/CharmAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/CharmAi.java
+@@ -50,6 +50,13 @@ public class CharmAi extends SpellAbilityAi {
+             chosenList = choices.subList(1, choices.size());
+         } else if ("Triskaidekaphobia".equals(ComputerUtilAbility.getAbilitySourceName(sa))) {
+             chosenList = chooseTriskaidekaphobia(choices, ai);
++        } else if (allWipes(choices) && ComputerUtilCard.Wipe.applies(ai, sa)) {
++            // fishpond patch 60: a modal wipe (Austere Command, Farewell) picks the best set of modes judged together
++            List<AbilitySub> best = ComputerUtilCard.Wipe.chooseModes(ai, sa, choices, min, num);
++            if (best == null) {
++                return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
++            }
++            chosenList = best;
+         } else {
+             // only randomize if not all possible together
+             if (num < choices.size()) {
+@@ -104,6 +111,18 @@ public class CharmAi extends SpellAbilityAi {
+         return super.checkApiLogic(ai, sa);
+     }
+ 
++    private static boolean allWipes(List<AbilitySub> choices) {
++        if (choices.isEmpty()) {
++            return false;
++        }
++        for (AbilitySub sub : choices) {
++            if (!ComputerUtilCard.Wipe.isWipe(sub)) {
++                return false;
++            }
++        }
++        return true;
++    }
++
+     private List<AbilitySub> chooseOptionsAi(SpellAbility sa, List<AbilitySub> choices, final Player ai, boolean isTrigger, int num, int min) {
+         List<AbilitySub> chosen = Lists.newArrayList();
+         AiController aic = ((PlayerControllerAi) ai.getController()).getAi();
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DamageAllAi.java b/forge-ai/src/main/java/forge/ai/ability/DamageAllAi.java
+index 2d795f8..f128a18 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DamageAllAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DamageAllAi.java
+@@ -19,6 +19,12 @@ public class  DamageAllAi extends SpellAbilityAi {
+         // AI needs to be expanded, since this function can be pretty complex
+         // based on what the expected targets could be
+         final Card source = sa.getHostCard();
++        // fishpond patch 60: a damage wipe to creatures only (Blasphemous Act), judged across the table; one that also hits
++        // players keeps Forge's own logic (its life math)
++        if (ComputerUtilCard.Wipe.applies(ai, sa) && !sa.hasParam("ValidPlayers") && ai.getGame().getStack().isEmpty()
++                && !(sa.getParamOrDefault("NumDmg", "").equals("X") && sa.getSVar("X").equals("Count$xPaid"))) {
++            return ComputerUtilCard.Wipe.judge(ai, sa);
++        }
+ 
+         // wait until stack is empty (prevents duplicate kills)
+         if (!ai.getGame().getStack().isEmpty()) {
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DestroyAllAi.java b/forge-ai/src/main/java/forge/ai/ability/DestroyAllAi.java
+index 4d115c9..8bb8d6e 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DestroyAllAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DestroyAllAi.java
+@@ -52,6 +52,12 @@ public class DestroyAllAi extends SpellAbilityAi {
+     public static AiAbilityDecision doMassRemovalLogic(Player ai, SpellAbility sa) {
+         final Card source = sa.getHostCard();
+         final String logic = sa.getParamOrDefault("AILogic", "");
++        if (ComputerUtilCard.Wipe.applies(ai, sa) && ComputerUtilCard.Wipe.isWipe(sa) && !logic.equals("RaidingParty")) {
++            if (sa.getParamOrDefault("ValidCards", "").contains("X") && sa.getSVar("X").equals("Count$xPaid")) {
++                ComputerUtilCost.setMaxXValue(sa, ai, sa.isTrigger());
++            }
++            return ComputerUtilCard.Wipe.judge(ai, sa);   // fishpond patch 60: the whole table, not the first opponent
++        }
+ 
+         // if we hit the whole board, the other opponents who are not the reason to cast this probably still suffer a bit too
+         final int CREATURE_EVAL_THRESHOLD = 200 / (!sa.usesTargeting() ? ai.getOpponents().size() : 1);
+diff --git a/forge-ai/src/main/java/forge/ai/ability/SacrificeAllAi.java b/forge-ai/src/main/java/forge/ai/ability/SacrificeAllAi.java
+index 37ebe50..56f4903 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/SacrificeAllAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/SacrificeAllAi.java
+@@ -34,6 +34,10 @@ public class SacrificeAllAi extends SpellAbilityAi {
+ 
+     @Override
+     public AiAbilityDecision chkDrawback(Player aiPlayer, SpellAbility sa) {
++        // fishpond patch 60: "each player keeps one, sacrifices the rest" (Single Combat) is judged like any wipe
++        if (ComputerUtilCard.Wipe.applies(aiPlayer, sa) && ComputerUtilCard.Wipe.isWipe(sa)) {
++            return ComputerUtilCard.Wipe.judge(aiPlayer, sa);
++        }
+         //TODO: Add checks for bad outcome
+         return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
+ 

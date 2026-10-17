@@ -1,0 +1,15 @@
+# title: Divine Reckoning (each player keeps one creature, the rest die): the AI has one Craw Wurm, the opponent four creatures; it casts it (patch 60: each player keeps its best)
+# card: Divine Reckoning
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Divine Reckoning
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN2
+p0battlefield=Plains;Plains;Plains;Plains;Forest;Forest;Craw Wurm
+p0hand=Divine Reckoning
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest;Forest;Forest;Serra Angel;Hill Giant;Trained Armodon;Grizzly Bears
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

@@ -1,0 +1,18 @@
+# title: Austere Command (two of: artifacts, enchantments, creatures MV 3 or less, creatures MV 4 or more): the AI has Sol Ring and two small creatures, the opponent an enchantment engine and big creatures; it picks enchantments and big creatures, sparing its own (patch 60: modes judged together)
+# card: Austere Command
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Austere Command
+# expect: Destroy all enchantments
+# expect: Destroy all creatures with mana value 4 or greater
+# forbid: Destroy all artifacts|Destroy all creatures with mana value 3 or less
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN2
+p0battlefield=Plains;Plains;Plains;Plains;Plains;Plains;Sol Ring;Grizzly Bears;Elite Vanguard
+p0hand=Austere Command
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest;Forest;Forest;Forest;Forest;Rhythm of the Wild;Craw Wurm;Serra Angel;Trained Armodon
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

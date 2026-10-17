@@ -1,0 +1,15 @@
+# title: The opponent has Serra Angel, Craw Wurm and Hill Giant; the AI has a Grizzly Bears and Wrath of God: it casts the Wrath (patch 60: one player losing a lot more than the caster)
+# card: Wrath of God
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Wrath of God
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN2
+p0battlefield=Plains;Plains;Plains;Plains;Grizzly Bears
+p0hand=Wrath of God
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest;Forest;Forest;Forest;Forest;Serra Angel;Craw Wurm;Hill Giant
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

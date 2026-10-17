@@ -1,0 +1,18 @@
+# title: Farewell (any of: artifacts, creatures, enchantments, graveyards): the AI has Sol Ring and Thran Dynamo, the opponent creatures and an enchantment; it exiles creatures and enchantments and keeps its artifacts (patch 60: modes judged together)
+# card: Farewell
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Farewell
+# expect: Exile all creatures
+# expect: Exile all enchantments
+# forbid: Exile all artifacts
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN2
+p0battlefield=Plains;Plains;Plains;Plains;Sol Ring;Thran Dynamo
+p0hand=Farewell
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest;Forest;Forest;Forest;Rhythm of the Wild;Craw Wurm;Serra Angel;Hill Giant
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

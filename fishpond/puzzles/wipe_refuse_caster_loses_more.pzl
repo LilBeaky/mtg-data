@@ -1,0 +1,15 @@
+# title: The AI has the bigger board (Serra Angel, Craw Wurm) against a Grizzly Bears, with Wrath of God in hand: it keeps the Wrath (patch 60: a caster that loses as much or more than anyone never wipes)
+# card: Wrath of God
+# turns: 1
+# sim: hybrid
+# forbid: Ai\(1\)-P1 cast Wrath of God
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN2
+p0battlefield=Plains;Plains;Plains;Plains;Forest;Forest;Serra Angel;Craw Wurm
+p0hand=Wrath of God
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest;Grizzly Bears
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
