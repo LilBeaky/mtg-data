@@ -1,0 +1,16 @@
+# title: The opponent has three payoffs out; the AI holds Ephemerate (a blink for its own creature, not an answer) and Silvercoat Lion with two Plains: it casts the Lion (patch 58: own-target blinks never set a hold; Zur once kept W for Ephemerate four turns running)
+# card: Ephemerate
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Silvercoat Lion
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains
+p0hand=Ephemerate;Silvercoat Lion
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Plains;Plains;Plains;Plains;Soul Warden;Essence Warden;Ajani's Pridemate
+p1hand=Serra Angel
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

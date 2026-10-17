@@ -126,3 +126,53 @@ battlefield, is part of an engine cycle, or its owner's board kills within two t
 4 x threat to its target priority, so 48 points at most against a 5/5's ~200. Puzzle `threat_removal_skips_commander`: Reave
 Soul on the vanilla 3/3, not the recastable 3/3 commander (seed 3: the AI holds Reave Soul altogether, Forge's own hold-removal
 roll). A first version marked every commander "necessary" (an unset combo field read as "complete"); the puzzle caught it.
+
+## 2026-10-17: phase 3, first measurement (`threat_p58pair_20261017`, `threat_p58pair_v08_20261017`)
+
+Same pods and seeds as the paired p57 run.
+
+| Pod | p57 (paired) | p58 |
+|---|---|---|
+| V05 | Heliod 12, Xyris 2, Lumra 1 | Heliod 11, Xyris 3, Lumra 1 |
+| V06 | Niv 7, Xyris 6, Yusri 1, Omnath 1 | Niv 7, Xyris 5, Omnath 2, Yusri 1 |
+| V08 | Witherbloom 6, Klauth 4, Chulane 3, Zur 2 | Witherbloom 6, Chulane 3, Klauth 3, Zur 2, 1 capped |
+
+Mean game 139 s -> 142 s. 42 hold episodes (a seat refusing spells until its next turn); the held answer was cast in 7; the
+threat won during the hold in 3. Not good enough:
+- **Holds refused the deck's own plan.** Yusri refused Nexus of Fate 113 times, Jin-Gitaxias 68, Enter the Infinite (a key
+  card) 18; Zur refused Triskaidekaphile, Astral Drift and Zur itself (all key cards), and cycling Wander in Death with
+  Astral Drift out (66). Only cast-plan level 3 (combo) was exempt.
+- **Ephemerate counted as an answer**: targeted exile from the battlefield read as removal, though it targets your own
+  creature and returns it. Zur kept W up for it four turns running.
+- **Holds rarely paid off**: 7 of 42 answers cast; "one combo piece away" (the weak 9% signal) started 15 of the holds.
+- One V08 game ran to the cap (78 turns) with 13 lookahead fallbacks (the known GameCopier "couldn't map" crash class): a
+  long stall, likely helped by Zur holding.
+
+Fixes (same day): the seat's key cards, its commander, cast-plan level 2+ (combo, key card, engine pieces) and spells of 6+ mana
+are never refused; cycling is never refused with a cycling payoff out; own-target blinks (ValidTgts YouCtrl/YouOwn, or exile
+then return) are not answers (puzzle `hold_mana_not_for_blink`); a hold for a weak reason (combo a piece away, payoffs, mana
+lead) lasts one round per opponent and reason; while a seat holds against an opponent, that opponent's spells get +20 spell
+threat, so the mana held is spent on them (in `hold_mana_for_counter` the AI now counters the Serra Angel it held UU for,
+instead of letting it resolve).
+
+## 2026-10-17: phase 3, refined (`threat_p58bpair_20261017`, `threat_p58bpair_v08_20261017`)
+
+| Pod | p57 (paired) | p58 first | p58 refined |
+|---|---|---|---|
+| V05 | Heliod 12, Xyris 2, Lumra 1 | Heliod 11, Xyris 3, Lumra 1 | Heliod 10, Xyris 4, Lumra 1 |
+| V06 | Niv 7, Xyris 6, Yusri 1, Omnath 1 | Niv 7, Xyris 5, Omnath 2, Yusri 1 | Niv 7, Xyris 5, Omnath 2, Yusri 1 |
+| V08 | Witherbloom 6, Klauth 4, Chulane 3, Zur 2 | Witherbloom 6, Chulane 3, Klauth 3, Zur 2, 1 capped | Witherbloom 5, Klauth 4, Zur 3, Chulane 3 |
+
+Hold episodes 42 -> 24, answers cast in them 7 -> 4, the threat winning during a hold 3 -> 2. No key card, commander or win
+card refused; V08 back to 0 lookahead fallbacks and no capped game (Zur 7 holds -> 2). Mean game time per pod 133/157/127 s
+(p57) vs 147/168/123 s. Wins move within noise everywhere.
+
+What's still weak, from the episodes: Yusri held Pongify against Omnath's completed combo for two turns (the pieces aren't
+creatures), and counterspells counted as fitting a combo already on the battlefield. Refined again: removal fits only if it
+can legally target one of the threat's permanents at removal threat 40+ (`hitsWhatMatters`); counterspells fit a combo a piece
+away, not a completed one.
+
+Where phase 3 stands: the hold is now principled and cheap (it no longer costs the deck its own plan, and games aren't
+slower), and when a seat holds it now spends the mana on the seat it held for. Whether it changes win rates can't be read
+from 15-game pods: the effect per game is a handful of decisions, and half of paired games split on Forge noise first. It
+needs volume (an overnight batch on a few interaction-heavy pods, paired seeds, hold on vs `-Dfishpond.holdMana=false`).

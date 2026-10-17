@@ -463,6 +463,8 @@ public final class ThreatModel {
             if (api == ApiType.DestroyAll || api == ApiType.DamageAll || api == ApiType.SacrificeAll
                     || (api == ApiType.ChangeZoneAll && "Battlefield".equals(x.getParam("Origin")))) { v += 40; break; }
         }
+        Posture hp = posture(viewer);
+        if (hp != null && hp.threat() == o) v += 20;   // it kept mana up for this seat: this is what the mana was for
         return Math.min(100, v) * (0.4 + 0.6 * relative(viewer, o));
     }
 
@@ -483,15 +485,21 @@ public final class ThreatModel {
     static int answerKind(Card c) {
         if (!(c.isInstant() || c.hasKeyword(Keyword.FLASH))) return 0;
         int kind = 0;
-        for (SpellAbility sa : c.getSpells())
+        for (SpellAbility sa : c.getSpells()) {
+            boolean blink = false;   // a card exiled and returned (Ephemerate) is protection, not removal
+            for (SpellAbility x : chain(sa))
+                if (x.getApi() == ApiType.ChangeZone && "Exile".equals(x.getParam("Origin")) && "Battlefield".equals(x.getParam("Destination"))) blink = true;
             for (SpellAbility x : chain(sa)) {
                 ApiType api = x.getApi();
                 if (api == ApiType.Counter) return 1;
-                if (api == null || !x.usesTargeting()) continue;
+                if (api == null || !x.usesTargeting() || blink) continue;
+                String tgts = x.getParamOrDefault("ValidTgts", "");
+                if (tgts.contains("YouCtrl") || tgts.contains("YouOwn")) continue;   // its own permanents only
                 if (api == ApiType.Destroy || api == ApiType.Sacrifice
                         || (api == ApiType.ChangeZone && "Battlefield".equals(x.getParam("Origin")))
-                        || (api == ApiType.DealDamage && x.getParamOrDefault("ValidTgts", "").contains("Creature"))) kind = 2;
+                        || (api == ApiType.DealDamage && tgts.contains("Creature"))) kind = 2;
             }
+        }
         return kind;
     }
 
@@ -542,20 +550,53 @@ public final class ThreatModel {
             for (Player o : ai.getOpponents())
                 if (o != top && !o.hasLost() && deckAnswers(o) >= 6 && ComputerUtilMana.getAvailableManaEstimate(o, false) >= 2)
                     return NONE;   // someone else is set to answer it
-        boolean counterFits = t[T_COMBO] >= 40 || t[T_MANA] >= 30 || t[T_PAYOFFS] >= 3;
+        // a counterspell stops the piece still to come, not a combo already on the battlefield
+        boolean counterFits = (t[T_COMBO] >= 40 && t[T_COMBO] < 90) || t[T_MANA] >= 30 || t[T_PAYOFFS] >= 3;
         boolean removalFits = t[T_CYCLES] >= 1 || t[T_CLOCK] <= 2 || t[T_COMBO] >= 90 || t[T_PAYOFFS] >= 3;
         int sources = 0;
         for (Card c : ai.getCardsIn(ZoneType.Battlefield)) if (!c.getManaAbilities().isEmpty()) sources++;
         Card pick = null;
         for (Card c : answers) {
             int kind = answerKind(c);
-            if (c.getCMC() > sources || !((kind == 1 && counterFits) || (kind == 2 && removalFits))) continue;
+            if (c.getCMC() > sources || !((kind == 1 && counterFits) || (kind == 2 && removalFits && hitsWhatMatters(ai, c, top)))) continue;
             if (pick == null || c.getCMC() < pick.getCMC()) pick = c;
         }
         if (pick == null) return NONE;
         String why = t[T_CYCLES] >= 1 ? "cycle" : t[T_COMBO] >= 90 ? "combo" : t[T_CLOCK] <= 2 ? "clock"
                 : t[T_COMBO] >= 40 ? "combo-1" : t[T_MANA] >= 30 ? "mana" : "payoffs";
+        if (why.equals("combo-1") || why.equals("mana") || why.equals("payoffs")) {   // a weak signal earns one round of holding
+            Map<String, Integer> since = HOLD_SINCE.computeIfAbsent(ai.getGame(), k -> new HashMap<>());
+            Integer first = since.putIfAbsent(ai.getId() + "|" + top.getId() + "|" + why, ph.getTurn());
+            if (first != null && ph.getTurn() - first >= 4) return NONE;
+        }
         return new Posture(Math.max(1, pick.getCMC()), pick.getName(), top, why);
+    }
+
+    /** Removal fits only if it can target one of the threat's permanents that matter (cardThreat at the remove-now line, 40):
+     *  Yusri kept Pongify up against Omnath's combo, whose pieces aren't creatures (2026-10-17). */
+    static boolean hitsWhatMatters(Player ai, Card answer, Player top) {
+        for (SpellAbility sa : answer.getSpells())
+            for (SpellAbility x : chain(sa)) {
+                if (!x.usesTargeting()) continue;
+                for (Card p : top.getCardsIn(ZoneType.Battlefield)) {
+                    if (cardThreat(ai, p) < 40) continue;
+                    try {
+                        if (x.getActivatingPlayer() == null) x.setActivatingPlayer(ai);
+                        if (x.canTarget(p)) return true;
+                    } catch (RuntimeException e) { /* a target check the card can't answer out of context: not a fit */ }
+                }
+            }
+        return false;
+    }
+
+    /** When a seat first held against an opponent for a weak reason ("seat|threat|why" -> turn). */
+    static final Map<Game, Map<String, Integer>> HOLD_SINCE = Collections.synchronizedMap(new WeakHashMap<>());
+
+    /** A permanent of p's that triggers on cycling (Astral Drift, Astral Slide, Drake Haven): cycling is its engine. */
+    static boolean cyclingPayoff(Player p) {
+        for (Card c : p.getCardsIn(ZoneType.Battlefield))
+            for (Trigger t : c.getTriggers()) if (t.getMode() == TriggerType.Cycled) return true;
+        return false;
     }
 
     /** Holds per game, one per seat, turn, phase and refused spell: printed as #FP-HOLD at the game's end. */
@@ -574,8 +615,14 @@ public final class ThreatModel {
         Posture p = posture(ai);
         if (p == null) return false;
         for (SpellAbility y : chain(sa)) if (y.getApi() == ApiType.WinsGame) return false;
+        // its own plan goes ahead: a held 2-mana answer is worth less than the deck's key card, its commander, a combo or
+        // engine piece (cast plan level 2+) or a big spell (Yusri held Counterspell over Nexus of Fate, Jin-Gitaxias and Enter
+        // the Infinite; Zur over Triskaidekaphile, Astral Drift and itself, 2026-10-17)
         PilotPolicy pol = policyOf(ai);
-        if (pol != null && pol.castPriority0(ai, sa) >= 3) return false;   // its own combo goes ahead
+        if (host != null && sa.isSpell() && (host.isCommander() || host.getCMC() >= 6 || (pol != null && pol.isKey(host.getName()))))
+            return false;
+        if (pol != null && pol.castPriority0(ai, sa) >= 2) return false;
+        if (sa.isCycling() && cyclingPayoff(ai)) return false;   // cycling into Astral Drift is the engine itself
         int avail = ComputerUtilMana.getAvailableManaEstimate(ai, false);
         if (avail < p.keep() || (!x && avail - cmc >= p.keep())) return false;   // nothing to keep, or enough left after it
         Game g = ai.getGame();
