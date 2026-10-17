@@ -113,3 +113,35 @@ naturally, 1 timeout, 0 fallbacks). `python -m fishpond sequencing seqbase_20261
 own turns 1-6 ending with 2+ usable mana unspent and a castable card in hand.) The gap the planner is aimed at: Klauth and Zur
 land their commanders two to three turns late, Klauth leaves 1.7 mana a turn on the table early, Yusri wins three turns late.
 Opponents for scale: Heliod 24/40, Niv-Mizzet 12/20, Xyris 11/40.
+
+## 2026-10-17: first paired run with the planner (`plan_20261017`)
+
+Same pods, seed and game count as the baseline (V05-V09, 20 games each, seed 20261414), build 01-64 as committed in 01e9585.
+
+| deck | wins (base -> plan) | win turn median (fastest) | commander turn (on time) | turns 1-6 idle 2+ / mana left |
+|---|---|---|---|---|
+| Yusri | 5/40 -> 7/40 | 7 (7) -> 8 (4) | 4 -> 4 | 9% / 0.9 -> 14% / 1.1 |
+| Klauth | 7/20 -> 6/20 | 10 (7) -> 10 (9) | 6 (5/20) -> 7 (6/20) | 8% / 1.7 -> 8% / 1.5 |
+| Zur | 1/40 -> 3/40 | 14 -> 11 | 6 (3/40) -> 5 (9/40) | 5% / 0.6 -> 12% / 0.9 |
+| Chulane | 6/20 -> 3/20 | 8 (6) -> 10 (9) | 5 -> 5 | 7% / 1.4 -> 6% / 1.2 |
+| Erebos | 4/20 -> 1/20 | 10 (9) -> 13 | 5 -> 5 | 2% / 0.4 -> 2% / 0.5 |
+| Wilson | 8/20 -> 9/20 | 8 (7) -> 8 (7) | 3 -> 3 | 7% / 1.0 -> 6% / 1.0 |
+| Ragost | 1/20 -> 1/20 | 12 -> 12 | 3 -> 4 | 5% / 1.1 -> 3% / 1.1 |
+
+Win counts at 20-40 games are inside the noise (a 20-game rate is +-22 points); the commander turns and idle shares are the
+readable part. Zur's commander came down on time three times as often (3/40 -> 9/40). Idle turns went *up* for Zur and Yusri,
+and the held cards said why:
+- **Planned steps Forge never considers.** Zur held Words of Worship 12 times (2 in the baseline): the deck's plan rates it, the
+  plan picked it, but Forge drops AI:RemoveDeck:All cards from its candidates before forming any opinion, so the step was never
+  declined; the plan kept it and refused Zur's castable spells for leaving too little mana for it. Fixed: before ordering, planned
+  steps missing from Forge's full candidate list are dropped and the turn re-planned (`TurnPlan.prune`; puzzle
+  `plan_drops_what_forge_wont_cast`, fails before the fix).
+- **Setup value on cycling.** `SetupModel` counted any activated draw as an engine, cycling included (Complicate, Miscalculation,
+  Neutralize scored as 0.5 cards a turn), and gave yields to instants and sorceries. Now only abilities used from the battlefield
+  count, and a spell yields only its land ramp.
+- Yusri's held cards are mostly instants kept up on purpose (Swan Song, Reality Shift, Pongify; Phase 3 holds), plus Lightning
+  Greaves and Aetherflux Reservoir, which the plan rates low (60 + 25 per mana, less a card held): candidates for the deck's plan
+  rather than the planner.
+
+The run also had 20 lookahead fallbacks, all from one game (Archdruid's Charm with a stale fight target; Forge patch 65) and 2 AI
+timeouts finished in hurry mode. The planner run is repeated with the fixes.

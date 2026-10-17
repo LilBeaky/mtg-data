@@ -1,0 +1,15 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ability/FightAi.java b/forge-ai/src/main/java/forge/ai/ability/FightAi.java
+index dc9a314..cfb8480 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/FightAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/FightAi.java
+@@ -178,6 +178,10 @@ public class FightAi extends SpellAbilityAi {
+      */
+     public static AiAbilityDecision canFight(final Player ai, final SpellAbility sa, int power, int toughness) {
+     	final Card source = sa.getHostCard();
++        // fishpond patch 65: start from no targets. Callers other than checkApiLogic (CountersPutAi's Fight/PowerDmg, PumpAi,
++        // EffectAi) didn't reset, so each evaluation added to the last one's: Archdruid's Charm kept a Snake token as its counter
++        // target after the token died, and every lookahead copy of the charm threw "Couldn't map" (plan_20261017 V05 g16).
++        sa.resetTargets();
+         final String sourceName = ComputerUtilAbility.getAbilitySourceName(sa);
+         AbilitySub tgtFight = sa.getSubAbility();
+         while (tgtFight != null && tgtFight.getApi() != ApiType.Fight && tgtFight.getApi() != ApiType.DealDamage && tgtFight.getApi() != ApiType.EachDamage) {

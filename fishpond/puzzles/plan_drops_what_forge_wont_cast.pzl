@@ -1,0 +1,15 @@
+# title: Six Forests, Ritual of Subdual (flagged: Forge's AI never casts it) and Centaur Courser in hand: the AI casts the Courser (patch 64: the plan picked the Ritual, which Forge filters out before any opinion, so it was never declined, and the Courser was refused for leaving too little mana for it; Zur held Words of Worship this way with 3+ mana idle in plan_20261017)
+# card: Centaur Courser
+# turns: 1
+# sim: hybrid
+# expect: cast Centaur Courser
+p0life=30
+p1life=30
+turn=5
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest;Forest;Forest;Forest;Forest
+p0hand=Ritual of Subdual;Centaur Courser
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

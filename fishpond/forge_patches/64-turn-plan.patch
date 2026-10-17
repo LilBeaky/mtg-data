@@ -1,5 +1,5 @@
 diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
-index 388d834..a0a4c3a 100644
+index 388d834..7160333 100644
 --- a/forge-ai/src/main/java/forge/ai/AiController.java
 +++ b/forge-ai/src/main/java/forge/ai/AiController.java
 @@ -1049,6 +1049,12 @@ public class AiController {
@@ -15,13 +15,16 @@ index 388d834..a0a4c3a 100644
          // fishpond patch 61: an overloaded spell is a wipe (Cyclonic Rift for 7): judged across the table like one; the
          // single-target AI it would otherwise reach never weighed "each permanent you don't control"
          if (ComputerUtilCard.Wipe.overloaded(sa) && ComputerUtilCard.Wipe.applies(player, sa) && ComputerUtilCard.Wipe.isWipe(sa)) {
-@@ -2982,6 +2988,16 @@ public class AiController {
+@@ -2982,6 +2988,19 @@ public class AiController {
              all.sort(ComputerUtilAbility.saEvaluator); // put best spells first
              ComputerUtilAbility.sortCreatureSpells(all);
              if (forge.ai.ability.DrawAi.pilotSeat(player)) {
 +                if (TurnPlan.active(player)) {
 +                    // fishpond patch 64: in its own main phase the seat follows its turn plan, which weighs what patches 25
 +                    // (ramp first), 24 (commander), 54 (payoffs, the deck's plan) and 62 (wipes first) each pushed up the order
++                    if (skipCounter) {
++                        TurnPlan.prune(this, player, all);   // the full candidate list: planned steps not in it are dropped
++                    }
 +                    final Map<SpellAbility, Integer> rank = new HashMap<>();
 +                    for (final SpellAbility x : all) {
 +                        rank.put(x, TurnPlan.leads(this, player, x) ? 2000 : TurnPlan.rank(this, player, x));
@@ -32,7 +35,7 @@ index 388d834..a0a4c3a 100644
                  if (ComputerUtil.rampFirstOn() && game.getPhaseHandler().isPlayerTurn(player)) {
                      all.sort(Comparator.comparing((SpellAbility x) -> !ComputerUtil.isRamp(player, x)));   // fishpond patch 25 (stable)
                  }
-@@ -2995,6 +3011,7 @@ public class AiController {
+@@ -2995,6 +3014,7 @@ public class AiController {
                  all.sort(Comparator.comparing((SpellAbility x) -> -pay.get(x)));         // fishpond patch 54, trigger payoffs (stable)
                  all.sort(Comparator.comparing((SpellAbility x) -> -prio.get(x)));        // fishpond patch 54, the deck's plan (stable)
                  all.sort(Comparator.comparing((SpellAbility x) -> !wipeFirst(x)));      // fishpond patch 62 (stable sort)
@@ -40,7 +43,7 @@ index 388d834..a0a4c3a 100644
                  all.sort(Comparator.comparing((SpellAbility x) -> !wheelPays(x)));      // fishpond patch 53 (stable sort)
                  all.sort(Comparator.comparing((SpellAbility x) -> !cheatsInBig(x)));    // fishpond patch 50 (stable sort)
                  all.sort(Comparator.comparing((SpellAbility x) -> !winsNow(x)));        // fishpond patch 49 (stable sort)
-@@ -3079,6 +3096,7 @@ public class AiController {
+@@ -3079,6 +3099,7 @@ public class AiController {
                  // System.out.printf("Ai thinks '%s' of %s -> %s @ %s %s >>> \n", opinion, sa.getHostCard(), sa, Lang.getInstance().getPossesive(ph.getPlayerTurn().getName()), ph.getPhase());
  
                  if (opinion != AiPlayDecision.WillPlay) {
@@ -48,7 +51,7 @@ index 388d834..a0a4c3a 100644
                      continue;
                  }
  
-@@ -4184,6 +4202,11 @@ public class AiController {
+@@ -4184,6 +4205,11 @@ public class AiController {
      // for pilot seats in the real game; simulated games have no policy and get 0.
      public static volatile java.util.function.ToIntBiFunction<Player, SpellAbility> CAST_PRIORITY;
  
@@ -85,10 +88,10 @@ index 609b59c..a475d67 100644
              final java.util.Map<Player, java.util.Set<Card>> hits = hits(ai, sa);
 diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
 new file mode 100644
-index 0000000..d2b489e
+index 0000000..fedbcc3
 --- /dev/null
 +++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
-@@ -0,0 +1,472 @@
+@@ -0,0 +1,499 @@
 +package forge.ai;
 +
 +import forge.game.Game;
@@ -207,6 +210,33 @@ index 0000000..d2b489e
 +        final Object[] c = CACHE.get(ai);
 +        if (c != null && ((Plan) c[1]).rank.containsKey(sa.getHostCard().getId())) {
 +            declined(ai).add(sa.getHostCard().getId());
++            CACHE.remove(ai);
++        }
++    }
++
++    /** Planned steps Forge won't consider at all are dropped and the turn re-planned. Forge filters its candidates before
++     *  any opinion (AI:RemoveDeck:All cards, Zur's Words of Worship), so the step was never declined: the plan kept it, and
++     *  refused the spells it could cast for leaving too little mana for it (Zur idle with 3+ mana, plan_20261017). */
++    public static void prune(final AiController aic, final Player ai, final List<SpellAbility> all) {
++        if (!active(ai)) {
++            return;
++        }
++        final Plan p = plan(aic, ai);
++        if (p == null || p.steps.isEmpty()) {
++            return;
++        }
++        final Set<Integer> seen = new HashSet<>();
++        for (final SpellAbility x : all) {
++            if (x.isSpell() && x.getHostCard() != null) seen.add(x.getHostCard().getId());
++        }
++        boolean dropped = false;
++        for (final Step s : p.steps) {
++            if (!seen.contains(s.card.getId())) {
++                declined(ai).add(s.card.getId());
++                dropped = true;
++            }
++        }
++        if (dropped) {
 +            CACHE.remove(ai);
 +        }
 +    }

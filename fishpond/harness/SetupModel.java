@@ -21,7 +21,8 @@ import java.util.*;
  *      cost reducer           its reduction x the deck's share of spells it applies to x 1.5 spells a turn (up to 2)
  *      draw engine            cards a turn by trigger: each upkeep 1 (each player's 3), your spells of a kind 1.5 x that share,
  *                             opponents' spells 2, creatures entering 1.2 x the creature share, land drops 0.9, attacks 0.8
- *      activated draw         0.5 a turn
+ *      activated draw         0.5 a turn (an ability used from the battlefield; cycling isn't)
+ *    a spell (instant, sorcery) yields only its land ramp: the rest is a one-off
  *    value = K x turns left x (mana yield x mana need + 1.5 x card yield x card need)
  *      turns left  = a 10-turn game less the seat's own turns so far
  *      mana need   = 1 under 6 mana, 0.5 under 9, else 0.15; 1 again when the hand holds a spell it can't afford yet
@@ -88,6 +89,7 @@ public final class SetupModel {
                 }
             }
         }
+        if (!c.isPermanent()) return new double[] {mana, cards};   // a spell yields once: only land ramp counts (above)
         for (StaticAbility st : c.getStaticAbilities()) {
             String mode = st.getParamOrDefault("Mode", "");
             if (mode.contains("Continuous") && st.hasParam("AdjustLandPlays")) {
@@ -132,6 +134,8 @@ public final class SetupModel {
         }
         for (SpellAbility a : c.getSpellAbilities()) {
             if (!a.isActivatedAbility() || a.isManaAbility()) continue;
+            // from the battlefield only: cycling (from hand) is a one-off, not a turn-over-turn engine
+            if (a.getRestrictions() != null && a.getRestrictions().getZone() != null && a.getRestrictions().getZone() != ZoneType.Battlefield) continue;
             for (SpellAbility x = a; x != null; x = x.getSubAbility())
                 if (x.getApi() == ApiType.Draw) { cards += 0.5; break; }
         }
