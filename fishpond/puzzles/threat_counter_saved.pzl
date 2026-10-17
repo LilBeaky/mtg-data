@@ -1,0 +1,16 @@
+# title: The opponent casts Grizzly Bears with nothing else going on; the AI holds Counterspell: it keeps the counter (the threat model: a minor spell from a minor threat; patch 57)
+# card: Counterspell
+# turns: 1
+# sim: hybrid
+# forbid: Ai\(1\)-P1 cast Counterspell
+p0life=30
+p1life=30
+turn=1
+activeplayer=p1
+activephase=MAIN1
+p0battlefield=Island;Island;Island
+p0hand=Counterspell
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest
+p1hand=Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

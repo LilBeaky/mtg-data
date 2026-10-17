@@ -1,0 +1,16 @@
+# title: The opponent has Heliod, Sun-Crowned out and casts Walking Ballista (the piece that closes Heliod's loop); the AI holds Counterspell with UU open: it counters the Ballista (the threat model: an engine cycle with Heliod; patch 57)
+# card: Counterspell
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Counterspell targeting .*Walking Ballista
+p0life=30
+p1life=30
+turn=1
+activeplayer=p1
+activephase=MAIN1
+p0battlefield=Island;Island;Island
+p0hand=Counterspell
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Heliod, Sun-Crowned;Plains;Plains;Plains;Plains;Plains;Plains
+p1hand=Walking Ballista
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

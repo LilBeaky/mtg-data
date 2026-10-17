@@ -82,6 +82,7 @@ public class ForgeRunner {
                 (p, c) -> p.getController() instanceof SafeControllerAi sc && sc.policy != null && sc.policy.isKey(c.getName());
         try { forge.ai.AiController.class.getField("KEY_CARD").set(null, keyCard); }
         catch (ReflectiveOperationException e) { out.println("#FP-WARN no key-card hook in this Forge build (patch 55)"); }
+        ThreatModel.installHooks();   // patch 57: counterspells and removal weigh the threat model
         String deckDir = args[0];
         Map<String, Deck> decks = new HashMap<>();
         out.println("#FP-READY");

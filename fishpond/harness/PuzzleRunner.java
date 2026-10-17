@@ -36,6 +36,7 @@ public class PuzzleRunner {
         GuiBase.setInterface(new GuiDesktop());
         FModel.initialize(null, null);
         MyRandom.setRandom(new Random(seed));
+        ThreatModel.installHooks();   // patch 57 (no deck intel in puzzles: no combos or key cards)
 
         GameRules rules = new GameRules(GameType.Constructed);
         rules.setGamesPerMatch(1);

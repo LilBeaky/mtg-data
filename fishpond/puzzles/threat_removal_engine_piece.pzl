@@ -1,0 +1,15 @@
+# title: The opponent has Heliod, Sun-Crowned, a Walking Ballista with two counters (a loop away) and a bigger Serra Angel; the AI has Swords to Plowshares: it exiles the Ballista, not the Angel (Forge rated targets by size; the threat model: an engine cycle; patch 57)
+# card: Swords to Plowshares
+# turns: 2
+# sim: hybrid
+# expect: Swords to Plowshares targeting .*Walking Ballista
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains
+p0hand=Swords to Plowshares
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Heliod, Sun-Crowned;Walking Ballista|Counters:P1P1=2;Serra Angel;Plains|Tapped;Plains|Tapped;Plains|Tapped;Plains|Tapped
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

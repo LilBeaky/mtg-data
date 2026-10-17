@@ -1,0 +1,128 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 91b34a7..f55f267 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -4109,6 +4109,48 @@ public class AiController {
+         return false;
+     }
+ 
++    // ---- fishpond patch 57: threat assessment, phase 2 (the user, 2026-10-16) ----
++    // The harness's threat model (ThreatModel.java: every deck's list, the battlefield, graveyards and hand counts, no hidden
++    // card) answers two questions for pilot seats: how much removing a permanent matters (cardThreat, 0-100: its controller's
++    // threat relative to the viewer's other opponents, times its role: combo piece, engine links and cycles, commander, big
++    // mana, clock, key card) and how much countering a spell matters (spellThreat, 0-100: a win effect 100, completing a combo,
++    // a key card, engine links, the commander, a big spell, a mass removal, times the caster's relative threat). Removal
++    // targets add 4 x cardThreat to Forge's own priority (ComputerUtilCard.evaluateRemovalTargetPriority); counterspells
++    // counter at spellThreat THREAT_COUNTER_AT or more and keep the counter below THREAT_SAVE_BELOW unless the spell hits the
++    // seat itself (CounterAi); single-target removal is used now on a target at THREAT_REMOVE_NOW or more instead of being
++    // held (ComputerUtilCard.useRemovalNow). Simulated games: no harness controllers, so the hooks answer 0. -Dfishpond.threatPlay=false
++    // turns both off.
++    public static volatile java.util.function.ToDoubleBiFunction<Player, Card> CARD_THREAT;
++    public static volatile java.util.function.ToDoubleBiFunction<Player, SpellAbility> SPELL_THREAT;
++    static final boolean THREAT_PLAY = !"false".equals(System.getProperty("fishpond.threatPlay"));
++    public static final double THREAT_COUNTER_AT = Double.parseDouble(System.getProperty("fishpond.threatCounterAt", "50"));
++    public static final double THREAT_SAVE_BELOW = Double.parseDouble(System.getProperty("fishpond.threatSaveBelow", "20"));
++    public static final double THREAT_REMOVE_NOW = Double.parseDouble(System.getProperty("fishpond.threatRemoveNow", "40"));
++
++    public static double cardThreatOf(final Player viewer, final Card c) {
++        final java.util.function.ToDoubleBiFunction<Player, Card> f = CARD_THREAT;
++        if (!THREAT_PLAY || f == null || viewer == null || c == null || !forge.ai.ability.DrawAi.pilotSeat(viewer)) {
++            return 0;
++        }
++        try {
++            return f.applyAsDouble(viewer, c);
++        } catch (final RuntimeException e) {
++            return 0;
++        }
++    }
++
++    public static double spellThreatOf(final Player viewer, final SpellAbility sa) {
++        final java.util.function.ToDoubleBiFunction<Player, SpellAbility> f = SPELL_THREAT;
++        if (!THREAT_PLAY || f == null || viewer == null || sa == null || !forge.ai.ability.DrawAi.pilotSeat(viewer)) {
++            return -1;
++        }
++        try {
++            return f.applyAsDouble(viewer, sa);
++        } catch (final RuntimeException e) {
++            return -1;
++        }
++    }
++
+     // The deck's plan, from the harness (PilotPolicy.castPriority: completes a combo 3, turns an engine on 2, feeds one 1),
+     // for pilot seats in the real game; simulated games have no policy and get 0.
+     public static volatile java.util.function.ToIntBiFunction<Player, SpellAbility> CAST_PRIORITY;
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+index d3af5b9..63f7214 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+@@ -610,6 +610,9 @@ public class ComputerUtilCard {
+         if (c.getController().isOpponentOf(ai)) {
+             value += ComputerUtil.evaluateBoardPosition(ai, c.getController()) / 4;
+         }
++        // fishpond patch 57: the threat model's weight on removing it (combo pieces, engines, the threat leader's board):
++        // Forge rated targets by size, so a 2/2 Xyris or a 1/4 Zur stayed while a vanilla 5/5 was killed
++        value += (int) Math.round(4 * AiController.cardThreatOf(ai, c));
+         return value;
+     }
+ 
+@@ -1299,6 +1302,12 @@ public class ComputerUtilCard {
+         if (!sa.isSpell()) {
+             return true;
+         }
++        // fishpond patch 57: a target the threat model rates high (a combo piece, the threat leader's engine) is removed
++        // now; Forge held removal for targets that look big in combat, so it kept Swords while Walking Ballista sat next to
++        // Heliod a loop away
++        if (AiController.cardThreatOf(ai, c) >= AiController.THREAT_REMOVE_NOW) {
++            return true;
++        }
+ 
+         //Check for cards that profit from spells - for example Prowess or Threshold
+         if (phaseType == PhaseType.MAIN1 && ComputerUtil.castSpellInMain1(ai, sa)) {
+diff --git a/forge-ai/src/main/java/forge/ai/ability/CounterAi.java b/forge-ai/src/main/java/forge/ai/ability/CounterAi.java
+index 6ee68ae..38580ae 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/CounterAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/CounterAi.java
+@@ -28,6 +28,23 @@ import forge.util.collect.FCollectionView;
+ 
+ public class CounterAi extends SpellAbilityAi {
+ 
++    /** fishpond patch 57: the spell targets ai or its permanents, or wipes the board ai is on. */
++    static boolean hitsSeat(final Player ai, final SpellAbility tgt) {
++        for (SpellAbility x = tgt; x != null; x = x.getSubAbility()) {
++            for (final forge.game.GameObject o : x.getTargets()) {
++                if (o == ai || (o instanceof Card && ((Card) o).getController() == ai)) {
++                    return true;
++                }
++            }
++            final ApiType api = x.getApi();
++            if (api == ApiType.DestroyAll || api == ApiType.DamageAll || api == ApiType.SacrificeAll
++                    || (api == ApiType.ChangeZoneAll && "Battlefield".equals(x.getParam("Origin")))) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     @Override
+     protected AiAbilityDecision checkApiLogic(Player ai, SpellAbility sa) {
+         final Card source = sa.getHostCard();
+@@ -143,6 +160,19 @@ public class CounterAi extends SpellAbilityAi {
+             }
+         }
+ 
++        // fishpond patch 57: the threat model decides for pilot seats when it is clear (AiController.spellThreatOf): a win, a
++        // combo piece, the threat leader's engine is countered; a minor spell from a minor threat isn't, the counter is kept
++        // for something that matters, unless the spell hits this seat (targets it or its permanents, or wipes the board)
++        if (tgtSA != null) {
++            final double threat = forge.ai.AiController.spellThreatOf(ai, tgtSA);
++            if (threat >= forge.ai.AiController.THREAT_COUNTER_AT) {
++                return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
++            }
++            if (threat >= 0 && threat < forge.ai.AiController.THREAT_SAVE_BELOW && !hitsSeat(ai, tgtSA)) {
++                return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
++            }
++        }
++
+         // Specific constraints for the AI to use/not use counterspells against specific groups of spells
+         boolean ctrCmc0ManaPerms = AiProfileUtil.getBoolProperty(ai, AiProps.ALWAYS_COUNTER_CMC_0_MANA_MAKING_PERMS);
+         boolean ctrDamageSpells = AiProfileUtil.getBoolProperty(ai, AiProps.ALWAYS_COUNTER_DAMAGE_SPELLS);

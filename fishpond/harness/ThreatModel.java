@@ -271,6 +271,165 @@ public final class ThreatModel {
         return e == null ? null : e.getValue()[idx];
     }
 
+    // ---------------------------------------------------------------- on demand, for decisions (phase 2)
+    static PilotPolicy policyOf(Player p) { return p.getController() instanceof ForgeRunner.SafeControllerAi c ? c.policy : null; }
+
+    /** p's threat now (no growth term: that needs history), scored as check() does; cached per game, turn, phase and stack. */
+    static final Map<Game, Object[]> CACHE = Collections.synchronizedMap(new WeakHashMap<>());
+
+    static double threatNow(Player p) {
+        Game g = p.getGame();
+        String key = g.getPhaseHandler().getTurn() + "|" + g.getPhaseHandler().getPhase() + "|" + g.getStack().size();
+        Object[] c = CACHE.get(g);
+        if (c == null || !key.equals(c[0])) { c = new Object[] {key, new HashMap<Player, Double>()}; CACHE.put(g, c); }
+        @SuppressWarnings("unchecked") Map<Player, Double> m = (Map<Player, Double>) c[1];
+        Double v = m.get(p);
+        if (v == null) { v = score(p); m.put(p, v); }
+        return v;
+    }
+
+    static double score(Player p) {
+        List<Player> alive = new ArrayList<>();
+        for (Player x : p.getGame().getPlayers()) if (!x.hasLost()) alive.add(x);
+        Set<String> field = new HashSet<>();
+        int manaSources = 0;
+        for (Card c : p.getCardsIn(ZoneType.Battlefield)) { field.add(c.getName()); if (!c.getManaAbilities().isEmpty()) manaSources++; }
+        int hand = p.getCardsIn(ZoneType.Hand).size();
+        double combo = comboScore(policyOf(p), field, hand);
+        int[] eg = engineGraph(p, new ArrayList<>());
+        double eng = Math.min(40, 8 * eg[0]) + Math.min(10, 2 * eg[1]) + 15 * Math.min(2, eg[2]);
+        double others = 0;
+        for (Player o : alive) if (o != p) others += manaCapacity(o);
+        others = alive.size() > 1 ? others / (alive.size() - 1) : 0;
+        double mana = Math.min(40, 1.5 * Math.max(0, manaCapacity(p) - others) * (0.4 + 0.6 * Math.min(1.0, hand / 4.0)));
+        double res = Math.min(30, 2 * hand + manaSources);
+        int clock = new ThreatModel(p.getGame()).clockTurns(p);
+        double t = combo + eng + mana + res + (clock <= 20 ? 50.0 / clock : 0);
+        if (clock <= 1) t = Math.max(t, 110); else if (clock <= 2) t = Math.max(t, 100);
+        return t;
+    }
+
+    static double comboScore(PilotPolicy pol, Set<String> field, int hand) {
+        double combo = 0;
+        if (pol == null) return 0;
+        for (PilotPolicy.Combo cb : pol.in.combos) {
+            if (cb.cards.size() < 2) continue;
+            int missing = 0;
+            for (String x : cb.cards) if (!field.contains(x)) missing++;
+            double v = missing == 0 ? (cb.win ? 100 : 60) : missing == 1 ? 55 * Math.min(1.0, (hand + 1) / 4.0) * (cb.win ? 1 : 0.6)
+                    : missing == 2 ? 15 * (cb.win ? 1 : 0.6) : 0;
+            combo = Math.max(combo, v);
+        }
+        return combo;
+    }
+
+    /** o's threat relative to the most threatening of viewer's opponents (1.0 for the leader). */
+    static double relative(Player viewer, Player o) {
+        double top = 0;
+        for (Player x : viewer.getOpponents()) if (!x.hasLost()) top = Math.max(top, threatNow(x));
+        return top <= 0 ? 1 : Math.min(1, threatNow(o) / top);
+    }
+
+    /** {links between card c and the rest of o's battlefield (either way), 1 if they make a cycle}. A spell about to resolve
+     *  counts as if it were out. */
+    static int[] cardLinks(Card c, Player o) {
+        List<Card> perms = new ArrayList<>(o.getCardsIn(ZoneType.Battlefield));
+        if (!perms.contains(c)) perms.add(c);
+        boolean lifelink = false;
+        for (Card x : perms) if (grantsLifelink(x)) { lifelink = true; break; }
+        Set<String> pc = produces(c, lifelink), cc = consumes(c);
+        int links = 0;
+        boolean cycle = false;
+        for (Card x : perms) {
+            if (x == c) continue;
+            Set<String> px = produces(x, lifelink), cx = consumes(x);
+            boolean out = false, in = false;
+            for (String e : pc) if (cx.contains(e)) { out = true; break; }
+            for (String e : px) if (cc.contains(e)) { in = true; break; }
+            links += (out ? 1 : 0) + (in ? 1 : 0);
+            if (out && in) cycle = true;
+        }
+        return new int[] {links, cycle ? 1 : 0};
+    }
+
+    /** Is name in one of the deck's known combos; out = {pieces still missing from o's battlefield besides it, 1 if a win}. */
+    static boolean inCombo(PilotPolicy pol, String name, Set<String> field, int[] out) {
+        if (pol == null) return false;
+        int best = 99;
+        boolean win = false;
+        for (PilotPolicy.Combo cb : pol.in.combos) {
+            if (!cb.cards.contains(name) || cb.cards.size() < 2) continue;
+            int missing = 0;
+            for (String x : cb.cards) if (!x.equals(name) && !field.contains(x)) missing++;
+            if (missing < best || (missing == best && cb.win)) { best = missing; win = cb.win; }
+        }
+        out[0] = best;
+        out[1] = win ? 1 : 0;
+        return best < 99;
+    }
+
+    /** How much removing permanent c matters to viewer (0-100): its controller's threat relative to viewer's other opponents,
+     *  times its role: a combo piece, engine links and cycles, the commander, a big mana source, its share of the clock, the
+     *  deck's '# key:' card. Public information only (the deck lists are known; no hidden card is looked at). */
+    public static double cardThreat(Player viewer, Card c) {
+        Player o = c.getController();
+        if (o == null || o == viewer || !o.isOpponentOf(viewer)) return 0;
+        PilotPolicy pol = policyOf(o);
+        Set<String> field = new HashSet<>();
+        for (Card x : o.getCardsIn(ZoneType.Battlefield)) field.add(x.getName());
+        double imp = 0;
+        int[] m = new int[2];
+        if (inCombo(pol, c.getName(), field, m)) imp += m[0] == 0 ? (m[1] == 1 ? 70 : 40) : m[0] == 1 ? 30 : 0;
+        int[] cl = cardLinks(c, o);
+        imp += Math.min(30, 10 * cl[0]) + (cl[1] == 1 ? 25 : 0);
+        if (c.isCommander()) imp += 15;
+        if (!c.getManaAbilities().isEmpty() && c.getMaxManaProduced() >= 3) imp += 15;
+        if (c.isCreature()) imp += Math.min(25, 2 * Math.max(0, c.getNetCombatDamage()));
+        if (pol != null && pol.in.keys.contains(c.getName())) imp += 20;
+        return Math.min(100, imp) * (0.4 + 0.6 * relative(viewer, o));
+    }
+
+    /** How much countering spell sa matters to viewer (0-100): a win effect 100; completing a known combo, the deck's key card,
+     *  engine links or a cycle it would make, the commander, a big spell, a mass removal; times the caster's relative threat. */
+    public static double spellThreat(Player viewer, SpellAbility sa) {
+        Player o = sa.getActivatingPlayer();
+        Card c = sa.getHostCard();
+        if (o == null || c == null || o == viewer || !o.isOpponentOf(viewer)) return 0;
+        for (SpellAbility x : chain(sa)) if (x.getApi() == ApiType.WinsGame) return 100;
+        PilotPolicy pol = policyOf(o);
+        Set<String> field = new HashSet<>();
+        for (Card x : o.getCardsIn(ZoneType.Battlefield)) field.add(x.getName());
+        double v = 0;
+        int[] m = new int[2];
+        if (inCombo(pol, c.getName(), field, m)) v += m[0] == 0 ? (m[1] == 1 ? 95 : 55) : m[0] == 1 ? 40 : 0;
+        if (pol != null && pol.in.keys.contains(c.getName())) v += 35;
+        if (c.isPermanent()) {
+            int[] cl = cardLinks(c, o);
+            v += Math.min(30, 15 * cl[0]) + (cl[1] == 1 ? 25 : 0);
+        }
+        if (c.isCommander()) v += 25;
+        int cmc = c.getCMC();
+        v += cmc >= 6 ? 30 : cmc >= 4 ? 15 : 0;
+        for (SpellAbility x : chain(sa)) {
+            ApiType api = x.getApi();
+            if (api == ApiType.DestroyAll || api == ApiType.DamageAll || api == ApiType.SacrificeAll
+                    || (api == ApiType.ChangeZoneAll && "Battlefield".equals(x.getParam("Origin")))) { v += 40; break; }
+        }
+        return Math.min(100, v) * (0.4 + 0.6 * relative(viewer, o));
+    }
+
+    /** Sets Forge's threat hooks (patch 57), by reflection: the harness compiles against the stock jar. */
+    static void installHooks() {
+        java.util.function.ToDoubleBiFunction<Player, Card> ct = ThreatModel::cardThreat;
+        java.util.function.ToDoubleBiFunction<Player, SpellAbility> st = ThreatModel::spellThreat;
+        try {
+            forge.ai.AiController.class.getField("CARD_THREAT").set(null, ct);
+            forge.ai.AiController.class.getField("SPELL_THREAT").set(null, st);
+        } catch (ReflectiveOperationException e) {
+            ForgeRunner.out.println("#FP-WARN no threat hooks in this Forge build (patch 57)");
+        }
+    }
+
     void check(int turn, Player active) {
         List<Player> alive = new ArrayList<>();
         for (Player p : g.getPlayers()) if (!p.hasLost()) alive.add(p);
