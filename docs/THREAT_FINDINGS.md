@@ -211,3 +211,19 @@ board, and spends held mana on the seat it held for. It is cheap (no slower game
 on win rates is below what 15-game pods can show. Next, if wanted: an overnight A/B on interaction-heavy pods (Zur, Yusri,
 Niv, plus the decks they face), paired seeds, hold on vs `-Dfishpond.holdMana=false`, a few hundred games; and the open gap
 from the first puzzle: spell threat doesn't count what a spell feeds (a creature entering into Soul Warden).
+
+## 2026-10-17: counters see what a spell feeds; commander counters weighed like removal
+
+The user's two calls after phase 3:
+- **Commander spells as counter targets** are weighed like removal: the flat +25 for a commander spell is gone, and the
+  spell threat loses the same 12 / 7 / 3 points by how cheaply the commander comes back (none when it completes a combo, closes
+  an engine cycle, or its board kills within two turns).
+- **Pattern recognition on counterspells:** `resolveEvents` lists what a spell makes happen as it resolves (a permanent
+  entering, landfall, its own enter trigger's effects; a nonpermanent's draws, tokens, life, damage, counters, sacrifices; a
+  draw of 3+ counts 3, and a wheel's "each player draws" feeds opponents'-draw payoffs like Xyris's Snakes). `fedTriggers`
+  counts the caster's permanents that feed on those events (each at the most its event happens), and spell threat adds 10 per
+  fed trigger, up to 40. Same vocabulary as the engine graph; board and deck knowledge only.
+
+Puzzles: `threat_counter_fed_wheel` (Reforge the Soul into Xyris and Psychosis Crawler: countered; the previous build let it
+resolve on both seeds, spell threat 15, under the keep-the-counter line) and `threat_counter_fed_enters` (Grizzly Bears into
+four lifegain-on-enter creatures: countered on both seeds; the previous build countered on one of two, Forge's own roll).

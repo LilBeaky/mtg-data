@@ -437,7 +437,8 @@ public final class ThreatModel {
     }
 
     /** How much countering spell sa matters to viewer (0-100): a win effect 100; completing a known combo, the deck's key card,
-     *  engine links or a cycle it would make, the commander, a big spell, a mass removal; times the caster's relative threat. */
+     *  engine links or a cycle it would make, the payoff triggers it sets off as it resolves (fedTriggers), a big spell, a mass
+     *  removal; times the caster's relative threat; a commander loses points like a removed one (commanderPenalty). */
     public static double spellThreat(Player viewer, SpellAbility sa) {
         Player o = sa.getActivatingPlayer();
         Card c = sa.getHostCard();
@@ -449,13 +450,12 @@ public final class ThreatModel {
         for (Card x : o.getCardsIn(ZoneType.Battlefield)) field.add(x.getName());
         double v = 0;
         int[] m = new int[2];
-        if (inCombo(pol, c.getName(), field, m)) v += m[0] == 0 ? (m[1] == 1 ? 95 : 55) : m[0] == 1 ? 40 : 0;
+        boolean combo = inCombo(pol, c.getName(), field, m);
+        if (combo) v += m[0] == 0 ? (m[1] == 1 ? 95 : 55) : m[0] == 1 ? 40 : 0;
         if (pol != null && pol.in.keys.contains(c.getName())) v += 35;
-        if (c.isPermanent()) {
-            int[] cl = cardLinks(c, o);
-            v += Math.min(30, 15 * cl[0]) + (cl[1] == 1 ? 25 : 0);
-        }
-        if (c.isCommander()) v += 25;
+        int[] cl = c.isPermanent() ? cardLinks(c, o) : new int[2];
+        v += Math.min(30, 15 * cl[0]) + (cl[1] == 1 ? 25 : 0);
+        v += Math.min(40, 10 * fedTriggers(sa, c, o));   // what it sets off as it resolves (Serra Angel into Soul Warden)
         int cmc = c.getCMC();
         v += cmc >= 6 ? 30 : cmc >= 4 ? 15 : 0;
         for (SpellAbility x : chain(sa)) {
@@ -465,7 +465,72 @@ public final class ThreatModel {
         }
         Posture hp = posture(viewer);
         if (hp != null && hp.threat() == o) v += 20;   // it kept mana up for this seat: this is what the mana was for
-        return Math.min(100, v) * (0.4 + 0.6 * relative(viewer, o));
+        double out = Math.min(100, v) * (0.4 + 0.6 * relative(viewer, o));
+        // a countered commander goes back to the command zone and comes again for 2 more, like a removed one (the user,
+        // 2026-10-17: weigh it the same as removal; replaces a flat +25)
+        if (c.isCommander()) out -= commanderPenalty(c, o, (combo && m[0] == 0) || cl[1] == 1 || (c.isCreature() && parts(o)[T_CLOCK] <= 2));
+        return out;
+    }
+
+    /** Events a spell makes as it resolves, with how often (up to 3): a permanent entering (a land: landfall too) and its own
+     *  enter trigger's effects, or a nonpermanent's effects: draws (a wheel's 7 count 3; each player drawing feeds opponents'
+     *  draw payoffs too), tokens, life, damage, counters, sacrifices. One-shot effects count here (they fire the caster's
+     *  payoffs once) though produces() leaves them out of the engine graph. */
+    static Map<String, Integer> resolveEvents(SpellAbility sa, Card host) {
+        Map<String, Integer> ev = new HashMap<>();
+        List<SpellAbility> parts = new ArrayList<>(chain(sa));
+        if (host.isPermanent()) {
+            ev.merge("enters", 1, Math::max);
+            if (host.isLand()) ev.merge("landfall", 1, Math::max);
+            for (Trigger t : host.getTriggers())
+                if (t.getMode() == TriggerType.ChangesZone && "Battlefield".equals(t.getParam("Destination"))
+                        && t.getParamOrDefault("ValidCard", "").startsWith("Card.Self"))
+                    try { if (t.ensureAbility() != null) parts.addAll(chain(t.ensureAbility())); } catch (RuntimeException e) { }
+        }
+        for (SpellAbility x : parts) {
+            ApiType api = x.getApi();
+            if (api == null) continue;
+            int n = 1;
+            try { n = Math.max(1, Math.min(3, Integer.parseInt(x.getParamOrDefault("NumCards", x.getParamOrDefault("Amount", "1")).trim()))); }
+            catch (NumberFormatException e) { }
+            switch (api) {
+                case Draw -> {
+                    String def = x.getParamOrDefault("Defined", "You");
+                    if (!def.contains("Opponent")) ev.merge("draw", n, Math::max);
+                    if (def.contains("Opponent") || def.startsWith("Player")) ev.merge("oppdraw", n, Math::max);
+                }
+                case Token, CopyPermanent -> { ev.merge("token", n, Math::max); ev.merge("enters", n, Math::max); }
+                case ChangeZone -> {
+                    if ("Battlefield".equals(x.getParam("Destination"))) {
+                        ev.merge("enters", 1, Math::max);
+                        if (x.getParamOrDefault("ChangeType", "").contains("Land")) ev.merge("landfall", 1, Math::max);
+                    }
+                }
+                case GainLife -> ev.merge("lifegain", 1, Math::max);
+                case LoseLife -> { if (x.getParamOrDefault("Defined", "").contains("Opponent")) ev.merge("lifeloss", 1, Math::max); }
+                case DealDamage, DamageAll -> ev.merge("damage", 1, Math::max);
+                case PutCounter, PutCounterAll -> ev.merge("counter", 1, Math::max);
+                case Sacrifice, SacrificeAll -> ev.merge("sacrifice", 1, Math::max);
+                default -> { }
+            }
+        }
+        return ev;
+    }
+
+    /** Payoff triggers of o's that spell sa sets off as it resolves: for each of o's permanents, the most a resolution event it
+     *  feeds on happens (a counterspell sees what the spell feeds: Serra Angel entering next to Soul Warden and Essence Warden
+     *  is 2; Reforge the Soul with Xyris out is 3). Board and deck knowledge only. */
+    static int fedTriggers(SpellAbility sa, Card host, Player o) {
+        Map<String, Integer> ev = resolveEvents(sa, host);
+        if (ev.isEmpty()) return 0;
+        int fed = 0;
+        for (Card x : o.getCardsIn(ZoneType.Battlefield)) {
+            if (x == host) continue;
+            int best = 0;
+            for (String e : consumes(x)) best = Math.max(best, ev.getOrDefault(e, 0));
+            fed += best;
+        }
+        return fed;
     }
 
     // ---------------------------------------------------------------- phase 3: mana posture (patch 58)

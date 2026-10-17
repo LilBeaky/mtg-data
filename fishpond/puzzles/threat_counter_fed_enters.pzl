@@ -1,0 +1,16 @@
+# title: The opponent has four creatures that gain life whenever another creature enters (Soul Warden, Essence Warden, Soul's Attendant, Suture Priest) and casts Grizzly Bears; the AI counters the Bears: a 2-mana creature, but it sets off four payoffs (harness fedTriggers; threat_counter_saved keeps the counter against a lone Bears)
+# card: Counterspell
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Counterspell targeting .*Grizzly Bears
+p0life=30
+p1life=30
+turn=1
+activeplayer=p1
+activephase=MAIN1
+p0battlefield=Island;Island;Island
+p0hand=Counterspell
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Plains;Soul Warden;Essence Warden;Soul's Attendant;Suture Priest
+p1hand=Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

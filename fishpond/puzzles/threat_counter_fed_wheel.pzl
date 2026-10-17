@@ -1,0 +1,16 @@
+# title: The opponent has Xyris and Psychosis Crawler out and casts Reforge the Soul (each player discards and draws seven: Snakes and life loss off every draw); the AI counters it: the spell is small but feeds six payoff triggers (the user, 2026-10-17: counters see what a spell feeds; harness fedTriggers). Before, its spell threat was 15 and the counter was kept
+# card: Counterspell
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Counterspell targeting \[Each player discards their hand
+p0life=30
+p1life=30
+turn=1
+activeplayer=p1
+activephase=MAIN1
+p0battlefield=Island;Island;Island
+p0hand=Counterspell
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Mountain;Mountain;Mountain;Mountain;Mountain;Forest;Island;Xyris, the Writhing Storm|IsCommander;Psychosis Crawler
+p1hand=Reforge the Soul;Mountain;Mountain;Mountain
+p1library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
