@@ -191,3 +191,23 @@ Mixture (instants and sorceries only) while Niv cast Niv-Mizzet, Vito, Sheoldred
 cast Xyris (the one legal target it saw was Reforge the Soul). Refined: a counterspell with a target restriction fits only if
 35%+ of the threat's nonland cards (its whole list: deck knowledge) are legal targets (`counterShare`; puzzle
 `hold_mana_not_for_narrow_counter`: Negate against a creature deck sets no hold).
+
+## 2026-10-17: phase 3, final measurement (`threat_p58dpair_20261017`, `threat_p58dpair_v08_20261017`)
+
+With the narrow-counter fit, same seeds: wins identical to the previous version (V05 Heliod 10, Xyris 4, Lumra 1; V06 Niv 7,
+Xyris 5, Omnath 2, Yusri 1; V08 Witherbloom 5, Klauth 5, Chulane 3, Zur 2), 0 AI timeouts, mean game time 146/164/119 s per pod.
+
+Hold episodes across the iterations on these 45 games:
+
+| Version | Episodes | Answer cast | Threat won during the hold |
+|---|---|---|---|
+| first (5f29171) | 42 | 7 | 3 |
+| own plan exempt (e9a57bf) | 24 | 4 | 2 |
+| + removal must hit what matters | 23 | 3 | 2 |
+| + narrow counters fit the deck (4ba263d) | 17 | 3 | 1 |
+
+Summary of phase 3: the hold no longer costs a deck its own plan, holds only with an answer that can hit the threat's deck or
+board, and spends held mana on the seat it held for. It is cheap (no slower games) and rare (17 holds in 45 games). Its effect
+on win rates is below what 15-game pods can show. Next, if wanted: an overnight A/B on interaction-heavy pods (Zur, Yusri,
+Niv, plus the decks they face), paired seeds, hold on vs `-Dfishpond.holdMana=false`, a few hundred games; and the open gap
+from the first puzzle: spell threat doesn't count what a spell feeds (a creature entering into Soul Warden).
