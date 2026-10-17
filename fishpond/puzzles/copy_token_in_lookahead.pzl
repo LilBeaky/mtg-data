@@ -1,0 +1,17 @@
+# title: The AI has two Snake tokens and Second Harvest at the end of the opponent's turn: it casts it and gets two more Snakes. A token with no printed card behind it (the lookahead's game copy builds its tokens that way; so does a puzzle) crashed CopyPermanentEffect ("paperCard is null"): the copy failed and the decision lost its lookahead (patch 59; 6 of 10 lookahead fallbacks in study100_20261017_p58e)
+# card: Second Harvest
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Second Harvest
+# expect: Resolve Stack: Second Harvest
+# forbid: NullPointerException|paperCard
+p0life=30
+p1life=30
+turn=1
+activeplayer=p1
+activephase=END_OF_TURN
+p0battlefield=Forest;Forest;Forest;Forest;t:Snake,P:1,T:1,Cost:no cost,Color:G,Types:Creature-Snake,Keywords:,Image:g_1_1_snake;t:Snake,P:1,T:1,Cost:no cost,Color:G,Types:Creature-Snake,Keywords:,Image:g_1_1_snake
+p0hand=Second Harvest
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

@@ -1,0 +1,16 @@
+# title: Stress guard for patch 59: thirty Scute Swarms and Doubling Season, the AI to play a land under hybrid lookahead. Copying tokens inside the lookahead now works (no more fallback); this checks the decision stays quick (patch 47: giving the copy's tokens their scripts made this take minutes)
+# card: Scute Swarm
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 played
+# forbid: NullPointerException|paperCard
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest;Forest;Forest;Forest;Forest;Doubling Season;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm;Scute Swarm
+p0hand=Forest
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

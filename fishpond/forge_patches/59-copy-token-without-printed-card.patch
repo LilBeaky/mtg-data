@@ -1,0 +1,24 @@
+diff --git a/forge-game/src/main/java/forge/game/ability/effects/CopyPermanentEffect.java b/forge-game/src/main/java/forge/game/ability/effects/CopyPermanentEffect.java
+index ba23bd4..da9b4ef 100644
+--- a/forge-game/src/main/java/forge/game/ability/effects/CopyPermanentEffect.java
++++ b/forge-game/src/main/java/forge/game/ability/effects/CopyPermanentEffect.java
+@@ -287,7 +287,18 @@ public class CopyPermanentEffect extends TokenEffectBase {
+ 
+             int id = newOwner == null ? 0 : newOwner.getGame().nextCardId();
+             // need to create a physical card first, i need the original card faces
+-            copy = CardFactory.getCard(original.getPaperCard(), newOwner, id, host.getGame());
++            if (original.isToken() && original.getPaperCard() == null) {
++                // fishpond patch 59: a token with no printed card behind it (the AI lookahead's game copy rebuilds tokens
++                // from their characteristics, ai.simulation.GameCopier) has nothing to read; its one face comes from the
++                // clone states below, so start from a blank card. Copying a token in a simulation (Scute Swarm, Second
++                // Harvest, Spark Double) threw "paperCard is null" and the decision lost its lookahead. Not parsed from a
++                // script, so it stays cheap (patch 47 found giving the copy's tokens their scripts made Scute Swarm
++                // lookahead take minutes)
++                copy = new Card(id, null, host.getGame());
++                copy.setOwner(newOwner);
++            } else {
++                copy = CardFactory.getCard(original.getPaperCard(), newOwner, id, host.getGame());
++            }
+ 
+             copy.setStates(CardFactory.getCloneStates(original, copy, sa));
+             // force update the now set State
