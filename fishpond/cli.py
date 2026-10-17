@@ -114,6 +114,13 @@ def cmd_held(args):
     held.cmd(args.runs)
 
 
+def cmd_replay(args):
+    from . import runner
+    import os
+    out = args.out or os.path.join(args.pod, f"replay_{args.game}.log")
+    same, diff, end = runner.replay(args.pod, args.game, out, patched=args.classes)
+    print(f"fishpond: replay of game {args.game} -> {out}: " + ("identical to the original" if same else f"differs at\n  original: {diff[0]}\n  replay:   {diff[1]}"))
+
 def cmd_lines(args):
     from . import lines
     lines.cmd(args.runs)
@@ -404,8 +411,10 @@ def main(argv=None):
     st.add_argument("--max-minutes", type=float, default=0)
     h = sub.add_parser("held"); h.add_argument("runs", nargs="+")
     h = sub.add_parser("lines"); h.add_argument("runs", nargs="+")
+    rp = sub.add_parser("replay"); rp.add_argument("pod", help="a pod directory of a run (has logs/ and decks/)"); rp.add_argument("game", type=int)
+    rp.add_argument("--out"); rp.add_argument("--classes", help="a patched-Forge class dir to replay on instead of the current build")
     w = sub.add_parser("show"); w.add_argument("run"); w.add_argument("game", type=int); w.add_argument("--build")
     w.add_argument("--log", action="store_true"); w.add_argument("--phases", action="store_true")
     args = ap.parse_args(argv)
     if not args.cmd: ap.print_help(); return
-    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "lines": cmd_lines, "study": cmd_study}[args.cmd](args)
+    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "lines": cmd_lines, "study": cmd_study, "replay": cmd_replay}[args.cmd](args)

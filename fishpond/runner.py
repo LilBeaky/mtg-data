@@ -207,6 +207,54 @@ def _pilot_seat_props(run_dir):
     with open(p, "w", encoding="utf-8") as fh: fh.write("\n".join(names) + "\n")
     return [f"-Dfishpond.pilotSeats={seats}", f"-Dfishpond.overriddenFile={os.path.abspath(p)}"]
 
+def java_cmd(run_dir, xmx, patched, classes, plan_file):
+    """The harness JVM command for a plan file: what execute() runs, and what a replay of one game must run to play it the
+    same way (the overridden-cards list and the win-line audit included)."""
+    return ["java", f"-Xmx{xmx}m", "-XX:-OmitStackTraceInFastThrow", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
+            *([] if forge.pilot_on() else ["-Dfishpond.policy=off"]), *_pilot_seat_props(run_dir),
+            f"-Dfishpond.winLines={os.path.join(os.path.dirname(os.path.abspath(__file__)), 'win_lines.txt')}",
+            *os.environ.get("FISHPOND_JVM", "").split(),   # extra -D switches for A/B runs (e.g. -Dfishpond.commanderRules=false)
+            "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "ForgeRunner",
+            os.path.join(run_dir, "decks", ""), plan_file]
+
+ACTION_LINE = ("Turn:", "Add To Stack:", "Resolve Stack:", "Damage:", "Life:", "Zone Change:", "Land:", "Combat:", "Mulligan:", "Discard:")
+
+def game_actions(block):
+    """The game-action lines of a game block (what two plays of the same game must share)."""
+    return [l for l in block if l.startswith(ACTION_LINE)]
+
+def replay(pod_dir, game_id, out_log, patched=None, quiet=True):
+    """Play one game of a run again, exactly as its worker did (same JVM switches, same plan line), into out_log; returns
+    (identical, first differing action pair or None, the replay's #FP-END dict). A game a worker played after others in the
+    same JVM can still differ if state carries across games; the first game of each worker can't."""
+    import glob, tempfile
+    line = None
+    for pf in glob.glob(os.path.join(pod_dir, "logs", "plan_*.tsv")):
+        for l in open(pf, encoding="utf-8"):
+            if l.split("	")[0] == str(game_id): line = l.rstrip("\n")
+    if line is None: raise SystemExit(f"fishpond: no game {game_id} in {pod_dir}")
+    forge.ensure(quiet=quiet)
+    classes = harness_classes(quiet)
+    patched = patched or forge.patched_classes(quiet=quiet)
+    plan = out_log + ".plan.tsv"
+    with open(plan, "w", encoding="utf-8") as fh: fh.write(line + "\n")
+    with open(out_log, "w", encoding="utf-8") as fh:
+        subprocess.run(java_cmd(os.path.abspath(pod_dir), 3000, patched, classes, plan), cwd=forge.run_home(quiet=True), stdout=fh, stderr=subprocess.STDOUT)
+    os.remove(plan)
+    orig = None
+    for lf in glob.glob(os.path.join(pod_dir, "logs", "worker_*.log")):
+        for b in lp.split_games(open(lf, encoding="utf-8", errors="replace").read()):
+            _, end = lp.harness_lines(b)
+            if end and str(end.get("id")) == str(game_id): orig = b
+    new = lp.split_games(open(out_log, encoding="utf-8", errors="replace").read())
+    new = new[0] if new else []
+    _, end = lp.harness_lines(new)
+    a, b = game_actions(orig or []), game_actions(new)
+    i = next((k for k in range(min(len(a), len(b))) if a[k] != b[k]), None)
+    if i is None and len(a) != len(b): i = min(len(a), len(b))
+    diff = None if i is None else (a[i] if i < len(a) else "(end)", b[i] if i < len(b) else "(end)")
+    return diff is None, diff, end
+
 def execute(entries, jobs, run_dir, session, quiet=False):
     """Run plan entries on `jobs` harness JVMs; each writes logs/worker_<session>_<j>.log, one game at a time (a cut-off
     session keeps every finished game). Returns wall seconds."""
@@ -227,11 +275,7 @@ def execute(entries, jobs, run_dir, session, quiet=False):
         # -XX:-OmitStackTraceInFastThrow: the JVM drops the stack of an exception thrown often at one spot, and the harness
         # reads the stack to tell a lookahead crash (remade without lookahead) from a real one (study150_20261014 V02 g10
         # ended on a trace-less NullPointerException that was a lookahead crash)
-        cmd = ["java", f"-Xmx{xmx_for(jobs, uses_full(entries))}m", "-XX:-OmitStackTraceInFastThrow", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
-               *([] if forge.pilot_on() else ["-Dfishpond.policy=off"]), *_pilot_seat_props(run_dir),
-               f"-Dfishpond.winLines={os.path.join(os.path.dirname(os.path.abspath(__file__)), 'win_lines.txt')}",
-               *os.environ.get("FISHPOND_JVM", "").split(),   # extra -D switches for A/B runs (e.g. -Dfishpond.commanderRules=false)
-               "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "ForgeRunner", os.path.join(deck_dir, ""), pf]
+        cmd = java_cmd(run_dir, xmx_for(jobs, uses_full(entries)), patched, classes, pf)
         fh = open(lf, "w", encoding="utf-8")
         procs.append((subprocess.Popen(cmd, cwd=forge.run_home(quiet=True), stdout=fh, stderr=subprocess.STDOUT), fh, lf))
     last = -1
