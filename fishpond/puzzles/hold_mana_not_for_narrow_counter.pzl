@@ -1,0 +1,16 @@
+# title: The opponent has three payoffs out and a deck of creatures; the AI holds Negate (noncreature spells only) and Wind Drake with three Islands: it casts the Drake (patch 58: a narrow counter fits only a deck it can hit; Yusri held Muddle the Mixture while Niv cast creatures)
+# card: Negate
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Wind Drake
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island
+p0hand=Negate;Wind Drake
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Plains;Plains;Plains;Plains;Soul Warden;Essence Warden;Ajani's Pridemate
+p1hand=Serra Angel
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

@@ -176,3 +176,18 @@ Where phase 3 stands: the hold is now principled and cheap (it no longer costs t
 slower), and when a seat holds it now spends the mana on the seat it held for. Whether it changes win rates can't be read
 from 15-game pods: the effect per game is a handful of decisions, and half of paired games split on Forge noise first. It
 needs volume (an overnight batch on a few interaction-heavy pods, paired seeds, hold on vs `-Dfishpond.holdMana=false`).
+
+## 2026-10-17: phase 3, targeting fit measured (`threat_p58cpair_20261017`, `threat_p58cpair_v08_20261017`)
+
+| Pod | p57 (paired) | p58 refined + targeting fit |
+|---|---|---|
+| V05 | Heliod 12, Xyris 2, Lumra 1 | Heliod 10, Xyris 4, Lumra 1 |
+| V06 | Niv 7, Xyris 6, Yusri 1, Omnath 1 | Niv 7, Xyris 5, Omnath 2, Yusri 1 |
+| V08 | Witherbloom 6, Klauth 4, Chulane 3, Zur 2 | Witherbloom 5, Klauth 5, Chulane 3, Zur 2 |
+
+23 hold episodes (24 before), 3 answers cast. Mean game time 146/147/118 s per pod (p57 133/157/127). Yusri held 9 times and
+cast the answer 0 times; what the threat cast during those holds shows why: Yusri's counters are narrow. It held Muddle the
+Mixture (instants and sorceries only) while Niv cast Niv-Mizzet, Vito, Sheoldred and Rest in Peace, and Swan Song while Xyris
+cast Xyris (the one legal target it saw was Reforge the Soul). Refined: a counterspell with a target restriction fits only if
+35%+ of the threat's nonland cards (its whole list: deck knowledge) are legal targets (`counterShare`; puzzle
+`hold_mana_not_for_narrow_counter`: Negate against a creature deck sets no hold).

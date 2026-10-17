@@ -558,7 +558,8 @@ public final class ThreatModel {
         Card pick = null;
         for (Card c : answers) {
             int kind = answerKind(c);
-            if (c.getCMC() > sources || !((kind == 1 && counterFits) || (kind == 2 && removalFits && hitsWhatMatters(ai, c, top)))) continue;
+            if (c.getCMC() > sources || !((kind == 1 && counterFits && counterShare(ai, c, top) >= 0.35)
+                    || (kind == 2 && removalFits && hitsWhatMatters(ai, c, top)))) continue;
             if (pick == null || c.getCMC() < pick.getCMC()) pick = c;
         }
         if (pick == null) return NONE;
@@ -570,6 +571,38 @@ public final class ThreatModel {
             if (first != null && ph.getTurn() - first >= 4) return NONE;
         }
         return new Posture(Math.max(1, pick.getCMC()), pick.getName(), top, why);
+    }
+
+    static final Map<Game, Map<String, Double>> COUNTER_SHARE = Collections.synchronizedMap(new WeakHashMap<>());
+
+    /** The share of opp's nonland cards (its whole list, every zone: deck knowledge) a counterspell can target. A narrow one
+     *  only fits a deck it can hit: Yusri held Muddle the Mixture (instants and sorceries) while Niv cast Niv-Mizzet,
+     *  Sheoldred and Rest in Peace, and Swan Song against Xyris's creatures (2026-10-17). Needs 35%. */
+    static double counterShare(Player ai, Card answer, Player opp) {
+        String valid = null;
+        SpellAbility csa = null;
+        for (SpellAbility sa : answer.getSpells())
+            for (SpellAbility x : chain(sa)) if (valid == null && x.getApi() == ApiType.Counter) { valid = x.getParamOrDefault("ValidTgts", "Card"); csa = x; }
+        if (valid == null || valid.equals("Card") || valid.equals("Any")) return 1;
+        Map<String, Double> m = COUNTER_SHARE.computeIfAbsent(ai.getGame(), k -> new HashMap<>());
+        String key = answer.getName() + "|" + opp.getId();
+        Double v = m.get(key);
+        if (v == null) {
+            int n = 0, ok = 0;
+            for (ZoneType z : new ZoneType[] {ZoneType.Library, ZoneType.Hand, ZoneType.Graveyard, ZoneType.Battlefield,
+                    ZoneType.Exile, ZoneType.Command})
+                for (Card c : opp.getCardsIn(z)) {
+                    if (c.getOwner() != opp || c.isLand()) continue;
+                    n++;
+                    for (String r : valid.split(",")) {
+                        boolean hit;
+                        try { hit = c.isValid(r, ai, answer, csa); } catch (RuntimeException e) { hit = false; }
+                        if (hit) { ok++; break; }
+                    }
+                }
+            m.put(key, v = n == 0 ? 1.0 : (double) ok / n);
+        }
+        return v;
     }
 
     /** Removal fits only if it can target one of the threat's permanents that matter (cardThreat at the remove-now line, 40):
