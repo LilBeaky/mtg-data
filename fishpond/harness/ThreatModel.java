@@ -18,27 +18,30 @@ import java.util.*;
  *  #FP-THREAT; nothing acts on it yet. The user's rule: combo proximity outweighs everything except a board clock that kills
  *  within two turns.
  *
- *  threat = combo + clock + engines + mana + growth + hand + alt-win + momentum, where
+ *  threat (v2.1) = combo + clock + engines + mana + growth + resources + alt-win, where
  *    combo      (0-100) the seat's known combos with pieces on the battlefield: all of them 100 (a win combo; 60 otherwise),
  *               one missing 55 scaled by its hand (cards to find it with), two missing 15
  *    clock      turns for its board to kill another player, the opposing untapped creatures chump-blocking its biggest
  *               attackers (fliers only by fliers or reach); 2 turns or less overrides: threat at least 110 (one) or 100 (two);
  *               otherwise it adds 50 / turns
- *    engines    (0-80) enabler -> payoff links on its battlefield (the user: "Astral Slide + Archaeomancer", Slide's blink is
- *               Archaeomancer's enter trigger): each permanent produces events (a creature or land entering, tokens, draws, life
- *               gained, opponents' life lost, damage, counters, sacrifices, mana; a blink is its own event, the only one that fires a
- *               creature's own enter trigger again) and consumes them (its triggers that do
- *               something for it, and abilities paid with counters); lifelink, printed or granted, turns damage into life
- *               gained (Heliod + Walking Ballista). 5 per payoff alone, 15 per link, 35 per cycle of two or three
+ *    engines    payoffs (permanents with triggers that do something for it) 8 each up to 40; enabler -> payoff links 2 each up
+ *               to 10; cycles 15 each, up to two (the user: "Astral Slide + Archaeomancer"). Each permanent produces events (a
+ *               blink, permanents entering, landfall, tokens, its own and opponents' draws, life gained, opponents' life lost,
+ *               damage, counters, sacrifices, mana) and consumes them (its triggers that do something for it, abilities paid
+ *               with counters); a blink is the only event that fires a creature's own enter trigger again; lifelink, printed
+ *               or granted, turns damage into life gained (Heliod <-> Walking Ballista is a cycle); a permanent feeding itself
+ *               counts as a link (Xyris: its combat damage makes the opponent draw, each draw a Snake)
  *    mana       (0-40) the mana it can make next turn (each source's most, times Nyxbloom Ancient-style multipliers, plus mana
  *               triggers: Klauth's attack worth the power that can attack, landfall 1) over the other players' average,
  *               times a hand factor (0.4 + 0.6 x hand/4), 1.5 per mana of lead (the user: Klauth's 30 mana is telegraphed)
  *    growth     (0-15) 1.5 per mana of capacity gained since its turn a round ago
- *    hand       (0-20) 2 per card in hand
+ *    resources  (0-30) 2 per card in hand plus 1 per mana source
  *    alt-win    (0-60) a "wins with an empty library" permanent out with 5 or fewer cards left; poison it dealt (7+)
- *    momentum   (0-20) 0.3 per point of threat (without momentum) gained over the last round
- *  vulnerability (0-100) = 2 per life under 40, plus 5 per missing untapped blocker under 5.
- *  The record also keeps phase 1's inputs (cmd, src) so the two formulas can be compared on the same games. */
+ *  Momentum (threat gained over the last round) is logged but not scored.
+ *  v2 weighted links 15 and cycles 35 with momentum, and on a fresh seed (study150_20261017_threat, 104 games) predicted the
+ *  winner a round out less often than v1 (62% vs 69%); every lighter weighting landed at 67-71%, within the noise. Winner
+ *  prediction can't separate them; mana and links stay for the decisions they are meant for.
+ *  vulnerability (0-100) = 2 per life under 40, plus 5 per missing untapped blocker under 5. */
 public final class ThreatModel {
     final Game g;
     final List<String> log = new ArrayList<>();
@@ -90,7 +93,12 @@ public final class ThreatModel {
                         } else if (dest.equals("Exile") && returns) { ev.add("enters"); ev.add("blink"); }   // exile, then return (Astral Slide)
                     }
                     case Token, CopyPermanent -> { ev.add("token"); ev.add("enters"); }
-                    case Draw -> { if (!x.getParamOrDefault("Defined", "You").contains("Opponent")) ev.add("draw"); }
+                    case Draw -> {
+                        String def = x.getParamOrDefault("Defined", "You");
+                        if (!def.equals("Opponent") && !def.startsWith("Player.Opponent")) ev.add("draw");
+                        // an opponent draws too (Xyris's combat damage: "you and that player", a wheel: each player)
+                        if (def.contains("Opponent") || def.contains("TriggeredTarget") || def.startsWith("Player") || def.contains("Remembered")) ev.add("oppdraw");
+                    }
                     case GainLife -> ev.add("lifegain");
                     case LoseLife -> { if (x.getParamOrDefault("Defined", "").contains("Opponent")) ev.add("lifeloss"); }
                     case DealDamage, DamageAll -> { ev.add("damage"); if (lifelink) ev.add("lifegain"); }
@@ -125,7 +133,7 @@ public final class ThreatModel {
                     } else if (orig.equals("Battlefield") && dest.equals("Graveyard")) ev.add("sacrifice");
                 }
                 case TokenCreated -> ev.add("token");
-                case Drawn -> { if (!vc.contains("OppOwn")) ev.add("draw"); }
+                case Drawn -> { if (vc.contains("OppOwn")) ev.add("oppdraw"); else ev.add("draw"); }   // Xyris's Snakes feed on opponents' draws
                 case LifeGained -> { if (t.getParamOrDefault("ValidPlayer", "You").contains("You")) ev.add("lifegain"); }
                 case LifeLost -> { if (t.getParamOrDefault("ValidPlayer", "").contains("Opponent")) ev.add("lifeloss"); }
                 case Sacrificed -> ev.add("sacrifice");
@@ -158,7 +166,15 @@ public final class ThreatModel {
         for (int i = 0; i < n; i++) {
             if (!cons.get(i).isEmpty()) payoffs++;
             for (int j = 0; j < n; j++) {
-                if (i == j || prod.get(i).isEmpty() || cons.get(j).isEmpty()) continue;
+                if (prod.get(i).isEmpty() || cons.get(j).isEmpty()) continue;
+                if (i == j) {   // a permanent that feeds itself (Xyris: its combat damage makes the opponent draw, each draw a Snake)
+                    for (String e : prod.get(i)) if (cons.get(i).contains(e) && !e.equals("blink") && !e.equals("enters")) {
+                        links++;
+                        if (names.size() < 12) names.add(perms.get(i).getName() + ">self:" + e);
+                        break;
+                    }
+                    continue;
+                }
                 for (String e : prod.get(i)) if (cons.get(j).contains(e)) {
                     edge[i][j] = true;
                     if (names.size() < 12) names.add(perms.get(i).getName() + ">" + perms.get(j).getName() + ":" + e);
@@ -287,7 +303,7 @@ public final class ThreatModel {
             }
             List<String> pairNames = new ArrayList<>();
             int[] eg = engineGraph(p, pairNames);
-            double eng = Math.min(80, 5 * eg[0] + 15 * eg[1] + 35 * eg[2]);
+            double eng = Math.min(40, 8 * eg[0]) + Math.min(10, 2 * eg[1]) + 15 * Math.min(2, eg[2]);
             double others = 0;
             for (Player o : alive) if (o != p) others += cap.get(o);
             others = alive.size() > 1 ? others / (alive.size() - 1) : 0;
@@ -297,15 +313,15 @@ public final class ThreatModel {
             TreeMap<Integer, double[]> h = history.computeIfAbsent(s, k -> new TreeMap<>());
             Double capAgo = roundAgo(h, turn, 0), threatAgo = roundAgo(h, turn, 1);
             double growth = capAgo == null ? 0 : Math.min(15, 1.5 * Math.max(0, mine - capAgo));
-            double res = Math.min(20, 2 * hand);
+            double res = Math.min(30, 2 * hand + manaSources);
             double alt = 0;
             int lib = p.getCardsIn(ZoneType.Library).size();
             if (lib <= 5) for (Card c : p.getCardsIn(ZoneType.Battlefield)) if (emptyLibraryWin(c)) { alt = 60; break; }
             for (Player o : p.getOpponents()) if (!o.hasLost() && o.getPoisonCounters() >= 7) alt = Math.max(alt, 40);
             int clock = clockTurns(p);
             double base = combo + eng + mana + growth + res + alt + (clock <= 20 ? 50.0 / clock : 0);
-            double mom = threatAgo == null ? 0 : Math.min(20, 0.3 * Math.max(0, base - threatAgo));
-            double threat = base + mom;
+            double mom = threatAgo == null ? 0 : Math.min(20, 0.3 * Math.max(0, base - threatAgo));   // logged, not scored (v2.1)
+            double threat = base;
             if (clock <= 1) threat = Math.max(threat, 110);
             else if (clock <= 2) threat = Math.max(threat, 100);
             h.put(turn, new double[] {mine, base});
