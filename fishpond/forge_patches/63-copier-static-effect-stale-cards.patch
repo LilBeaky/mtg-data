@@ -1,0 +1,55 @@
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+index 2f674d0..ef42814 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+@@ -552,6 +552,11 @@ public class GameCopier {
+         public GameObject map(GameObject o) {
+             return find(o);
+         }
++
++        @Override
++        public Card mapOrNull(Card c) {
++            return findCardOrNull(c);   // fishpond patch 63
++        }
+     }
+ 
+     private Card findCardOrNull(Card c) {
+diff --git a/forge-game/src/main/java/forge/game/IEntityMap.java b/forge-game/src/main/java/forge/game/IEntityMap.java
+index e18dbc3..06a4ee2 100644
+--- a/forge-game/src/main/java/forge/game/IEntityMap.java
++++ b/forge-game/src/main/java/forge/game/IEntityMap.java
+@@ -21,6 +21,11 @@ public interface IEntityMap {
+         return (Card) map((GameObject) c);
+     }
+ 
++    /** fishpond patch 63: the card in the mapped game, or null when it has no counterpart there (it left the game). */
++    default Card mapOrNull(final Card c) {
++        return map(c);
++    }
++
+     default GameEntity map(final GameEntity e) {
+         return (GameEntity) map((GameObject) e);
+     }
+diff --git a/forge-game/src/main/java/forge/game/StaticEffect.java b/forge-game/src/main/java/forge/game/StaticEffect.java
+index c85a123..b7305f4 100644
+--- a/forge-game/src/main/java/forge/game/StaticEffect.java
++++ b/forge-game/src/main/java/forge/game/StaticEffect.java
+@@ -62,7 +62,17 @@ public class StaticEffect {
+     private StaticEffect makeMappedCopy(IEntityMap map) {
+         StaticEffect copy = new StaticEffect(map.map(this.source));
+         copy.ability = this.ability;
+-        copy.affectedCards = map.mapCollection(this.affectedCards);
++        // fishpond patch 63: a card the effect once applied to that has since left the game (Rampant Growth, gone from the
++        // stack) has no counterpart in the lookahead's copy; it isn't affected by anything any more, so it's left out. The
++        // copier threw "Couldn't map" on every decision while such an effect lasted (51 lookahead fallbacks in one game)
++        final forge.game.card.CardCollection affected = new forge.game.card.CardCollection();
++        for (final forge.game.card.Card c : this.affectedCards) {
++            final forge.game.card.Card m = map.mapOrNull(c);
++            if (m != null) {
++                affected.add(m);
++            }
++        }
++        copy.affectedCards = affected;
+         copy.affectedPlayers  = map.mapList(this.affectedPlayers);
+         copy.timestamp = this.timestamp;
+         copy.mapParams = this.mapParams;

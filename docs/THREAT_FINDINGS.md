@@ -266,3 +266,31 @@ answer cast in 9, the threat winning during a hold in 2; "a combo piece away" st
 
 Found: Zur's hold refused wizardcycling Step Through 9 times. Step Through is a key card that is only ever wizardcycled (the
 user's override), and the key-card exemption covered casting it, not its cycling.
+
+## 2026-10-17: board wipes (patches 59-63)
+
+The user's rules for wipes: refuse when the caster loses as much or more than anyone; cast when every opponent loses a little
+more, or one loses a lot more; weigh what the caster keeps afterwards (Wilson wiping around himself); get card types and
+modal choices right (Austere Command, Farewell). Wilson is the yardstick: a deck built to wipe and capitalize.
+
+Found first: Forge's mass-removal logic returned on the **first opponent in seat order**, so in a pod a wipe never weighed the
+other two boards; Farewell picked modes one at a time and exiled its caster's artifacts; overloaded Cyclonic Rift was never cast
+(17 Rifts in 100 games, all single-target). Patch 60 judges every wipe across the table by each player's real loss, patch 61
+judges overloaded spells as wipes.
+
+`study100_20261017_p61` (patches 60-61, same pods and seeds as `study100_20261017_p58e`): 100 of 100 natural, 0 AI timeouts.
+Heliod 29/40 -> 27/40, Wilson 5/20 -> 7/20, Klauth 6/20 -> 9/20, the rest within a game or two. Zur's Cyclonic Rift 10 -> 15
+casts (overloads now). Three problems surfaced, fixed the same day:
+- Wilson's wipes were judged worth casting on 26 turns and cast on 5: the mana went first to the cards the cast plan ranks high
+  (patch 62: wipes are considered first).
+- Edicts misread as wipes: Flare of Malice refused 82 times, Archfiend of Depravity's trigger 39 (patch 62: table-wide effects
+  only).
+- 57 lookahead fallbacks, 51 in one V08 game: a static effect listing a card that had left the game (patch 63). The token-copy
+  crash (patch 59) is gone from this run's traces.
+
+### Wilson's pods on patches 59-63 (`wilson_20261017_p63_V04/V07/V10`, 20 games each on p56's pod seeds)
+
+60 games, all natural, 0 AI timeouts, **0 lookahead fallbacks**. Wilson's wipes cast: V04 + V10 13 in 30 games on p56 (0.43 a
+game) -> 34 in 40 (0.85); V07 6 (p58e) -> 5 (p61, before wipes-first) -> 13 (p63). Wilson wins: V04 8/15 -> 10/20, V07 3/15
+(p56), 5/20 (p58e), 7/20 (p61), 5/20 (p63), V10 10/15 -> 11/20: 21/45 (47%) -> 26/60 (43%). Heliod on V07: 11/15, 14/20,
+11/20, 12/20. So Wilson now wipes twice as often, and that hasn't turned into wins at this sample size.

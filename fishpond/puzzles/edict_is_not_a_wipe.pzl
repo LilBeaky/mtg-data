@@ -1,0 +1,15 @@
+# title: Flare of Malice (each opponent sacrifices its biggest creature or planeswalker) against Serra Angel and a Grizzly Bears: the AI casts it. An edict, not a wipe: patch 60 counted it across the table before anything was chosen, saw nothing lost and refused it (82 times in study100_20261017_p61; patch 62)
+# card: Flare of Malice
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Flare of Malice
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp;Swamp;Swamp;Swamp
+p0hand=Flare of Malice
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Plains;Plains;Plains;Plains;Serra Angel;Grizzly Bears
+p1library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp

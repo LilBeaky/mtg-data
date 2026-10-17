@@ -1,0 +1,16 @@
+# title: Five Plains (one spell's worth), Enchantress's Presence out (draw when casting an enchantment), Winds of Rath and Ethereal Armor in hand, the AI's creature enchanted, the opponent's three creatures not: it casts Winds of Rath first, not the aura that feeds Presence (patch 62: wipe first, then develop; Wilson's mana went to engine pieces the plan ranks first)
+# card: Winds of Rath
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Winds of Rath
+# forbid: Ai\(1\)-P1 cast Ethereal Armor
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains;Plains;Enchantress's Presence;Centaur Courser|Id:101;Holy Strength|AttachedTo:101
+p0hand=Ethereal Armor;Winds of Rath
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest;Forest;Forest;Serra Angel;Hill Giant;Trained Armodon
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

@@ -1,0 +1,73 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index af7c2cd..388d834 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -2994,6 +2994,7 @@ public class AiController {
+                 }
+                 all.sort(Comparator.comparing((SpellAbility x) -> -pay.get(x)));         // fishpond patch 54, trigger payoffs (stable)
+                 all.sort(Comparator.comparing((SpellAbility x) -> -prio.get(x)));        // fishpond patch 54, the deck's plan (stable)
++                all.sort(Comparator.comparing((SpellAbility x) -> !wipeFirst(x)));      // fishpond patch 62 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !wheelPays(x)));      // fishpond patch 53 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !cheatsInBig(x)));    // fishpond patch 50 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !winsNow(x)));        // fishpond patch 49 (stable sort)
+@@ -4195,6 +4196,29 @@ public class AiController {
+         }
+     }
+ 
++    /** fishpond patch 62: a board wipe is considered before the turn's other spells. Wilson's wipes were judged worth
++     *  casting (patch 60) on 26 turns of a 20-game pod and cast on 5: the mana went first to the creatures and enchantments
++     *  the wipe would then have killed. Wipe first, then develop; a wipe judged not worth it leaves the order as it was. */
++    private boolean wipeFirst(final SpellAbility sa) {
++        if (!ComputerUtilCard.Wipe.applies(player, sa) || sa.getHostCard() == null) {
++            return false;
++        }
++        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++            if (ComputerUtilCard.Wipe.isWipe(x)) {
++                return true;
++            }
++        }
++        if (sa.getApi() == ApiType.Charm) {
++            final List<forge.game.spellability.AbilitySub> choices = forge.game.ability.effects.CharmEffect.makePossibleOptions(sa);
++            boolean all = !choices.isEmpty();
++            for (final forge.game.spellability.AbilitySub c : choices) {
++                all &= ComputerUtilCard.Wipe.isWipe(c);
++            }
++            return all;
++        }
++        return sa.isSpell() && sa.getHostCard().hasStartOfKeyword("Overload");
++    }
++
+     /** fishpond patch 50: the ability or one of its sub-abilities wins the game. */
+     static boolean hasWinEffect(final SpellAbility sa) {
+         for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+index aede0e9..609b59c 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+@@ -639,6 +639,26 @@ public class ComputerUtilCard {
+             if (k == null) {
+                 return false;
+             }
++            // fishpond patch 62: table-wide effects only. An edict or a trigger's sacrifice names its player or works on what
++            // the resolution itself picks (Flare of Malice: each opponent sacrifices its biggest, "Card.IsRemembered";
++            // Archfiend of Depravity: "Controller$ TriggeredPlayer"); counted across the table they read as nothing lost, and
++            // Flare of Malice was refused 82 times in a 100-game study. "Each player keeps one" stays a wipe only when every
++            // player makes that choice (ChooseCard, Defined$ Player)
++            if (sa.hasParam("Controller") || (sa.hasParam("Defined") && !overloaded(sa))) {
++                return false;
++            }
++            final String valid = overloaded(sa) ? sa.getParam("Defined")
++                    : sa.getParamOrDefault(k == ApiType.ChangeZoneAll ? "ChangeType" : "ValidCards", "");
++            if (valid.contains("Remembered") || valid.contains("Targeted") || valid.contains("Triggered") || valid.contains("Imprinted")
++                    || valid.contains("ExiledWith")) {
++                return false;
++            }
++            if (valid.contains("ChosenCard")) {
++                final SpellAbility parent = sa.getParent();
++                if (parent == null || parent.getApi() != ApiType.ChooseCard || !"Player".equals(parent.getParam("Defined"))) {
++                    return false;
++                }
++            }
+             switch (k) {
+                 case DestroyAll: case SacrificeAll: case DamageAll:
+                     return true;
