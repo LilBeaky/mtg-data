@@ -1,0 +1,16 @@
+# title: One Swamp, Dark Ritual and Phyrexian Rager (3 mana) in hand: the AI casts the Ritual, then the Rager, in main 1 (patch 64: a ritual pays back what it makes in the turn plan's budget, and a planned ritual whose mana the plan needs is cast; Forge's ritual logic passed on it in main 1 and both waited for main 2)
+# card: Dark Ritual
+# turns: 1
+# sim: hybrid
+# order: Ai\(1\)-P1 cast Dark Ritual << Ai\(1\)-P1 cast Phyrexian Rager
+# order: Ai\(1\)-P1 cast Phyrexian Rager << Ai\(1\)-P1's Main phase, postcombat
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp
+p0hand=Phyrexian Rager;Dark Ritual
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Swamp;Swamp
+p1library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp

@@ -1,0 +1,15 @@
+# title: Four Mountains, Lightning Bolt and Gray Ogre in hand, the opponent has a Grizzly Bears: the AI bolts the Bears before casting the Ogre (patch 64: removal before the turn's creatures; Forge cast the most expensive first)
+# card: Lightning Bolt
+# turns: 1
+# sim: hybrid
+# order: Ai\(1\)-P1 cast Lightning Bolt << Ai\(1\)-P1 cast Gray Ogre
+p0life=30
+p1life=30
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Mountain;Mountain;Mountain;Mountain
+p0hand=Gray Ogre;Lightning Bolt
+p0library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1battlefield=Forest;Forest;Grizzly Bears
+p1library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain

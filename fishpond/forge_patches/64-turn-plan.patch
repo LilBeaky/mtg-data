@@ -1,0 +1,563 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 388d834..a0a4c3a 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1049,6 +1049,12 @@ public class AiController {
+         if (holdMana(player, sa)) {
+             return AiPlayDecision.AnotherTime;   // fishpond patch 58: mana kept up for an answer
+         }
++        if (TurnPlan.refuse(this, player, sa) && !hasWinEffect(sa) && !wheelPays(sa) && !encoreNow(sa)) {
++            return AiPlayDecision.AnotherTime;   // fishpond patch 64: it would leave too little mana for the turn plan
++        }
++        if (TurnPlan.force(this, player, sa)) {
++            return AiPlayDecision.WillPlay;   // fishpond patch 64: a planned ritual whose mana the plan needs
++        }
+         // fishpond patch 61: an overloaded spell is a wipe (Cyclonic Rift for 7): judged across the table like one; the
+         // single-target AI it would otherwise reach never weighed "each permanent you don't control"
+         if (ComputerUtilCard.Wipe.overloaded(sa) && ComputerUtilCard.Wipe.applies(player, sa) && ComputerUtilCard.Wipe.isWipe(sa)) {
+@@ -2982,6 +2988,16 @@ public class AiController {
+             all.sort(ComputerUtilAbility.saEvaluator); // put best spells first
+             ComputerUtilAbility.sortCreatureSpells(all);
+             if (forge.ai.ability.DrawAi.pilotSeat(player)) {
++                if (TurnPlan.active(player)) {
++                    // fishpond patch 64: in its own main phase the seat follows its turn plan, which weighs what patches 25
++                    // (ramp first), 24 (commander), 54 (payoffs, the deck's plan) and 62 (wipes first) each pushed up the order
++                    final Map<SpellAbility, Integer> rank = new HashMap<>();
++                    for (final SpellAbility x : all) {
++                        rank.put(x, TurnPlan.leads(this, player, x) ? 2000 : TurnPlan.rank(this, player, x));
++                    }
++                    all.sort(Comparator.comparing((SpellAbility x) -> -rank.get(x)));        // free plan abilities, then the plan's steps (stable)
++                    all.sort(Comparator.comparing((SpellAbility x) -> !encoreNow(x)));      // fishpond patch 37 (stable sort): encore first
++                } else {
+                 if (ComputerUtil.rampFirstOn() && game.getPhaseHandler().isPlayerTurn(player)) {
+                     all.sort(Comparator.comparing((SpellAbility x) -> !ComputerUtil.isRamp(player, x)));   // fishpond patch 25 (stable)
+                 }
+@@ -2995,6 +3011,7 @@ public class AiController {
+                 all.sort(Comparator.comparing((SpellAbility x) -> -pay.get(x)));         // fishpond patch 54, trigger payoffs (stable)
+                 all.sort(Comparator.comparing((SpellAbility x) -> -prio.get(x)));        // fishpond patch 54, the deck's plan (stable)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !wipeFirst(x)));      // fishpond patch 62 (stable sort)
++                }
+                 all.sort(Comparator.comparing((SpellAbility x) -> !wheelPays(x)));      // fishpond patch 53 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !cheatsInBig(x)));    // fishpond patch 50 (stable sort)
+                 all.sort(Comparator.comparing((SpellAbility x) -> !winsNow(x)));        // fishpond patch 49 (stable sort)
+@@ -3079,6 +3096,7 @@ public class AiController {
+                 // System.out.printf("Ai thinks '%s' of %s -> %s @ %s %s >>> \n", opinion, sa.getHostCard(), sa, Lang.getInstance().getPossesive(ph.getPlayerTurn().getName()), ph.getPhase());
+ 
+                 if (opinion != AiPlayDecision.WillPlay) {
++                    TurnPlan.decline(player, sa);   // fishpond patch 64: a planned step Forge passes on is dropped, the turn re-planned
+                     continue;
+                 }
+ 
+@@ -4184,6 +4202,11 @@ public class AiController {
+     // for pilot seats in the real game; simulated games have no policy and get 0.
+     public static volatile java.util.function.ToIntBiFunction<Player, SpellAbility> CAST_PRIORITY;
+ 
++    /** fishpond patch 64: the deck's plan level of an ability, for the turn plan. */
++    public int castPriorityOf(final SpellAbility sa) {
++        return castPriority(sa);
++    }
++
+     private int castPriority(final SpellAbility sa) {
+         final java.util.function.ToIntBiFunction<Player, SpellAbility> f = CAST_PRIORITY;
+         if (f == null || sa == null || sa.getHostCard() == null || !forge.ai.ability.DrawAi.pilotSeat(player)) {
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+index 609b59c..a475d67 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+@@ -878,6 +878,18 @@ public class ComputerUtilCard {
+             }
+         }
+ 
++        /** fishpond patch 64: a wipe's margin for the turn plan (what the table loses beyond the caster), or -1 when the
++         *  table judgement refuses it; quiet (no #FP-WIPE line). */
++        public static double margin(final Player ai, final SpellAbility sa) {
++            final java.util.Map<Player, java.util.Set<Card>> hits = hits(ai, sa);
++            final java.util.Map<Player, Double> loss = new java.util.HashMap<>();
++            for (final java.util.Map.Entry<Player, java.util.Set<Card>> e : hits.entrySet()) {
++                loss.put(e.getKey(), loss(ai, e.getKey(), e.getValue(), sa));
++            }
++            final double[] m = new double[1];
++            return decide(ai, sa, loss, m, true).willingToPlay() ? m[0] : -1;
++        }
++
+         /** One wipe ability, judged. */
+         public static AiAbilityDecision judge(final Player ai, final SpellAbility sa) {
+             final java.util.Map<Player, java.util.Set<Card>> hits = hits(ai, sa);
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+new file mode 100644
+index 0000000..d2b489e
+--- /dev/null
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -0,0 +1,472 @@
++package forge.ai;
++
++import forge.game.Game;
++import forge.game.ability.ApiType;
++import forge.game.card.Card;
++import forge.game.phase.PhaseHandler;
++import forge.game.phase.PhaseType;
++import forge.game.player.Player;
++import forge.game.spellability.SpellAbility;
++import forge.game.zone.ZoneType;
++
++import java.util.*;
++
++/**
++ * fishpond patch 64: the turn plan (the user, 2026-10-17: plan how the current turn is executed, with the removal around it
++ * and a light weight on setup pieces that pay off turn over turn). Forge plays a turn one decision at a time, ordered by a
++ * chain of stable sorts (ramp first, commander, payoffs, the deck's plan, wipes first; docs/SEQUENCING.md); nothing weighs
++ * the turn's mana as a whole. In a pilot seat's own main phase, with the stack empty, the plan:
++ *  - takes the castable spells in hand and the commander, the turn's mana (plus an untapped land drop, plus what a mana rock
++ *    cast now makes back), less the mana Phase 3 keeps up for an answer (patch 58);
++ *  - values each: what it is (Forge's card value), the deck's plan (combo 3, key or engine 2, feeds 1), the payoff triggers it
++ *    fires, removal's best target by threat, a wipe's margin across the table (patch 60), the commander, and its setup value
++ *    (the harness: yield per turn x turns left x need, for mana rocks, ramp, cost reducers, extra land drops, draw engines);
++ *  - picks the best set within the mana (every set, for up to 12 candidates), and orders it: information (draws, tutors),
++ *    mana, wipes, removal, engines, the spells that feed them, the commander and creatures, the rest;
++ *  - is followed: its next step goes first in Forge's order, and a spell outside it is refused only when casting it would
++ *    leave too little for the rest of the plan. A step Forge's own logic declines is dropped and the turn re-planned.
++ * Lands, combat and instant-speed play stay Forge's. -Dfishpond.turnPlan=false restores the old order.
++ */
++public final class TurnPlan {
++    public static final boolean ON = !"false".equals(System.getProperty("fishpond.turnPlan"));
++
++    /** The harness's setup value of casting a card now (Forge value units; 0 in simulations). */
++    public static volatile java.util.function.ToDoubleBiFunction<Player, Card> SETUP_VALUE;
++    /** The mana the harness's Phase 3 posture keeps up for an answer (0 when none). */
++    public static volatile java.util.function.ToIntFunction<Player> HOLD_KEEP;
++    /** Whether a game is one the harness plays (not one of the lookahead's copies). */
++    public static volatile java.util.function.Predicate<Game> IS_REAL;
++
++    static final int TIER_COMBO = 0, TIER_INFO = 1, TIER_MANA = 2, TIER_WIPE = 3, TIER_REMOVAL = 4, TIER_ENGINE = 5,
++            TIER_FEEDER = 6, TIER_BODY = 7, TIER_REST = 8;
++    static final String[] TIER_NAME = {"combo", "info", "mana", "wipe", "removal", "engine", "feeder", "body", "rest"};
++
++    /** A card in hand is worth something held: it can be cast on a later turn, where the turn's unspent mana can't. Each card
++     *  from hand the plan spends costs this much (Forge's base value of a creature card), so the same mana goes to fewer,
++     *  bigger spells and the cheap ones fill later turns (Klauth with 7 mana over Elvish Mystic + Hill Giant + Grizzly Bears).
++     *  The commander isn't a card from hand and carries none. */
++    static final double CARD_HELD = Double.parseDouble(System.getProperty("fishpond.planCardHeld", "80"));
++
++    static final class Step {
++        final Card card;
++        final SpellAbility sa;
++        final int cost, effCost, tier;
++        final double value;
++
++        Step(Card card, SpellAbility sa, int cost, int effCost, int tier, double value) {
++            this.card = card; this.sa = sa; this.cost = cost; this.effCost = effCost; this.tier = tier; this.value = value;
++        }
++
++        /** What casting it now adds: its value, less a card held when it comes from hand. */
++        double net() {
++            return card.isInZone(ZoneType.Command) ? value : value - CARD_HELD;
++        }
++    }
++
++    static final class Plan {
++        final List<Step> steps = new ArrayList<>();
++        final Map<Integer, Integer> rank = new HashMap<>();   // card id -> rank (higher goes first)
++        int budget, reserve;
++        int remainingCost() {
++            int c = 0;
++            for (Step s : steps) c += s.cost;
++            return c;
++        }
++    }
++
++    static final Map<Player, Object[]> CACHE = Collections.synchronizedMap(new WeakHashMap<>());
++    static final Map<Player, Object[]> DECLINED = Collections.synchronizedMap(new WeakHashMap<>());
++    static final Set<String> LOGGED = Collections.synchronizedSet(new LinkedHashSet<>());
++
++    static boolean real(Game g) {
++        final java.util.function.Predicate<Game> f = IS_REAL;
++        return f != null && f.test(g);
++    }
++
++    /** The plan runs now: a pilot seat's own main phase, stack empty, in a game the harness plays. */
++    public static boolean active(final Player ai) {
++        if (!ON || ai == null || !forge.ai.ability.DrawAi.pilotSeat(ai) || !real(ai.getGame())) {
++            return false;
++        }
++        final PhaseHandler ph = ai.getGame().getPhaseHandler();
++        return ph.isPlayerTurn(ai) && ph.getPhase().isMain() && ai.getGame().getStack().isEmpty();
++    }
++
++    static String phaseKey(final Player ai) {
++        final PhaseHandler ph = ai.getGame().getPhaseHandler();
++        return ai.getGame().getId() + "|" + ph.getTurn() + "|" + ph.getPhase();
++    }
++
++    @SuppressWarnings("unchecked")
++    static Set<Integer> declined(final Player ai) {
++        final String pk = phaseKey(ai);
++        Object[] d = DECLINED.get(ai);
++        if (d == null || !pk.equals(d[0])) {
++            d = new Object[] {pk, new HashSet<Integer>()};
++            DECLINED.put(ai, d);
++        }
++        return (Set<Integer>) d[1];
++    }
++
++    /** Forge's own logic passed on a planned step: drop it for this phase (the plan is rebuilt without it). */
++    public static void decline(final Player ai, final SpellAbility sa) {
++        if (!active(ai) || sa == null || sa.getHostCard() == null) {
++            return;
++        }
++        final Object[] c = CACHE.get(ai);
++        if (c != null && ((Plan) c[1]).rank.containsKey(sa.getHostCard().getId())) {
++            declined(ai).add(sa.getHostCard().getId());
++            CACHE.remove(ai);
++        }
++    }
++
++    /** Rank in the plan for Forge's sort: the plan's steps first, in order; everything else 0. */
++    public static int rank(final AiController aic, final Player ai, final SpellAbility sa) {
++        if (!active(ai) || sa == null || sa.getHostCard() == null) {
++            return 0;
++        }
++        final Plan p = plan(aic, ai);
++        return p == null ? 0 : p.rank.getOrDefault(sa.getHostCard().getId(), 0);
++    }
++
++    /** An activated ability that costs no mana and is the deck's plan or the seat's commander's (Araumi granting encore): it
++     *  doesn't compete for the plan's mana, and the old order put it first (patch 54). */
++    public static boolean leads(final AiController aic, final Player ai, final SpellAbility sa) {
++        if (!active(ai) || sa == null || sa.isSpell() || sa.isManaAbility() || sa.isLandAbility() || sa.getHostCard() == null || manaCost(sa) > 0) {
++            return false;
++        }
++        final Card h = sa.getHostCard();
++        return aic.castPriorityOf(sa) >= 2 || (h.isCommander() && h.getOwner() == ai);
++    }
++
++    /** A spell or ability outside the plan that would leave too little mana for the rest of it (and what Phase 3 keeps). */
++    public static boolean refuse(final AiController aic, final Player ai, final SpellAbility sa) {
++        if (!active(ai) || sa == null || sa.getHostCard() == null || sa.isManaAbility() || sa.isLandAbility()) {
++            return false;
++        }
++        final Plan p = plan(aic, ai);
++        if (p == null || p.steps.isEmpty() || p.rank.containsKey(sa.getHostCard().getId())) {
++            return false;
++        }
++        final int cost = manaCost(sa);
++        if (cost <= 0) {
++            return false;
++        }
++        final int avail = manaNow(ai) + landDrop(ai);
++        return avail - cost < p.remainingCost() + p.reserve;
++    }
++
++    /** Mana it can make now: untapped, usable sources (the harness's usableMana: a choice of colors counts once, mana
++     *  restricted to some spells counts none); Forge's estimate counted tapped sources and each color of a Talisman. */
++    static int manaNow(final Player p) {
++        int total = p.getManaPool().totalMana();
++        boolean free = false;
++        final List<forge.game.trigger.Trigger> extra = new ArrayList<>();
++        for (final Card t : p.getGame().getCardsIn(ZoneType.Battlefield)) {
++            for (final forge.game.trigger.Trigger tr : t.getTriggers()) {
++                if (tr.getMode() == forge.game.trigger.TriggerType.TapsForMana) extra.add(tr);
++            }
++        }
++        for (final Card src : p.getCardsIn(ZoneType.Battlefield)) {
++            int best = 0;
++            for (final SpellAbility ma : src.getManaAbilities()) {
++                try {
++                    ma.setActivatingPlayer(p);
++                    final forge.game.spellability.AbilityManaPart mp = ma.getManaPart();
++                    if (mp == null || !mp.getManaRestrictions().isEmpty() || !ma.canPlay()) continue;
++                    final int cost = ma.getPayCosts().getCostMana() != null ? ma.getPayCosts().getCostMana().convertAmount() : 0;
++                    final String prod = ma.getParamOrDefault("Produced", "");
++                    final int kinds = prod.startsWith("Combo") || prod.isEmpty() ? 1 : prod.split(" ").length;
++                    final int made = kinds * forge.game.ability.AbilityUtils.calculateAmount(src, ma.getParamOrDefault("Amount", "1"), ma) - cost;
++                    if (cost == 0) free = true;
++                    best = Math.max(best, made);
++                } catch (final RuntimeException e) { /* skip an ability whose check throws */ }
++            }
++            if (best > 0) best += tapExtra(src, extra);
++            total += best;
++        }
++        return free ? total : p.getManaPool().totalMana();
++    }
++
++    /** Extra mana a source makes when tapped, from "whenever ... is tapped for mana, add" triggers (Utopia Sprawl: 1). */
++    static int tapExtra(final Card src, final List<forge.game.trigger.Trigger> extra) {
++        int n = 0;
++        for (final forge.game.trigger.Trigger tr : extra) {
++            try {
++                final Card host = tr.getHostCard();
++                if (!tr.hasParam("ValidCard") || !src.isValid(tr.getParam("ValidCard").split(","), host.getController(), host, null)) continue;
++                final SpellAbility ex = tr.ensureAbility();
++                if (ex == null || (ex.getApi() != ApiType.Mana && ex.getApi() != ApiType.ManaReflected)) continue;
++                n += forge.game.ability.AbilityUtils.calculateAmount(host, ex.getParamOrDefault("Amount", "1"), ex);
++            } catch (final RuntimeException e) { /* skip */ }
++        }
++        return n;
++    }
++
++    /** A planned ritual (a spell that makes mana now) whose mana the rest of the plan needs: cast it as planned. Forge's own
++     *  ritual logic doesn't know what the mana is for and passed on Dark Ritual with a 3-drop to follow. */
++    public static boolean force(final AiController aic, final Player ai, final SpellAbility sa) {
++        if (!active(ai) || sa == null || sa.getHostCard() == null || sa.getHostCard().isPermanent()) {
++            return false;
++        }
++        final Plan p = plan(aic, ai);
++        if (p == null || !p.rank.containsKey(sa.getHostCard().getId())) {
++            return false;
++        }
++        Step me = null;
++        int rest = 0;
++        for (final Step s : p.steps) {
++            if (s.card.getId() == sa.getHostCard().getId()) me = s;
++            else rest += s.cost;
++        }
++        return me != null && me.effCost < me.cost && rest > manaNow(ai) - me.cost;
++    }
++
++    static int manaCost(final SpellAbility sa) {
++        if (sa.getPayCosts() == null || sa.getPayCosts().getTotalMana() == null) {
++            return 0;
++        }
++        return sa.getPayCosts().getTotalMana().getCMC();
++    }
++
++    /** An untapped land it can still play this turn (one), counted in the turn's mana. */
++    static int landDrop(final Player ai) {
++        if (ai.getLandsPlayedThisTurn() > 0) {
++            return 0;
++        }
++        for (final Card c : ai.getCardsIn(ZoneType.Hand)) {
++            if (c.isLand() && ai.canPlayLand(c, false, null)) {
++                return 1;   // a tapped land overcounts by one: the last step then can't be paid, Forge passes, the plan is rebuilt
++            }
++        }
++        return 0;
++    }
++
++    static Plan plan(final AiController aic, final Player ai) {
++        final StringBuilder kb = new StringBuilder(phaseKey(ai));
++        for (final Card c : ai.getCardsIn(ZoneType.Hand)) kb.append('|').append(c.getId());
++        for (final Card c : ai.getCardsIn(ZoneType.Command)) kb.append('c').append(c.getId());
++        kb.append('#').append(ai.getCardsIn(ZoneType.Battlefield).size()).append('m').append(manaNow(ai));
++        final String key = kb.toString();
++        final Object[] c = CACHE.get(ai);
++        if (c != null && key.equals(c[0])) {
++            return (Plan) c[1];
++        }
++        Plan p;
++        try {
++            p = build(aic, ai);
++        } catch (final RuntimeException e) {
++            p = new Plan();
++        }
++        CACHE.put(ai, new Object[] {key, p});
++        return p;
++    }
++
++    static Plan build(final AiController aic, final Player ai) {
++        final Plan plan = new Plan();
++        final Set<Integer> declined = declined(ai);
++        final List<Step> cands = new ArrayList<>();
++        final List<Card> pool = new ArrayList<>(ai.getCardsIn(ZoneType.Hand));
++        for (final Card c : ai.getCardsIn(ZoneType.Command)) if (c.isCommander() && c.getOwner() == ai) pool.add(c);
++        for (final Card c : pool) {
++            if (c.isLand() || declined.contains(c.getId())) {
++                continue;
++            }
++            final SpellAbility sa = firstSpell(ai, c);
++            if (sa == null || sa.getApi() == ApiType.Counter) {
++                continue;   // counterspells are held, not planned (patch 58 keeps their mana)
++            }
++            if (sa.getPayCosts() != null && sa.getPayCosts().hasXInAnyCostPart()) {
++                continue;   // X spells take what's left: Forge sizes them
++            }
++            final Step s = step(aic, ai, c, sa);
++            if (s != null && s.net() > 0) {
++                cands.add(s);
++            }
++        }
++        plan.budget = manaNow(ai) + landDrop(ai);
++        final java.util.function.ToIntFunction<Player> hk = HOLD_KEEP;
++        plan.reserve = hk == null ? 0 : Math.max(0, hk.applyAsInt(ai));
++        final int room = plan.budget - plan.reserve;
++        cands.sort((a, b) -> Double.compare(b.value, a.value));
++        final List<Step> pick = choose(cands.size() > 12 ? cands.subList(0, 12) : cands, room);
++        pick.sort((a, b) -> a.tier != b.tier ? Integer.compare(a.tier, b.tier) : Double.compare(b.value, a.value));
++        int r = 1000;
++        for (final Step s : pick) {
++            plan.steps.add(s);
++            plan.rank.put(s.card.getId(), r);
++            r -= 10;
++        }
++        log(ai, plan, cands);
++        return plan;
++    }
++
++    /** The best set within the mana: every set for up to 12 candidates (effective cost: a mana rock that taps now pays back). */
++    static List<Step> choose(final List<Step> cands, final int room) {
++        final int n = cands.size();
++        int bestMask = 0;
++        double best = 0;
++        for (int mask = 1; mask < (1 << n); mask++) {
++            int run = 0;
++            double v = 0;
++            boolean ok = true;
++            // a rock pays back only once cast: the most a set needs at once is checked in cost order, rocks first
++            final List<Step> set = new ArrayList<>();
++            for (int i = 0; i < n; i++) if ((mask & (1 << i)) != 0) set.add(cands.get(i));
++            set.sort(Comparator.comparingInt((Step s) -> s.effCost - s.cost));
++            for (final Step s : set) {
++                if (run + s.cost > room) { ok = false; break; }
++                run += s.effCost;
++                v += s.net();
++            }
++            if (ok && v > best) {
++                best = v;
++                bestMask = mask;
++            }
++        }
++        final List<Step> out = new ArrayList<>();
++        for (int i = 0; i < n; i++) if ((bestMask & (1 << i)) != 0) out.add(cands.get(i));
++        return out;
++    }
++
++    static SpellAbility firstSpell(final Player ai, final Card c) {
++        for (final SpellAbility sa : c.getSpells()) {
++            if (sa.isAlternativeCost(forge.game.spellability.AlternativeCost.Overload)) {
++                continue;
++            }
++            sa.setActivatingPlayer(ai);
++            return sa;
++        }
++        return null;
++    }
++
++    /** What a card is: Forge's creature value, a planeswalker's loyalty, else 60 + 25 per mana. */
++    static double base(final Card c, final int cost) {
++        if (c.isCreature()) return ComputerUtilCard.evaluateCreature(c);
++        if (c.isPlaneswalker()) return 100 + 10 * c.getCurrentLoyalty();
++        return 60 + 25 * cost;
++    }
++
++    static Step step(final AiController aic, final Player ai, final Card c, final SpellAbility sa) {
++        // the commander's tax is added at cast time, not in its printed cost
++        final int cost = manaCost(sa) + (c.isCommander() && c.isInZone(ZoneType.Command) ? 2 * ai.getCommanderCast(c) : 0);
++        double v = base(c, cost);
++        final int prio = aic.castPriorityOf(sa);
++        v += prio >= 3 ? 500 : prio == 2 ? 200 : prio == 1 ? 60 : 0;
++        final int pay = aic.payoffUnits(sa);
++        v += 40 * pay;
++        boolean removal = false, wipe = false, info = false;
++        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++            if (ComputerUtilCard.Wipe.isWipe(x)) {
++                final double m = ComputerUtilCard.Wipe.margin(ai, x);
++                if (m < 0) {
++                    return null;   // a wipe the table judgement refuses isn't in the plan (Forge may still decide later)
++                }
++                v += m;
++                wipe = true;
++            }
++            final ApiType api = x.getApi();
++            if (api == ApiType.ChangeZone && sa.isSpell() && "Hand".equals(x.getParam("Origin")) && "Battlefield".equals(x.getParam("Destination"))) {
++                // a cheat (Show and Tell, patch 50): worth the best permanent it puts from the caster's hand, whatever it costs
++                double best = 0;
++                for (final Card h : ai.getCardsIn(ZoneType.Hand)) {
++                    if (h != c && h.isPermanent() && !h.isLand()) best = Math.max(best, base(h, h.getCMC()));
++                }
++                v += best;
++            }
++            if (api == ApiType.Draw || api == ApiType.Dig || api == ApiType.Scry || api == ApiType.Surveil
++                    || (api == ApiType.ChangeZone && "Library".equals(x.getParam("Origin")) && "Hand".equals(x.getParam("Destination")))) {
++                info = true;
++            }
++            if (x.usesTargeting() && (api == ApiType.Destroy || api == ApiType.DealDamage || api == ApiType.Sacrifice
++                    || (api == ApiType.ChangeZone && "Battlefield".equals(x.getParam("Origin"))))) {
++                double bestT = -1;
++                for (final Player o : ai.getOpponents()) {
++                    for (final Card t : o.getCardsIn(ZoneType.Battlefield)) {
++                        if (t.isLand()) continue;
++                        try {
++                            if (!x.canTarget(t)) continue;
++                        } catch (final RuntimeException e) {
++                            continue;
++                        }
++                        final double tv = 4 * Math.max(0, AiController.cardThreatOf(ai, t)) + (t.isCreature() ? ComputerUtilCard.evaluateCreature(t) / 2.0 : 40);
++                        bestT = Math.max(bestT, tv);
++                    }
++                }
++                if (bestT < 0) {
++                    return null;   // removal with nothing worth aiming at isn't planned
++                }
++                v += bestT;
++                removal = true;
++            }
++        }
++        if (c.isCommander() && c.isInZone(ZoneType.Command)) {
++            v += 150;
++        }
++        final java.util.function.ToDoubleBiFunction<Player, Card> sv = SETUP_VALUE;
++        final double setup = sv == null ? 0 : Math.max(0, sv.applyAsDouble(ai, c));
++        v += setup;
++        int eff = cost;
++        if (!c.isCreature() && !c.isLand() && c.isArtifact() && !c.getManaAbilities().isEmpty() && !c.hasSVar("ETBTappedSVar")) {
++            int made = 0;
++            for (final SpellAbility ma : c.getManaAbilities()) {
++                try {
++                    final int amount = forge.game.ability.AbilityUtils.calculateAmount(c, ma.getParamOrDefault("Amount", "1"), ma);
++                    final int pc = ma.getPayCosts() != null && ma.getPayCosts().getTotalMana() != null ? ma.getPayCosts().getTotalMana().getCMC() : 0;
++                    made = Math.max(made, amount - pc);
++                } catch (final RuntimeException e) { /* skip */ }
++            }
++            eff = cost - Math.max(0, made);
++        } else if (!c.isPermanent()) {
++            // a ritual pays back what it makes this turn (Dark Ritual: costs 1, makes 3)
++            for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++                if (x.getApi() == ApiType.Mana) {
++                    try {
++                        final String prod = x.getParamOrDefault("Produced", "");
++                        final int kinds = prod.startsWith("Combo") || prod.isEmpty() ? 1 : prod.split(" ").length;
++                        eff = cost - kinds * forge.game.ability.AbilityUtils.calculateAmount(c, x.getParamOrDefault("Amount", "1"), x);
++                    } catch (final RuntimeException e) { /* leave the cost */ }
++                }
++            }
++        }
++        final int tier;
++        if (prio >= 3 || AiController.hasWinEffect(sa)) tier = TIER_COMBO;
++        else if (info && !c.isPermanent()) tier = TIER_INFO;
++        else if (ComputerUtil.isRamp(ai, sa) || eff < cost) tier = TIER_MANA;   // ramp, and whatever pays back mana now (rocks, rituals)
++        else if (wipe) tier = TIER_WIPE;
++        else if (removal) tier = TIER_REMOVAL;
++        else if (prio == 2 || (setup > 0 && c.isPermanent())) tier = TIER_ENGINE;
++        else if (pay > 0) tier = TIER_FEEDER;
++        else if (c.isCreature() || c.isCommander()) tier = TIER_BODY;
++        else tier = TIER_REST;
++        return new Step(c, sa, cost, eff, tier, v);
++    }
++
++    static void log(final Player ai, final Plan plan, final List<Step> cands) {
++        final Game g = ai.getGame();
++        final StringBuilder sb = new StringBuilder("#FP-PLAN {\"t\": " + g.getPhaseHandler().getTurn() + ", \"seat\": \"" + ai.getName()
++                + "\", \"phase\": \"" + g.getPhaseHandler().getPhase() + "\", \"budget\": " + plan.budget + ", \"reserve\": " + plan.reserve + ", \"steps\": [");
++        boolean first = true;
++        for (final Step s : plan.steps) {
++            sb.append(first ? "" : ", ").append("{\"card\": \"").append(s.card.getName().replace("\"", "")).append("\", \"tier\": \"")
++                    .append(TIER_NAME[s.tier]).append("\", \"cost\": ").append(s.cost).append(", \"value\": ").append(Math.round(s.value)).append("}");
++            first = false;
++        }
++        sb.append("], \"left_out\": [");
++        first = true;
++        int n = 0;
++        for (final Step s : cands) {
++            if (plan.rank.containsKey(s.card.getId()) || n >= 4) continue;
++            sb.append(first ? "" : ", ").append("{\"card\": \"").append(s.card.getName().replace("\"", "")).append("\", \"cost\": ").append(s.cost)
++                    .append(", \"value\": ").append(Math.round(s.value)).append("}");
++            first = false;
++            n++;
++        }
++        final String line = sb.append("]}").toString();
++        final String k = g.getId() + "|" + line.hashCode();
++        if (LOGGED.add(k)) {
++            if (LOGGED.size() > 20000) LOGGED.clear();
++            System.out.println(line);
++        }
++    }
++}

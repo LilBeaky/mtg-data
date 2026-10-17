@@ -17,3 +17,99 @@ change that makes the AI draw one more random number shifts every later shuffle 
 left out the overridden-cards list and the win-line audit, so its games drifted (patch 63 couldn't be checked that way). Checked:
 games 1 and 17 of `wilson_20261017_p63_V10` (first and third in their worker's JVM) replay identically, so no state carries
 across a worker's games.
+
+## 2026-10-17: what orders a turn today (inventory, patches 01-63)
+
+Forge plays a turn one decision at a time: at each priority `chooseSpellAbilityToPlayFromList` sorts the playable abilities and
+takes the first one `canPlaySa` accepts, then asks again. For pilot seats the order is built by a chain of stable sorts, each
+later sort the stronger:
+
+| Order (weakest first) | Rule | Patch |
+|---|---|---|
+| 1 | Forge's `saEvaluator` (highest cost first, +1 for creatures), then creature spells sorted | stock |
+| 2 | ramp first (mana dorks, rocks, cost reducers, land fetch; under 7 lands, own turn) | 25 |
+| 3 | encore activations first | 37 |
+| 4 | commander first when affordable | 24 |
+| 5 | trigger payoffs: spells that fire the seat's own payoff triggers, by how many | 54 |
+| 6 | the deck's plan: completes a combo 3, key card or engine piece 2, feeds an engine 1 | 54 |
+| 7 | board wipes first | 62 |
+| 8 | a wheel with draw payoffs out | 53 |
+| 9 | cheats in a big threat | 50 |
+| 10 | wins now | 49 |
+
+Then `canPlaySa` vetoes or forces, in this order: a loop that already ran this turn (15, veto), the mana hold for an answer (58,
+veto), an overloaded wipe judged across the table (61), the commander (24, force), a wheel with payoffs (53, force), cycling with
+mana that would go unused (55, force), Jarad eating something big (53, force), payoff spells skipping their card logic's timing
+(54), then the card's own AI (with patch 40 lifting "wait for main 2" for permanents, 57 and 60 judging counters, removal and
+wipes). Lands are chosen separately (26 tapped/untapped, 29 most mana now, 14 City of Traitors, 27/56 cycling lands).
+
+What the chain can't do: weigh the turn as a whole. Each rule moves one kind of play up the order, and conflicts are settled by
+which sort runs last (a key card ranks above ramp; a wipe above both; nothing weighs a Talisman now against removal held up).
+Mana is never budgeted across the turn, information (draws, tutors) isn't put before commitments except by accident of cost, and
+removal never asks what it opens for combat. The planner absorbs rules 2-7 as value terms and the order rules; 8-10 (wheels,
+cheats, wins) and the vetoes stay as they are.
+
+## 2026-10-17: the turn plan (patch 64) and setup value (harness `SetupModel`)
+
+**Setup value** (the user: a light weight on cards that pay off turn over turn, ramp first among them; derived, not hand-scored,
+with the user's go-ahead). `SetupModel.yieldOf` reads a card's script and the deck: mana a turn (a rock or dork's net mana, a dork
+at 0.8; land ramp's lands, +0.5 per land to hand; extra land drops 0.6; a cost reducer's reduction x the deck's share of spells it
+applies to x 1.5 spells a turn) and cards a turn (draw triggers by kind: each upkeep 1, each player's upkeep 3, your spells of a
+kind 1.5 x that share, opponents' spells 2, creatures entering 1.2 x the creature share, land drops 0.9, attacks 0.8; activated
+draw 0.5). Value = 20 x turns left (a 10-turn game less the seat's own turns) x (mana yield x mana need + 1.5 x card yield x card
+need): mana need 1 under 6 mana sources, 0.5 under 9, 0.15 after (1 again with a spell in hand it can't afford); card need 1.2 at
+2 cards or fewer, 1.0 to 4, 0.6 to 6, 0.3 after. A turn-2 Talisman is worth about 160 Forge value units, a turn-9 one about 8; a
+turn-3 Phyrexian Arena about 210. Each deck's setup cards and yields are logged per game as `#FP-SETUP` for review.
+
+**The turn plan** (`forge.ai.TurnPlan`, pilot seats, own main phases, stack empty, real games only):
+- candidates: the castable spells in hand and the commander (counterspells and X spells left to their own logic);
+- mana: what it can make now (untapped, usable: a Talisman's color choice counts once), +1 for an untapped land drop, a mana rock
+  cast now paying itself back, less the mana Phase 3 keeps up for an answer;
+- value: Forge's card value (creatures) or 60 + 25 per mana, + the deck's plan (combo 500, key or engine 200, feeds 60), + 40 per
+  payoff trigger it fires, + removal's best target (4 x threat + half the creature's value; no target, not planned), + a wipe's
+  margin (refused wipes not planned), + 150 for the commander, + setup value;
+- a card from hand spent costs 80 (a card held can be cast on a later turn; the turn's unspent mana can't), so the same mana
+  goes to fewer, bigger spells; the commander isn't a card from hand and costs none. A cheat (Show and Tell) is worth the best
+  permanent it would put from hand;
+- the best set within the mana (every set for up to 12 candidates), ordered: combo, information (draws, tutors), mana, wipes,
+  removal, engines, feeders, creatures and the commander, the rest; higher value first within a tier;
+- followed: the plan's next step goes first in Forge's order; a spell outside the plan is refused only when it would leave too
+  little mana for the rest of the plan and Phase 3's reserve; a step Forge's own logic passes on is dropped and the turn
+  re-planned. Each plan is logged as `#FP-PLAN` (budget, reserve, steps with tier and value, the best left out).
+It replaces, in the seat's own main phase, the sort keys of patches 25 (ramp first), 24 (commander first), 54 (payoffs, the
+deck's plan) and 62 (wipes first); encore (37) still goes first, and wheels, cheats and wins (53, 50, 49) still outrank the plan.
+`-Dfishpond.turnPlan=false` restores the old chain.
+
+First full suite (232/237): five regressions, each a gap in the plan, fixed at the root. Klauth (7 mana, cast in 01-63 by patch 24)
+lost to Elvish Mystic + Hill Giant + Grizzly Bears, three cards summing past it: the card-held cost above. Show and Tell was valued
+as a 3-mana sorcery and refused for leaving too little for Prismari: the cheat value. Utopia Sprawl's extra mana wasn't counted, so
+three Forests and a Sprawl read as 3 and Rumbling Baloth wasn't planned: "whenever enchanted land is tapped for mana" triggers now
+count in the turn's mana (and in setup value). Araumi's encore grant (no mana cost) went behind the planned spells, which spent
+the mana the encore needed: activated abilities that cost no mana and are the deck's plan or the commander's lead the plan, and the
+encore sort runs after the plan's (it had run before, so the plan's order buried it).
+
+Puzzles (two-player, so no deck plan; fail on 01-63 unless noted): `plan_uses_the_mana` (Gray Ogre + Goblin Piker with five
+Mountains, not Hill Giant alone), `plan_information_first` (Preordain before Wind Drake), `plan_removal_before_creatures`
+(Lightning Bolt before Gray Ogre), `plan_setup_engine_early` (Phyrexian Arena on turn 3 over a 3-mana creature); guards that pass on
+01-63 too: `plan_talisman_early`, `plan_talisman_over_held_removal` (the user's example). A first version budgeted with Forge's mana
+estimate, which counts tapped sources and each color of a Talisman (a Talisman read as 3, five tapped Mountains as 5).
+`plan_ritual_pays_back` (Dark Ritual then Phyrexian Rager off one Swamp, in main 1): Forge's ritual logic passes on a ritual in
+main 1, so a planned ritual whose mana the plan needs is cast (`TurnPlan.force`), and a ritual's mana counts back in the budget.
+
+**Baseline before the planner** (`seqbase_20261017`: build 01-63, pods V05-V09, 20 games each, seed 20261414; 100 games, 99 ended
+naturally, 1 timeout, 0 fallbacks). `python -m fishpond sequencing seqbase_20261017`, the user's decks against the yardstick:
+
+| deck | wins | win turn median (fastest) | target | commander turn | target | turns 1-6: no land / idle 2+ / mana left |
+|---|---|---|---|---|---|---|
+| Yusri | 5/40 | 7 (7) | 4 | 4 | | 8% / 9% / 0.9 |
+| Klauth | 7/20 | 10 (7) | 6 | 6 (5/20 on time) | 4 | 13% / 8% / 1.7 |
+| Zur | 1/40 | 14 (14) | | 6 (3/40 on time) | 3 | 14% / 5% / 0.6 |
+| Chulane | 6/20 | 8 (6) | 7 | 5 | | 14% / 7% / 1.4 |
+| Erebos | 4/20 | 10 (9) | | 5 | | 9% / 2% / 0.4 |
+| Wilson | 8/20 | 8 (7) | 7 | 3 | | 11% / 7% / 1.0 |
+| Ragost | 1/20 | 12 | | 3 | | 11% / 5% / 1.1 |
+
+(Win turn is the winner's own turn count; commander turn the seat's own turn the commander first resolved; "idle 2+" the share of
+own turns 1-6 ending with 2+ usable mana unspent and a castable card in hand.) The gap the planner is aimed at: Klauth and Zur
+land their commanders two to three turns late, Klauth leaves 1.7 mana a turn on the table early, Yusri wins three turns late.
+Opponents for scale: Heliod 24/40, Niv-Mizzet 12/20, Xyris 11/40.

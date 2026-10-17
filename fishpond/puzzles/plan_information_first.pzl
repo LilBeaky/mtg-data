@@ -1,0 +1,15 @@
+# title: Four Islands, Preordain and Wind Drake in hand: the AI casts Preordain first (what it finds can change the turn), then the Drake (patch 64: information first; Forge cast the most expensive first)
+# card: Preordain
+# turns: 1
+# sim: hybrid
+# order: Ai\(1\)-P1 cast Preordain << Ai\(1\)-P1 cast Wind Drake
+p0life=30
+p1life=30
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island
+p0hand=Wind Drake;Preordain
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Island;Island
+p1library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island

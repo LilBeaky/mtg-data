@@ -1,0 +1,11 @@
+{
+  "_about": "The user's read on their own decks (2026-10-17, docs/DECK_YARDSTICK.md): rank (1 = strongest), win turn uninterrupted, commander target turn. Keys are commander names as the game record has them.",
+  "Yusri, Fortune's Flame": {"rank": 1, "win_turn": 4},
+  "Klauth, Unrivaled Ancient": {"rank": 2, "win_turn": 6, "cmd_turn": 4},
+  "Zur the Enchanter": {"rank": 3, "cmd_turn": 3},
+  "Chulane, Teller of Tales": {"rank": 4, "win_turn": 7},
+  "Erebos, God of the Dead": {"rank": 5},
+  "Wilson, Refined Grizzly": {"rank": 6, "win_turn": 7},
+  "Araumi of the Dead Tide": {"rank": 7, "win_turn": 8},
+  "Ragost, Deft Gastronaut": {"rank": 8}
+}

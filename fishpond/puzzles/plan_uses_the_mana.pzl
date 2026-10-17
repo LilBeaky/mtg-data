@@ -1,0 +1,17 @@
+# title: Five Mountains, Hill Giant (4), Gray Ogre (3) and Goblin Piker (2) in hand: the AI casts the Ogre and the Piker (all five mana) instead of the Giant alone with one mana left (patch 64: the turn plan picks the best set within the mana; Forge cast the most expensive first)
+# card: Gray Ogre
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Gray Ogre
+# expect: Ai\(1\)-P1 cast Goblin Piker
+# forbid: Ai\(1\)-P1 cast Hill Giant
+p0life=30
+p1life=30
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Mountain;Mountain;Mountain;Mountain;Mountain
+p0hand=Hill Giant;Gray Ogre;Goblin Piker
+p0library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1battlefield=Mountain;Mountain
+p1library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain

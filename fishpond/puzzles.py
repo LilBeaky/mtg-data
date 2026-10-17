@@ -24,7 +24,7 @@ from . import forge, runner
 PUZZLE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "puzzles")
 
 def load(path):
-    meta = {"title": os.path.basename(path), "turns": 2, "seed": 1, "sim": "off", "expect": [], "forbid": [], "card": ""}
+    meta = {"title": os.path.basename(path), "turns": 2, "seed": 1, "sim": "off", "expect": [], "forbid": [], "order": [], "card": ""}
     state = []
     for line in open(path, encoding="utf-8"):
         line = line.rstrip("\n")
@@ -32,6 +32,7 @@ def load(path):
         if m:
             k, v = m.group(1).lower(), m.group(2).strip()
             if k in ("expect", "forbid"): meta[k].append(v)
+            elif k == "order": meta[k].append(tuple(x.strip() for x in v.split("<<", 1)))   # "A << B": A seen, and before any B
             elif k in ("turns", "seed"): meta[k] = int(v)
             else: meta[k] = v
         elif line.strip() and not line.startswith("#"):
@@ -62,6 +63,11 @@ def run_one(path, quiet=True):
     for rx in meta["forbid"]:
         hit = [l for l in lines if re.search(rx, l)]
         if hit: fails.append(f"forbidden, seen: {rx} ({hit[0].strip()[:120]})")
+    for a, b in meta["order"]:
+        ia = next((i for i, l in enumerate(lines) if re.search(a, l)), None)
+        ib = next((i for i, l in enumerate(lines) if re.search(b, l)), None)
+        if ia is None: fails.append(f"order: not seen: {a}")
+        elif ib is not None and ib < ia: fails.append(f"order: {b} came before {a}")
     if any(l.startswith("#FP-PUZZLE error") for l in lines): fails.append(next(l for l in lines if l.startswith("#FP-PUZZLE error")))
     return not fails, meta, lines, fails
 

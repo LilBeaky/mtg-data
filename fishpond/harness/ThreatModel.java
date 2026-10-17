@@ -747,6 +747,18 @@ public final class ThreatModel {
         } catch (ReflectiveOperationException e) {
             ForgeRunner.out.println("#FP-WARN no mana-posture hook in this Forge build (patch 58)");
         }
+        // patch 64: the turn plan asks for setup values, the mana Phase 3 keeps up, and which games are real
+        java.util.function.ToDoubleBiFunction<Player, Card> setup = SetupModel::setupValue;
+        java.util.function.ToIntFunction<Player> keep = p -> { Posture x = posture(p); return x == null ? 0 : x.keep(); };
+        java.util.function.Predicate<Game> real = REAL::contains;
+        try {
+            Class<?> tp = Class.forName("forge.ai.TurnPlan");
+            tp.getField("SETUP_VALUE").set(null, setup);
+            tp.getField("HOLD_KEEP").set(null, keep);
+            tp.getField("IS_REAL").set(null, real);
+        } catch (ReflectiveOperationException e) {
+            ForgeRunner.out.println("#FP-WARN no turn-plan hooks in this Forge build (patch 64)");
+        }
     }
 
     void check(int turn, Player active) {

@@ -1,0 +1,15 @@
+# title: Turn 2, a Plains and an Island, Talisman of Progress and Swords to Plowshares in hand, the opponent has a Grizzly Bears: the AI casts the Talisman (the user, 2026-10-17: a setup piece on turn 2 over mana held for removal; patch 64)
+# card: Talisman of Progress
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Talisman of Progress
+p0life=30
+p1life=30
+turn=2
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Island
+p0hand=Swords to Plowshares;Talisman of Progress
+p0library=Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island
+p1battlefield=Forest;Forest;Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

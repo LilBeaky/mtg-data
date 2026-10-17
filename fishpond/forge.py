@@ -74,15 +74,19 @@ def patched_classes(version=FORGE_VERSION, quiet=False):
     h = hashlib.sha1((version + "".join(open(f, encoding="utf-8").read() for f in pf)).encode()).hexdigest()[:12]
     d = os.path.join(home(version), "fishpond-patched", h)
     if os.path.exists(os.path.join(d, "ok")): return d
-    paths = []
+    paths, created = [], set()                             # created: files a patch adds (--- /dev/null), not in the release
     for f in pf:
+        prev = ""
         for line in open(f, encoding="utf-8"):
-            if line.startswith("+++ b/"): paths.append(line[6:].strip())
+            if line.startswith("+++ b/"):
+                paths.append(line[6:].strip())
+                if prev.startswith("--- /dev/null"): created.add(line[6:].strip())
+            prev = line
     tmp = f"{d}.tmp{os.getpid()}"
     shutil.rmtree(tmp, ignore_errors=True)
     src = os.path.join(tmp, "src"); out = os.path.join(tmp, "classes")
     _say(f"fishpond: building {len(pf)} Forge patch(es) for {version}", quiet)
-    for p in sorted(set(paths)):
+    for p in sorted(set(paths) - created):
         dst = os.path.join(src, *p.split("/")); os.makedirs(os.path.dirname(dst), exist_ok=True)
         url = FORGE_SRC_URL.format(v=version, path=p)
         try:

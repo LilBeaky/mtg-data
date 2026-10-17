@@ -394,6 +394,9 @@ public class ForgeRunner {
         for (String s : w.tutors) out.println("#FP-TUTOR " + s);
         w.flushAllHeld();
         for (String s : w.held) out.println("#FP-HELD " + s);
+        for (String s : w.seq) out.println("#FP-SEQ " + s);           // sequencing meter, one per seat and own turn
+        for (Player p : game.getRegisteredPlayers())                 // setup cards per deck (SetupModel), for review
+            out.println("#FP-SETUP {\"seat\": \"" + p.getName().replaceAll("^Ai\\((\\d+)\\).*", "$1") + "\", \"cards\": " + js(SetupModel.table(p)) + "}");
         for (PilotPolicy pol : policies) for (String s : pol.log) out.println("#FP-POLICY " + s);
         for (PilotPolicy pol : policies)    // patch 54's cast ordering: candidate answers by level (none, feeds, turns on, combo)
             out.println("#FP-CASTPLAN {\"deck\": " + js(pol.in.deck == null ? "" : pol.in.deck) + ", \"levels\": " + Arrays.toString(pol.castHits) + "}");
@@ -573,6 +576,27 @@ public class ForgeRunner {
             Map<Integer, Card> now = new HashMap<>();
             for (Card c : p.getCardsIn(ZoneType.Hand)) if (castableNow(c, p)) now.put(c.getId(), c);
             castableAtMain.put(p, now);
+            seqStart.put(p, new int[] {t, usableMana(p), p.getCardsIn(ZoneType.Hand).size()});
+        }
+
+        /** Sequencing meter (docs/SEQUENCING.md): one record per seat and own turn, written at its cleanup: the mana it had at
+         *  main 1, the mana left unused, spells cast, whether a land was played, and the castable cards still in hand. */
+        final Map<Player, int[]> seqStart = new HashMap<>();
+        final List<String> seq = new ArrayList<>();
+
+        void seqEnd(Player p) {
+            int[] st = seqStart.remove(p);
+            if (st == null) return;
+            List<String> left = new ArrayList<>();
+            for (Card c : p.getCardsIn(ZoneType.Hand)) if (!c.isLand() && payableNow(c, p)) left.add(c.getName());
+            Card cmd = null;
+            for (Card c : p.getCommanders()) { cmd = c; break; }
+            String seat = p.getName().replaceAll("^Ai\\((\\d+)\\).*", "$1");
+            StringBuilder sb = new StringBuilder("{\"seat\": \"" + seat + "\", \"turn\": " + st[0] + ", \"mana\": " + st[1] + ", \"left\": " + usableMana(p)
+                    + ", \"cast\": " + p.getSpellsCastThisTurn() + ", \"land\": " + (p.getLandsPlayedThisTurn() > 0) + ", \"hand\": " + st[2]
+                    + ", \"cmd_out\": " + (cmd != null && cmd.isInZone(ZoneType.Battlefield)) + ", \"castable_left\": [");
+            for (int i = 0; i < left.size() && i < 8; i++) sb.append(i > 0 ? ", " : "").append(js(left.get(i)));
+            seq.add(sb.append("]}").toString());
         }
 
         /** Its mana cost could still be paid now (timing aside): at cleanup, the seat left that much mana unused. */
@@ -650,7 +674,7 @@ public class ForgeRunner {
                     if (lines != null) lines.check(turnOf, seatTurns.getOrDefault(turnOf, 0));
                     if (threat != null) { try { threat.check(globalTurns, turnOf); } catch (RuntimeException ex) { /* logging only */ } }
                 }
-                else if (e.phase() == PhaseType.CLEANUP) heldEnd(turnOf);
+                else if (e.phase() == PhaseType.CLEANUP) { seqEnd(turnOf); heldEnd(turnOf); }
             }
             if (stop == null && !hero.hasLost()) {
                 lastHand = new ArrayList<>();

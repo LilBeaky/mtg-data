@@ -1,0 +1,16 @@
+# title: Turn 3, three Swamps, Phyrexian Arena (a card every upkeep) and a 3-mana creature in hand: the AI casts the Arena (patch 64: setup value, a draw engine early pays for the rest of the game; Forge ranked the creature first)
+# card: Phyrexian Arena
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Phyrexian Arena
+# forbid: Ai\(1\)-P1 cast Phyrexian Rager
+p0life=30
+p1life=30
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp;Swamp
+p0hand=Phyrexian Rager;Phyrexian Arena
+p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Swamp;Swamp
+p1library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp

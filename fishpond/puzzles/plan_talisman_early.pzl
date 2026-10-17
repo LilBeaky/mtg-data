@@ -1,0 +1,15 @@
+# title: Turn 2, two Forests and a Plains-less hand: Talisman of Unity (a mana rock) and a 2-mana creature: the AI casts the Talisman (patch 64: setup value; the old ramp-first rule did this too, kept as a guard)
+# card: Talisman of Unity
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-P1 cast Talisman of Unity
+p0life=30
+p1life=30
+turn=2
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest
+p0hand=Grizzly Bears;Talisman of Unity
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
