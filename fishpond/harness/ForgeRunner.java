@@ -64,6 +64,10 @@ public class ForgeRunner {
 
     static final String[] COLORS = {"W", "U", "B", "R", "G"};
     static PrintStream out;
+    // A game that timed out may leave Forge's game thread running (it doesn't stop on interrupt), holding the old game's heap;
+    // after an OutOfMemoryError the heap is suspect too. Either way this JVM stops after recording the game, and the runner
+    // starts a fresh one for the rest of its plan (pod1500_20261018: one timeout per worker, then every later game out of memory).
+    static String restart;
 
     public static void main(String[] args) throws Exception {
         out = new PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.out), true, "UTF-8");
@@ -94,8 +98,14 @@ public class ForgeRunner {
             } catch (Throwable t) {
                 out.println("#FP-ERROR {\"id\": " + f[0] + ", \"error\": " + js(String.valueOf(t)) + "}");
                 out.println("\nGame Result: Game " + f[0] + " ended in a Draw! Took 0 ms.");
+                if (t instanceof OutOfMemoryError) restart = "out of memory";
             }
             out.flush();
+            if (restart != null) {
+                out.println("#FP-RESTART {\"after\": " + f[0] + ", \"why\": " + js(restart) + "}");
+                out.flush();
+                System.exit(3);
+            }
         }
         out.flush();
         System.exit(0);
@@ -348,8 +358,10 @@ public class ForgeRunner {
         } catch (TimeoutException e) {
             w.halt("timeout");
             fut.cancel(true);
+            restart = "timeout";
         } catch (ExecutionException e) {
             w.halt("error: " + e.getCause());
+            if (e.getCause() instanceof OutOfMemoryError) restart = "out of memory";
             StringBuilder tr = new StringBuilder();
             for (StackTraceElement el : e.getCause().getStackTrace()) {
                 if (tr.length() > 0) tr.append(" < ");

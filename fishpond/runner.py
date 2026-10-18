@@ -7,7 +7,7 @@ cut by the wall clock (-c) changes the rest of its chunk: keep the clock generou
 play on until someone wins or the clock runs out; the record stops at the hero's death either way.
 """
 import concurrent.futures as cf
-import json, os, random, subprocess, sys, time
+import json, os, random, re, subprocess, sys, time
 
 from . import policy, decks as dk, forge, logparse as lp
 
@@ -17,12 +17,20 @@ def chunk_seed(seed, c): return seed * 1000003 + c
 
 # Full lookahead holds a few full game copies per search level (peak ~1.6 GB a game measured on the Niv pod with the
 # AiCache patch), so it gets a bigger heap and fewer workers per GB than off/hybrid.
+# Hybrid games peak near 1.9 GB of heap (pod1500_20261018, Yusri's pod): at --jobs 12 each JVM got 1.4 GB, games ground in GC
+# until one timed out, then the rest of that worker ran out of memory. A JVM gets at least 2 GB (3 GB full) and --jobs is cut
+# to what free memory holds.
+JOB_MB = {False: 2400, True: 3400}
+
+def max_jobs(full=False):
+    return max(1, forge.memory_mb() // JOB_MB[full])
+
 def default_jobs(full=False):
-    return max(1, min(os.cpu_count() or 1, forge.memory_mb() // (3400 if full else 1700), 8))
+    return max(1, min(os.cpu_count() or 1, max_jobs(full), 8))
 
 def xmx_for(jobs, full=False):
     if os.environ.get("FISHPOND_XMX"): return int(os.environ["FISHPOND_XMX"])
-    return max(3000 if full else 1200, min(4000 if full else 3000, forge.memory_mb() // max(1, jobs) - 400))
+    return max(3000 if full else 2000, min(4000 if full else 3000, forge.memory_mb() // max(1, jobs) - 400))
 
 def uses_full(entries):
     return any("full" in e["line"].split("	")[11].split(",") for e in entries if len(e["line"].split("	")) > 11)
@@ -265,27 +273,54 @@ def execute(entries, jobs, run_dir, session, quiet=False):
     deck_dir = os.path.join(run_dir, "decks"); log_dir = os.path.join(run_dir, "logs")
     os.makedirs(log_dir, exist_ok=True)
     nb = len({e["build"] for e in entries})
+    full = uses_full(entries)
+    if jobs > max_jobs(full) and not os.environ.get("FISHPOND_XMX"):
+        if not quiet: print(f"fishpond: --jobs {jobs} cut to {max_jobs(full)}: {forge.memory_mb()} MB free holds that many JVMs at {JOB_MB[full]} MB", file=sys.stderr)
+        jobs = max_jobs(full)
     jobs = max(1, min(jobs, len(entries)))
     chunks = [[e for k, e in enumerate(entries) if (k // nb) % jobs == j] for j in range(jobs)]   # paired builds share a worker
-    procs, t0 = [], time.time()
-    for j, chunk in enumerate(chunks):
-        pf = os.path.join(log_dir, f"plan_{session}_{j}.tsv")
+    t0 = time.time()
+    def start(j, chunk, k):
+        """Worker j's JVM on `chunk` (restart k appends to the same log; its plan file keeps the original's name + rK)."""
+        pf = os.path.join(log_dir, f"plan_{session}_{j}{f'r{k}' if k else ''}.tsv")
         with open(pf, "w", encoding="utf-8") as fh: fh.write("\n".join(e["line"] for e in chunk) + "\n")
         lf = os.path.join(log_dir, f"worker_{session}_{j}.log")
         # -XX:-OmitStackTraceInFastThrow: the JVM drops the stack of an exception thrown often at one spot, and the harness
         # reads the stack to tell a lookahead crash (remade without lookahead) from a real one (study150_20261014 V02 g10
         # ended on a trace-less NullPointerException that was a lookahead crash)
-        cmd = java_cmd(run_dir, xmx_for(jobs, uses_full(entries)), patched, classes, pf)
-        fh = open(lf, "w", encoding="utf-8")
-        procs.append((subprocess.Popen(cmd, cwd=forge.run_home(quiet=True), stdout=fh, stderr=subprocess.STDOUT), fh, lf))
+        cmd = java_cmd(run_dir, xmx_for(jobs, full), patched, classes, pf)
+        fh = open(lf, "a" if k else "w", encoding="utf-8")
+        return {"j": j, "chunk": chunk, "k": k, "lf": lf, "fh": fh, "p": subprocess.Popen(cmd, cwd=forge.run_home(quiet=True), stdout=fh, stderr=subprocess.STDOUT)}
+    def finished_ids(lf):
+        text = open(lf, encoding="utf-8", errors="replace").read()
+        return {int(m) for m in re.findall(r'^#FP-(?:END|ERROR) \{"id": (\d+)', text, re.M)}
+    workers = [start(j, chunk, 0) for j, chunk in enumerate(chunks)]
     last = -1
-    while any(p.poll() is None for p, *_ in procs):
+    while not all(isinstance(w["p"], _Done) for w in workers):
         time.sleep(3)
-        done = sum(open(lf, encoding="utf-8", errors="replace").read().count("\nGame Result:") for _, _, lf in procs)
+        for i, w in enumerate(workers):
+            if isinstance(w["p"], _Done) or w["p"].poll() is None: continue
+            w["fh"].close()
+            ids = finished_ids(w["lf"])
+            left = [e for e in w["chunk"] if e["id"] not in ids]
+            # a worker that stopped early (#FP-RESTART after a timeout or out of memory, or a dead JVM) and finished at least
+            # one game of this start gets a fresh JVM for the rest; one that finished none is left stopped (no restart loop)
+            if left and len(left) < len(w["chunk"]):
+                if not quiet: print(f"fishpond: worker {w['j']} stopped with {len(left)} game(s) left (exit {w['p'].returncode}); starting a fresh JVM", file=sys.stderr, flush=True)
+                workers[i] = start(w["j"], left, w["k"] + 1)
+            else:
+                w["p"] = _Done()
+        done = sum(len(finished_ids(w["lf"])) for w in workers)
         if not quiet and done != last:
             print(f"fishpond: {done}/{len(entries)} games this session ({time.time() - t0:.0f}s)", file=sys.stderr, flush=True); last = done
-    for p, fh, lf in procs: fh.close()
+    for w in workers:
+        if not w["fh"].closed: w["fh"].close()
     return time.time() - t0
+
+class _Done:
+    """A worker slot whose JVM has exited for good."""
+    returncode = 0
+    def poll(self): return 0
 
 def collect(run_dir, plan, builds, pods, hero_ai="Default", opp_ai=("Default",) * 3):
     """Every finished game of the run, from all worker logs (any session), matched to plan entries by game id.
