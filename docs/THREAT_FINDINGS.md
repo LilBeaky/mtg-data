@@ -294,3 +294,25 @@ casts (overloads now). Three problems surfaced, fixed the same day:
 game) -> 34 in 40 (0.85); V07 6 (p58e) -> 5 (p61, before wipes-first) -> 13 (p63). Wilson wins: V04 8/15 -> 10/20, V07 3/15
 (p56), 5/20 (p58e), 7/20 (p61), 5/20 (p63), V10 10/15 -> 11/20: 21/45 (47%) -> 26/60 (43%). Heliod on V07: 11/15, 14/20,
 11/20, 12/20. So Wilson now wipes twice as often, and that hasn't turned into wins at this sample size.
+
+## 2026-10-18: Wilson's clock (commander damage, double strike)
+
+From `pod300_20261018` (Yusri, Wilson, Erebos, Zur; 292 natural games): Wilson won the pod 143 times (48%) but was the top threat
+one round before his win in 61 (43%), and his clock read 2 turns or less in 51. The clock counted damage against life only and
+read a creature's power once: Wilson with Flaming Fist (double strike when he attacks, a granted trigger the board doesn't show)
+at 6 power read 6 a turn against 40 life, 7 turns, where he deals 12 commander damage a turn and kills in 2. Removal rated
+creatures by power the same way (a 9/9 vanilla over that Wilson). The user, 2026-10-18: "Wilson can jumpscare people";
+"we really do need to fix the threat analysis on him".
+
+Fixed in `ThreatModel`: the clock doubles double strike (the keyword, or an attack trigger that grants it to the attacker) and a
+commander kills at 21 commander damage less what it has dealt that player; removal's creature weight uses the same damage
+(`killDamage`: a commander's scaled by the viewer's life over the commander damage it still needs). Puzzle
+`threat_clock_commander_double_strike` (Swords to Plowshares: Wilson 6/6 with Flaming Fist over an Ancient Brontodon; the old
+model exiled the Brontodon).
+
+`pod80_clock_20261018` (games 0-79 on the same seeds as `pod300_20261018`): Wilson top threat one round before his win 16/39 ->
+18/33, his clock 2 turns or less then 11/39 -> 19/33; his share of top-threat rows on global turns 17-24 5% -> 19%, 25+ 24% ->
+32%. Pod wins Wilson 39 -> 33, Erebos 14 -> 16, Zur 5 -> 7, Yusri 22 -> 21 (80 games: inside the noise). Spells and abilities
+aimed at Wilson 81 -> 83, attacks on him 230 -> 255: the table sees him sooner; its answers didn't grow. Still open: on turns 1-16
+Wilson is almost never the top threat (Yusri and Zur carry a 15-point combo floor from their lists, two pieces missing), and a
+burst from hand (game 141: a 2/2 to 41 damage in one turn off Ancestral Mask and Calix) can't be read off the board.

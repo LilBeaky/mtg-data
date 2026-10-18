@@ -1,0 +1,15 @@
+# title: The opponent's commander Wilson, Refined Grizzly is a 6/6 with Flaming Fist (double strike when it attacks: 12 commander damage a turn, 21 kills in two turns) next to an Ancient Brontodon (a vanilla 9/9, bigger); the AI, at 40 life with Swords to Plowshares, exiles Wilson (the threat model read Wilson as 6 damage against 40 life, a slow clock, and spared a commander that comes back; the user, 2026-10-18: "we really do need to fix the threat analysis on him")
+# card: Swords to Plowshares
+# turns: 2
+# sim: hybrid
+# expect: Swords to Plowshares targeting .*Wilson, Refined Grizzly
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains
+p0hand=Swords to Plowshares
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Wilson, Refined Grizzly|IsCommander|Counters:P1P1=4;Flaming Fist;Ancient Brontodon;Forest|Tapped;Forest|Tapped;Plains|Tapped;Plains|Tapped
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

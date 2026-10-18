@@ -26,7 +26,8 @@ import java.util.*;
  *    combo      (0-100) the seat's known combos with pieces on the battlefield: all of them 100 (a win combo; 60 otherwise),
  *               one missing 55 scaled by its hand (cards to find it with), two missing 15
  *    clock      turns for its board to kill another player, the opposing untapped creatures chump-blocking its biggest
- *               attackers (fliers only by fliers or reach); 2 turns or less overrides: threat at least 110 (one) or 100 (two);
+ *               attackers (fliers only by fliers or reach), double strike counted twice (an attack trigger that grants it too:
+ *               Flaming Fist), a commander killing at 21 commander damage; 2 turns or less overrides: threat at least 110 (one) or 100 (two);
  *               otherwise it adds 50 / turns
  *    engines    payoffs (permanents with triggers that do something for it) 8 each up to 40; enabler -> payoff links 2 each up
  *               to 10; cycles 15 each, up to two (the user: "Astral Slide + Archaeomancer"). Each permanent produces events (a
@@ -227,18 +228,43 @@ public final class ThreatModel {
     }
 
     // ---------------------------------------------------------------- the board's clock
+    /** An attacker for the clock: the combat damage it deals a turn (doubled by double strike) and whether it's a commander. */
+    record Attacker(int dmg, Card card) { }
+
+    /** Double strike now, or an attack trigger that gives it double strike (Flaming Fist: "commander creatures you own have
+     *  'whenever this creature attacks, it gains double strike until end of turn'"): the board doesn't show it until combat. */
+    static boolean doubleStrikes(Card c) {
+        if (c.hasKeyword(Keyword.DOUBLE_STRIKE)) return true;
+        for (Trigger t : c.getTriggers()) {
+            if (t.getMode() != TriggerType.Attacks) continue;
+            SpellAbility ex;
+            try { ex = t.ensureAbility(); } catch (RuntimeException e) { continue; }
+            for (SpellAbility x : ex == null ? List.<SpellAbility>of() : chain(ex)) {
+                if (x.getApi() != ApiType.Pump || !x.getParamOrDefault("KW", "").contains("Double Strike")) continue;
+                String def = x.getParamOrDefault("Defined", "Self");
+                if (def.equals("Self") || def.equals("TriggeredAttacker") || def.equals("TriggeredAttackerLKICopy")) return true;
+            }
+        }
+        return false;
+    }
+
     /** Turns for p's creatures to kill its most killable opponent: each opponent's untapped creatures chump-block p's biggest
-     *  attackers (fliers only by fliers or reach). 99 when it can't. */
+     *  attackers (fliers only by fliers or reach). Double strike doubles a creature's damage (patch 64 era: Wilson with
+     *  Flaming Fist read half his clock), and a commander kills at 21 commander damage, counting what it has dealt that player,
+     *  not at the player's life (Wilson killed 52 of Yusri's 208 losses by commander damage in pod300_20261018, read as a 4+ turn
+     *  clock against 40 life). 99 when it can't. */
     int clockTurns(Player p) {
-        List<Integer> ground = new ArrayList<>(), air = new ArrayList<>();
+        List<Attacker> ground = new ArrayList<>(), air = new ArrayList<>();
         for (Card c : p.getCreaturesInPlay()) {
             if (c.hasKeyword(Keyword.DEFENDER)) continue;
             int pw = Math.max(0, c.getNetCombatDamage());
             if (pw == 0) continue;
-            (c.hasKeyword(Keyword.FLYING) || c.hasKeyword(Keyword.TRAMPLE) || c.hasKeyword(Keyword.SHADOW) ? air : ground).add(pw);
+            Attacker a = new Attacker(doubleStrikes(c) ? 2 * pw : pw, c);
+            (c.hasKeyword(Keyword.FLYING) || c.hasKeyword(Keyword.TRAMPLE) || c.hasKeyword(Keyword.SHADOW) ? air : ground).add(a);
         }
-        ground.sort(Collections.reverseOrder());
-        air.sort(Collections.reverseOrder());
+        Comparator<Attacker> big = Comparator.comparingInt(Attacker::dmg).reversed();
+        ground.sort(big);
+        air.sort(big);
         int best = 99;
         for (Player o : p.getOpponents()) {
             if (o.hasLost() || !o.canLoseLife()) continue;
@@ -248,12 +274,19 @@ public final class ThreatModel {
                 if (b.hasKeyword(Keyword.FLYING) || b.hasKeyword(Keyword.REACH)) airBlock++;
                 else groundBlock++;
             }
-            int dmg = 0;
-            for (int i = Math.min(airBlock, air.size()); i < air.size(); i++) dmg += air.get(i);
+            List<Attacker> through = new ArrayList<>();
+            for (int i = Math.min(airBlock, air.size()); i < air.size(); i++) through.add(air.get(i));
             int spareAirBlockers = Math.max(0, airBlock - air.size());
-            for (int i = Math.min(groundBlock + spareAirBlockers, ground.size()); i < ground.size(); i++) dmg += ground.get(i);
+            for (int i = Math.min(groundBlock + spareAirBlockers, ground.size()); i < ground.size(); i++) through.add(ground.get(i));
+            int dmg = 0;
+            for (Attacker a : through) dmg += a.dmg();
             if (dmg <= 0) continue;
             best = Math.min(best, (o.getLife() + dmg - 1) / dmg);
+            for (Attacker a : through) {
+                if (!a.card().isCommander()) continue;
+                int left = Math.max(1, 21 - o.getCommanderDamage(a.card()));
+                best = Math.min(best, (left + a.dmg() - 1) / a.dmg());
+            }
         }
         return best;
     }
@@ -426,7 +459,7 @@ public final class ThreatModel {
         int[] cl = cardLinks(c, o);
         imp += Math.min(30, 10 * cl[0]) + (cl[1] == 1 ? 25 : 0);
         if (!c.getManaAbilities().isEmpty() && c.getMaxManaProduced() >= 3) imp += 15;
-        if (c.isCreature()) imp += Math.min(25, 2 * Math.max(0, c.getNetCombatDamage()));
+        if (c.isCreature()) imp += Math.min(25, 2 * killDamage(c, viewer));
         if (pol != null && pol.in.keys.contains(c.getName())) imp += 20;
         double v = Math.min(100, imp) * (0.4 + 0.6 * relative(viewer, o));
         if (c.isCommander()) {
@@ -434,6 +467,15 @@ public final class ThreatModel {
             v -= commanderPenalty(c, o, necessary);
         }
         return v;
+    }
+
+    /** A creature's combat damage a turn toward killing viewer: double strike counted twice, and a commander's scaled by how
+     *  much faster 21 commander damage kills than viewer's life does (Wilson with Flaming Fist, 12 a turn against 40 life, is
+     *  worth 23 here, a 9/9 vanilla 9: Forge's removal went to the bigger creature). */
+    static double killDamage(Card c, Player viewer) {
+        double d = Math.max(0, c.getNetCombatDamage()) * (doubleStrikes(c) ? 2 : 1);
+        if (c.isCommander()) d *= Math.max(1.0, (double) viewer.getLife() / Math.max(1, 21 - viewer.getCommanderDamage(c)));
+        return d;
     }
 
     /** Removing a commander mostly buys tempo: it goes back to the command zone and comes back for 2 more (the user,
