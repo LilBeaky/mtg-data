@@ -1,0 +1,48 @@
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+index ef42814..e3910b3 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/GameCopier.java
+@@ -572,6 +572,27 @@ public class GameCopier {
+         return null;
+     }
+ 
++    /** fishpond patch 66: a card cast as a copy (PlayEffect CopyCard: Paradigm, Isochron Scepter, Spellbinder) is made on
++     *  the fly and lives in no zone, so the copy of the game has nothing to map it to; the one-move check on casting it threw
++     *  "Couldn't map" (Decorum Dissertation's Paradigm, plan2_20261017: 4 lookahead fallbacks). The same copy is made in the
++     *  copied game: the same printed card, the same piece type, copying the counterpart of the card it copies. */
++    public Card findOrMakeCastCopy(final Card c) {
++        Card result = findCardOrNull(c);
++        if (result != null || c.getPaperCard() == null || c.getCopiedPermanent() == null) {
++            return result;
++        }
++        final Player owner = playerMap.get(c.getController());
++        if (owner == null) {
++            return null;
++        }
++        result = Card.fromPaperCard(c.getPaperCard(), owner);
++        result.setGamePieceType(c.getGamePieceType());
++        final Card original = findCardOrNull(c.getCopiedPermanent());
++        result.setCopiedPermanent(original != null ? original : result);
++        cardMap.put(c, result);
++        return result;
++    }
++
+     public <T extends GameObject> T find(T o) {
+         if (origGame.EXPERIMENTAL_RESTORE_SNAPSHOT) {
+             return (T) snapshot.find(o);
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/GameSimulator.java b/forge-ai/src/main/java/forge/ai/simulation/GameSimulator.java
+index 2874944..d269ff6 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/GameSimulator.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/GameSimulator.java
+@@ -142,7 +142,10 @@ public class GameSimulator {
+             return sa;
+         }
+         Card origHostCard = sa.getHostCard();
+-        Card hostCard = copier.find(origHostCard);
++        Card hostCard = copier.findOrMakeCastCopy(origHostCard);   // fishpond patch 66: a card cast as a copy, from no zone
++        if (hostCard == null) {
++            hostCard = copier.find(origHostCard);
++        }
+         String desc = sa.getDescription();
+         // TODO tests fail if this isn't checked first
+         FCollectionView<SpellAbility> candidates = hostCard.getSpellAbilities();

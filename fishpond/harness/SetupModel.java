@@ -15,6 +15,7 @@ import java.util.*;
  *  early (a Talisman on turn 2 over mana held for removal). Derived from the card's script and the deck, not hand-scored:
  *
  *    yield per turn (mana-turns; a card counts 1.5):
+ *      (one card's mana a turn counts up to 3; mana abilities used from hand, like Simian Spirit Guide's, don't count)
  *      mana rock or dork      its net mana (a dork 0.8 of it: summoning sickness, fragility); a land aura its extra mana
  *      land ramp spell        the lands it puts onto the battlefield, +0.5 per land to hand
  *      extra land drops       0.6 per extra land
@@ -32,6 +33,9 @@ import java.util.*;
 public final class SetupModel {
     static final double K = Double.parseDouble(System.getProperty("fishpond.setupK", "20"));
     static final int GAME_TURNS = 10;
+    /** One card's mana a turn counts up to this (a Sol Ring is 2): an amount read off the board (Selvala, Heart of the Wilds:
+     *  the greatest power) read 11 off a late Klauth board. */
+    static final double MANA_CAP = 3;
 
     /** {nonland, creatures, instants+sorceries, enchantments, artifacts} in p's deck (its list, every zone). */
     static final Map<Game, Map<Player, List<Card>>> DECK = Collections.synchronizedMap(new WeakHashMap<>());
@@ -73,6 +77,7 @@ public final class SetupModel {
         if (!c.isLand()) {
             int best = 0;
             for (SpellAbility ma : c.getManaAbilities()) {
+                if (ma.getRestrictions() != null && ma.getRestrictions().getZone() != null && ma.getRestrictions().getZone() != ZoneType.Battlefield) continue;   // from hand: Simian Spirit Guide
                 try {
                     int amount = AbilityUtils.calculateAmount(c, ma.getParamOrDefault("Amount", "1"), ma);
                     int pay = ma.getPayCosts() != null && ma.getPayCosts().getTotalMana() != null ? ma.getPayCosts().getTotalMana().getCMC() : 0;
@@ -83,13 +88,14 @@ public final class SetupModel {
         }
         for (SpellAbility sa : c.getSpells()) {
             for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
-                if (x.getApi() == ApiType.ChangeZone && "Library".equals(x.getParam("Origin")) && x.getParamOrDefault("ChangeType", "").contains("Land")) {
+                if (x.getApi() == ApiType.ChangeZone && "Library".equals(x.getParam("Origin")) && x.getParamOrDefault("ChangeType", "").contains("Land")
+                        && "You".equals(x.getParamOrDefault("DefinedPlayer", "You"))) {   // Path to Exile's search is its target's controller's
                     if ("Battlefield".equals(x.getParam("Destination"))) mana += num(c, x, "ChangeNum", "1");
                     else if ("Hand".equals(x.getParam("Destination"))) mana += 0.5 * num(c, x, "ChangeNum", "1");
                 }
             }
         }
-        if (!c.isPermanent()) return new double[] {mana, cards};   // a spell yields once: only land ramp counts (above)
+        if (!c.isPermanent()) return new double[] {Math.min(MANA_CAP, mana), cards};   // a spell yields once: only land ramp counts (above)
         for (StaticAbility st : c.getStaticAbilities()) {
             String mode = st.getParamOrDefault("Mode", "");
             if (mode.contains("Continuous") && st.hasParam("AdjustLandPlays")) {
@@ -139,7 +145,7 @@ public final class SetupModel {
             for (SpellAbility x = a; x != null; x = x.getSubAbility())
                 if (x.getApi() == ApiType.Draw) { cards += 0.5; break; }
         }
-        return new double[] {mana, cards};
+        return new double[] {Math.min(MANA_CAP, mana), cards};
     }
 
     static int manaSources(Player p) {

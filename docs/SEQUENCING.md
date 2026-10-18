@@ -145,3 +145,34 @@ and the held cards said why:
 
 The run also had 20 lookahead fallbacks, all from one game (Archdruid's Charm with a stale fight target; Forge patch 65) and 2 AI
 timeouts finished in hurry mode. The planner run is repeated with the fixes.
+
+## 2026-10-17: second paired run (`plan2_20261017`, build cb7079e) and what it found
+
+| deck | wins base / plan / plan2 | commander on time base / plan / plan2 | turns 1-6 idle 2+ (plan2) |
+|---|---|---|---|
+| Yusri | 5/40, 7/40, 3/40 | (cmd turn 4 throughout) | 14% (deliberate holds: Swan Song, Reality Shift, Pongify; Show and Tell waiting for a 4+ permanent) |
+| Klauth | 7/20, 6/20, 9/20 | 5/20, 6/20, 8/20 | 7% |
+| Zur | 1/40, 3/40, 3/40 | 3/40, 9/40, 9/40 | 9% (12% in plan; 5% base, where Phase 3 holds count too) |
+| Chulane | 6/20, 3/20, 3/20 | (cmd turn 5 throughout) | 5% |
+| Erebos | 4/20, 1/20, 4/20 | | 3% |
+| Wilson | 8/20, 9/20, 9/20 | (cmd turn 3 throughout) | 6% |
+| Ragost | 1/20, 1/20, 1/20 | | 3% |
+
+The user's seven decks won 32 games in the baseline and 32 in plan2: no measurable win-rate change at this size. What did change,
+and held across both planner runs: Zur's commander on time three times as often, Klauth's more often, Klauth's early unspent mana
+1.7 -> 1.3. Chulane's 6 -> 3 repeated, so it was traced rather than called noise: the win-line audit (`fishpond lines`) showed its
+closers going unplayed under the plan: Oracle with a tiny library played in 2 of 5 games it was available in (4 of 4 before),
+Primal Surge 5 of 7 (4 of 4), and two games lost to decking. The old order put win-now plays, cheats and wheels first; the plan
+valued them as ordinary spells (Primal Surge, 510, lost to Chulane plus four cheap creatures summing past it) and its refusal
+check exempted only a spell whose own effect wins (Oracle's win is a trigger). Fixed in patch 64: closers get combo tier and a
+5000 bonus, a library cheat is worth 50 per permanent it would put, and closers are never refused (`plan_closer_primal_surge`,
+fails before the fix).
+
+Setup tables, reviewed per deck (`#FP-SETUP`, now made at the first turn: an eliminated player's cards leave the game, so tables made
+at game end came out empty for five decks). Fixed in `SetupModel`: one card's mana a turn counts up to 3 (Selvala, Heart of the
+Wilds read 11 off a late Klauth board); mana abilities used from hand don't count (Simian Spirit Guide read as a dork); a land search
+counts only when its controller searches (Path to Exile and Assassin's Trophy read as ramp).
+
+Also from plan2: 4 lookahead fallbacks, all Paradigm copies (Decorum Dissertation; Forge patch 66), and 2 AI timeouts in Forge's own
+combat prediction on Xyris's Snake board (hurry mode finished both). Games run about 12% longer with the planner (median 111 s ->
+124 s); the user: accuracy over speed as long as the sim keeps moving.

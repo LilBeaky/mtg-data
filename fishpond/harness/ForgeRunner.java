@@ -395,8 +395,7 @@ public class ForgeRunner {
         w.flushAllHeld();
         for (String s : w.held) out.println("#FP-HELD " + s);
         for (String s : w.seq) out.println("#FP-SEQ " + s);           // sequencing meter, one per seat and own turn
-        for (Player p : game.getRegisteredPlayers())                 // setup cards per deck (SetupModel), for review
-            out.println("#FP-SETUP {\"seat\": \"" + p.getName().replaceAll("^Ai\\((\\d+)\\).*", "$1") + "\", \"cards\": " + js(SetupModel.table(p)) + "}");
+        for (String s : w.setup) out.println("#FP-SETUP " + s);       // setup cards per deck (SetupModel), made at the first turn
         for (PilotPolicy pol : policies) for (String s : pol.log) out.println("#FP-POLICY " + s);
         for (PilotPolicy pol : policies)    // patch 54's cast ordering: candidate answers by level (none, feeds, turns on, combo)
             out.println("#FP-CASTPLAN {\"deck\": " + js(pol.in.deck == null ? "" : pol.in.deck) + ", \"levels\": " + Arrays.toString(pol.castHits) + "}");
@@ -530,6 +529,9 @@ public class ForgeRunner {
 
         @Subscribe public void onTurn(GameEventTurnBegan e) {
             globalTurns++;
+            if (globalTurns == 1)    // every deck still whole (an eliminated player's cards leave the game)
+                for (Player q : g.getRegisteredPlayers())
+                    setup.add("{\"seat\": \"" + q.getName().replaceAll("^Ai\\((\\d+)\\).*", "$1") + "\", \"cards\": " + js(SetupModel.table(q)) + "}");
             out.println("#FP-TURN " + globalTurns + " " + (System.currentTimeMillis() - t0) / 1000 + "s");   // progress, for watching slow games
             Player p = g.getPhaseHandler().getPlayerTurn();
             if (paused && p == hero) pausedTurns++;
@@ -583,6 +585,7 @@ public class ForgeRunner {
          *  main 1, the mana left unused, spells cast, whether a land was played, and the castable cards still in hand. */
         final Map<Player, int[]> seqStart = new HashMap<>();
         final List<String> seq = new ArrayList<>();
+        final List<String> setup = new ArrayList<>();
 
         void seqEnd(Player p) {
             int[] st = seqStart.remove(p);

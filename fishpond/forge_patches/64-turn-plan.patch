@@ -1,12 +1,12 @@
 diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
-index 388d834..7160333 100644
+index 388d834..f7a9efd 100644
 --- a/forge-ai/src/main/java/forge/ai/AiController.java
 +++ b/forge-ai/src/main/java/forge/ai/AiController.java
 @@ -1049,6 +1049,12 @@ public class AiController {
          if (holdMana(player, sa)) {
              return AiPlayDecision.AnotherTime;   // fishpond patch 58: mana kept up for an answer
          }
-+        if (TurnPlan.refuse(this, player, sa) && !hasWinEffect(sa) && !wheelPays(sa) && !encoreNow(sa)) {
++        if (TurnPlan.refuse(this, player, sa) && !closerNow(sa) && !encoreNow(sa)) {
 +            return AiPlayDecision.AnotherTime;   // fishpond patch 64: it would leave too little mana for the turn plan
 +        }
 +        if (TurnPlan.force(this, player, sa)) {
@@ -51,10 +51,18 @@ index 388d834..7160333 100644
                      continue;
                  }
  
-@@ -4184,6 +4205,11 @@ public class AiController {
+@@ -4184,6 +4205,19 @@ public class AiController {
      // for pilot seats in the real game; simulated games have no policy and get 0.
      public static volatile java.util.function.ToIntBiFunction<Player, SpellAbility> CAST_PRIORITY;
  
++    /** fishpond patch 64: a play the old order put ahead of everything (a win now, patch 49; a cheat into something big, 50; a
++     *  wheel with payoffs, 53; a win effect): the turn plan takes it whenever it can pay and never refuses it. Chulane's
++     *  Thassa's Oracle with a tiny library was refused for leaving too little mana for the plan (its win is a trigger, not
++     *  the spell's effect): played in 2 of 5 games it was available in plan2_20261017, against 4 of 4 before the plan. */
++    public boolean closerNow(final SpellAbility sa) {
++        return sa != null && (winsNow(sa) || cheatsInBig(sa) || wheelPays(sa) || hasWinEffect(sa));
++    }
++
 +    /** fishpond patch 64: the deck's plan level of an ability, for the turn plan. */
 +    public int castPriorityOf(final SpellAbility sa) {
 +        return castPriority(sa);
@@ -88,10 +96,10 @@ index 609b59c..a475d67 100644
              final java.util.Map<Player, java.util.Set<Card>> hits = hits(ai, sa);
 diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
 new file mode 100644
-index 0000000..fedbcc3
+index 0000000..d2bdfa5
 --- /dev/null
 +++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
-@@ -0,0 +1,499 @@
+@@ -0,0 +1,528 @@
 +package forge.ai;
 +
 +import forge.game.Game;
@@ -461,6 +469,30 @@ index 0000000..fedbcc3
 +        return null;
 +    }
 +
++    static final double CLOSER = 5000;
++
++    /** A spell that puts cards from the library onto the battlefield over and over while they're permanents (Primal Surge:
++     *  closed 75% of the games it was cast in before the plan, then left out for Chulane and five cheap creatures in
++     *  plan2_20261017): 50 a permanent it should put, the run until the first nonpermanent at the library's mix. 0 if not. */
++    static double libraryCheat(final Player ai, final SpellAbility sa) {
++        if (sa.getApi() != ApiType.Repeat) {
++            return 0;
++        }
++        boolean cheat = false;
++        for (SpellAbility x = sa.getAdditionalAbility("RepeatSubAbility"); x != null && !cheat; x = x.getSubAbility()) {
++            cheat = x.getApi() == ApiType.ChangeZone && "Battlefield".equals(x.getParam("Destination"));
++        }
++        if (!cheat) {
++            return 0;
++        }
++        int perm = 0, other = 0;
++        for (final Card l : ai.getCardsIn(ZoneType.Library)) {
++            if (l.isPermanent()) perm++; else other++;
++        }
++        final double run = other == 0 ? perm : Math.min(perm, (double) perm / other);
++        return 50 * run;
++    }
++
 +    /** What a card is: Forge's creature value, a planeswalker's loyalty, else 60 + 25 per mana. */
 +    static double base(final Card c, final int cost) {
 +        if (c.isCreature()) return ComputerUtilCard.evaluateCreature(c);
@@ -473,6 +505,11 @@ index 0000000..fedbcc3
 +        final int cost = manaCost(sa) + (c.isCommander() && c.isInZone(ZoneType.Command) ? 2 * ai.getCommanderCast(c) : 0);
 +        double v = base(c, cost);
 +        final int prio = aic.castPriorityOf(sa);
++        // a closer the old order put first (a win now, a cheat into something big, a wheel with payoffs) is planned whenever
++        // it fits; a library cheat (Primal Surge) is worth the permanents it would put onto the battlefield
++        final double surge = libraryCheat(ai, sa);
++        final boolean closer = aic.closerNow(sa) || surge > 0;
++        if (closer) v += CLOSER + surge;
 +        v += prio >= 3 ? 500 : prio == 2 ? 200 : prio == 1 ? 60 : 0;
 +        final int pay = aic.payoffUnits(sa);
 +        v += 40 * pay;
@@ -551,7 +588,7 @@ index 0000000..fedbcc3
 +            }
 +        }
 +        final int tier;
-+        if (prio >= 3 || AiController.hasWinEffect(sa)) tier = TIER_COMBO;
++        if (closer || prio >= 3) tier = TIER_COMBO;
 +        else if (info && !c.isPermanent()) tier = TIER_INFO;
 +        else if (ComputerUtil.isRamp(ai, sa) || eff < cost) tier = TIER_MANA;   // ramp, and whatever pays back mana now (rocks, rituals)
 +        else if (wipe) tier = TIER_WIPE;

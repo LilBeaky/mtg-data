@@ -1,0 +1,15 @@
+# title: Twelve Forests, Primal Surge and five cheap creatures in hand, a library of permanents: the AI casts Primal Surge (patch 64: a closer is planned whenever it fits; the plan had summed Chulane's cheap creatures past Primal Surge, which went from played in 4 of 4 games it was available in to 5 of 7, plan2_20261017)
+# card: Primal Surge
+# turns: 1
+# sim: hybrid
+# expect: cast Primal Surge
+p0life=30
+p1life=30
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p0hand=Primal Surge;Grizzly Bears;Centaur Courser;Elvish Mystic;Llanowar Elves;Gray Ogre
+p0library=Craw Wurm;Hill Giant;Forest;Rumbling Baloth;Forest;Centaur Courser;Forest;Grizzly Bears;Forest;Hill Giant;Forest;Craw Wurm
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
