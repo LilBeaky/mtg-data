@@ -42,7 +42,7 @@ public final class PilotPolicy {
     public static final class CardIntel {
         List<String> roles = new ArrayList<>(), payoff = new ArrayList<>(), enabler = new ArrayList<>();
         double syn, cmc;
-        boolean flag, flag_dead, cmdr;
+        boolean flag, flag_dead, cmdr, gc;   // gc: a Game Changer (policy.py)
     }
     public static final class Mech { int enablers, payoffs; double s; }
     public static final class Combo { List<String> cards = new ArrayList<>(); boolean win; }
@@ -55,6 +55,7 @@ public final class PilotPolicy {
         List<Combo> combos = new ArrayList<>();
         Map<String, Double> role_share = new HashMap<>();
         List<String> keys = new ArrayList<>();       // the deck's '# key:' cards (policy.py)
+        Map<String, String> hand = new HashMap<>();   // the deck's '# hand:' roles for the mulligan score (policy.py)
     }
 
     final Intel in;

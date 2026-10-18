@@ -87,6 +87,13 @@ public class ForgeRunner {
         try { forge.ai.AiController.class.getField("KEY_CARD").set(null, keyCard); }
         catch (ReflectiveOperationException e) { out.println("#FP-WARN no key-card hook in this Forge build (patch 55)"); }
         ThreatModel.installHooks();   // patch 57: counterspells and removal weigh the threat model
+        // fishpond patch 68: mulligans by the hand score (HandScore.java)
+        java.util.function.BiFunction<Player, Integer, Boolean> mull = HandScore::wantMulligan;
+        java.util.function.BiFunction<Player, Integer, forge.game.card.CardCollectionView> tuck = HandScore::toBottom;
+        try {
+            forge.ai.ComputerUtil.class.getField("MULLIGAN").set(null, mull);
+            forge.ai.ComputerUtil.class.getField("BOTTOM").set(null, tuck);
+        } catch (ReflectiveOperationException e) { out.println("#FP-WARN no mulligan hook in this Forge build (patch 68)"); }
         String deckDir = args[0];
         Map<String, Deck> decks = new HashMap<>();
         out.println("#FP-READY");

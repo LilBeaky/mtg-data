@@ -179,7 +179,8 @@ def build(d):
         syn = sum(mechs[m]["payoffs"] for m in e) + sum(mechs[m]["enablers"] / 10 for m in p)
         flag = "All" in d.flags.get(n, [])
         out_cards[fn] = {"roles": roles, "payoff": p, "enabler": e, "syn": syn, "cmc": c.get("cmc", 0) or 0,
-                         "flag": flag, "flag_dead": flag and activated_only(c), "cmdr": n in d.commanders}
+                         "flag": flag, "flag_dead": flag and activated_only(c), "cmdr": n in d.commanders,
+                         "gc": bool(c.get("game_changer"))}   # a Game Changer: the mulligan score counts it a point (the user)
     top = max([v["syn"] for v in out_cards.values()] + [1])
     for v in out_cards.values(): v["syn"] = round(v["syn"] / top, 3)
     # Spellbook combos made only of deck cards, smallest first
@@ -209,7 +210,20 @@ def build(d):
             # '# mill: self' (Araumi): Forge patch 39 aims this deck's targeted mills at itself
             "self_mill": [d.forge.get(c, c) for c in d.commanders] if str(d.meta.get("mill", "")).strip().lower() == "self" else [],
             # '# key:' cards (Forge names): the tutor rule fetches these or ramp while the commander is unaffordable
-            "keys": [d.forge.get(k, k) for k in (k.strip() for k in str(d.meta.get("key") or "").replace(" + ", ";").split(";")) if k]}
+            "keys": [d.forge.get(k, k) for k in (k.strip() for k in str(d.meta.get("key") or "").replace(" + ", ";").split(";")) if k],
+            # '# hand: Card=role; ...' (roles: ramp, tutor, draw, interaction, threat, other): how the deck wants a card counted
+            # in an opening hand, over the oracle-tag reading (the mulligan score, harness/HandScore.java)
+            "hand": hand_roles(d)}
+
+HAND_ROLES = {"ramp", "tutor", "draw", "interaction", "threat", "other", "key"}
+
+def hand_roles(d):
+    out = {}
+    for part in str(d.meta.get("hand") or "").split(";"):
+        if "=" not in part: continue
+        name, role = (x.strip() for x in part.rsplit("=", 1))
+        if name and role.lower() in HAND_ROLES: out[d.forge.get(name, name)] = role.lower()
+    return out
 
 def write_for(d, dck_path):
     """Write <dck>.policy.json for deck d (skipped for dummies). Returns the path or None."""

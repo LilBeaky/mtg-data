@@ -1,0 +1,38 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index a098445..fbe8d1d 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -2514,7 +2514,19 @@ public class ComputerUtil {
+         return false;
+     }
+ 
++    /** fishpond patch 68: the harness's hand score (HandScore.java: a mana gate, then the hand scored by role, the commander
++     *  counted, against a bar from the deck's own list). Set by reflection; null answers fall through to the patch-26 rule. */
++    public static java.util.function.BiFunction<Player, Integer, Boolean> MULLIGAN = null;
++    public static java.util.function.BiFunction<Player, Integer, CardCollectionView> BOTTOM = null;
++
+     public static boolean pilotWantMulligan(final Player ai, final int cardsToReturn) {
++        final java.util.function.BiFunction<Player, Integer, Boolean> hook = MULLIGAN;
++        if (hook != null) {
++            final Boolean b = hook.apply(ai, cardsToReturn);
++            if (b != null) {
++                return b;
++            }
++        }
+         final CardCollectionView hand = ai.getCardsIn(ZoneType.Hand);
+         if (hand.isEmpty()) {
+             return false;
+@@ -2608,6 +2620,13 @@ public class ComputerUtil {
+ 
+     /** London mulligan: keep lands up to 4 (worst extras go first), keep ramp, bottom the most expensive other cards. */
+     public static CardCollectionView pilotCardsToBottom(final Player ai, final CardCollectionView hand, final int cardsToReturn) {
++        final java.util.function.BiFunction<Player, Integer, CardCollectionView> hook = BOTTOM;
++        if (hook != null) {
++            final CardCollectionView b = hook.apply(ai, cardsToReturn);
++            if (b != null) {
++                return b;
++            }
++        }
+         final List<Card> order = new ArrayList<>(hand);
+         final int lands = CardLists.count(hand, CardPredicates.LANDS);
+         final java.util.function.ToIntFunction<Card> keep = c -> {
