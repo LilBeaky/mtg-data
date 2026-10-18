@@ -1,0 +1,16 @@
+# title: A 5-power commander out, Flaming Fist in the command zone, Phyrexian Arena in hand, three mana: the AI casts Flaming Fist (patch 64: a permanent that gives the commander double strike doubles its commander damage, worth 150 + 100 per point of the commander's power; the user, 2026-10-17: "weigh Flaming Fist very very highly"; it had scored as a 3-mana enchantment, under the Arena)
+# card: Flaming Fist
+# turns: 1
+# sim: hybrid
+# expect: cast Flaming Fist
+p0life=40
+p1life=40
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0command=Flaming Fist|IsCommander
+p0battlefield=Sigarda, Host of Herons|IsCommander;Plains;Swamp;Swamp
+p0hand=Phyrexian Arena
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

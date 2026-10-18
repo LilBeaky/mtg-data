@@ -196,3 +196,12 @@ commander on time 3/40 -> 9/40, Klauth's 5/20 -> 8/20. Chulane's closers: Primal
 tiny library 4 of 6. The two misses (g6, g19, the same games in plan2) are a step Forge passed on once (likely short of blue) and
 the plan then dropping it for the whole phase while Chulane's Drake loop made the mana; a fix (re-try after the board changes) is
 written in the scratch tree, not committed, pending the user's call.
+
+## 2026-10-17: commander double strike (patch 64)
+
+From the one-game review (Yusri, Wilson, Erebos, Zur): a permanent that gives the seat's commander double strike doubles its
+commander damage; the user: "weigh Flaming Fist very very highly ... it's not hard to get him into 1 shot territory." The plan adds
+150 + 100 per point of the commander's power (Flaming Fist with Wilson at 2: about 635; at 5: 935, over Phyrexian Arena's 459 in
+`plan_commander_double_strike`, which fails before the change). Read from the card's statics (a Continuous on `IsCommander` adding
+Double Strike, or a granted trigger that does), so auras and equipment that grant it to any creature don't count. Strong Back stays
+valued as ramp (the user: Wilson's turn-3 Strong Back was right); its early value, about 755, still beats Fist at Wilson's base power.

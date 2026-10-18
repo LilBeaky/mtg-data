@@ -96,10 +96,10 @@ index 609b59c..a475d67 100644
              final java.util.Map<Player, java.util.Set<Card>> hits = hits(ai, sa);
 diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
 new file mode 100644
-index 0000000..d2bdfa5
+index 0000000..a37e736
 --- /dev/null
 +++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
-@@ -0,0 +1,528 @@
+@@ -0,0 +1,563 @@
 +package forge.ai;
 +
 +import forge.game.Game;
@@ -471,6 +471,40 @@ index 0000000..d2bdfa5
 +
 +    static final double CLOSER = 5000;
 +
++    /** A permanent that gives the seat's commander double strike (Flaming Fist: "commander creatures you own have 'whenever
++     *  this creature attacks, it gains double strike'") doubles its commander damage: the user, 2026-10-17, "weigh Flaming
++     *  Fist very very highly ... it's not hard to get him into 1 shot territory". Worth 150 + 100 per point of the commander's
++     *  power now (Wilson at 2: 350; at 6 with auras: 750); 0 for anything else. */
++    static double commanderDoubler(final Player ai, final Card c) {
++        if (!c.isPermanent()) {
++            return 0;
++        }
++        boolean doubles = false;
++        for (final forge.game.staticability.StaticAbility st : c.getStaticAbilities()) {
++            if (!st.getParamOrDefault("Mode", "").contains("Continuous") || !st.getParamOrDefault("Affected", "").contains("IsCommander")) {
++                continue;
++            }
++            if (st.getParamOrDefault("AddKeyword", "").contains("Double Strike")) {
++                doubles = true;
++            }
++            for (final String t : st.getParamOrDefault("AddTrigger", "").split(" & ")) {
++                final String trig = t.isEmpty() ? "" : c.getSVar(t);
++                final String exec = trig.contains("Execute$ ") ? c.getSVar(trig.replaceAll(".*Execute\\$ (\\w+).*", "$1")) : "";
++                if (exec.contains("Double Strike")) {
++                    doubles = true;
++                }
++            }
++        }
++        if (!doubles) {
++            return 0;
++        }
++        int power = 0;
++        for (final Card k : ai.getCommanders()) {
++            if (k.isCreature() && k != c) power = Math.max(power, k.getNetPower());
++        }
++        return power <= 0 ? 0 : 150 + 100 * power;
++    }
++
 +    /** A spell that puts cards from the library onto the battlefield over and over while they're permanents (Primal Surge:
 +     *  closed 75% of the games it was cast in before the plan, then left out for Chulane and five cheap creatures in
 +     *  plan2_20261017): 50 a permanent it should put, the run until the first nonpermanent at the library's mix. 0 if not. */
@@ -561,6 +595,7 @@ index 0000000..d2bdfa5
 +        if (c.isCommander() && c.isInZone(ZoneType.Command)) {
 +            v += 150;
 +        }
++        v += commanderDoubler(ai, c);
 +        final java.util.function.ToDoubleBiFunction<Player, Card> sv = SETUP_VALUE;
 +        final double setup = sv == null ? 0 : Math.max(0, sv.applyAsDouble(ai, c));
 +        v += setup;
