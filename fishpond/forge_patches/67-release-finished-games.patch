@@ -1,0 +1,244 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index f7a9efd..ac3be47 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1176,6 +1176,11 @@ public class AiController {
+     // (study150_20261014 V02 g4: 163 casts, 30 minutes). Every pilot seat, like the rest of the loop shortcut.
+     private static final int LOOP_STALL = Integer.getInteger("fishpond.loopStall", 20);
+ 
++    // fishpond patch 67: a WeakHashMap keyed by the Game whose value reaches that Game (a Player, a Card) is never released, so every
++    // finished game stayed on the heap and a worker ran out of memory after a dozen long games (pod300_20261018). Values keep ids
++    // or weak references instead.
++    static final int NOBODY = Integer.MIN_VALUE;
++
+     static final class LoopState {
+         int turn = -1;
+         final Map<String, Integer> counts = new HashMap<>();
+@@ -1186,7 +1191,7 @@ public class AiController {
+         final Set<String> libraryLoops = new HashSet<>();            // patch 51, the whole game: loops that stopped near decking
+         final List<int[]> sigs = new ArrayList<>();                  // patch 52: the running loop's state at each iteration
+         int bestGap = Integer.MAX_VALUE, sinceBest = 0;               // patch 48: the running loop's progress
+-        Player looper;
++        int looper = NOBODY;                                        // patch 67: the looping player's id
+         String key;
+         int iterations;
+         boolean jumped;   // patch 52: the play just chosen was a loop's that has jumped; choose again
+@@ -1202,7 +1207,7 @@ public class AiController {
+             s.counts.clear();
+             s.stopped.clear();
+             s.danger.clear();
+-            s.looper = null;
++            s.looper = NOBODY;
+             s.key = null;
+             s.iterations = 0;
+         }
+@@ -1226,8 +1231,8 @@ public class AiController {
+         }
+         final int n = ls.counts.merge(player.getId() + "#" + countKey(sa), 1, Integer::sum);
+         final String key = loopKey(sa);
+-        if (n >= LOOP_CONFIRM && ls.looper == null && !ls.stopped.contains(player.getId() + "#" + key)) {
+-            ls.looper = player;
++        if (n >= LOOP_CONFIRM && ls.looper == NOBODY && !ls.stopped.contains(player.getId() + "#" + key)) {
++            ls.looper = player.getId();
+             ls.key = key;
+             ls.iterations = n;
+             ls.bestGap = Integer.MAX_VALUE;
+@@ -1235,7 +1240,7 @@ public class AiController {
+             ls.sigs.clear();
+             System.out.println("#FP-LOOP {\"event\": \"start\", \"player\": \"" + player.getName() + "\", \"turn\": " + ls.turn
+                     + ", \"play\": \"" + sa.getHostCard().getName() + "\", \"land\": " + sa.isLandAbility() + "}");
+-        } else if (ls.looper == player && key.equals(ls.key)) {
++        } else if (ls.looper == player.getId() && key.equals(ls.key)) {
+             ls.iterations = Math.max(ls.iterations + 1, n);
+         } else {
+             return;
+@@ -1258,7 +1263,7 @@ public class AiController {
+             ls.libraryLoops.add(player.getId() + "#" + key);
+             System.out.println("#FP-LOOP {\"event\": \"stop\", \"player\": \"" + player.getName() + "\", \"turn\": " + ls.turn
+                     + ", \"play\": \"" + sa.getHostCard().getName() + "\", \"iterations\": " + ls.iterations + ", \"reason\": \"library\"}");
+-            ls.looper = null;
++            ls.looper = NOBODY;
+             ls.key = null;
+             ls.danger.clear();
+             return;
+@@ -1282,7 +1287,7 @@ public class AiController {
+             System.out.println("#FP-LOOP {\"event\": \"stop\", \"player\": \"" + player.getName() + "\", \"turn\": " + ls.turn
+                     + ", \"play\": \"" + sa.getHostCard().getName() + "\", \"iterations\": " + ls.iterations
+                     + ", \"reason\": \"" + (goal ? "goal" : stalled ? "stalled" : "cap") + "\"}");
+-            ls.looper = null;
++            ls.looper = NOBODY;
+             ls.key = null;
+             ls.danger.clear();
+         }
+@@ -1398,7 +1403,7 @@ public class AiController {
+         }
+         System.out.println("#FP-LOOP {\"event\": \"stop\", \"player\": \"" + player.getName() + "\", \"turn\": " + ls.turn
+                 + ", \"play\": \"" + sa.getHostCard().getName() + "\", \"iterations\": " + ls.iterations + ", \"reason\": \"" + reason + "\"}");
+-        ls.looper = null;
++        ls.looper = NOBODY;
+         ls.key = null;
+         ls.danger.clear();
+         ls.sigs.clear();
+@@ -1591,14 +1596,14 @@ public class AiController {
+             return false;
+         }
+         final LoopState ls = loopState(game);
+-        return ls.looper == player && loopKey(sa).equals(ls.key)
++        return ls.looper == player.getId() && loopKey(sa).equals(ls.key)
+                 && (sa.getPayCosts() == null || !sa.getPayCosts().hasSpecificCostType(CostPayLife.class));
+     }
+ 
+     /** Danger checks while a loop runs: computed once per player and question for the rest of the loop. */
+     public static boolean loopDanger(final Player ai, final String question, final java.util.function.BooleanSupplier compute) {
+         final LoopState ls = LOOPS.get(ai.getGame());
+-        if (ls == null || ls.looper == null || ls.turn != ai.getGame().getPhaseHandler().getTurn()) {
++        if (ls == null || ls.looper == NOBODY || ls.turn != ai.getGame().getPhaseHandler().getTurn()) {
+             return compute.getAsBoolean();
+         }
+         return ls.danger.computeIfAbsent(ai.getId() + "#" + question, k -> compute.getAsBoolean());
+@@ -2278,7 +2283,7 @@ public class AiController {
+         // fishpond patch 15: loop shortcut. Once another seat is looping, this seat has had its real response windows
+         // (the first iterations); it passes until the loop stops, as the shortcut rules allow.
+         final LoopState ls = forge.ai.ability.DrawAi.pilotSeat(player) ? loopState(game) : null;
+-        if (ls != null && ls.looper != null && ls.looper != player && ls.iterations >= LOOP_CONFIRM) {
++        if (ls != null && ls.looper != NOBODY && ls.looper != player.getId() && ls.iterations >= LOOP_CONFIRM) {
+             return null;
+         }
+         final List<SpellAbility> chosen = chooseSpellAbilityToPlay0();
+@@ -2286,7 +2291,7 @@ public class AiController {
+         // one (an opponent's Soul's Attendant gaining life for each Saproling: Witherbloom recast in response every time, so
+         // the life gain never counted and the loop chased lethal into the board cap, study150_20261014_p51 V01 g12); then
+         // each iteration's whole effect is on the board for the stall check and the jump
+-        if (ls != null && LOOP_JUMP && ls.looper == player && ls.iterations >= LOOP_CONFIRM && !game.getStack().isEmpty()
++        if (ls != null && LOOP_JUMP && ls.looper == player.getId() && ls.iterations >= LOOP_CONFIRM && !game.getStack().isEmpty()
+                 && chosen != null && !chosen.isEmpty() && chosen.get(0) != null && chosen.get(0).getHostCard() != null
+                 && loopKey(chosen.get(0)).equals(ls.key)) {
+             return null;
+@@ -2577,13 +2582,14 @@ public class AiController {
+     // goes ahead of every other candidate: Forge tries the most expensive spells first, and Yusri spent the turn's mana on
+     // them with Oracle in hand and a one-card library (V09 g2). -Dfishpond.comboLines=false turns all of it off.
+     private static final boolean COMBO_LINES = !"false".equals(System.getProperty("fishpond.comboLines"));
+-    private static final Map<Player, Card> COMBO_FOCUS = Collections.synchronizedMap(new WeakHashMap<>());
++    private static final Map<Player, java.lang.ref.WeakReference<Card>> COMBO_FOCUS = Collections.synchronizedMap(new WeakHashMap<>());   // patch 67
+     private static final Map<Player, int[]> COMBO_STEPS = Collections.synchronizedMap(new WeakHashMap<>());   // {turn, steps}
+     private static final int COMBO_STEP_CAP = 300;
+ 
+     /** The card a running combo wants its engine's counters on (CountersPutAi), or null. */
+     public static Card comboFocus(final Player p) {
+-        final Card c = COMBO_FOCUS.get(p);
++        final java.lang.ref.WeakReference<Card> r = COMBO_FOCUS.get(p);
++        final Card c = r == null ? null : r.get();
+         return c != null && c.isInPlay() && c.getController() == p ? c : null;
+     }
+ 
+@@ -2658,7 +2664,7 @@ public class AiController {
+                             && !a.usesTargeting()) {
+                         a.setActivatingPlayer(player);
+                         if (a.canPlay() && !loopStopped(a) && ComputerUtilCost.canPayCost(a, player, false)) {
+-                            COMBO_FOCUS.put(player, s);
++                            COMBO_FOCUS.put(player, new java.lang.ref.WeakReference<>(s));
+                             return a;
+                         }
+                     }
+@@ -2694,7 +2700,7 @@ public class AiController {
+                             a.resetTargets();
+                             continue;
+                         }
+-                        COMBO_FOCUS.put(player, s);
++                        COMBO_FOCUS.put(player, new java.lang.ref.WeakReference<>(s));
+                         return a;
+                     }
+                 }
+@@ -2716,7 +2722,7 @@ public class AiController {
+                 ping.resetTargets();
+                 continue;
+             }
+-            COMBO_FOCUS.put(player, s);
++            COMBO_FOCUS.put(player, new java.lang.ref.WeakReference<>(s));
+             return ping;
+         }
+         return null;
+@@ -3922,7 +3928,7 @@ public class AiController {
+                 }
+             }
+             if (best != null && bestValue >= 6 && bestValue * opps >= 12) {
+-                ComputerUtil.PLANNED_SAC.put(sa, best);
++                ComputerUtil.PLANNED_SAC.put(sa, new java.lang.ref.WeakReference<>(best));
+                 return true;
+             }
+         }
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index fa8ba4b..a098445 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -273,7 +273,13 @@ public class ComputerUtil {
+     }
+ 
+     // ---- fishpond patch 19: sacrifice fodder for pilot seats ----
+-    public static final Map<SpellAbility, Card> PLANNED_SAC = Collections.synchronizedMap(new WeakHashMap<>());
++    public static final Map<SpellAbility, java.lang.ref.WeakReference<Card>> PLANNED_SAC = Collections.synchronizedMap(new WeakHashMap<>());   // patch 67: weak value
++
++    /** fishpond patch 67: the planned sacrifice for sa, or null. */
++    public static Card plannedSac(final SpellAbility sa) {
++        final java.lang.ref.WeakReference<Card> r = PLANNED_SAC.get(sa);
++        return r == null ? null : r.get();
++    }
+ 
+     /**
+      * The cheapest thing to sacrifice from typeList, or null: tokens first (noncreature ones such as Food, Treasure and Clue
+@@ -354,7 +360,7 @@ public class ComputerUtil {
+                 final CardCollection list = CardLists.filter(CardLists.getValidCards(ai.getCardsIn(ZoneType.Battlefield),
+                         sac.getType().split(";"), ai, sa.getHostCard(), sa), CardPredicates.canBeSacrificedBy(sa, false));
+                 list.remove(sa.getHostCard());
+-                final Card planned = PLANNED_SAC.get(sa);
++                final Card planned = plannedSac(sa);
+                 final Card fodder = planned != null && list.contains(planned) ? planned : getCardPreference(ai, sa.getHostCard(), "SacCost", list, sa);
+                 if (!pilotCheapFodder(ai, fodder)) {
+                     return false;
+@@ -423,7 +429,7 @@ public class ComputerUtil {
+         if (pref.contains("SacCost")) {
+             // fishpond patch 19: a sacrifice the AI planned when it decided to play (Jarad's lethal drain)
+             if (sa != null) {
+-                final Card planned = PLANNED_SAC.get(sa);
++                final Card planned = plannedSac(sa);
+                 if (planned != null && typeList.contains(planned)) {
+                     return planned;
+                 }
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index a37e736..0221999 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -75,6 +75,9 @@ public final class TurnPlan {
+     }
+ 
+     static final Map<Player, Object[]> CACHE = Collections.synchronizedMap(new WeakHashMap<>());
++    /** fishpond patch 67: the game CACHE's plans belong to (a plan holds its seat's cards, which reach the key: a finished
++     *  game's plans are dropped when the next game's first plan is made). */
++    static java.lang.ref.WeakReference<Game> cacheGame = new java.lang.ref.WeakReference<>(null);
+     static final Map<Player, Object[]> DECLINED = Collections.synchronizedMap(new WeakHashMap<>());
+     static final Set<String> LOGGED = Collections.synchronizedSet(new LinkedHashSet<>());
+ 
+@@ -285,6 +288,10 @@ public final class TurnPlan {
+         } catch (final RuntimeException e) {
+             p = new Plan();
+         }
++        if (cacheGame.get() != ai.getGame()) {
++            CACHE.clear();
++            cacheGame = new java.lang.ref.WeakReference<>(ai.getGame());
++        }
+         CACHE.put(ai, new Object[] {key, p});
+         return p;
+     }
+diff --git a/forge-ai/src/main/java/forge/ai/ability/LifeLoseAi.java b/forge-ai/src/main/java/forge/ai/ability/LifeLoseAi.java
+index 8162f79..a2dc059 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/LifeLoseAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/LifeLoseAi.java
+@@ -195,7 +195,7 @@ public class LifeLoseAi extends SpellAbilityAi {
+                 }
+             }
+             if (lethal != null) {
+-                ComputerUtil.PLANNED_SAC.put(sa, lethal);
++                ComputerUtil.PLANNED_SAC.put(sa, new java.lang.ref.WeakReference<>(lethal));
+                 return value.applyAsInt(lethal);
+             }
+             ComputerUtil.PLANNED_SAC.remove(sa);

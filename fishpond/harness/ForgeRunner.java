@@ -395,6 +395,7 @@ public class ForgeRunner {
         if (w.trace != null && w.trace.contains("ai.simulation") && fallbackTrace == null && !w.simmers.isEmpty()) {
             String[] g = f.clone();                     // Forge's lookahead crashed: replay this game (same seed) without it
             g[11] = "off,off,off,off";
+            release(game);
             runGame(g, deckDir, decks, w.trace);
             return;
         }
@@ -454,6 +455,13 @@ public class ForgeRunner {
         out.println("#FP-END " + end);
         if (winner != null && !game.getOutcome().isDraw()) out.println("\nGame Result: Game " + id + " ended in " + ms + " ms. " + winner + " has won!");
         else out.println("\nGame Result: Game " + id + " ended in a Draw! Took " + ms + " ms.");
+        release(game);
+    }
+
+    /** The harness's per-game maps let go of a finished game (ThreatModel.release); Forge patch 67 does the same for the AI's. */
+    static void release(Game game) {
+        ThreatModel.release(game);
+        SetupModel.release(game);
     }
 
     static String policyNames(String deckDir, String[] f, String key) throws java.io.IOException {

@@ -40,6 +40,9 @@ public final class SetupModel {
     /** {nonland, creatures, instants+sorceries, enchantments, artifacts} in p's deck (its list, every zone). */
     static final Map<Game, Map<Player, List<Card>>> DECK = Collections.synchronizedMap(new WeakHashMap<>());
 
+    /** A finished game's deck lists go (they hold the game's cards, which reach the weak key: see ThreatModel.release). */
+    static void release(Game g) { DECK.remove(g); }
+
     static List<Card> deck(Player p) {
         Map<Player, List<Card>> m = DECK.computeIfAbsent(p.getGame(), k -> new HashMap<>());
         List<Card> v = m.get(p);

@@ -285,6 +285,18 @@ public final class ThreatModel {
 
     static void register(Game g) { REAL.add(g); }
 
+    /** A finished game's entries leave every per-game map. They are weak-keyed by the Game, but their values reach it (a Player
+     *  key in the cache, a hold's threat seat), so the key never cleared and every game a worker played stayed on the heap
+     *  (pod300_20261018: a worker ran out of memory after a dozen long games). ForgeRunner calls this when a game ends. */
+    static void release(Game g) {
+        REAL.remove(g);
+        CACHE.remove(g);
+        DECK_ANSWERS.remove(g);
+        COUNTER_SHARE.remove(g);
+        HOLD_SINCE.remove(g);
+        HOLDS.remove(g);
+    }
+
     /** p's threat now (no growth term: that needs history), scored as check() does; cached per game, turn, phase and stack,
      *  with the card and spell answers that depend on it (keyed "c|viewer|card id", "s|viewer|card id"). */
     static final Map<Game, Object[]> CACHE = Collections.synchronizedMap(new WeakHashMap<>());
