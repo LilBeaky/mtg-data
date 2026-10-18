@@ -1,0 +1,15 @@
+# title: Vedalken Aethermage in hand with two Islands, nothing else to do, own main phase: the AI never hard-casts it (the user's override, 2026-10-17: it is only here to Wizardcycle; Zur cast it on turn 3 of onegame_20261017)
+# card: Vedalken Aethermage
+# turns: 2
+# sim: hybrid
+# forbid: cast Vedalken Aethermage
+p0life=30
+p1life=30
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island
+p0hand=Vedalken Aethermage
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

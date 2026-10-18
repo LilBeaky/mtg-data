@@ -1,0 +1,15 @@
+# fishpond override (Forge 2.0.15 script plus an "only when" hint that is never met): the user, 2026-10-17: "This card is only
+# here to wizardcycle." Zur hard-cast it on turn 3 of onegame_20261017 (a 1/2 whose trigger only bounces Slivers) instead of
+# Wizardcycling it for 3. The AI never casts the spell (flash included); Wizardcycling is an ability and is unaffected (Forge
+# patch 55 cycles it as a tutor). Puzzle: flag_vedalken_aethermage_never_cast.
+Name:Vedalken Aethermage
+ManaCost:1 U
+Types:Creature Vedalken Wizard
+PT:1/2
+K:Flash
+K:TypeCycling:Wizard:3
+T:Mode$ ChangesZone | Origin$ Any | Destination$ Battlefield | ValidCard$ Card.Self | Execute$ TrigChangeZone | TriggerDescription$ When CARDNAME enters, return target Sliver to its owner's hand.
+SVar:TrigChangeZone:DB$ ChangeZone | ValidTgts$ Sliver | TgtPrompt$ Select target Sliver | Origin$ Battlefield | Destination$ Hand
+SVar:NeedsToPlayVar:Never GE1
+SVar:Never:Number$0
+Oracle:Flash\nWhen Vedalken Aethermage enters, return target Sliver to its owner's hand.\nWizardcycling {3} ({3}, Discard this card: Search your library for a Wizard card, reveal it, put it into your hand, then shuffle.)
