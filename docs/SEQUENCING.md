@@ -176,3 +176,23 @@ counts only when its controller searches (Path to Exile and Assassin's Trophy re
 Also from plan2: 4 lookahead fallbacks, all Paradigm copies (Decorum Dissertation; Forge patch 66), and 2 AI timeouts in Forge's own
 combat prediction on Xyris's Snake board (hurry mode finished both). Games run about 12% longer with the planner (median 111 s ->
 124 s); the user: accuracy over speed as long as the sim keeps moving.
+
+## 2026-10-17: final paired run (`plan3_20261017`, build 4e079a6)
+
+0 lookahead fallbacks, 2 AI timeouts (Forge's combat prediction on a big board; hurry mode finished both), 99 natural ends + 1 cap.
+
+| deck | wins base / plan3 | commander on time base / plan3 | win turn median (fastest) base / plan3 |
+|---|---|---|---|
+| Yusri | 5/40, 3/40 | (turn 4 both) | 7 (7) / 7 (4) |
+| Klauth | 7/20, 8/20 | 5/20, 8/20 | 10 (7) / 11 (9) |
+| Zur | 1/40, 1/40 | 3/40, 9/40 | 14 / 16 |
+| Chulane | 6/20, 5/20 | (turn 5 both) | 8 (6) / 10 (6) |
+| Erebos | 4/20, 3/20 | | 10 (9) / 11 (11) |
+| Wilson | 8/20, 7/20 | (turn 3 both) | 8 (7) / 8 (7) |
+| Ragost | 1/20, 1/20 | | 12 / 12 |
+
+The user's decks: 32 wins in the baseline, 28 in plan3 (32 in plan2); inside the noise. Held across all three planner runs: Zur's
+commander on time 3/40 -> 9/40, Klauth's 5/20 -> 8/20. Chulane's closers: Primal Surge played in 6 of 6 games available; Oracle with a
+tiny library 4 of 6. The two misses (g6, g19, the same games in plan2) are a step Forge passed on once (likely short of blue) and
+the plan then dropping it for the whole phase while Chulane's Drake loop made the mana; a fix (re-try after the board changes) is
+written in the scratch tree, not committed, pending the user's call.
