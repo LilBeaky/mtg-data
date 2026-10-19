@@ -1,0 +1,21 @@
+# title: Four players: the AI's two Craw Wurms (12 damage) can kill seat 3 at 10 life; seat 2 leads (two tapped Colossal Dreadmaws); seat 4 is at 40 with nothing. The AI attacks seat 3, the kill (patch 69: a kill this turn first)
+# card: Craw Wurm
+# turns: 1
+# sim: hybrid
+# expect: assigned Craw Wurm .* to attack Ai\(3\)-P3
+# forbid: to attack Ai\(2\)-P2
+p0life=40
+p1life=40
+p2life=10
+p3life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Craw Wurm;Craw Wurm;Forest;Forest
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Colossal Dreadmaw|Tapped;Colossal Dreadmaw|Tapped;Forest|Tapped
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p2battlefield=Plains
+p2library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p3battlefield=Plains
+p3library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

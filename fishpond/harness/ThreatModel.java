@@ -24,7 +24,7 @@ import java.util.*;
  *
  *  threat (v2.1) = combo + clock + engines + mana + growth + resources + alt-win, where
  *    combo      (0-100) the seat's known combos with pieces on the battlefield: all of them 100 (a win combo; 60 otherwise),
- *               one missing 55 scaled by its hand (cards to find it with), two missing 15
+ *               one missing 55 scaled by its hand (cards to find it with), two missing up to 5 by the deck's tutor share
  *    clock      turns for its board to kill another player, the opposing untapped creatures chump-blocking its biggest
  *               attackers (fliers only by fliers or reach), double strike counted twice (an attack trigger that grants it too:
  *               Flaming Fist), a commander killing at 21 commander damage; 2 turns or less overrides: threat at least 110 (one) or 100 (two);
@@ -291,6 +291,65 @@ public final class ThreatModel {
         return best;
     }
 
+    // ---------------------------------------------------------------- whom to attack (patch 69)
+    /** What p's creatures that can attack o right now get through o's untapped blockers (each blocks p's biggest attacker it can):
+     *  {damage, 1 if a commander among them reaches 21 commander damage}. Double strike counted, as in the clock. */
+    static int[] throughNow(Player p, Player o) {
+        List<Attacker> ground = new ArrayList<>(), air = new ArrayList<>();
+        for (Card c : p.getCreaturesInPlay()) {
+            if (c.hasKeyword(Keyword.DEFENDER) || c.isTapped() || c.hasSickness()) continue;
+            int pw = Math.max(0, c.getNetCombatDamage());
+            if (pw == 0) continue;
+            Attacker a = new Attacker(doubleStrikes(c) ? 2 * pw : pw, c);
+            (c.hasKeyword(Keyword.FLYING) || c.hasKeyword(Keyword.TRAMPLE) || c.hasKeyword(Keyword.SHADOW) ? air : ground).add(a);
+        }
+        Comparator<Attacker> big = Comparator.comparingInt(Attacker::dmg).reversed();
+        ground.sort(big);
+        air.sort(big);
+        int groundBlock = 0, airBlock = 0;
+        for (Card b : o.getCreaturesInPlay()) {
+            if (b.isTapped()) continue;
+            if (b.hasKeyword(Keyword.FLYING) || b.hasKeyword(Keyword.REACH)) airBlock++;
+            else groundBlock++;
+        }
+        int dmg = 0, cmdKill = 0;
+        List<Attacker> through = new ArrayList<>();
+        for (int i = Math.min(airBlock, air.size()); i < air.size(); i++) through.add(air.get(i));
+        int spare = Math.max(0, airBlock - air.size());
+        for (int i = Math.min(groundBlock + spare, ground.size()); i < ground.size(); i++) through.add(ground.get(i));
+        for (Attacker a : through) {
+            dmg += a.dmg();
+            if (a.card().isCommander() && o.getCommanderDamage(a.card()) + a.dmg() >= 21) cmdKill = 1;
+        }
+        return new int[] {dmg, cmdKill};
+    }
+
+    /** Whom pilot seat p attacks (Forge patch 69). The user, 2026-10-18: "pressure leader, finish weakest when possible". A player
+     *  this attack can kill (damage through its blockers covers its life, or a commander reaches 21), the most threatening of them;
+     *  else the threat leader when some damage gets through; else null, and Forge's own pick (board value and low life: every seat
+     *  sent most attacks at Erebos, who pays life to draw, in pod300_20261018). Blockers held back for an opponent's combat threat
+     *  are Forge's own call (its next-combat prediction, which patch 69 lets see an attack trigger's double strike). */
+    static Player chooseDefender(Player p) {
+        if (!REAL.contains(p.getGame())) return null;
+        Player kill = null, leader = null;
+        double killThreat = -1, top = -1;
+        int[] leaderThrough = null;
+        for (Player o : p.getOpponents()) {
+            if (o.hasLost()) continue;
+            int[] t = throughNow(p, o);
+            double th = threatNow(o);
+            if ((o.canLoseLife() && t[0] >= o.getLife()) || t[1] == 1) {
+                if (th > killThreat) { killThreat = th; kill = o; }
+            }
+            if (th > top) { top = th; leader = o; leaderThrough = t; }
+        }
+        Player pick = kill != null ? kill : leader != null && leaderThrough[0] > 0 ? leader : null;
+        String why = kill != null ? "kill" : pick != null ? "leader" : "forge";
+        System.out.println("#FP-DEFENDER {\"seat\": \"" + p.getName() + "\", \"turn\": " + p.getGame().getPhaseHandler().getTurn()
+                + ", \"pick\": \"" + (pick == null ? "" : pick.getName()) + "\", \"why\": \"" + why + "\"}");
+        return pick;
+    }
+
     /** A permanent whose replacement makes drawing from an empty library win (Laboratory Maniac, Jace, Wielder of Mysteries). */
     static boolean emptyLibraryWin(Card c) {
         for (ReplacementEffect re : c.getReplacementEffects()) {
@@ -376,6 +435,14 @@ public final class ThreatModel {
         return new double[] {t, combo, clock, eg[0], eg[2], mana};
     }
 
+    /** Two pieces of a known combo still missing: up to 5, by the deck's tutor share (a quarter of its spells tutoring: the full 5).
+     *  It was a flat 15, so every deck listing a two-card win led the table from turn 1 with nothing on the battlefield (Yusri and
+     *  Zur top threat in 100% of turn 1-8 rows of pod300_20261018 while Wilson won the pod 48%; the user, 2026-10-18). */
+    static double twoAway(PilotPolicy pol) {
+        Double share = pol == null || pol.in.role_share == null ? null : pol.in.role_share.get("tutor");
+        return 5 * Math.min(1.0, 4 * (share == null ? 0 : share));
+    }
+
     static double comboScore(PilotPolicy pol, Set<String> field, int hand) {
         double combo = 0;
         if (pol == null) return 0;
@@ -384,7 +451,7 @@ public final class ThreatModel {
             int missing = 0;
             for (String x : cb.cards) if (!field.contains(x)) missing++;
             double v = missing == 0 ? (cb.win ? 100 : 60) : missing == 1 ? 55 * Math.min(1.0, (hand + 1) / 4.0) * (cb.win ? 1 : 0.6)
-                    : missing == 2 ? 15 * (cb.win ? 1 : 0.6) : 0;
+                    : missing == 2 ? twoAway(pol) * (cb.win ? 1 : 0.6) : 0;
             combo = Math.max(combo, v);
         }
         return combo;
@@ -795,6 +862,12 @@ public final class ThreatModel {
         } catch (ReflectiveOperationException e) {
             ForgeRunner.out.println("#FP-WARN no threat hooks in this Forge build (patch 57)");
         }
+        java.util.function.Function<Player, Player> def = ThreatModel::chooseDefender;   // patch 69: whom to attack
+        try {
+            forge.ai.AiAttackController.class.getField("DEFENDER").set(null, def);
+        } catch (ReflectiveOperationException e) {
+            ForgeRunner.out.println("#FP-WARN no defender hook in this Forge build (patch 69)");
+        }
         java.util.function.BiPredicate<Player, SpellAbility> hold = ThreatModel::holdBlocks;
         try {
             forge.ai.AiController.class.getField("HOLD_MANA").set(null, hold);
@@ -841,7 +914,7 @@ public final class ThreatModel {
                     int missing = 0;
                     for (String x : cb.cards) if (!field.contains(x)) missing++;
                     double v = missing == 0 ? (cb.win ? 100 : 60) : missing == 1 ? 55 * Math.min(1.0, (hand + 1) / 4.0) * (cb.win ? 1 : 0.6)
-                            : missing == 2 ? 15 * (cb.win ? 1 : 0.6) : 0;
+                            : missing == 2 ? twoAway(pol) * (cb.win ? 1 : 0.6) : 0;
                     combo = Math.max(combo, v);
                 }
             }

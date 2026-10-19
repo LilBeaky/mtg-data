@@ -1,0 +1,14 @@
+# title: The opponent's commander (Craw Wurm with five +1/+1 counters, 11 power) and Flaming Fist: double strike when it attacks, 22 commander damage, lethal next turn. The AI's Air Elemental could attack safely in the air but stays home to chump (patch 69: Forge's next-combat prediction read the double strike only once it attacked, so 11 damage looked survivable at 40 life)
+# card: Air Elemental
+# turns: 1
+# sim: hybrid
+# forbid: assigned Air Elemental .* to attack
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Air Elemental;Island;Island
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Craw Wurm|IsCommander|Counters:P1P1=5;Flaming Fist;Plains|Tapped;Plains|Tapped
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

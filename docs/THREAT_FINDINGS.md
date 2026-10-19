@@ -316,3 +316,7 @@ model exiled the Brontodon).
 aimed at Wilson 81 -> 83, attacks on him 230 -> 255: the table sees him sooner; its answers didn't grow. Still open: on turns 1-16
 Wilson is almost never the top threat (Yusri and Zur carry a 15-point combo floor from their lists, two pieces missing), and a
 burst from hand (game 141: a 2/2 to 41 damage in one turn off Ancestral Mask and Calix) can't be read off the board.
+
+## 2026-10-18: the combo floor, whom to attack, blockers against a double striker
+
+The user's calls after the Wilson clock fix: (1) the flat 15 for a combo two pieces away goes (now up to 5 by the deck's tutor share: Yusri and Zur were the top threat in every turn 1-8 row of `pod300_20261018`, with nothing on the battlefield); (2) no projection of a voltron burst from hand ("don't overcorrect ... tempo is an aspect of Voltron"; the board-based clock is the reading); (3) whom to attack: a kill this turn first, else pressure the threat leader, and hold blockers up against a combat threat. Forge patch 69 adds the defender hook (`ThreatModel.chooseDefender`) and lets the next-combat prediction see double strike an attack trigger grants (Flaming Fist), which is what decides held-back blockers. Puzzles in FORGE_ISSUES row 69.

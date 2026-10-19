@@ -1,0 +1,73 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiAttackController.java b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+index 8fef776..87d1d9c 100644
+--- a/forge-ai/src/main/java/forge/ai/AiAttackController.java
++++ b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+@@ -222,11 +222,22 @@ public class AiAttackController {
+     public static Player choosePreferredDefenderPlayer(Player ai) {
+         return choosePreferredDefenderPlayer(ai, false);
+     }
++    /** fishpond patch 69: the harness picks whom a pilot seat attacks (ThreatModel.chooseDefender: a kill this turn, else the
++     *  leader when damage gets through, else null and Forge's own pick below). Set by reflection. */
++    public static java.util.function.Function<Player, Player> DEFENDER = null;
++
+     public static Player choosePreferredDefenderPlayer(Player ai, boolean forCombatDmg) {
+         PlayerCollection opponents = ai.getOpponents();
+         if (opponents.size() < 2) {
+             return Iterables.getFirst(opponents, null);
+         }
++        final java.util.function.Function<Player, Player> hook = DEFENDER;
++        if (forCombatDmg && hook != null && forge.ai.ability.DrawAi.pilotSeat(ai)) {
++            final Player p = hook.apply(ai);
++            if (p != null && opponents.contains(p)) {
++                return p;
++            }
++        }
+ 
+         Map<Player, Integer> threatScores = Maps.newHashMap();
+         for (Player opp : opponents) {
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java
+index 1780abb..2b4bb83 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java
+@@ -183,13 +183,40 @@ public class ComputerUtilCombat {
+ 
+             damage += predictPowerBonusOfAttacker(attacker, null, combat, withoutAbilities);
+             sum = predictDamageTo(attacked, damage, attacker, true);
+-            if (attacker.hasDoubleStrike()) {
++            if (attacker.hasDoubleStrike() || attackGrantsDoubleStrike(attacker)) {
+                 sum *= 2;
+             }
+         }
+         return sum;
+     }
+ 
++    /** fishpond patch 69: an attack trigger that gives the attacker double strike (Flaming Fist: "commander creatures you own have
++     *  'whenever this creature attacks, it gains double strike until end of turn'"). The keyword shows only once it attacks, so the
++     *  next-combat prediction read Wilson's commander damage at half and released the blockers that kept him from 21. */
++    public static boolean attackGrantsDoubleStrike(final Card attacker) {
++        for (final Trigger t : attacker.getTriggers()) {
++            if (t.getMode() != TriggerType.Attacks) {
++                continue;
++            }
++            SpellAbility ex;
++            try {
++                ex = t.ensureAbility();
++            } catch (final RuntimeException e) {
++                continue;
++            }
++            for (SpellAbility x = ex; x != null; x = x.getSubAbility()) {
++                if (x.getApi() != ApiType.Pump || !x.getParamOrDefault("KW", "").contains("Double Strike")) {
++                    continue;
++                }
++                final String def = x.getParamOrDefault("Defined", "Self");
++                if (def.equals("Self") || def.startsWith("TriggeredAttacker")) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
+     // Returns the poison an unblocked attacker would deal
+     /**
+      * <p>

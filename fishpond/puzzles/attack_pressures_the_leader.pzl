@@ -1,0 +1,17 @@
+# title: Three players: the AI's Grizzly Bears can't kill anyone; seat 2 leads (Heliod, Sun-Crowned and a tapped Walking Ballista: an engine a loop away, little board) and has no blockers up; seat 3 is at 4 life behind two Walls of Stone (nothing gets through). The AI attacks the leader (patch 69; the user, 2026-10-18: "pressure leader, finish weakest when possible"; Forge's own pick weighs board value and low life, and went for seat 3)
+# card: Grizzly Bears
+# turns: 1
+# sim: hybrid
+# expect: assigned Grizzly Bears .* to attack Ai\(2\)-P2
+p0life=40
+p1life=40
+p2life=4
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Grizzly Bears;Forest;Forest
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Heliod, Sun-Crowned;Walking Ballista|Tapped|Counters:P1P1=2;Plains|Tapped;Plains|Tapped
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p2battlefield=Wall of Stone;Wall of Stone;Plains
+p2library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

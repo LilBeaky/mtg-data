@@ -42,7 +42,13 @@ public class PuzzleRunner {
         rules.setGamesPerMatch(1);
         List<RegisteredPlayer> players = new ArrayList<>();
         ForgeRunner.SimFallbacks fb = new ForgeRunner.SimFallbacks();
-        for (int i = 0; i < 2; i++) {
+        // players: as many as the state names (p0..p3; Forge's GameState takes any count), two at least: whom to attack needs a pod
+        int seats = 2;
+        for (String l : lines) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("^p([0-9])[a-z]").matcher(l.trim());
+            if (m.find()) seats = Math.max(seats, Math.min(4, Integer.parseInt(m.group(1)) + 1));
+        }
+        for (int i = 0; i < seats; i++) {
             Deck d = new Deck("Puzzle" + (i + 1));
             d.getMain().add("Wastes", 40);
             RegisteredPlayer rp = new RegisteredPlayer(d);
