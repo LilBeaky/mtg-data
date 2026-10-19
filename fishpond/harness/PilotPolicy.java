@@ -200,6 +200,14 @@ public final class PilotPolicy {
      *  mechanic whose payoff is out, else 0. Forge orders candidates by it after the trigger payoffs and before its own
      *  mana-value order; a win, Show and Tell and a paying wheel still go first. -Dfishpond.castPlan=false turns it off. */
     boolean isKey(String name) { return in.keys.contains(name); }   // Forge patch 55: the cycling rule keeps key cards
+    /** A card the deck wants kept (Forge patches 55 and 70: not cycled away, discarded last): a key card or a piece of a known
+     *  win combo (Yusri discarded Zndrsplt to hand size, half of Frenetic Efreet + Zndrsplt + Laboratory Maniac; the user,
+     *  2026-10-18: "a COLOSSAL whiff"). */
+    boolean keepCard(String name) {
+        if (isKey(name)) return true;
+        for (Combo cb : in.combos) if (cb.win && cb.cards.contains(name)) return true;
+        return false;
+    }
 
     final int[] castHits = new int[4];   // how often each level was answered (0 = no plan for that spell), for #FP-CASTPLAN
 

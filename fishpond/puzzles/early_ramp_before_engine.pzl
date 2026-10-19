@@ -1,0 +1,17 @@
+# title: Two lands, Zur the Enchanter in the command zone, Arcane Signet and Escape Protocol in hand: the AI casts the Signet (patch 74: under 5 mana a rock comes first; Zur cast Escape Protocol and its commander came a round late, the user 2026-10-18: "ramp has to come down as early as possible")
+# card: Arcane Signet
+# turns: 1
+# sim: hybrid
+# expect: cast Arcane Signet
+# forbid: cast Escape Protocol
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0command=Zur the Enchanter|IsCommander
+p0battlefield=Island;Plains
+p0hand=Arcane Signet;Escape Protocol
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

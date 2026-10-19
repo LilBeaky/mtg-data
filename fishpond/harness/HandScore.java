@@ -40,7 +40,7 @@ final class HandScore {
     static final String COLORS = "WUBRG";
 
     /** What a card is in an opening hand. Strings and numbers only: kept per player in weak maps, so it must not reach the game. */
-    record Info(String name, boolean land, double ramp, String reduces, String colors, String pips, int cmc, String role, boolean gc) { }
+    record Info(String name, boolean land, double ramp, String reduces, String colors, String pips, int cmc, String role, boolean gc, boolean tapped) { }
 
     record Result(boolean gate, double score, int lands, double ramp, String missing, double mana, List<String> detail) { }
 
@@ -153,14 +153,18 @@ final class HandScore {
         Map<String, List<double[]>> byRole = new HashMap<>();
         Map<String, List<String>> names = new HashMap<>();
         int spells = 0;
+        int tappedLands = 0;
+        for (Info x : cards) if (x.tapped()) tappedLands++;
         for (Info x : cards) {
-            if (x.land() || (x.ramp() > 0 && x.reduces().isEmpty())) {
+            boolean rampNow = x.ramp() > 0 && x.cmc() <= Math.max(1, Math.min(3, lands));
+            if (x.land() || (rampNow && x.reduces().isEmpty())) {
                 det.add(x.name() + ":" + (x.land() ? "land" : "ramp " + round(x.ramp())));
                 if (x.land() && x.role().equals("tutor")) add(byRole, names, "tutor", 0.5 * W.get("tutor"), x.name() + " (land)");
                 if (x.gc()) { total += GAME_CHANGER; det.add(x.name() + ":game changer +1"); }
                 continue;
             }
-            if (x.ramp() > 0) det.add(x.name() + ":ramp " + round(x.ramp()));   // a cost reducer is ramp and a spell
+            if (rampNow) det.add(x.name() + ":ramp " + round(x.ramp()));   // a cost reducer is ramp and a spell
+            // ramp the hand can't cast by turn 3 (Crypt Ghast on two lands) is a spell of its role, late (the user, 2026-10-18)
             spells++;
             double v = BASE + W.get(x.role()) * (cmdRoles.contains(x.role()) ? COMMANDER_ROLE : 1);
             String note = cmdRoles.contains(x.role()) ? " (commander's role" : " (";
@@ -185,7 +189,8 @@ final class HandScore {
             boolean colorsOk = true;
             for (char ch : x.pips().toCharArray()) if (!cols.contains(ch)) colorsOk = false;
             int cost = x.cmc() + 2 * ai.getCommanderCast(c);
-            double f = !colorsOk ? 0.15 : ramp >= 1 && lands + ramp >= cost ? EARLY : lands + ramp + 1 >= cost ? 1.0 : lands + ramp + 2 >= cost ? 0.5 : 0.15;
+            double early = lands - tappedLands + ramp;   // ahead of curve needs untapped lands: Zur's two cycling lands held both Signets to turn 3
+            double f = !colorsOk ? 0.15 : ramp >= 1 && early >= cost ? EARLY : lands + ramp + 1 >= cost ? 1.0 : lands + ramp + 2 >= cost ? 0.5 : 0.15;
             double v = (BASE + W.get(x.role())) * f;
             total += v;
             det.add(x.name() + " (commander):" + x.role() + " x" + f + " " + round(v));
@@ -249,7 +254,17 @@ final class HandScore {
             else role = forced;
         }
         if (land && tags.contains("tutor") && realTutor(c)) role = "tutor";   // Urza's Saga
-        return new Info(c.getName(), land, ramp, reduces, colors, letters(ColorSet.fromManaCost(c.getManaCost())), c.getCMC(), role, ci != null && ci.gc);
+        return new Info(c.getName(), land, ramp, reduces, colors, letters(ColorSet.fromManaCost(c.getManaCost())), c.getCMC(), role, ci != null && ci.gc,
+                land && alwaysTapped(c));
+    }
+
+    /** A land that always enters tapped (cycling lands, guildgates): not shock lands or check lands, which can come in untapped. */
+    static boolean alwaysTapped(Card c) {
+        for (forge.game.replacement.ReplacementEffect re : c.getReplacementEffects()) {
+            String d = re.getParamOrDefault("Description", "");
+            if (d.contains("enters tapped") && !d.matches("(?s).*(unless|If you don't|you may|if you control|if it's|if you).*")) return true;
+        }
+        return false;
     }
 
     /** A tutor that works from hand: not one that needs a stack of its own copies (Shadowborn Apostle: sacrifice six), and not

@@ -81,9 +81,9 @@ public class ForgeRunner {
                 (p, sa) -> p.getController() instanceof SafeControllerAi c && c.policy != null ? c.policy.castPriority(p, sa) : 0;
         try { forge.ai.AiController.class.getField("CAST_PRIORITY").set(null, castPlan); }
         catch (ReflectiveOperationException e) { out.println("#FP-WARN no cast-plan hook in this Forge build (patch 54)"); }
-        // fishpond patch 55: the deck's '# key:' cards, so the cycling rule never cycles one away
+        // fishpond patch 55: the deck's '# key:' cards (and, patch 70, pieces of its known win combos), so the cycling rule never cycles one away and discards come last
         java.util.function.BiPredicate<Player, Card> keyCard =
-                (p, c) -> p.getController() instanceof SafeControllerAi sc && sc.policy != null && sc.policy.isKey(c.getName());
+                (p, c) -> p.getController() instanceof SafeControllerAi sc && sc.policy != null && sc.policy.keepCard(c.getName());
         try { forge.ai.AiController.class.getField("KEY_CARD").set(null, keyCard); }
         catch (ReflectiveOperationException e) { out.println("#FP-WARN no key-card hook in this Forge build (patch 55)"); }
         ThreatModel.installHooks();   // patch 57: counterspells and removal weigh the threat model

@@ -1,0 +1,15 @@
+# title: Wilson, Refined Grizzly (commander, a 2/2) next to Yenna, Redtooth Regent (a better creature by Forge's rating), Strong Back in hand: the AI puts Strong Back on Wilson (patch 74; the user, 2026-10-18: "all the buff spells get onto Wilson" - Forge's pick went to Yenna)
+# card: Strong Back
+# turns: 1
+# sim: hybrid
+# expect: cast Strong Back targeting \[Wilson, Refined Grizzly
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Wilson, Refined Grizzly|IsCommander;Yenna, Redtooth Regent;Forest;Forest;Plains;Plains
+p0hand=Strong Back
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

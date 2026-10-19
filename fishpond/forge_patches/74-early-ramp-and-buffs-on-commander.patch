@@ -1,0 +1,58 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 0d6676a..c0bbae9 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -453,6 +453,8 @@ public final class TurnPlan {
+     }
+ 
+     static final double CLOSER = 5000;
++    static final double EARLY_RAMP = 300;           // fishpond patch 74: a mana rock or dork while the seat makes under 5 mana
++    static final int EARLY_RAMP_UNDER = 5;
+     static final double TRANSMUTE = 150;   // fishpond patch 73: a transmute is a tutor (Gamble, Long-Term Plans plan on their own value)
+ 
+     /** A permanent that gives the seat's commander double strike (Flaming Fist: "commander creatures you own have 'whenever
+@@ -622,6 +624,9 @@ public final class TurnPlan {
+         else if (pay > 0) tier = TIER_FEEDER;
+         else if (c.isCreature() || c.isCommander()) tier = TIER_BODY;
+         else tier = TIER_REST;
++        // patch 74: early, a permanent that makes mana comes down first (the user, 2026-10-18: "ramp has to come down as early
++        // as possible"; Zur cast Escape Protocol, 310, over Arcane Signet, 250, on two lands with its commander waiting)
++        if (tier == TIER_MANA && c.isPermanent() && manaNow(ai) + landDrop(ai) < EARLY_RAMP_UNDER) v += EARLY_RAMP;
+         return new Step(c, sa, cost, eff, tier, v);
+     }
+ 
+diff --git a/forge-ai/src/main/java/forge/ai/ability/AttachAi.java b/forge-ai/src/main/java/forge/ai/ability/AttachAi.java
+index 8b4bd21..95ed21b 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/AttachAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/AttachAi.java
+@@ -1054,6 +1054,14 @@ public class AttachAi extends SpellAbilityAi {
+      *  enchanted or equipped (the user's rule: double-committing to a body is good, a voltron deck wants it) and a smaller
+      *  one for its own commander. Non-creature candidates only when there is no creature. */
+     static Card pilotPumpTarget(final Player ai, final List<Card> prefList) {
++        // fishpond patch 74: the seat's own commander takes every buff it can (the user, 2026-10-18: "all the buff spells get onto
++        // Wilson"; Strong Back went on Yenna, a better creature by Forge's rating, and Yenna's copies followed it, while commander
++        // damage and Flaming Fist's double strike pay off only on the commander)
++        for (final Card c : prefList) {
++            if (c.isCreature() && c.isCommander() && ai.equals(c.getOwner()) && ai.equals(c.getController())) {
++                return c;
++            }
++        }
+         Card best = null;
+         int bestScore = Integer.MIN_VALUE;
+         for (final Card c : prefList) {
+@@ -1083,6 +1091,15 @@ public class AttachAi extends SpellAbilityAi {
+ 
+     private static Card attachAIPumpPreference(final Player ai, final SpellAbility sa, final List<Card> list, final boolean mandatory, final Card attachSource) {
+         // AI For choosing a Card to Pump
++        // fishpond patch 74: a pilot seat's helpful aura or equipment goes on its own commander when it can (Strong Back reads
++        // +0/+0 until something is attached, so patch 28's pump test never saw it as a buff and Forge chose Yenna)
++        if (DrawAi.pilotSeat(ai) && !sa.isCurse()) {
++            for (final Card c : list) {
++                if (c.isCreature() && c.isCommander() && ai.equals(c.getOwner()) && ai.equals(c.getController())) {
++                    return c;
++                }
++            }
++        }
+         Card card = null;
+         List<Card> magnetList = null;
+         String stCheck = null;
