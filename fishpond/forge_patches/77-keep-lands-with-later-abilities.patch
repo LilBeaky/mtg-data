@@ -1,0 +1,21 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java b/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java
+index 02414a4..8dd815d 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java
+@@ -115,6 +115,16 @@ public class ComputerUtilMana {
+             else if (!ability.isTrigger() && ability.isPossible()) {
+                 score += 13; //add 13 for any non-mana activated abilities
+             }
++            // fishpond patch 77: a pilot seat's source keeps a non-mana ability that isn't usable yet but may be later this turn
++            // (hideaway: Mosswort Bridge at 10 power, Spinerock Knoll after 7 damage; Klauth tapped both for its commander before
++            // combat and couldn't play Utvara Hellkite after); one that plays or puts a card for free counts more
++            else if (!ability.isTrigger() && ability.isActivatedAbility() && forge.ai.ability.DrawAi.pilotSeat(card.getController())) {
++                score += 13;
++            }
++            if (!ability.isManaAbility() && !ability.isTrigger() && ability.hasParam("WithoutManaCost")
++                    && forge.ai.ability.DrawAi.pilotSeat(card.getController())) {
++                score += 40;
++            }
+         }
+ 
+         if (card.isCreature()) {

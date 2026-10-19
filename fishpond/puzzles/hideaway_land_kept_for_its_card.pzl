@@ -1,0 +1,16 @@
+# title: Five Mountains and Spinerock Knoll (hiding a Shivan Dragon), a 7-power Craw Wurm that hits the open opponent, Hill Giant in hand: the AI pays for the Giant with Mountains, attacks for 7, then plays the Dragon free off the Knoll (patch 77; Klauth tapped its hideaway lands for its commander before combat, and Utvara Hellkite stayed exiled, the user 2026-10-18)
+# card: Spinerock Knoll
+# turns: 1
+# sim: hybrid
+# expect: cast Shivan Dragon
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Spinerock Knoll|Id:900;Mountain;Mountain;Mountain;Mountain;Mountain;Craw Wurm|Counters:P1P1=1
+p0exile=Shivan Dragon|ExiledWith:900|FaceDown
+p0hand=Hill Giant
+p0library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1battlefield=Forest
+p1library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain

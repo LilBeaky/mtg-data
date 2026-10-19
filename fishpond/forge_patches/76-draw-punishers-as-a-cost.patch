@@ -1,0 +1,141 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 037f9fb..ca24eca 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1049,6 +1049,9 @@ public class AiController {
+         if (holdMana(player, sa)) {
+             return AiPlayDecision.AnotherTime;   // fishpond patch 58: mana kept up for an answer
+         }
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && !forge.ai.ability.DrawAi.drawCostOk(player, sa)) {
++            return AiPlayDecision.CostNotAcceptable;   // fishpond patch 76: the draw punishers' damage, as a life cost
++        }
+         if (forge.ai.ability.DrawAi.pilotSeat(player) && transmuteInstead(sa)) {
+             return AiPlayDecision.CantPlayAi;   // fishpond patch 73: transmute it, don't cast it
+         }
+@@ -3244,8 +3247,14 @@ public class AiController {
+     public boolean doTrigger(SpellAbility sa, boolean mandatory) {
+         if (sa instanceof WrappedAbility)
+             return doTrigger(((WrappedAbility) sa).getWrappedAbility(), mandatory);
+-        if (sa.getApi() != null)
+-            return SpellApiToAi.Converter.get(sa).doTrigger(player, sa, mandatory);
++        if (sa.getApi() != null) {
++            final boolean yes = SpellApiToAi.Converter.get(sa).doTrigger(player, sa, mandatory);
++            // fishpond patch 76: an optional draw pays the draw punishers like a life cost
++            if (yes && !mandatory && forge.ai.ability.DrawAi.pilotSeat(player) && !forge.ai.ability.DrawAi.drawCostOk(player, sa)) {
++                return false;
++            }
++            return yes;
++        }
+         if (sa.getPayCosts().isFree() && !sa.usesTargeting()) {
+             // For non-converted triggers (such as Cumulative Upkeep) that don't have costs or targets to worry about
+             return true;
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 7c14821..711ca75 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -483,7 +483,8 @@ public final class TurnPlan {
+     static final double CLOSER = 5000;
+     static final double EARLY_RAMP = 300;           // fishpond patch 74: a mana rock or dork while the seat makes under 5 mana
+     static final int EARLY_RAMP_UNDER = 5;
+-    static final double TRANSMUTE = 150;   // fishpond patch 73: a transmute is a tutor (Gamble, Long-Term Plans plan on their own value)
++    static final double TRANSMUTE = 150;
++    static final double DRAW_LIFE = 5;   // fishpond patch 76: a life point lost to a draw punisher (a card in hand is 80)   // fishpond patch 73: a transmute is a tutor (Gamble, Long-Term Plans plan on their own value)
+ 
+     /** A permanent that gives the seat's commander double strike (Flaming Fist: "commander creatures you own have 'whenever
+      *  this creature attacks, it gains double strike'") doubles its commander damage: the user, 2026-10-17, "weigh Flaming
+@@ -558,6 +559,7 @@ public final class TurnPlan {
+         final double surge = libraryCheat(ai, sa);
+         final boolean closer = aic.closerNow(sa) || surge > 0;
+         if (closer) v += CLOSER + surge;
++        v -= DRAW_LIFE * forge.ai.ability.DrawAi.drawLifeCost(ai, sa);   // patch 76: life lost to the opponents' draw punishers
+         if (!sa.isSpell() && "Hand".equals(sa.getParam("ActivationZone")) && "Library".equals(sa.getParam("Origin"))
+                 && c.hasStartOfKeyword("Transmute")) v += TRANSMUTE;   // patch 73: a tutor
+         v += prio >= 3 ? 500 : prio == 2 ? 200 : prio == 1 ? 60 : 0;
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+index 568045c..722b613 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+@@ -215,6 +215,83 @@ public class DrawAi extends SpellAbilityAi {
+ 
+     /** A card that wins when it enters with a tiny library (Thassa's Oracle) or wins on an empty-library draw while it is
+      *  on the battlefield (Laboratory Maniac, Jace, Wielder of Mysteries). Fishpond patch 17. */
++    // ---- fishpond patch 76: draw punishers (the user, 2026-10-18: "make it math out the damage and treat it as a cost ... just make it
++    // aware"). Klauth's Knollspine Dragon drew 14 with Xyris's Razorkin Needlehead out and lost 14 life without the AI weighing it.
++    // Opponents' permanents with a trigger on an opponent's draw that deals damage to or takes life from the drawer (Razorkin
++    // Needlehead, Nekusar, Sheoldred, Underworld Dreams, Scrawling Crawler; Orcish Bowmasters counted as hitting the drawer).
++
++    /** Life drawer would lose to its opponents' draw punishers for drawing n cards now. */
++    public static int drawPunishment(final Player drawer, final int n) {
++        if (n <= 0) {
++            return 0;
++        }
++        final boolean drawStep = drawer.getGame().getPhaseHandler().is(PhaseType.DRAW, drawer);
++        int total = 0;
++        for (final Player o : drawer.getOpponents()) {
++            if (o.hasLost()) {
++                continue;
++            }
++            for (final Card c : o.getCardsIn(ZoneType.Battlefield)) {
++                for (final Trigger t : c.getTriggers()) {
++                    if (t.getMode() != TriggerType.Drawn || !t.getParamOrDefault("ValidCard", "").contains("Opp")) {
++                        continue;
++                    }
++                    SpellAbility ex;
++                    try {
++                        ex = t.ensureAbility();
++                    } catch (final RuntimeException e) {
++                        continue;
++                    }
++                    int per = 0;
++                    for (SpellAbility x = ex; x != null; x = x.getSubAbility()) {
++                        if (x.getApi() == ApiType.DealDamage) {
++                            per += fixedAmount(x, "NumDmg");
++                        } else if (x.getApi() == ApiType.LoseLife) {
++                            per += fixedAmount(x, "LifeAmount");
++                        }
++                    }
++                    final int count = "False".equals(t.getParam("FirstCardInDrawStep")) && drawStep ? n - 1 : n;
++                    total += per * Math.max(0, count);
++                }
++            }
++        }
++        return total;
++    }
++
++    private static int fixedAmount(final SpellAbility x, final String param) {
++        try {
++            return Integer.parseInt(x.getParamOrDefault(param, "1"));
++        } catch (final NumberFormatException e) {
++            return 1;
++        }
++    }
++
++    /** The punishers' life cost of the cards sa makes ai draw (its Draw effects that include ai). */
++    public static int drawLifeCost(final Player ai, final SpellAbility sa) {
++        int n = 0;
++        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++            if (x.getApi() != ApiType.Draw) {
++                continue;
++            }
++            final String def = x.getParamOrDefault("Defined", "You");
++            if (!def.equals("You") && !def.equals("Player")) {
++                continue;
++            }
++            try {
++                n += Math.max(0, AbilityUtils.calculateAmount(x.getHostCard(), x.getParamOrDefault("NumCards", "1"), x));
++            } catch (final RuntimeException e) {
++                n += 1;
++            }
++        }
++        return drawPunishment(ai, n);
++    }
++
++    /** Whether ai accepts the punishers' cost as it would a "pay that much life" cost (Forge's own life-payment check). */
++    public static boolean drawCostOk(final Player ai, final SpellAbility sa) {
++        final int cost = drawLifeCost(ai, sa);
++        return cost <= 0 || ComputerUtilCost.checkLifeCost(ai, new Cost("PayLife<" + cost + ">", false), sa.getHostCard(), 4, sa);
++    }
++
+     public static boolean emptyLibraryWinCard(final Card c) {
+         if (hasWinTrigger(c, TriggerType.ChangesZone)) {
+             return true;

@@ -1,0 +1,128 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index c0bbae9..7c14821 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -317,13 +317,41 @@ public final class TurnPlan {
+             return 0;
+         }
+         for (final Card c : ai.getCardsIn(ZoneType.Hand)) {
+-            if (c.isLand() && ai.canPlayLand(c, false, null)) {
+-                return 1;   // a tapped land overcounts by one: the last step then can't be paid, Forge passes, the plan is rebuilt
++            if (c.isLand() && ai.canPlayLand(c, false, null) && !entersTapped(ai, c)) {
++                return 1;   // patch 75: only a land that comes in untapped (Klauth planned Klauth on Spinerock Knoll's mana)
+             }
+         }
+         return 0;
+     }
+ 
++    /** fishpond patch 75: a land that would enter tapped (patch 26's check: its Tap replacement with conditions met), not one
++     *  whose controller can pay to have it untapped (shock lands: patch 72 pays when the mana is wanted). */
++    static boolean entersTapped(final Player ai, final Card land) {
++        final java.util.Map<forge.game.ability.AbilityKey, Object> rep = forge.game.ability.AbilityKey.mapFromAffected(land);
++        rep.put(forge.game.ability.AbilityKey.Origin, land.getZone().getZoneType());
++        rep.put(forge.game.ability.AbilityKey.Destination, ZoneType.Battlefield);
++        final forge.game.GameEntityCounterTable table = new forge.game.GameEntityCounterTable();
++        rep.put(forge.game.ability.AbilityKey.EffectOnly, true);
++        rep.put(forge.game.ability.AbilityKey.CounterTable, table);
++        rep.put(forge.game.ability.AbilityKey.CounterMap, table.column(land));
++        try {
++            for (final forge.game.replacement.ReplacementEffect re : ai.getGame().getReplacementHandler().getReplacementList(
++                    forge.game.replacement.ReplacementType.Moved, rep, forge.game.replacement.ReplacementLayer.Other)) {
++                final SpellAbility reSA = re.ensureAbility();
++                if (reSA == null || reSA.getApi() != ApiType.Tap || reSA.hasParam("UnlessCost")) {
++                    continue;
++                }
++                reSA.setActivatingPlayer(ai);
++                if (reSA.metConditions()) {
++                    return true;
++                }
++            }
++        } catch (final RuntimeException e) {
++            return false;
++        }
++        return false;
++    }
++
+     static Plan plan(final AiController aic, final Player ai) {
+         final StringBuilder kb = new StringBuilder(phaseKey(ai));
+         for (final Card c : ai.getCardsIn(ZoneType.Hand)) kb.append('|').append(c.getId());
+diff --git a/forge-ai/src/main/java/forge/ai/ability/CharmAi.java b/forge-ai/src/main/java/forge/ai/ability/CharmAi.java
+index cbc4b1b..2fc84fd 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/CharmAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/CharmAi.java
+@@ -196,6 +196,26 @@ public class CharmAi extends SpellAbilityAi {
+                 }
+             }
+         }
++        // fishpond patch 75: a pilot seat allowed more modes at no extra cost takes every remaining mode that only helps it (Jeska's
++        // Will with Klauth out: Forge took the exile mode alone, its ritual check finding no bigger spell to cast with the mana)
++        final Card host = sa.getHostCard();
++        if (!chosen.isEmpty() && chosen.size() < num && DrawAi.pilotSeat(ai) && host != null && !host.hasKeyword(Keyword.ESCALATE)
++                && !host.hasKeyword(Keyword.SPREE) && !host.hasKeyword(Keyword.TIERED)) {
++            for (final AbilitySub sub : Lists.newArrayList(choices)) {
++                if (chosen.contains(sub) || !freeValueMode(sub)) {
++                    continue;
++                }
++                sub.setActivatingPlayer(ai);
++                if (sub.usesTargeting() && !targetRichestOpponent(ai, sub)) {
++                    continue;
++                }
++                handleDependentModes(sa, chosen, sub);
++                chosen.add(sub);
++                if (chosen.size() == num) {
++                    break;
++                }
++            }
++        }
+         if (chosen.size() < min) {
+             // not enough choices
+             chosen.clear();
+@@ -204,6 +224,48 @@ public class CharmAi extends SpellAbilityAi {
+         return chosen;
+     }
+ 
++    /** fishpond patch 75: a mode that only adds to its caster: mana, cards (drawn, or dug to hand or exile to play), tokens, life,
++     *  scry or surveil, for its caster, with nothing in its chain that costs the caster (a discard, life loss, sacrifice or damage). */
++    static boolean freeValueMode(final AbilitySub sub) {
++        final java.util.EnumSet<forge.game.ability.ApiType> good = java.util.EnumSet.of(forge.game.ability.ApiType.Mana,
++                forge.game.ability.ApiType.Draw, forge.game.ability.ApiType.Dig, forge.game.ability.ApiType.Token,
++                forge.game.ability.ApiType.GainLife, forge.game.ability.ApiType.Scry, forge.game.ability.ApiType.Surveil);
++        if (sub.getApi() == null || !good.contains(sub.getApi())) {
++            return false;
++        }
++        for (SpellAbility x = sub; x != null; x = x.getSubAbility()) {
++            final String def = x.getParamOrDefault("Defined", "You");
++            if (x.getApi() != null && good.contains(x.getApi()) && !"You".equals(def)) {
++                return false;
++            }
++            if (x.getApi() == forge.game.ability.ApiType.Discard || x.getApi() == forge.game.ability.ApiType.LoseLife
++                    || x.getApi() == forge.game.ability.ApiType.Sacrifice || x.getApi() == forge.game.ability.ApiType.DealDamage) {
++                return false;
++            }
++        }
++        return true;
++    }
++
++    /** fishpond patch 75: a free mode that targets a player (Jeska's Will counts the target's hand) aims at the opponent with the
++     *  most cards in hand; false when it targets something else. */
++    static boolean targetRichestOpponent(final Player ai, final AbilitySub sub) {
++        if (sub.getTargetRestrictions() == null || !sub.getTargetRestrictions().canTgtPlayer()) {
++            return false;
++        }
++        Player best = null;
++        for (final Player o : ai.getOpponents()) {
++            if (!o.hasLost() && sub.canTarget(o) && (best == null || o.getCardsIn(forge.game.zone.ZoneType.Hand).size() > best.getCardsIn(forge.game.zone.ZoneType.Hand).size())) {
++                best = o;
++            }
++        }
++        if (best == null) {
++            return false;
++        }
++        sub.resetTargets();
++        sub.getTargets().add(best);
++        return true;
++    }
++
+     private List<AbilitySub> chooseTriskaidekaphobia(List<AbilitySub> choices, final Player ai) {
+         List<AbilitySub> chosenList = Lists.newArrayList();
+         if (choices == null || choices.isEmpty()) { return chosenList; }

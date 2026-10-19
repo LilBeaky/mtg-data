@@ -1,0 +1,17 @@
+# title: Commander on the battlefield, three Mountains, Jeska's Will in hand, an opponent holding five cards: the AI chooses both modes (red mana for that opponent's hand and the top three to play; patch 75; Klauth chose the exile mode alone with Klauth out, the user 2026-10-18: "a big time blunder")
+# card: Jeska's Will
+# turns: 1
+# sim: hybrid
+# expect: Add \{R\} for each card in target opponent's hand.*Exile the top three|Ai\(1\)-P1 adds .*\{R\}
+# expect: cast Jeska's Will
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Craw Wurm|IsCommander;Mountain;Mountain;Mountain
+p0hand=Jeska's Will
+p0library=Lightning Bolt;Shock;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1battlefield=Forest
+p1hand=Forest;Forest;Forest;Forest;Forest
+p1library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain

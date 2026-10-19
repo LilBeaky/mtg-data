@@ -1,0 +1,15 @@
+# title: Four life, Coastal Piracy out, a Craw Wurm that hits the open opponent; the opponent has Underworld Dreams (1 damage per card drawn): Coastal Piracy's optional draw would leave 3 life, so the AI declines it (patch 76: draw punishers counted as a life cost, by Forge's own life-payment check; Klauth drew 14 into Needlehead, the user 2026-10-18: "make it math out the damage and treat it as a cost")
+# card: Coastal Piracy
+# turns: 1
+# sim: hybrid
+# expect: assigned Craw Wurm .* to attack
+# forbid: Ai\(1\)-P1 4 > 
+p0life=4
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Craw Wurm;Coastal Piracy;Island;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Underworld Dreams;Swamp
+p1library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
