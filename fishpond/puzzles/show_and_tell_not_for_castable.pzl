@@ -1,0 +1,16 @@
+# title: Seven lands, Show and Tell and a Serra Angel in hand: the AI doesn't cast Show and Tell (the Angel is castable this turn, and every opponent would get a free permanent; patch 71, the user 2026-10-18: only for a card of mana value 6+ or one it can't afford)
+# card: Show and Tell
+# turns: 1
+# sim: hybrid
+# forbid: cast Show and Tell
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Plains;Plains;Plains;Plains
+p0hand=Show and Tell;Serra Angel
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest
+p1hand=Craw Wurm;Forest
+p1library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island

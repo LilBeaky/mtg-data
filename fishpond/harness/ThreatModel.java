@@ -324,6 +324,18 @@ public final class ThreatModel {
         return new int[] {dmg, cmdKill};
     }
 
+    /** An opponent of p is a turn from winning: a one-turn clock, a combo on the battlefield, an engine cycle (patch 58's
+     *  "very close"). Forge patch 73 casts a transmute card's spell only then. */
+    static boolean emergency(Player p) {
+        if (!REAL.contains(p.getGame())) return false;
+        for (Player o : p.getOpponents()) {
+            if (o.hasLost()) continue;
+            double[] t = parts(o);
+            if (t[T_CLOCK] <= 1 || t[T_COMBO] >= 90 || t[T_CYCLES] >= 1) return true;
+        }
+        return false;
+    }
+
     /** Whom pilot seat p attacks (Forge patch 69). The user, 2026-10-18: "pressure leader, finish weakest when possible". A player
      *  this attack can kill (damage through its blockers covers its life, or a commander reaches 21), the most threatening of them;
      *  else the threat leader when some damage gets through; else null, and Forge's own pick (board value and low life: every seat
@@ -861,6 +873,12 @@ public final class ThreatModel {
             forge.ai.AiController.class.getField("SPELL_THREAT").set(null, st);
         } catch (ReflectiveOperationException e) {
             ForgeRunner.out.println("#FP-WARN no threat hooks in this Forge build (patch 57)");
+        }
+        java.util.function.Predicate<Player> em = ThreatModel::emergency;   // patch 73: a transmute card's spell only in an emergency
+        try {
+            forge.ai.AiController.class.getField("EMERGENCY").set(null, em);
+        } catch (ReflectiveOperationException e) {
+            ForgeRunner.out.println("#FP-WARN no emergency hook in this Forge build (patch 73)");
         }
         java.util.function.Function<Player, Player> def = ThreatModel::chooseDefender;   // patch 69: whom to attack
         try {

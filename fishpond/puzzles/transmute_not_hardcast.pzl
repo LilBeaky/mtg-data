@@ -1,0 +1,16 @@
+# title: Five Swamps, Brainspoil in hand, a Shriekmaw (mana value 5) in the library, the opponent has a Craw Wurm and no threat close to winning: the AI transmutes Brainspoil rather than casting it (patch 73; the user, 2026-10-18: "Brainspoil shouldn't have been hardcast ... encourage activating the transmute")
+# card: Brainspoil
+# turns: 1
+# sim: hybrid
+# expect: activated Brainspoil
+# forbid: cast Brainspoil
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp;Swamp;Swamp;Swamp
+p0hand=Brainspoil
+p0library=Swamp;Swamp;Swamp;Shriekmaw;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Craw Wurm;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

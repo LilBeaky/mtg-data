@@ -1,0 +1,16 @@
+# title: Swamp and two Islands out, Hallowed Fountain in hand, Zur the Enchanter in the command zone, 33 life: the AI pays 2 life for an untapped Fountain (its only white) and casts Zur (patch 72; Forge paid only for a card in hand costing exactly lands + 1, so Zur waited three turns, the user 2026-10-18)
+# card: Hallowed Fountain
+# turns: 1
+# sim: hybrid
+# expect: cast Zur the Enchanter
+p0life=33
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0command=Zur the Enchanter|IsCommander
+p0battlefield=Swamp;Island;Island
+p0hand=Hallowed Fountain
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest
+p1library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island

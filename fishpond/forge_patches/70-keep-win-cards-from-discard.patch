@@ -1,0 +1,48 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index ac3be47..aec8dca 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -2080,6 +2080,22 @@ public class AiController {
+ 
+         final int discardsLeft = min - count;
+ 
++        // fishpond patch 70: a pilot seat keeps its win cards and the deck's key cards while anything else can go. Forge
++        // discards the "worst" card by its creature rating, and a 1/3 Thassa's Oracle and a 2/2 Laboratory Maniac rate as junk:
++        // Yusri discarded both to hand size (the user, 2026-10-18: "a MAJOR blunder").
++        if (discardsLeft > 0 && forge.ai.ability.DrawAi.pilotSeat(player)) {
++            final CardCollection keep = new CardCollection();
++            for (final Card c : validCards) {
++                if (keepFromDiscard(c)) {
++                    keep.add(c);
++                }
++            }
++            while (!keep.isEmpty() && validCards.size() - keep.size() < discardsLeft) {
++                keep.remove(keep.get(keep.size() - 1));   // not enough other cards: some of these go after all
++            }
++            validCards.removeAll(keep);
++        }
++
+         // choose rest
+         for (int i = 0; i < discardsLeft; i++) {
+             if (validCards.isEmpty()) {
+@@ -4259,6 +4275,20 @@ public class AiController {
+         return sa.isSpell() && sa.getHostCard().hasStartOfKeyword("Overload");
+     }
+ 
++    /** fishpond patch 70: a card a pilot seat doesn't discard while it has others: one that wins (an empty-library win, a
++     *  win trigger or a spell that wins) or one of the deck's key cards. */
++    boolean keepFromDiscard(final Card c) {
++        if (isKeyCard(c) || forge.ai.ability.DrawAi.emptyLibraryWinCard(c)) {
++            return true;
++        }
++        for (final SpellAbility sa : c.getAllSpellAbilities()) {
++            if (hasWinEffect(sa)) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     /** fishpond patch 50: the ability or one of its sub-abilities wins the game. */
+     static boolean hasWinEffect(final SpellAbility sa) {
+         for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {

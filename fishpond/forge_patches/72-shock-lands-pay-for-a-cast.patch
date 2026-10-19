@@ -1,0 +1,90 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index d81d1ef..bab9e3f 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -289,6 +289,11 @@ public final class TurnPlan {
+         return true;
+     }
+ 
++    /** fishpond patch 72: mana a player can make now (manaNow), for the shock-land decision. */
++    public static int manaAvailable(final Player p) {
++        return manaNow(p);
++    }
++
+     static int landDrop(final Player ai) {
+         if (ai.getLandsPlayedThisTurn() > 0) {
+             return 0;
+diff --git a/forge-ai/src/main/java/forge/ai/ability/TapAi.java b/forge-ai/src/main/java/forge/ai/ability/TapAi.java
+index 7f8642d..0f5b766 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/TapAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/TapAi.java
+@@ -86,9 +86,69 @@ public class TapAi extends TapAiBase {
+         }
+     }
+ 
++    /** fishpond patch 72: a land that enters tapped unless its controller pays life (shock lands) comes in untapped when that
++     *  lets the seat cast something this turn it couldn't otherwise, the commander included: one mana short, or a color only
++     *  this land makes. Forge's check paid only for a card in hand costing exactly the lands plus one, so Zur, at 33 life, left
++     *  Hallowed Fountain (its only white) tapped and couldn't cast Zur the Enchanter that turn or the next two (the user,
++     *  2026-10-18: "add some logic around paying costs for untapped lands, like shocks"). Never at 6 life or less; not on
++     *  another player's turn (Forge's check stays). */
++    static Boolean pilotPayForUntapped(final Player payer, final SpellAbility sa, final Cost cost) {
++        int life = 0;
++        for (final CostPart part : cost.getCostParts()) {
++            if (part instanceof CostPayLife) {
++                life += ((CostPayLife) part).convertAmount();
++            } else {
++                return null;
++            }
++        }
++        if (life <= 0) {
++            return null;
++        }
++        final PhaseHandler ph = payer.getGame().getPhaseHandler();
++        if (!ph.isPlayerTurn(payer) || !(ph.getPhase() == PhaseType.MAIN1 || ph.getPhase() == PhaseType.MAIN2)) {
++            return null;
++        }
++        if (payer.getLife() - life <= 6 || !payer.canPayLife(life, true, sa)) {
++            return false;
++        }
++        final Card land = sa.getHostCard();
++        final int mana = TurnPlan.manaAvailable(payer);
++        final byte without = ColorSet.fromNames(ComputerUtilCost.getAvailableManaColors(payer, new java.util.ArrayList<Card>())).getColor();
++        final byte with = ColorSet.fromNames(ComputerUtilCost.getAvailableManaColors(payer, land)).getColor();
++        final CardCollection cands = new CardCollection();
++        for (final Card c : payer.getCardsIn(ZoneType.Hand)) {
++            if (!c.isLand() && c != land) {
++                cands.add(c);
++            }
++        }
++        for (final Card c : payer.getCardsIn(ZoneType.Command)) {
++            if (c.isCommander() && payer.equals(c.getOwner())) {
++                cands.add(c);
++            }
++        }
++        for (final Card c : cands) {
++            if (c.getManaCost() == null || c.getManaCost().isNoCost()) {
++                continue;
++            }
++            final int cmc = c.getCMC() + (c.isCommander() && c.isInZone(ZoneType.Command) ? 2 * payer.getCommanderCast(c) : 0);
++            final boolean withLand = cmc <= mana + 1 && c.getManaCost().canBePaidWithAvailable(with);
++            final boolean withoutLand = cmc <= mana && c.getManaCost().canBePaidWithAvailable(without);
++            if (withLand && !withoutLand) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     @Override
+     public boolean willPayUnlessCost(Player payer, SpellAbility sa, Cost cost, boolean alreadyPaid, FCollectionView<Player> payers) {
+         // Check for shocklands and similar ETB replacement effects
++        if (sa.hasParam("ETB") && forge.ai.ability.DrawAi.pilotSeat(payer)) {
++            final Boolean pay = pilotPayForUntapped(payer, sa, cost);   // fishpond patch 72
++            if (pay != null) {
++                return pay;
++            }
++        }
+         if (sa.hasParam("ETB")) {
+             final Card source = sa.getHostCard();
+             for (final CostPart part : cost.getCostParts()) {

@@ -1,0 +1,17 @@
+# title: Nine cards at cleanup, every one castable off four lands but the lands are tapped: the AI discards two, never Thassa's Oracle or Laboratory Maniac (patch 70; Forge discards the lowest-rated creature, and Yusri threw both away to hand size, the user 2026-10-18: "a MAJOR blunder")
+# card: Thassa's Oracle
+# turns: 1
+# sim: hybrid
+# expect: discards
+# forbid: discards Thassa's Oracle
+# forbid: discards Laboratory Maniac
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island|Tapped;Island|Tapped;Island|Tapped;Island|Tapped
+p0hand=Thassa's Oracle;Laboratory Maniac;Phantom Warrior;Wind Drake;Man-o'-War;Counterspell;Divination;Brainstorm;Opt
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest
+p1library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island

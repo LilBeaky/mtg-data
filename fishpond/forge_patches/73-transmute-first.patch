@@ -1,0 +1,160 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 4dee4f3..037f9fb 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1049,6 +1049,9 @@ public class AiController {
+         if (holdMana(player, sa)) {
+             return AiPlayDecision.AnotherTime;   // fishpond patch 58: mana kept up for an answer
+         }
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && transmuteInstead(sa)) {
++            return AiPlayDecision.CantPlayAi;   // fishpond patch 73: transmute it, don't cast it
++        }
+         if (forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.cheatWasted(player, sa)) {
+             return AiPlayDecision.CantPlayAi;   // fishpond patch 71: Show and Tell only for a card worth cheating in
+         }
+@@ -4278,6 +4281,34 @@ public class AiController {
+         return sa.isSpell() && sa.getHostCard().hasStartOfKeyword("Overload");
+     }
+ 
++    // ---- fishpond patch 73: transmute (the user, 2026-10-18: "Brainspoil shouldn't have been hardcast ... encourage activating
++    // the transmute rather than casting the actual spell"). A card with transmute is a tutor first: its spell is cast only in an
++    // emergency (an opponent a turn from winning: EMERGENCY, the harness's threat model) or, for a counterspell, against a spell
++    // the threat model rates 60+; otherwise the turn plan plans its transmute (TurnPlan.transmuteOf). A card with nothing of its
++    // mana value left in the library is just a spell.
++    public static volatile java.util.function.Predicate<Player> EMERGENCY;
++
++    static boolean emergency(final Player p) {
++        final java.util.function.Predicate<Player> f = EMERGENCY;
++        try {
++            return f != null && f.test(p);
++        } catch (final RuntimeException e) {
++            return false;
++        }
++    }
++
++    private boolean transmuteInstead(final SpellAbility sa) {
++        if (sa == null || !sa.isSpell() || sa.getHostCard() == null || TurnPlan.transmuteOf(player, sa.getHostCard()) == null
++                || emergency(player)) {
++            return false;
++        }
++        if (sa.getApi() == ApiType.Counter && !game.getStack().isEmpty()
++                && spellThreatOf(player, game.getStack().peekAbility()) >= 60) {
++            return false;
++        }
++        return true;
++    }
++
+     /** fishpond patch 70: a card a pilot seat doesn't discard while it has others: one that wins (an empty-library win, a
+      *  win trigger or a spell that wins) or one of the deck's key cards. */
+     boolean keepFromDiscard(final Card c) {
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index bab9e3f..0d6676a 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -118,6 +118,11 @@ public final class TurnPlan {
+         }
+         final Object[] c = CACHE.get(ai);
+         if (c != null && ((Plan) c[1]).rank.containsKey(sa.getHostCard().getId())) {
++            for (final Step s : ((Plan) c[1]).steps) {
++                if (s.card.getId() == sa.getHostCard().getId() && s.sa.isSpell() != sa.isSpell()) {
++                    return;   // patch 73: the plan wants the card's other play (a transmute, not the spell Forge passed on)
++                }
++            }
+             declined(ai).add(sa.getHostCard().getId());
+             CACHE.remove(ai);
+         }
+@@ -236,6 +241,19 @@ public final class TurnPlan {
+     /** A planned ritual (a spell that makes mana now) whose mana the rest of the plan needs: cast it as planned. Forge's own
+      *  ritual logic doesn't know what the mana is for and passed on Dark Ritual with a 3-drop to follow. */
+     public static boolean force(final AiController aic, final Player ai, final SpellAbility sa) {
++        // patch 73: a planned transmute is made (Forge's tutor logic passed on Brainspoil's)
++        if (active(ai) && sa != null && sa.getHostCard() != null && !sa.isSpell() && sa.getHostCard().hasStartOfKeyword("Transmute")
++                && "Hand".equals(sa.getParam("ActivationZone"))) {
++            final Plan p = plan(aic, ai);
++            if (p != null) {
++                for (final Step s : p.steps) {
++                    if (s.card.getId() == sa.getHostCard().getId() && !s.sa.isSpell()) {
++                        return true;
++                    }
++                }
++            }
++            return false;
++        }
+         if (!active(ai) || sa == null || sa.getHostCard() == null || sa.getHostCard().isPermanent()) {
+             return false;
+         }
+@@ -259,7 +277,6 @@ public final class TurnPlan {
+         return sa.getPayCosts().getTotalMana().getCMC();
+     }
+ 
+-    /** An untapped land it can still play this turn (one), counted in the turn's mana. */
+     /** fishpond patch 71: a spell that lets every player put a permanent from hand onto the battlefield (Show and Tell). */
+     static boolean symmetricCheat(final SpellAbility x) {
+         return x.getApi() == ApiType.ChangeZone && "Hand".equals(x.getParam("Origin")) && "Battlefield".equals(x.getParam("Destination"))
+@@ -294,6 +311,7 @@ public final class TurnPlan {
+         return manaNow(p);
+     }
+ 
++    /** An untapped land it can still play this turn (one), counted in the turn's mana. */
+     static int landDrop(final Player ai) {
+         if (ai.getLandsPlayedThisTurn() > 0) {
+             return 0;
+@@ -340,7 +358,8 @@ public final class TurnPlan {
+             if (c.isLand() || declined.contains(c.getId())) {
+                 continue;
+             }
+-            final SpellAbility sa = firstSpell(ai, c);
++            final SpellAbility tm = transmuteOf(ai, c);   // patch 73: a transmute card is planned as its tutor
++            final SpellAbility sa = tm != null && !AiController.emergency(ai) ? tm : firstSpell(ai, c);
+             if (sa == null || sa.getApi() == ApiType.Counter) {
+                 continue;   // counterspells are held, not planned (patch 58 keeps their mana)
+             }
+@@ -397,6 +416,31 @@ public final class TurnPlan {
+         return out;
+     }
+ 
++    /** fishpond patch 73: c's transmute ability, when c is in hand and the library holds a card of its mana value. */
++    public static SpellAbility transmuteOf(final Player ai, final Card c) {
++        if (!c.isInZone(ZoneType.Hand) || !c.hasStartOfKeyword("Transmute")) {
++            return null;
++        }
++        boolean target = false;
++        for (final Card l : ai.getCardsIn(ZoneType.Library)) {
++            if (l.getCMC() == c.getCMC()) {
++                target = true;
++                break;
++            }
++        }
++        if (!target) {
++            return null;
++        }
++        for (final SpellAbility sa : c.getAllSpellAbilities()) {
++            if (!sa.isSpell() && sa.getApi() == ApiType.ChangeZone && "Hand".equals(sa.getParam("ActivationZone"))
++                    && "Library".equals(sa.getParam("Origin"))) {
++                sa.setActivatingPlayer(ai);
++                return sa;
++            }
++        }
++        return null;
++    }
++
+     static SpellAbility firstSpell(final Player ai, final Card c) {
+         for (final SpellAbility sa : c.getSpells()) {
+             if (sa.isAlternativeCost(forge.game.spellability.AlternativeCost.Overload)) {
+@@ -409,6 +453,7 @@ public final class TurnPlan {
+     }
+ 
+     static final double CLOSER = 5000;
++    static final double TRANSMUTE = 150;   // fishpond patch 73: a transmute is a tutor (Gamble, Long-Term Plans plan on their own value)
+ 
+     /** A permanent that gives the seat's commander double strike (Flaming Fist: "commander creatures you own have 'whenever
+      *  this creature attacks, it gains double strike'") doubles its commander damage: the user, 2026-10-17, "weigh Flaming
+@@ -483,6 +528,8 @@ public final class TurnPlan {
+         final double surge = libraryCheat(ai, sa);
+         final boolean closer = aic.closerNow(sa) || surge > 0;
+         if (closer) v += CLOSER + surge;
++        if (!sa.isSpell() && "Hand".equals(sa.getParam("ActivationZone")) && "Library".equals(sa.getParam("Origin"))
++                && c.hasStartOfKeyword("Transmute")) v += TRANSMUTE;   // patch 73: a tutor
+         v += prio >= 3 ? 500 : prio == 2 ? 200 : prio == 1 ? 60 : 0;
+         final int pay = aic.payoffUnits(sa);
+         v += 40 * pay;

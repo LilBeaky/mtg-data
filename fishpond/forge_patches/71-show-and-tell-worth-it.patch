@@ -1,0 +1,67 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index aec8dca..4dee4f3 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1049,6 +1049,9 @@ public class AiController {
+         if (holdMana(player, sa)) {
+             return AiPlayDecision.AnotherTime;   // fishpond patch 58: mana kept up for an answer
+         }
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.cheatWasted(player, sa)) {
++            return AiPlayDecision.CantPlayAi;   // fishpond patch 71: Show and Tell only for a card worth cheating in
++        }
+         if (TurnPlan.refuse(this, player, sa) && !closerNow(sa) && !encoreNow(sa)) {
+             return AiPlayDecision.AnotherTime;   // fishpond patch 64: it would leave too little mana for the turn plan
+         }
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 0221999..d81d1ef 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -260,6 +260,35 @@ public final class TurnPlan {
+     }
+ 
+     /** An untapped land it can still play this turn (one), counted in the turn's mana. */
++    /** fishpond patch 71: a spell that lets every player put a permanent from hand onto the battlefield (Show and Tell). */
++    static boolean symmetricCheat(final SpellAbility x) {
++        return x.getApi() == ApiType.ChangeZone && "Hand".equals(x.getParam("Origin")) && "Battlefield".equals(x.getParam("Destination"))
++                && "Player".equals(x.getParam("DefinedPlayer"));
++    }
++
++    /** fishpond patch 71: Show and Tell gives every opponent a free permanent, so it is cast only for a card of mana value 6 or
++     *  more, or one the seat can't afford this turn (the user, 2026-10-18: Yusri put Rhystic Study in, a card it could cast for
++     *  the same mana, and Erebos got the Archfiend of Despair that killed it). */
++    public static boolean cheatWasted(final Player ai, final SpellAbility sa) {
++        if (sa == null || !sa.isSpell() || sa.getHostCard() == null) {
++            return false;
++        }
++        boolean cheat = false;
++        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++            cheat |= symmetricCheat(x);
++        }
++        if (!cheat) {
++            return false;
++        }
++        final int afford = manaNow(ai) + landDrop(ai);
++        for (final Card h : ai.getCardsIn(ZoneType.Hand)) {
++            if (h != sa.getHostCard() && h.isPermanent() && !h.isLand() && (h.getCMC() >= 6 || h.getCMC() > afford)) {
++                return false;
++            }
++        }
++        return true;
++    }
++
+     static int landDrop(final Player ai) {
+         if (ai.getLandsPlayedThisTurn() > 0) {
+             return 0;
+@@ -464,7 +493,11 @@ public final class TurnPlan {
+             }
+             final ApiType api = x.getApi();
+             if (api == ApiType.ChangeZone && sa.isSpell() && "Hand".equals(x.getParam("Origin")) && "Battlefield".equals(x.getParam("Destination"))) {
+-                // a cheat (Show and Tell, patch 50): worth the best permanent it puts from the caster's hand, whatever it costs
++                // a cheat (Show and Tell, patch 50): worth the best permanent it puts from the caster's hand; one every player
++                // gets (Show and Tell) only for a card worth cheating in (patch 71: cheatWasted)
++                if (symmetricCheat(x) && cheatWasted(ai, sa)) {
++                    return null;
++                }
+                 double best = 0;
+                 for (final Card h : ai.getCardsIn(ZoneType.Hand)) {
+                     if (h != c && h.isPermanent() && !h.isLand()) best = Math.max(best, base(h, h.getCMC()));
