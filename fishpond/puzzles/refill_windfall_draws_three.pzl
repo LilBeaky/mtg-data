@@ -1,0 +1,16 @@
+# title: The same hand, the opponent holding three: three cards don't beat the two spells, the AI keeps (patch 78)
+# card: Windfall
+# turns: 2
+# sim: hybrid
+# forbid: cast Windfall
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island
+p0hand=Windfall;Serra Angel;Counterspell
+p0library=Serra Angel;Island;Air Elemental;Plains;Mahamoti Djinn;Island;Counterspell;Plains;Divination;Island;Wind Drake;Plains;Phantom Warrior;Island;Man-o'-War;Plains;Sleep;Island;Pacifism;Plains;Swords to Plowshares;Wrath of God;Serra Angel;Air Elemental;Mahamoti Djinn;Counterspell;Divination;Wind Drake;Phantom Warrior;Man-o'-War
+p1battlefield=Forest
+p1hand=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

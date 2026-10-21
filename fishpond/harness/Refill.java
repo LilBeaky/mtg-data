@@ -30,6 +30,8 @@ final class Refill {
     static final double MARGIN = Double.parseDouble(System.getProperty("fishpond.refillMargin", "1.0"));
     static final double LIFE = Double.parseDouble(System.getProperty("fishpond.refillLife", "0.25"));
     static final double OPP_GAIN = Double.parseDouble(System.getProperty("fishpond.refillOpp", "0.5"));
+    static final double PAYOFF = Double.parseDouble(System.getProperty("fishpond.refillPayoff", "1.0"));   // a draw payoff's trigger
+    static final double OPEN_MANA = 1.5;   // an opponent with 2+ untapped lands uses its new cards at once (the user: "if they have a response")
     static final double LAND = 0.6, LAND_LATE = 0.2, RAMP_EARLY = 0.5;
     static final int SAMPLES = 200;
 
@@ -55,27 +57,35 @@ final class Refill {
         int manaNow = Math.max(0, ComputerUtilMana.getAvailableManaEstimate(ai, false));
         int manaAfter = Math.max(0, manaNow - cost);
         Set<Character> cols = colorsOnBoard(ai);
-        int n = drawCount(ai, sa);
+        int base = drawCount(ai, sa);
+        int n = base * drawMultiplier(ai);   // Thought Reflection, Teferi's Ageless Insight: each draw is two
         double keep = value(ai, pol, hand, manaNow, cols);
         int maxHand = ai.isUnlimitedHandSize() ? Integer.MAX_VALUE : ai.getMaxHandSize();
         double avgCmc = avgSpellCmc(ai);
         int cap = maxHand == Integer.MAX_VALUE ? n : Math.min(n, maxHand + (int) Math.floor(manaAfter / Math.max(1.0, avgCmc)));
         double expect = expected(ai, pol, n, cap, manaAfter, cols);
         int punish = punishment(ai, n);
+        // draw payoffs (the user, 2026-10-20: "draw payoffs should massively increase the evaluation of casting the wheel effects,
+        // including things like draw multipliers"): each trigger on the seat's own draws, and on opponents' draws for a refill they share
+        int oppDraws = 0;
+        if (symmetric(sa)) for (Player o : ai.getOpponents()) if (!o.hasLost()) oppDraws += base;
+        int[] pay = payoffTriggers(ai);
+        double payoff = PAYOFF * (pay[0] * n + pay[1] * oppDraws);
         double opp = 0;
-        if (symmetric(sa) && !payoffForOpponentsDrawing(ai)) {
+        if (symmetric(sa) && pay[1] == 0) {
             double perCard = n == 0 ? 0 : expect / Math.max(1, cap);
             for (Player o : ai.getOpponents()) {
                 if (o.hasLost()) continue;
-                opp += OPP_GAIN * perCard * Math.max(0, n - o.getCardsIn(ZoneType.Hand).size());
+                double w = untappedLands(o) >= 2 ? OPP_GAIN * OPEN_MANA : OPP_GAIN;
+                opp += w * perCard * Math.max(0, base - o.getCardsIn(ZoneType.Hand).size());
             }
         }
-        double net = expect - LIFE * punish - opp - keep;
+        double net = expect + payoff - LIFE * punish - opp - keep;
         boolean go = net >= MARGIN;
         System.out.println("#FP-REFILL {\"seat\": \"" + ai.getName() + "\", \"turn\": " + ai.getGame().getPhaseHandler().getTurn()
                 + ", \"card\": " + ForgeRunner.js(host.getName()) + ", \"hand\": " + hand.size() + ", \"draw\": " + n + ", \"cap\": " + cap
                 + ", \"mana_after\": " + manaAfter + ", \"keep\": " + HandScore.round(keep) + ", \"expect\": " + HandScore.round(expect)
-                + ", \"punish\": " + punish + ", \"opp\": " + HandScore.round(opp) + ", \"net\": " + HandScore.round(net)
+                + ", \"punish\": " + punish + ", \"payoff\": " + HandScore.round(payoff) + ", \"opp\": " + HandScore.round(opp) + ", \"net\": " + HandScore.round(net)
                 + ", \"margin\": " + MARGIN + ", \"refill\": " + go + "}");
         return go;
     }
@@ -234,6 +244,47 @@ final class Refill {
 
     static int amount(SpellAbility x, String p) {
         try { return Integer.parseInt(x.getParamOrDefault(p, "1")); } catch (NumberFormatException e) { return 1; }
+    }
+
+    /** Draw payoffs on the seat's battlefield: {triggers on its own draws, triggers on opponents' draws} that do it good (damage, life,
+     *  tokens, cards, counters, pumps: Psychosis Crawler, Niv-Mizzet, The Locust God; Xyris, Consecrated Sphinx), each counted per draw. */
+    static int[] payoffTriggers(Player ai) {
+        int own = 0, opp = 0;
+        EnumSet<ApiType> good = EnumSet.of(ApiType.DealDamage, ApiType.LoseLife, ApiType.GainLife, ApiType.Token, ApiType.Draw,
+                ApiType.PutCounter, ApiType.PutCounterAll, ApiType.Pump, ApiType.PumpAll, ApiType.Mana, ApiType.Mill);
+        for (Card c : ai.getCardsIn(ZoneType.Battlefield))
+            for (Trigger t : c.getTriggers()) {
+                if (t.getMode() != TriggerType.Drawn) continue;
+                String vc = t.getParamOrDefault("ValidCard", "");
+                boolean helps = false;
+                try {
+                    for (SpellAbility x = t.ensureAbility(); x != null; x = x.getSubAbility()) if (x.getApi() != null && good.contains(x.getApi())) helps = true;
+                } catch (RuntimeException e) { }
+                if (!helps) continue;
+                if (vc.contains("Opp")) opp++;
+                else if (vc.contains("You") || vc.isEmpty()) own++;
+            }
+        return new int[] {own, opp};
+    }
+
+    /** Draws doubled by the seat's own replacements ("if you would draw a card, draw two cards instead"). */
+    static int drawMultiplier(Player ai) {
+        int m = 1;
+        for (Card c : ai.getCardsIn(ZoneType.Battlefield))
+            for (forge.game.replacement.ReplacementEffect re : c.getReplacementEffects()) {
+                if (re.getMode() != forge.game.replacement.ReplacementType.Draw) continue;
+                try {
+                    SpellAbility ov = re.ensureAbility();
+                    if (ov != null && ov.getApi() == ApiType.Draw) m *= Math.max(1, amount(ov, "NumCards"));
+                } catch (RuntimeException e) { }
+            }
+        return Math.min(m, 4);
+    }
+
+    static int untappedLands(Player p) {
+        int n = 0;
+        for (Card c : p.getLandsInPlay()) if (!c.isTapped()) n++;
+        return n;
     }
 
     /** The seat profits from opponents drawing (Xyris's Snakes, a "whenever an opponent draws" payoff of its own). */

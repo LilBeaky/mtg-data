@@ -1,0 +1,16 @@
+# title: Three good creatures in hand, only Windfall's mana, five cards to draw: the AI keeps (patch 78; the user on Knollspine: "discarding 3 good cards for 5 cards probably isn't worth")
+# card: Windfall
+# turns: 2
+# sim: hybrid
+# forbid: cast Windfall
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island
+p0hand=Windfall;Serra Angel;Air Elemental;Mahamoti Djinn
+p0library=Serra Angel;Island;Air Elemental;Plains;Mahamoti Djinn;Island;Counterspell;Plains;Divination;Island;Wind Drake;Plains;Phantom Warrior;Island;Man-o'-War;Plains;Sleep;Island;Pacifism;Plains;Swords to Plowshares;Wrath of God;Serra Angel;Air Elemental;Mahamoti Djinn;Counterspell;Divination;Wind Drake;Phantom Warrior;Man-o'-War
+p1battlefield=Forest
+p1hand=Forest;Forest;Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
