@@ -215,7 +215,7 @@ final class HandScore {
 
     static Info classify(Player ai, PilotPolicy pol, Card c) {
         String ident = letters(ai.getCommanderColorID());
-        PilotPolicy.CardIntel ci = pol.in.cards.get(c.getName());
+        PilotPolicy.CardIntel ci = pol == null ? null : pol.in.cards.get(c.getName());   // no policy in puzzles: script-only roles
         List<String> tags = ci == null ? List.of() : ci.roles;
         boolean land = c.isLand();
         String colors = produced(c, ident);
@@ -243,8 +243,8 @@ final class HandScore {
             }
         }
         String role = "other";
-        String forced = pol.in.hand == null ? null : pol.in.hand.get(c.getName());
-        if (pol.in.keys.contains(c.getName()) && !c.isCommander()) role = "key";
+        String forced = pol == null || pol.in.hand == null ? null : pol.in.hand.get(c.getName());
+        if (pol != null && pol.in.keys.contains(c.getName()) && !c.isCommander()) role = "key";
         else if (tags.contains("tutor") && realTutor(c)) role = "tutor";
         else if (tags.contains("removal") || tags.contains("wipe") || tags.contains("counter")) role = "interaction";   // a counter that cycles (Miscalculation) is a counter
         else if (tags.contains("draw") && !land) role = "draw";
@@ -345,6 +345,7 @@ final class HandScore {
     }
 
     static String letters(ColorSet cs) {
+        if (cs == null) return COLORS;   // no commander (a puzzle): every color is in identity
         StringBuilder b = new StringBuilder();
         if (cs.hasWhite()) b.append('W');
         if (cs.hasBlue()) b.append('U');

@@ -1,0 +1,16 @@
+# title: Ten lands out, Windfall and four creatures in hand, a library of lands, the opponent holding four: the AI keeps its hand (patch 78: the hand scores 3.4, four cards from a library of lands about 0.5)
+# card: Windfall
+# forbid: cast Windfall
+# turns: 2
+# sim: hybrid
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Plains;Plains;Plains;Plains;Mountain;Mountain
+p0hand=Windfall;Serra Angel;Air Elemental;Mahamoti Djinn;Wind Drake
+p0library=Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island;Plains;Island
+p1battlefield=Forest
+p1hand=Forest;Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

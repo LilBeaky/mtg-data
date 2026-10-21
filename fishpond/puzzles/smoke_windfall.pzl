@@ -1,4 +1,4 @@
-# title: Windfall: unflagged, the AI uses it and doesn't hurt itself (smoke test)
+# title: Windfall: unflagged, the AI uses it and doesn't hurt itself (smoke test; a library of spells, so the wheel is worth it: patch 78 declines a wheel of lands for lands)
 # card: Windfall
 # turns: 3
 # expect: Ai\(1\)-P1 (cast|activated) Windfall
@@ -11,6 +11,7 @@ activeplayer=p0
 activephase=MAIN1
 p0battlefield=Island;Island;Island;Island;Island;Island
 p0hand=Windfall;Island;Island
-p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p0library=Divination;Air Elemental;Counterspell;Wind Drake;Divination;Air Elemental;Counterspell;Wind Drake;Island;Divination;Air Elemental;Counterspell;Wind Drake;Island
 p1battlefield=Forest;Forest;Mountain
+p1hand=Forest;Forest
 p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

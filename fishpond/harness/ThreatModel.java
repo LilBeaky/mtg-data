@@ -874,6 +874,12 @@ public final class ThreatModel {
         } catch (ReflectiveOperationException e) {
             ForgeRunner.out.println("#FP-WARN no threat hooks in this Forge build (patch 57)");
         }
+        java.util.function.BiFunction<Player, SpellAbility, Boolean> rf = Refill::judge;   // patch 78: refills by projected draw
+        try {
+            forge.ai.AiController.class.getField("REFILL").set(null, rf);
+        } catch (ReflectiveOperationException e) {
+            ForgeRunner.out.println("#FP-WARN no refill hook in this Forge build (patch 78)");
+        }
         java.util.function.Predicate<Player> em = ThreatModel::emergency;   // patch 73: a transmute card's spell only in an emergency
         try {
             forge.ai.AiController.class.getField("EMERGENCY").set(null, em);

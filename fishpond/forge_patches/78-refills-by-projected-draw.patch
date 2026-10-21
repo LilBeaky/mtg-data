@@ -1,0 +1,146 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index ca24eca..71a0ba9 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1049,6 +1049,16 @@ public class AiController {
+         if (holdMana(player, sa)) {
+             return AiPlayDecision.AnotherTime;   // fishpond patch 58: mana kept up for an answer
+         }
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.refills(sa) && !(sa.isSpell() && sa.getHostCard().isPermanent())
++                && !wheelPays(sa) && !closerNow(sa)) {   // patch 53's wheels with payoffs and the closers decide on their own
++            final Boolean go = refillVerdict(sa);   // fishpond patch 78: a refill (discard the hand, draw) by the harness's projection
++            if (go != null) {
++                if (!go) {
++                    return AiPlayDecision.CantPlayAi;
++                }
++                return TurnPlan.othersPlanned(this, player, sa) ? AiPlayDecision.AnotherTime : AiPlayDecision.WillPlay;
++            }
++        }
+         if (forge.ai.ability.DrawAi.pilotSeat(player) && !forge.ai.ability.DrawAi.drawCostOk(player, sa)) {
+             return AiPlayDecision.CostNotAcceptable;   // fishpond patch 76: the draw punishers' damage, as a life cost
+         }
+@@ -3249,6 +3259,13 @@ public class AiController {
+             return doTrigger(((WrappedAbility) sa).getWrappedAbility(), mandatory);
+         if (sa.getApi() != null) {
+             final boolean yes = SpellApiToAi.Converter.get(sa).doTrigger(player, sa, mandatory);
++            // fishpond patch 78: an optional refill (Knollspine Dragon's) is the harness's projection's call
++            if (!mandatory && forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.refills(sa)) {
++                final Boolean go = refillVerdict(sa);
++                if (go != null) {
++                    return go;
++                }
++            }
+             // fishpond patch 76: an optional draw pays the draw punishers like a life cost
+             if (yes && !mandatory && forge.ai.ability.DrawAi.pilotSeat(player) && !forge.ai.ability.DrawAi.drawCostOk(player, sa)) {
+                 return false;
+@@ -4290,6 +4307,20 @@ public class AiController {
+         return sa.isSpell() && sa.getHostCard().hasStartOfKeyword("Overload");
+     }
+ 
++    // ---- fishpond patch 78: refills, effects that discard or shuffle away the hand and draw (the user, 2026-10-20: score the hand
++    // it has and project the draw, with the mulligan scorer's logic: harness Refill.java). Their spells wait for the turn's other
++    // planned plays (cast what you can before the hand goes); an optional one (Knollspine Dragon's enter trigger) asks the same.
++    public static volatile java.util.function.BiFunction<Player, SpellAbility, Boolean> REFILL;
++
++    private Boolean refillVerdict(final SpellAbility sa) {
++        final java.util.function.BiFunction<Player, SpellAbility, Boolean> f = REFILL;
++        try {
++            return f == null ? null : f.apply(player, sa);
++        } catch (final RuntimeException e) {
++            return null;
++        }
++    }
++
+     // ---- fishpond patch 73: transmute (the user, 2026-10-18: "Brainspoil shouldn't have been hardcast ... encourage activating
+     // the transmute rather than casting the actual spell"). A card with transmute is a tutor first: its spell is cast only in an
+     // emergency (an opponent a turn from winning: EMERGENCY, the harness's threat model) or, for a counterspell, against a spell
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 711ca75..4dc8d17 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -312,6 +312,68 @@ public final class TurnPlan {
+     }
+ 
+     /** An untapped land it can still play this turn (one), counted in the turn's mana. */
++    /** fishpond patch 78: sa (or a permanent spell's enter trigger) discards or shuffles away its controller's hand and draws. */
++    public static boolean refills(final SpellAbility sa) {
++        if (sa == null || sa.getHostCard() == null) {
++            return false;
++        }
++        if (chainRefills(sa)) {
++            return true;
++        }
++        final Card host = sa.getHostCard();
++        if (sa.isSpell() && host.isPermanent()) {
++            for (final forge.game.trigger.Trigger t : host.getTriggers()) {
++                if (t.getMode() != forge.game.trigger.TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))) {
++                    continue;
++                }
++                try {
++                    if (t.ensureAbility() != null && chainRefills(t.ensureAbility())) {
++                        return true;
++                    }
++                } catch (final RuntimeException e) {
++                    // not one
++                }
++            }
++        }
++        return false;
++    }
++
++    static boolean chainRefills(final SpellAbility sa) {
++        boolean loses = false, draws = false;
++        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++            final ApiType api = x.getApi();
++            if (api == ApiType.Discard && "Hand".equals(x.getParam("Mode"))) {
++                loses = true;
++            }
++            if (api == ApiType.ChangeZoneAll && x.getParamOrDefault("Origin", "").contains("Hand")   // the whole hand, not one card (Enter the Infinite)
++                    && ("Library".equals(x.getParam("Destination")) || "Graveyard".equals(x.getParam("Destination")) || "Exile".equals(x.getParam("Destination")))) {
++                loses = true;
++            }
++            if (api == ApiType.Draw) {
++                final String d = x.getParamOrDefault("Defined", "You");
++                draws |= d.equals("You") || d.equals("Player");
++            }
++        }
++        return loses && draws;
++    }
++
++    /** fishpond patch 78: the plan has other plays this turn besides sa's card (a refill waits for them). */
++    public static boolean othersPlanned(final AiController aic, final Player ai, final SpellAbility sa) {
++        if (!active(ai)) {
++            return false;
++        }
++        final Plan p = plan(aic, ai);
++        if (p == null) {
++            return false;
++        }
++        for (final Step s : p.steps) {
++            if (s.card.getId() != sa.getHostCard().getId() && !refills(s.sa)) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     static int landDrop(final Player ai) {
+         if (ai.getLandsPlayedThisTurn() > 0) {
+             return 0;
+@@ -644,7 +706,7 @@ public final class TurnPlan {
+                 }
+             }
+         }
+-        final int tier;
++        int tier;
+         if (closer || prio >= 3) tier = TIER_COMBO;
+         else if (info && !c.isPermanent()) tier = TIER_INFO;
+         else if (ComputerUtil.isRamp(ai, sa) || eff < cost) tier = TIER_MANA;   // ramp, and whatever pays back mana now (rocks, rituals)
+@@ -654,6 +716,7 @@ public final class TurnPlan {
+         else if (pay > 0) tier = TIER_FEEDER;
+         else if (c.isCreature() || c.isCommander()) tier = TIER_BODY;
+         else tier = TIER_REST;
++        if (refills(sa)) tier = TIER_REST;   // patch 78: a refill goes after the plays the hand can still make
+         // patch 74: early, a permanent that makes mana comes down first (the user, 2026-10-18: "ramp has to come down as early
+         // as possible"; Zur cast Escape Protocol, 310, over Arcane Signet, 250, on two lands with its commander waiting)
+         if (tier == TIER_MANA && c.isPermanent() && manaNow(ai) + landDrop(ai) < EARLY_RAMP_UNDER) v += EARLY_RAMP;

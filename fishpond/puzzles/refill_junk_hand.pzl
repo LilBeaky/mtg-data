@@ -1,0 +1,16 @@
+# title: Ten lands out, Windfall and four more lands in hand, a library of spells, the opponent holding four: the AI casts Windfall (patch 78: the hand it would lose scores 0.4, four cards from this library about 5.7; the user, 2026-10-20: score the hand it has and project the draw)
+# card: Windfall
+# expect: cast Windfall
+# turns: 2
+# sim: hybrid
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Plains;Plains;Plains;Plains;Mountain;Mountain
+p0hand=Windfall;Island;Island;Plains;Plains
+p0library=Serra Angel;Air Elemental;Mahamoti Djinn;Counterspell;Divination;Wind Drake;Phantom Warrior;Man-o'-War;Sleep;Pacifism;Swords to Plowshares;Wrath of God;Serra Angel;Air Elemental;Mahamoti Djinn;Counterspell;Divination;Wind Drake;Phantom Warrior;Man-o'-War;Sleep;Pacifism;Swords to Plowshares;Wrath of God;Serra Angel;Air Elemental;Mahamoti Djinn;Counterspell;Divination;Wind Drake
+p1battlefield=Forest
+p1hand=Forest;Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
