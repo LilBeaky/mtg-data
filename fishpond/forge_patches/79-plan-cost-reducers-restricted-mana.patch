@@ -1,0 +1,173 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 4dc8d17..38c8ae1 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -66,7 +66,7 @@ public final class TurnPlan {
+     static final class Plan {
+         final List<Step> steps = new ArrayList<>();
+         final Map<Integer, Integer> rank = new HashMap<>();   // card id -> rank (higher goes first)
+-        int budget, reserve;
++        int budget, reserve, restricted;
+         int remainingCost() {
+             int c = 0;
+             for (Step s : steps) c += s.cost;
+@@ -183,7 +183,7 @@ public final class TurnPlan {
+         if (p == null || p.steps.isEmpty() || p.rank.containsKey(sa.getHostCard().getId())) {
+             return false;
+         }
+-        final int cost = manaCost(sa);
++        final int cost = payCost(ai, sa);
+         if (cost <= 0) {
+             return false;
+         }
+@@ -277,6 +277,62 @@ public final class TurnPlan {
+         return sa.getPayCosts().getTotalMana().getCMC();
+     }
+ 
++    /** fishpond patch 79: what sa costs to cast now: its printed cost, the commander's tax and the cost changes in play
++     *  (Emerald Medallion, Goreclaw); the printed mana value left Klauth out of a plan that could pay for him (2026-10-20). */
++    static int payCost(final Player ai, final SpellAbility sa) {
++        if (sa.getPayCosts() == null || sa.getPayCosts().getTotalMana() == null) {
++            return 0;
++        }
++        final Card c = sa.getHostCard();
++        final int printed = manaCost(sa) + (c != null && c.isCommander() && c.isInZone(ZoneType.Command) ? 2 * ai.getCommanderCast(c) : 0);
++        try {
++            if (sa.getActivatingPlayer() == null) sa.setActivatingPlayer(ai);
++            return Math.max(0, ComputerUtilMana.calculateManaCost(sa.getPayCosts(), sa, ai, true, 0, false).getConvertedManaCost());
++        } catch (final RuntimeException e) {
++            return printed;
++        }
++    }
++
++    /** fishpond patch 79: mana an untapped source makes that only some spells may spend (Gwenna, Eyes of Gaea: creature
++     *  spells), which manaNow leaves out; the plan spends it on the steps it may pay for. */
++    static final class Restricted {
++        final int amount;
++        final forge.game.spellability.AbilityManaPart part;
++        Restricted(final int amount, final forge.game.spellability.AbilityManaPart part) { this.amount = amount; this.part = part; }
++        boolean pays(final SpellAbility sa) {
++            try {
++                return part.meetsManaRestrictions(sa);
++            } catch (final RuntimeException e) {
++                return false;
++            }
++        }
++    }
++
++    static List<Restricted> restrictedMana(final Player p) {
++        final List<Restricted> out = new ArrayList<>();
++        for (final Card src : p.getCardsIn(ZoneType.Battlefield)) {
++            int free = 0, best = 0;
++            forge.game.spellability.AbilityManaPart bestPart = null;
++            for (final SpellAbility ma : src.getManaAbilities()) {
++                try {
++                    ma.setActivatingPlayer(p);
++                    final forge.game.spellability.AbilityManaPart mp = ma.getManaPart();
++                    if (mp == null || !ma.canPlay()) continue;
++                    final int cost = ma.getPayCosts().getCostMana() != null ? ma.getPayCosts().getCostMana().convertAmount() : 0;
++                    final int made = forge.game.ability.AbilityUtils.calculateAmount(src, ma.getParamOrDefault("Amount", "1"), ma) - cost;
++                    if (mp.getManaRestrictions().isEmpty()) {
++                        free = Math.max(free, made);
++                    } else if (made > best) {
++                        best = made;
++                        bestPart = mp;
++                    }
++                } catch (final RuntimeException e) { /* skip an ability whose check throws */ }
++            }
++            if (free == 0 && bestPart != null) out.add(new Restricted(best, bestPart));   // a source manaNow counted isn't counted twice
++        }
++        return out;
++    }
++
+     /** fishpond patch 71: a spell that lets every player put a permanent from hand onto the battlefield (Show and Tell). */
+     static boolean symmetricCheat(final SpellAbility x) {
+         return x.getApi() == ApiType.ChangeZone && "Hand".equals(x.getParam("Origin")) && "Battlefield".equals(x.getParam("Destination"))
+@@ -419,6 +475,7 @@ public final class TurnPlan {
+         for (final Card c : ai.getCardsIn(ZoneType.Hand)) kb.append('|').append(c.getId());
+         for (final Card c : ai.getCardsIn(ZoneType.Command)) kb.append('c').append(c.getId());
+         kb.append('#').append(ai.getCardsIn(ZoneType.Battlefield).size()).append('m').append(manaNow(ai));
++        for (final Restricted r : restrictedMana(ai)) kb.append('r').append(r.amount);
+         final String key = kb.toString();
+         final Object[] c = CACHE.get(ai);
+         if (c != null && key.equals(c[0])) {
+@@ -465,8 +522,10 @@ public final class TurnPlan {
+         final java.util.function.ToIntFunction<Player> hk = HOLD_KEEP;
+         plan.reserve = hk == null ? 0 : Math.max(0, hk.applyAsInt(ai));
+         final int room = plan.budget - plan.reserve;
++        final List<Restricted> restricted = restrictedMana(ai);
++        for (final Restricted r : restricted) plan.restricted += r.amount;
+         cands.sort((a, b) -> Double.compare(b.value, a.value));
+-        final List<Step> pick = choose(cands.size() > 12 ? cands.subList(0, 12) : cands, room);
++        final List<Step> pick = choose(cands.size() > 12 ? cands.subList(0, 12) : cands, room, restricted);
+         pick.sort((a, b) -> a.tier != b.tier ? Integer.compare(a.tier, b.tier) : Double.compare(b.value, a.value));
+         int r = 1000;
+         for (final Step s : pick) {
+@@ -478,22 +537,35 @@ public final class TurnPlan {
+         return plan;
+     }
+ 
+-    /** The best set within the mana: every set for up to 12 candidates (effective cost: a mana rock that taps now pays back). */
+-    static List<Step> choose(final List<Step> cands, final int room) {
+-        final int n = cands.size();
++    /** The best set within the mana: every set for up to 12 candidates (effective cost: a mana rock that taps now pays back;
++     *  patch 79: restricted mana pays first for the steps it may pay for). */
++    static List<Step> choose(final List<Step> cands, final int room, final List<Restricted> restricted) {
++        final int n = cands.size(), k = restricted.size();
++        final boolean[][] pays = new boolean[n][k];
++        for (int i = 0; i < n; i++) for (int j = 0; j < k; j++) pays[i][j] = restricted.get(j).pays(cands.get(i).sa);
++        final int[] left = new int[k];
+         int bestMask = 0;
+         double best = 0;
+         for (int mask = 1; mask < (1 << n); mask++) {
+             int run = 0;
+             double v = 0;
+             boolean ok = true;
++            for (int j = 0; j < k; j++) left[j] = restricted.get(j).amount;
+             // a rock pays back only once cast: the most a set needs at once is checked in cost order, rocks first
+-            final List<Step> set = new ArrayList<>();
+-            for (int i = 0; i < n; i++) if ((mask & (1 << i)) != 0) set.add(cands.get(i));
+-            set.sort(Comparator.comparingInt((Step s) -> s.effCost - s.cost));
+-            for (final Step s : set) {
+-                if (run + s.cost > room) { ok = false; break; }
+-                run += s.effCost;
++            final List<Integer> set = new ArrayList<>();
++            for (int i = 0; i < n; i++) if ((mask & (1 << i)) != 0) set.add(i);
++            set.sort(Comparator.comparingInt((Integer i) -> cands.get(i).effCost - cands.get(i).cost));
++            for (final int i : set) {
++                final Step s = cands.get(i);
++                int need = s.cost;
++                for (int j = 0; j < k && need > 0; j++) {
++                    if (!pays[i][j] || left[j] == 0) continue;
++                    final int u = Math.min(left[j], need);
++                    left[j] -= u;
++                    need -= u;
++                }
++                if (run + need > room) { ok = false; break; }
++                run += need - (s.cost - s.effCost);
+                 v += s.net();
+             }
+             if (ok && v > best) {
+@@ -612,9 +684,10 @@ public final class TurnPlan {
+     }
+ 
+     static Step step(final AiController aic, final Player ai, final Card c, final SpellAbility sa) {
+-        // the commander's tax is added at cast time, not in its printed cost
+-        final int cost = manaCost(sa) + (c.isCommander() && c.isInZone(ZoneType.Command) ? 2 * ai.getCommanderCast(c) : 0);
+-        double v = base(c, cost);
++        // the commander's tax is added at cast time, not in its printed cost; patch 79: the plan pays what it costs now
++        final int printed = manaCost(sa) + (c.isCommander() && c.isInZone(ZoneType.Command) ? 2 * ai.getCommanderCast(c) : 0);
++        final int cost = payCost(ai, sa);
++        double v = base(c, printed);
+         final int prio = aic.castPriorityOf(sa);
+         // a closer the old order put first (a win now, a cheat into something big, a wheel with payoffs) is planned whenever
+         // it fits; a library cheat (Primal Surge) is worth the permanents it would put onto the battlefield
+@@ -726,7 +799,7 @@ public final class TurnPlan {
+     static void log(final Player ai, final Plan plan, final List<Step> cands) {
+         final Game g = ai.getGame();
+         final StringBuilder sb = new StringBuilder("#FP-PLAN {\"t\": " + g.getPhaseHandler().getTurn() + ", \"seat\": \"" + ai.getName()
+-                + "\", \"phase\": \"" + g.getPhaseHandler().getPhase() + "\", \"budget\": " + plan.budget + ", \"reserve\": " + plan.reserve + ", \"steps\": [");
++                + "\", \"phase\": \"" + g.getPhaseHandler().getPhase() + "\", \"budget\": " + plan.budget + ", \"restricted\": " + plan.restricted + ", \"reserve\": " + plan.reserve + ", \"steps\": [");
+         boolean first = true;
+         for (final Step s : plan.steps) {
+             sb.append(first ? "" : ", ").append("{\"card\": \"").append(s.card.getName().replace("\"", "")).append("\", \"tier\": \"")

@@ -86,8 +86,15 @@ final class Refill {
                 + ", \"card\": " + ForgeRunner.js(host.getName()) + ", \"hand\": " + hand.size() + ", \"draw\": " + n + ", \"cap\": " + cap
                 + ", \"mana_after\": " + manaAfter + ", \"keep\": " + HandScore.round(keep) + ", \"expect\": " + HandScore.round(expect)
                 + ", \"punish\": " + punish + ", \"payoff\": " + HandScore.round(payoff) + ", \"opp\": " + HandScore.round(opp) + ", \"net\": " + HandScore.round(net)
-                + ", \"margin\": " + MARGIN + ", \"refill\": " + go + "}");
+                + ", \"margin\": " + MARGIN + ", \"refill\": " + go + ", \"cards\": " + names(hand) + "}");
         return go;
+    }
+
+    /** The hand's card names as a JSON list, for the log. */
+    static String names(List<Card> cards) {
+        StringBuilder b = new StringBuilder("[");
+        for (Card c : cards) b.append(b.length() > 1 ? ", " : "").append(ForgeRunner.js(c.getName()));
+        return b.append("]").toString();
     }
 
     // ---------------------------------------------------------------- what the effect is

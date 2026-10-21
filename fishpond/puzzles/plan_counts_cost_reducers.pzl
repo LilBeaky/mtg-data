@@ -1,0 +1,17 @@
+# title: Six lands and Emerald Medallion, Klauth in the command zone, Wulfgar in hand: the AI casts Klauth (patch 79: the plan pays what a spell costs now; it priced Klauth at his printed 7 against 6 mana and cast Wulfgar instead, the user's Klauth game 2026-10-20)
+# card: Klauth, Unrivaled Ancient
+# turns: 1
+# sim: hybrid
+# expect: cast Klauth, Unrivaled Ancient
+# forbid: cast Wulfgar of Icewind Dale
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0command=Klauth, Unrivaled Ancient|IsCommander
+p0battlefield=Mountain;Mountain;Mountain;Forest;Forest;Forest;Emerald Medallion
+p0hand=Wulfgar of Icewind Dale
+p0library=Mountain;Forest;Mountain;Forest;Mountain;Forest;Mountain;Forest;Mountain;Forest
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
