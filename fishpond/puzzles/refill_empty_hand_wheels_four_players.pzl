@@ -1,0 +1,24 @@
+# title: Wheel of Fortune is the whole hand, six lands, three opponents holding 3, 3 and 2, all tapped out: seven cards into an empty hand beat what the table gets, the AI wheels (patch 80 scarcity; the user, 2026-10-21: "as cards in hand approaches zero, the value of wheeling also rises exponentially"; the flat count had the three refills outweigh it)
+# card: Wheel of Fortune
+# turns: 1
+# sim: hybrid
+# expect: cast Wheel of Fortune
+p0life=40
+p1life=40
+p2life=40
+p3life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Mountain;Mountain;Mountain;Island;Island;Island
+p0hand=Wheel of Fortune
+p0library=Serra Angel;Island;Air Elemental;Plains;Mahamoti Djinn;Island;Counterspell;Plains;Divination;Island;Wind Drake;Plains;Phantom Warrior;Island;Man-o'-War;Plains;Sleep;Island;Pacifism;Plains;Swords to Plowshares;Wrath of God;Serra Angel;Air Elemental;Mahamoti Djinn;Counterspell;Divination;Wind Drake;Phantom Warrior;Man-o'-War
+p1battlefield=Forest|Tapped
+p1hand=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p2battlefield=Forest|Tapped
+p2hand=Forest;Forest;Forest
+p2library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p3battlefield=Forest|Tapped
+p3hand=Forest;Forest
+p3library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

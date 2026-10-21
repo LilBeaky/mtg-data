@@ -1,0 +1,50 @@
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/OnePlaySafetyChecker.java b/forge-ai/src/main/java/forge/ai/simulation/OnePlaySafetyChecker.java
+index b70bc10..936ed06 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/OnePlaySafetyChecker.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/OnePlaySafetyChecker.java
+@@ -27,12 +27,44 @@ public final class OnePlaySafetyChecker {
+ 
+             // desperate plays are ok if next combat was already likely to kill AI
+             return resultScore.value == Integer.MIN_VALUE
+-                    || resultScore.value >= (long) originalScore.value - expectedCardScoreLoss(player, sa, simulator);
++                    || resultScore.value + drawnCardValue(player, sa, simulator) >= (long) originalScore.value - expectedCardScoreLoss(player, sa, simulator);
+         } finally {
+             CHECKING.remove();
+         }
+     }
+ 
++    /** fishpond patch 80: the board score counts a card in hand as 5 points (1 past the hand size) against about 106 for an
++     *  opponent's 1/1 token, so a play that draws cards never pays for anything it gives away. The user, 2026-10-21: a card is
++     *  worth more the smaller the hand, rising steeply toward an empty one. Each card the play draws into a slot under the hand
++     *  size is worth DRAW_CARD (Forge's base value of a creature card) times scarcity(slot), the slot being how many cards are
++     *  in hand before it; one past the hand size is a choice to make before discarding, DRAW_EXCESS. The board score's own count
++     *  is taken off. Pilot seats only; the punishment side is the simulation's (it resolves the opponents' triggers: Forced
++     *  Fruition's Snakes, Suture Priest, Heliod's counters). */
++    static final double DRAW_CARD = Double.parseDouble(System.getProperty("fishpond.drawCard", "80"));
++    static final double DRAW_EXCESS = Double.parseDouble(System.getProperty("fishpond.drawExcess", "10"));
++
++    /** How much more a card is worth with h cards already in hand: 1 + SCARCITY x 0.5^h (4x into an empty hand, 1.75x with
++     *  two, about 1x from six). The harness's Refill uses the same curve (-Dfishpond.drawScarcity). */
++    public static double scarcity(final int h) {
++        return 1 + Double.parseDouble(System.getProperty("fishpond.drawScarcity", "3")) * Math.pow(0.5, Math.max(0, h));
++    }
++
++    static int drawnCardValue(final Player player, final SpellAbility sa, final GameSimulator simulator) {
++        if (!forge.ai.ability.DrawAi.pilotSeat(player)) {
++            return 0;
++        }
++        final Card source = sa.getHostCard();
++        final int before = player.getCardsIn(ZoneType.Hand).size() - (source != null && source.isInZone(ZoneType.Hand) ? 1 : 0);
++        final Player sim = simulator.getGameCopier().find(player);
++        final int after = sim == null ? before : sim.getCardsIn(ZoneType.Hand).size();
++        final int max = player.isUnlimitedHandSize() ? Integer.MAX_VALUE : player.getMaxHandSize();
++        double v = 0;
++        for (int h = Math.max(0, before); h < after; h++) {
++            v += h < max ? DRAW_CARD * scarcity(h) - 5 : DRAW_EXCESS - 1;
++        }
++        return (int) Math.round(v);
++    }
++
+     // sometimes simulation might not see the effect of some heuristics directly, so at least negate any card disadvantage
+     private static int expectedCardScoreLoss(Player player, SpellAbility sa, GameSimulator simulator) {
+         Card source = sa.getHostCard();

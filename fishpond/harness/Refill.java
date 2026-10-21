@@ -24,15 +24,25 @@ import java.util.*;
  *   costs     the opponents' draw punishers (life x LIFE) and, for a refill every player gets, the opponents' new cards (OPP_GAIN x an
  *             average card per card each gets beyond its hand) unless the seat has payoffs for opponents drawing (Xyris)
  *   verdict   refill when the projected draw beats the hand by MARGIN (-Dfishpond.refillMargin, for tuning)
+ *   scarcity  (the user, 2026-10-21: a card is worth more the smaller the hand, rising steeply toward an empty one) each card the
+ *             refill adds past the hand's size fills a slot k (the cards already in hand before it) and is worth an average drawn card
+ *             times scarcity(k) = 1 + SCARCITY x DECAY^k (Forge patch 80's curve: 4x into an empty hand, 1.75x with two); an
+ *             opponent's new cards count the same way from its own hand's size
+ *   feeding   (the user: punishment "exponentially when stacked") the cards drawn traced through the opponents' triggers: a draw
+ *             payoff that makes tokens (Xyris's Snakes) times what each token entering does to the seat (Purphoros: 2), plus the
+ *             tokens themselves (TOKEN each)
  */
 final class Refill {
     static final boolean ON = !"false".equals(System.getProperty("fishpond.refill"));
-    static final double MARGIN = Double.parseDouble(System.getProperty("fishpond.refillMargin", "1.0"));
+    static final double MARGIN = Double.parseDouble(System.getProperty("fishpond.refillMargin", "2.0"));
     static final double LIFE = Double.parseDouble(System.getProperty("fishpond.refillLife", "0.25"));
     static final double OPP_GAIN = Double.parseDouble(System.getProperty("fishpond.refillOpp", "0.5"));
     static final double PAYOFF = Double.parseDouble(System.getProperty("fishpond.refillPayoff", "1.0"));   // a draw payoff's trigger
     static final double OPEN_MANA = 1.5;   // an opponent with 2+ untapped lands uses its new cards at once (the user: "if they have a response")
     static final double LAND = 0.6, LAND_LATE = 0.2, RAMP_EARLY = 0.5;
+    static final double SCARCITY = Double.parseDouble(System.getProperty("fishpond.drawScarcity", "3"));
+    static final double DECAY = Double.parseDouble(System.getProperty("fishpond.drawDecay", "0.5"));
+    static final double TOKEN = Double.parseDouble(System.getProperty("fishpond.refillToken", "0.25"));   // an opponent's token, in hand-score units
     static final int SAMPLES = 200;
 
     /** Patch 78's hook: refill? null when sa isn't one or the score is off. */
@@ -64,7 +74,12 @@ final class Refill {
         double avgCmc = avgSpellCmc(ai);
         int cap = maxHand == Integer.MAX_VALUE ? n : Math.min(n, maxHand + (int) Math.floor(manaAfter / Math.max(1.0, avgCmc)));
         double expect = expected(ai, pol, n, cap, manaAfter, cols);
-        int punish = punishment(ai, n);
+        double perCard = n == 0 ? 0 : expect / Math.max(1, cap);   // an average drawn card
+        double scarce = 0;
+        for (int k = hand.size(); k < cap; k++) scarce += scarcity(k) - 1;
+        double bonus = perCard * scarce;
+        int[] fed = feeding(ai, sa, n, base);   // {life the seat loses, tokens the opponents get}
+        int punish = punishment(ai, n) + fed[0];
         // draw payoffs (the user, 2026-10-20: "draw payoffs should massively increase the evaluation of casting the wheel effects,
         // including things like draw multipliers"): each trigger on the seat's own draws, and on opponents' draws for a refill they share
         int oppDraws = 0;
@@ -73,19 +88,21 @@ final class Refill {
         double payoff = PAYOFF * (pay[0] * n + pay[1] * oppDraws);
         double opp = 0;
         if (symmetric(sa) && pay[1] == 0) {
-            double perCard = n == 0 ? 0 : expect / Math.max(1, cap);
             for (Player o : ai.getOpponents()) {
                 if (o.hasLost()) continue;
                 double w = untappedLands(o) >= 2 ? OPP_GAIN * OPEN_MANA : OPP_GAIN;
-                opp += w * perCard * Math.max(0, base - o.getCardsIn(ZoneType.Hand).size());
+                double gain = 0;
+                for (int k = o.getCardsIn(ZoneType.Hand).size(); k < base; k++) gain += scarcity(k);
+                opp += w * perCard * gain;
             }
         }
-        double net = expect + payoff - LIFE * punish - opp - keep;
+        opp += TOKEN * fed[1];
+        double net = expect + bonus + payoff - LIFE * punish - opp - keep;
         boolean go = net >= MARGIN;
         System.out.println("#FP-REFILL {\"seat\": \"" + ai.getName() + "\", \"turn\": " + ai.getGame().getPhaseHandler().getTurn()
                 + ", \"card\": " + ForgeRunner.js(host.getName()) + ", \"hand\": " + hand.size() + ", \"draw\": " + n + ", \"cap\": " + cap
-                + ", \"mana_after\": " + manaAfter + ", \"keep\": " + HandScore.round(keep) + ", \"expect\": " + HandScore.round(expect)
-                + ", \"punish\": " + punish + ", \"payoff\": " + HandScore.round(payoff) + ", \"opp\": " + HandScore.round(opp) + ", \"net\": " + HandScore.round(net)
+                + ", \"mana_after\": " + manaAfter + ", \"keep\": " + HandScore.round(keep) + ", \"expect\": " + HandScore.round(expect) + ", \"scarce\": " + HandScore.round(bonus)
+                + ", \"punish\": " + punish + ", \"tokens\": " + fed[1] + ", \"payoff\": " + HandScore.round(payoff) + ", \"opp\": " + HandScore.round(opp) + ", \"net\": " + HandScore.round(net)
                 + ", \"margin\": " + MARGIN + ", \"refill\": " + go + ", \"cards\": " + names(hand) + "}");
         return go;
     }
@@ -194,6 +211,12 @@ final class Refill {
         return total;
     }
 
+    /** How much more a card is worth with k cards already in hand (Forge patch 80's curve): 4x into an empty hand, 1.75x with
+     *  two, about 1x from six (DECAY 0.5). */
+    static double scarcity(int k) {
+        return 1 + SCARCITY * Math.pow(DECAY, Math.max(0, k));
+    }
+
     /** The expected value of drawing n cards from the library as it is, keeping the best cap of them. Sampled with a seed made
      *  from the turn and library, so the game's own random numbers aren't touched. */
     static double expected(Player ai, PilotPolicy pol, int n, int cap, int mana, Set<Character> cols) {
@@ -247,6 +270,46 @@ final class Refill {
                 }
         }
         return total;
+    }
+
+    /** The draws traced through the opponents' triggers: {life the seat loses, tokens the opponents get}. A "whenever an opponent
+     *  draws" trigger that makes tokens (Xyris) makes them for every card its controller's opponents draw (the seat's n, and each
+     *  other player's base for a refill every player gets); each token entering fires that player's "another creature you control
+     *  enters" damage or life loss to each opponent (Purphoros, God of the Forge: 2 to the seat per token). */
+    static int[] feeding(Player ai, SpellAbility sa, int n, int base) {
+        int life = 0, tokens = 0;
+        for (Player o : ai.getOpponents()) {
+            if (o.hasLost()) continue;
+            int perDraw = 0;
+            for (Card c : o.getCardsIn(ZoneType.Battlefield))
+                for (Trigger t : c.getTriggers()) {
+                    if (t.getMode() != TriggerType.Drawn || !t.getParamOrDefault("ValidCard", "").contains("Opp")) continue;
+                    try {
+                        for (SpellAbility x = t.ensureAbility(); x != null; x = x.getSubAbility())
+                            if (x.getApi() == ApiType.Token) perDraw += amount(x, "TokenAmount");
+                    } catch (RuntimeException e) { }
+                }
+            if (perDraw == 0) continue;
+            int draws = n;
+            if (symmetric(sa)) for (Player q : ai.getGame().getPlayers()) if (q != o && q != ai && !q.hasLost()) draws += base;
+            int made = perDraw * draws;
+            int perToken = 0;
+            for (Card c : o.getCardsIn(ZoneType.Battlefield))
+                for (Trigger t : c.getTriggers()) {
+                    if (t.getMode() != TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))
+                            || !t.getParamOrDefault("ValidCard", "").contains("Creature")) continue;
+                    try {
+                        for (SpellAbility x = t.ensureAbility(); x != null; x = x.getSubAbility()) {
+                            String who = x.getParamOrDefault("Defined", "");
+                            if (x.getApi() == ApiType.DealDamage && who.contains("Opponent")) perToken += amount(x, "NumDmg");
+                            else if (x.getApi() == ApiType.LoseLife && who.contains("Opponent")) perToken += amount(x, "LifeAmount");
+                        }
+                    } catch (RuntimeException e) { }
+                }
+            tokens += made;
+            life += made * perToken;
+        }
+        return new int[] {life, tokens};
     }
 
     static int amount(SpellAbility x, String p) {

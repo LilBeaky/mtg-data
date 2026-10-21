@@ -1,0 +1,16 @@
+# title: Windfall with two decent spells, the opponent holding five, but it has Xyris and Purphoros out: five draws make five Snakes and 10 damage to the AI, so it keeps (patch 80 feeding; the user, 2026-10-20: "that wheel probably stinks, especially if Xyris also had a payoff like Purphoros")
+# card: Windfall
+# turns: 2
+# sim: hybrid
+# forbid: cast Windfall
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island
+p0hand=Windfall;Serra Angel;Counterspell
+p0library=Serra Angel;Island;Air Elemental;Plains;Mahamoti Djinn;Island;Counterspell;Plains;Divination;Island;Wind Drake;Plains;Phantom Warrior;Island;Man-o'-War;Plains;Sleep;Island;Pacifism;Plains;Swords to Plowshares;Wrath of God;Serra Angel;Air Elemental;Mahamoti Djinn;Counterspell;Divination;Wind Drake;Phantom Warrior;Man-o'-War
+p1battlefield=Forest;Xyris, the Writhing Storm;Purphoros, God of the Forge
+p1hand=Forest;Forest;Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
