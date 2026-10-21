@@ -29,8 +29,8 @@ import java.util.*;
  *             times scarcity(k) = 1 + SCARCITY x DECAY^k (Forge patch 80's curve: 4x into an empty hand, 1.75x with two); an
  *             opponent's new cards count the same way from its own hand's size
  *   feeding   (the user: punishment "exponentially when stacked") the cards drawn traced through the opponents' triggers: a draw
- *             payoff that makes tokens (Xyris's Snakes) times what each token entering does to the seat (Purphoros: 2), plus the
- *             tokens themselves (TOKEN each)
+ *             payoff that makes tokens (Xyris's Snakes) times what each token entering does to the seat (Purphoros: 2, to each of its
+ *             controller's opponents, so net of what the seat's other opponents take), plus the tokens themselves (TOKEN each)
  */
 final class Refill {
     static final boolean ON = !"false".equals(System.getProperty("fishpond.refill"));
@@ -64,7 +64,7 @@ final class Refill {
         hand.remove(host);
         int cost = sa.getPayCosts() == null || sa.getPayCosts().getTotalMana() == null || !host.isInZone(ZoneType.Hand) ? 0
                 : sa.getPayCosts().getTotalMana().getCMC();
-        int manaNow = Math.max(0, ComputerUtilMana.getAvailableManaEstimate(ai, false));
+        int manaNow = manaNow(ai);
         int manaAfter = Math.max(0, manaNow - cost);
         Set<Character> cols = colorsOnBoard(ai);
         int base = drawCount(ai, sa);
@@ -107,8 +107,64 @@ final class Refill {
         return go;
     }
 
+    /** Patch 82's hook: the cards an "any number" put-back or discard that draws them back gives up (Valakut Awakening: put any
+     *  number on the bottom, draw that many plus one; Colossus of the Blood Age: discard any number, draw that many plus one).
+     *  The user, 2026-10-21 (Valakut put back Terror of the Peaks and three lands): keep what's worth more than a random draw.
+     *  Card by card, the one adding least to the hand goes while what it adds is under a random card's expected worth (the same
+     *  role scoring, with the mana the seat's sources make, since the cards are for its next turns); a land stays while the
+     *  sources plus the lands kept are short of the costliest spell kept. Null: Forge's choice. */
+    static forge.game.card.CardCollectionView putBack(Player ai, SpellAbility sa) {
+        try {
+            if (!ON || sa == null || sa.getHostCard() == null || !ThreatModel.REAL.contains(ai.getGame()) || !drawsThemBack(sa)) return null;
+            PilotPolicy pol = ThreatModel.policyOf(ai);
+            Card host = sa.getHostCard();
+            List<Card> keep = new ArrayList<>(ai.getCardsIn(ZoneType.Hand));
+            keep.remove(host);
+            int mana = Math.max(0, ComputerUtilMana.getAvailableManaEstimate(ai, false));   // every source, untapped by its next turn
+            Set<Character> cols = colorsOnBoard(ai);
+            double draw = expected(ai, pol, 1, 1, mana, cols);
+            forge.game.card.CardCollection back = new forge.game.card.CardCollection();
+            while (!keep.isEmpty()) {
+                double whole = value(ai, pol, keep, mana, cols), least = Double.MAX_VALUE;
+                Card worst = null;
+                int lands = 0, top = 0;
+                for (Card c : keep) { if (c.isLand()) lands++; else top = Math.max(top, c.getCMC()); }
+                for (Card c : keep) {
+                    if (c.isLand() && mana + lands - 1 < top) continue;   // a land the kept spells still need to be cast
+                    List<Card> rest = new ArrayList<>(keep);
+                    rest.remove(c);
+                    double adds = whole - value(ai, pol, rest, mana, cols);
+                    if (adds < least) { least = adds; worst = c; }
+                }
+                if (worst == null) break;
+                if (least >= draw) break;
+                keep.remove(worst);
+                back.add(worst);
+            }
+            System.out.println("#FP-PUTBACK {\"seat\": \"" + ai.getName() + "\", \"turn\": " + ai.getGame().getPhaseHandler().getTurn()
+                    + ", \"card\": " + ForgeRunner.js(host.getName()) + ", \"draw\": " + HandScore.round(draw) + ", \"back\": " + names(back)
+                    + ", \"keep\": " + names(keep) + "}");
+            return back;
+        } catch (RuntimeException e) {
+            System.out.println("#FP-WARN put-back: " + e);
+            return null;
+        }
+    }
+
+    /** sa (or what follows it) draws the seat as many cards as it put away (a count of the remembered cards). */
+    static boolean drawsThemBack(SpellAbility sa) {
+        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
+            if (x.getApi() != ApiType.Draw || !includesYou(x)) continue;
+            String nc = x.getParamOrDefault("NumCards", "1");
+            String sv = x.hasSVar(nc) ? x.getSVar(nc) : x.getHostCard() != null && x.getHostCard().hasSVar(nc) ? x.getHostCard().getSVar(nc) : "";
+            if (sv.isEmpty()) sv = nc;   // written inline (Colossus: Remembered$Amount/Plus.1)
+            if (sv.startsWith("Remembered") || sv.startsWith("Count$RememberedSize")) return true;
+        }
+        return false;
+    }
+
     /** The hand's card names as a JSON list, for the log. */
-    static String names(List<Card> cards) {
+    static String names(Iterable<Card> cards) {
         StringBuilder b = new StringBuilder("[");
         for (Card c : cards) b.append(b.length() > 1 ? ", " : "").append(ForgeRunner.js(c.getName()));
         return b.append("]").toString();
@@ -166,15 +222,28 @@ final class Refill {
             }
         }
         int n = 0;
+        boolean thatMany = false;
         for (SpellAbility x : chain) {
             if (x.getApi() != ApiType.Draw || !includesYou(x)) continue;
             try { n += Math.max(0, AbilityUtils.calculateAmount(x.getHostCard(), x.getParamOrDefault("NumCards", "1"), x)); }
             catch (RuntimeException e) { n += 1; }
+            thatMany |= countsDiscarded(x);
         }
+        // "discard your hand, then draw that many" (Fateful Showdown) counts the discarded cards at resolution and reads 0 before:
+        // it draws the hand it discards (the user's study, 2026-10-21: Ragost judged it 48 times at 0 cards and never cast it)
+        if (n == 0 && thatMany) n = ai.getCardsIn(ZoneType.Hand).size() - (host.isInZone(ZoneType.Hand) ? 1 : 0);
         if (n == 0 && symmetric(sa)) {
             for (Player p : ai.getGame().getPlayers()) if (!p.hasLost()) n = Math.max(n, p.getCardsIn(ZoneType.Hand).size() - (p == ai ? 1 : 0));
         }
         return n;
+    }
+
+    /** A Draw whose count is the cards the chain remembered putting away (Remembered$Amount). */
+    static boolean countsDiscarded(SpellAbility x) {
+        String nc = x.getParamOrDefault("NumCards", "1");
+        String sv = x.hasSVar(nc) ? x.getSVar(nc) : x.getHostCard() != null && x.getHostCard().hasSVar(nc) ? x.getHostCard().getSVar(nc) : "";
+        if (sv.isEmpty()) sv = nc;
+        return sv.startsWith("Remembered") || sv.startsWith("Count$RememberedSize");
     }
 
     // ---------------------------------------------------------------- scoring with this turn's mana
@@ -235,6 +304,24 @@ final class Refill {
             sum += value(ai, pol, drawn, mana, cols);
         }
         return sum / SAMPLES;
+    }
+
+    static java.lang.reflect.Method manaAvailable;
+    static boolean manaLooked;
+
+    /** The mana the seat can make now: Forge patch 72's count (untapped, usable sources; a choice of colors once), set by
+     *  reflection since the harness compiles against the stock jar. Forge's estimate counted tapped sources and every color a
+     *  Talisman can make: the user's study (2026-10-21) had Xyris at 21 mana with 3 untapped. */
+    static int manaNow(Player ai) {
+        if (!manaLooked) {
+            manaLooked = true;
+            try { manaAvailable = Class.forName("forge.ai.TurnPlan").getMethod("manaAvailable", Player.class); }
+            catch (ReflectiveOperationException e) { System.out.println("#FP-WARN refill: no mana count in this Forge build (patch 72)"); }
+        }
+        try {
+            if (manaAvailable != null) return Math.max(0, (Integer) manaAvailable.invoke(null, ai));
+        } catch (ReflectiveOperationException e) { }
+        return Math.max(0, ComputerUtilMana.getAvailableManaEstimate(ai, true));
     }
 
     static Set<Character> colorsOnBoard(Player ai) {
@@ -307,7 +394,12 @@ final class Refill {
                     } catch (RuntimeException e) { }
                 }
             tokens += made;
-            life += made * perToken;
+            // the damage hits each of o's opponents: the seat's other opponents take it too (the user, 2026-10-21: "that damage is to
+            // EACH player, so that can almost be considered a burn spell"); as the board score weighs it, the seat's own loss less its
+            // opponents' average loss, which is the loss over the number of its opponents
+            int others = 0;
+            for (Player q : ai.getOpponents()) if (!q.hasLost()) others++;
+            life += (int) Math.round((double) made * perToken / Math.max(1, others));
         }
         return new int[] {life, tokens};
     }

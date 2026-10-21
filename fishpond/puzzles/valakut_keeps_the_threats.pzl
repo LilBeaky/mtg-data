@@ -1,0 +1,18 @@
+# title: Valakut Awakening with Terror of the Peaks, Blast-Furnace Hellkite (nine mana) and four lands in hand, three lands out: it keeps Terror of the Peaks and the land that casts it and puts back the rest (patch 82; Forge put back the whole hand, the user's study 2026-10-21 bottomed Terror of the Peaks and three lands; the user: keep the good cards)
+# card: Valakut Awakening
+# turns: 2
+# sim: hybrid
+# expect: cast Valakut Awakening
+# expect: #FP-PUTBACK .*"keep": \[[^\]]*Terror of the Peaks
+# forbid: #FP-PUTBACK .*"back": \[[^\]]*Terror of the Peaks
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0command=Klauth, Unrivaled Ancient|IsCommander
+p0battlefield=Mountain;Mountain;Forest
+p0hand=Valakut Awakening;Terror of the Peaks;Blast-Furnace Hellkite;Forest;Forest;Mountain;Mountain
+p0library=Thrakkus the Butcher;Mountain;Rampant Growth;Forest;Dragonborn Champion;Mountain;Sol Ring;Forest;Utvara Hellkite;Mountain;Llanowar Elves;Forest;Broodcaller Scourge;Mountain;Cultivate;Forest;Wulfgar of Icewind Dale;Mountain;Gwenna, Eyes of Gaea;Forest;Atarka, World Render;Mountain;Three Visits;Forest;Savage Ventmaw;Mountain;Dragon Tempest;Forest;Lathliss, Dragon Queen;Mountain
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

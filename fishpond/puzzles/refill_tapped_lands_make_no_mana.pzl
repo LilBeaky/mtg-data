@@ -1,0 +1,16 @@
+# title: Windfall for six holding Serra Angel and Counterspell, a library of five- and six-drops, four untapped Islands and eight tapped lands: tapped lands make no mana this turn, so the draw is judged with the four untapped and the AI keeps (the refill scorer counted tapped sources; the user's study 2026-10-21 had Xyris at 21 mana with 3 untapped)
+# card: Windfall
+# turns: 2
+# sim: hybrid
+# forbid: cast Windfall
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Island|Tapped;Island|Tapped;Island|Tapped;Island|Tapped;Plains|Tapped;Plains|Tapped;Plains|Tapped;Plains|Tapped
+p0hand=Windfall;Serra Angel;Counterspell
+p0library=Mahamoti Djinn;Island;Air Elemental;Plains;Serra Angel;Island;Baneslayer Angel;Plains;Sun Titan;Island;Frost Titan;Plains;Sphinx of Jwar Isle;Island;Mahamoti Djinn;Plains;Air Elemental;Island;Serra Angel;Plains;Baneslayer Angel;Island;Sun Titan;Plains;Frost Titan;Island;Sphinx of Jwar Isle;Plains;Mahamoti Djinn;Island
+p1battlefield=Forest
+p1hand=Forest;Forest;Forest;Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

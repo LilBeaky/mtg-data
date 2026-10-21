@@ -1,0 +1,17 @@
+# title: Colossus of the Blood Age dies with two spare lands and Lightning Helix in hand, eight lands out: "discard any number, then draw that many plus one" discards the spare lands and keeps the Helix (patch 82; Forge discarded none)
+# card: Colossus of the Blood Age
+# turns: 2
+# sim: hybrid
+# expect: #FP-PUTBACK .*Colossus of the Blood Age.*"back": \[[^\]]*Plains
+# forbid: #FP-PUTBACK .*Colossus of the Blood Age.*"back": \[[^\]]*Lightning Helix
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Mountain;Mountain;Mountain;Mountain;Plains;Plains;Plains;Plains;Colossus of the Blood Age
+p0hand=Lightning Helix;Plains;Plains
+p0library=Lightning Helix;Mountain;Boros Charm;Plains;Shivan Dragon;Mountain;Lightning Bolt;Plains;Sunfire Torch;Mountain;Inferno Titan;Plains;Searing Spear;Mountain;Hellrider;Plains;Glorybringer;Mountain;Chain Lightning;Plains
+p1battlefield=Swamp;Swamp;Swamp;Swamp
+p1hand=Murder
+p1library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp

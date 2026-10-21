@@ -1,0 +1,82 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 6d83842..a373308 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -2047,6 +2047,17 @@ public class AiController {
+             }
+ 
+             if (sa.hasParam("AnyNumber")) {
++                // fishpond patch 82: "discard any number, then draw that many" keeps what beats a draw (Colossus of the Blood Age)
++                final CardCollectionView back = ComputerUtil.putBack(player, sa);
++                if (back != null) {
++                    final CardCollection out = new CardCollection();
++                    for (final Card b : back) {
++                        if (validCards.contains(b)) {
++                            out.add(b);
++                        }
++                    }
++                    return out;
++                }
+                 if ("DiscardUncastableAndExcess".equals(sa.getParam("AILogic"))) {
+                     CardCollection discards = new CardCollection();
+                     final CardCollectionView inHand = player.getCardsIn(ZoneType.Hand);
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index fbe8d1d..814b99d 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -2517,7 +2517,31 @@ public class ComputerUtil {
+     /** fishpond patch 68: the harness's hand score (HandScore.java: a mana gate, then the hand scored by role, the commander
+      *  counted, against a bar from the deck's own list). Set by reflection; null answers fall through to the patch-26 rule. */
+     public static java.util.function.BiFunction<Player, Integer, Boolean> MULLIGAN = null;
+-    public static java.util.function.BiFunction<Player, Integer, CardCollectionView> BOTTOM = null;
++    public static java.util.function.BiFunction<Player, Integer, CardCollectionView> BOTTOM = null;
++
++    /** fishpond patch 82: the cards from hand an "any number" put-back or discard that draws them back should give up (Valakut
++     *  Awakening, Colossus of the Blood Age): the harness's Refill.putBack, keeping a card worth more than a random draw. Forge took
++     *  the worst card again and again until the hand was gone (Valakut; the user's study 2026-10-21 put back Terror of the Peaks
++     *  and three lands), or none at all (Colossus's discard). Null: Forge's own choice. One answer per resolution, since the hand
++     *  shrinks as the cards go. */
++    public static java.util.function.BiFunction<Player, SpellAbility, CardCollectionView> PUT_BACK = null;
++    private static java.lang.ref.WeakReference<SpellAbility> putBackSa = new java.lang.ref.WeakReference<>(null);
++    private static CardCollectionView putBackCards;
++    private static int putBackTurn = -1;
++
++    public static synchronized CardCollectionView putBack(final Player ai, final SpellAbility sa) {
++        final java.util.function.BiFunction<Player, SpellAbility, CardCollectionView> hook = PUT_BACK;
++        if (hook == null || sa == null || !forge.ai.ability.DrawAi.pilotSeat(ai)) {
++            return null;
++        }
++        final int turn = ai.getGame().getPhaseHandler().getTurn();
++        if (putBackSa.get() != sa || putBackTurn != turn) {
++            putBackCards = hook.apply(ai, sa);
++            putBackSa = new java.lang.ref.WeakReference<>(sa);
++            putBackTurn = turn;
++        }
++        return putBackCards;
++    }
+ 
+     public static boolean pilotWantMulligan(final Player ai, final int cardsToReturn) {
+         final java.util.function.BiFunction<Player, Integer, Boolean> hook = MULLIGAN;
+diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+index 1cbdb04..59dfab4 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+@@ -1684,6 +1684,18 @@ public class ChangeZoneAi extends SpellAbilityAi {
+             if (player.isOpponentOf(decider)) {
+                 c = ComputerUtilCard.getBestAI(fetchList);
+             } else {
++                // fishpond patch 82: "put any number from your hand on the bottom, then draw that many" keeps what beats a draw
++                if (ZoneType.Library.equals(destination) && origin.contains(ZoneType.Hand) && !sa.hasParam("Mandatory")) {
++                    final CardCollectionView back = ComputerUtil.putBack(decider, sa);
++                    if (back != null) {
++                        for (final Card b : fetchList) {
++                            if (back.contains(b)) {
++                                return b;
++                            }
++                        }
++                        return null;
++                    }
++                }
+                 if (!sa.hasParam("Mandatory") && origin.contains(ZoneType.Battlefield) && sa.hasParam("ChangeNum")) {
+                     // exclude tokens, they won't come back, and enchanted stuff, since auras will go away
+                     fetchList = prefilterOwnListForBounceAnyNum(fetchList, decider);

@@ -1,0 +1,53 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 71a0ba9..6d83842 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1056,7 +1056,12 @@ public class AiController {
+                 if (!go) {
+                     return AiPlayDecision.CantPlayAi;
+                 }
+-                return TurnPlan.othersPlanned(this, player, sa) ? AiPlayDecision.AnotherTime : AiPlayDecision.WillPlay;
++                if (TurnPlan.othersPlanned(this, player, sa)) {
++                    return AiPlayDecision.AnotherTime;
++                }
++                // fishpond patch 81: the verdict skips the API logic that picks targets; pick them as for a mandatory trigger
++                // (Fateful Showdown went to the stack untargeted and fizzled)
++                return refillTargets(sa, true) ? AiPlayDecision.WillPlay : AiPlayDecision.CantPlayAi;
+             }
+         }
+         if (forge.ai.ability.DrawAi.pilotSeat(player) && !forge.ai.ability.DrawAi.drawCostOk(player, sa)) {
+@@ -3263,7 +3268,8 @@ public class AiController {
+             if (!mandatory && forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.refills(sa)) {
+                 final Boolean go = refillVerdict(sa);
+                 if (go != null) {
+-                    return go;
++                    // fishpond patch 81: a refill Forge's own logic declined has no targets yet (Knollspine Dragon's opponent)
++                    return go && (yes || refillTargets(sa, false));
+                 }
+             }
+             // fishpond patch 76: an optional draw pays the draw punishers like a life cost
+@@ -4312,6 +4318,24 @@ public class AiController {
+     // planned plays (cast what you can before the hand goes); an optional one (Knollspine Dragon's enter trigger) asks the same.
+     public static volatile java.util.function.BiFunction<Player, SpellAbility, Boolean> REFILL;
+ 
++    /** fishpond patch 81: targets for a refill the harness's verdict decided on, chosen as for a mandatory trigger (whole chain);
++     *  false when there are none to choose. checkFirst: leave targets the API logic already set. */
++    private boolean refillTargets(final SpellAbility sa, final boolean checkFirst) {
++        boolean targets = false;
++        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) targets |= x.usesTargeting();
++        if (!targets || sa.getApi() == null) {
++            return true;
++        }
++        if (checkFirst) {
++            boolean set = true;
++            for (SpellAbility x = sa; x != null; x = x.getSubAbility()) set &= !x.usesTargeting() || x.isTargetNumberValid();
++            if (set) {
++                return true;
++            }
++        }
++        return SpellApiToAi.Converter.get(sa).doTriggerNoCostWithSubs(player, sa, true).willingToPlay();
++    }
++
+     private Boolean refillVerdict(final SpellAbility sa) {
+         final java.util.function.BiFunction<Player, SpellAbility, Boolean> f = REFILL;
+         try {

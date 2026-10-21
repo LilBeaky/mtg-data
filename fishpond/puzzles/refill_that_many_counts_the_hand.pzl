@@ -1,0 +1,15 @@
+# title: Fateful Showdown with four extra lands in hand and eight on the battlefield: "discard your hand, then draw that many" draws four, so the AI casts it (the draw count reads 0 before it resolves; the user's Klauth study 2026-10-21: Ragost judged it 48 times at 0 cards and never cast it)
+# card: Fateful Showdown
+# turns: 2
+# sim: hybrid
+# expect: cast Fateful Showdown
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p0hand=Fateful Showdown;Mountain;Mountain;Mountain;Mountain
+p0library=Shivan Dragon;Mountain;Lightning Bolt;Hill Giant;Mountain;Lava Axe;Inferno Titan;Mountain;Fireball;Goblin Guide;Mountain;Flametongue Kavu;Thundermaw Hellkite;Mountain;Chain Lightning;Glorybringer;Mountain;Searing Spear;Hellrider;Mountain
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

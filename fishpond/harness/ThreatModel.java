@@ -880,6 +880,12 @@ public final class ThreatModel {
         } catch (ReflectiveOperationException e) {
             ForgeRunner.out.println("#FP-WARN no refill hook in this Forge build (patch 78)");
         }
+        java.util.function.BiFunction<Player, SpellAbility, forge.game.card.CardCollectionView> pb = Refill::putBack;   // patch 82
+        try {
+            forge.ai.ComputerUtil.class.getField("PUT_BACK").set(null, pb);
+        } catch (ReflectiveOperationException e) {
+            ForgeRunner.out.println("#FP-WARN no put-back hook in this Forge build (patch 82)");
+        }
         java.util.function.Predicate<Player> em = ThreatModel::emergency;   // patch 73: a transmute card's spell only in an emergency
         try {
             forge.ai.AiController.class.getField("EMERGENCY").set(null, em);
