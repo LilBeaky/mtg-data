@@ -1,0 +1,44 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index d685175..10b33b0 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -225,11 +225,20 @@ public final class TurnPlan {
+     // A unit is one mana the seat can make now, as the set of colors it could be (bits W U B R G, and C_BIT for colorless): a
+     // dual land is W|U, a Talisman W|U|C, Sol Ring two units of C. A pip is one colored symbol of a cost, as the colors that pay
+     // it (a hybrid pip two). Generic mana, Phyrexian and 2/W pips are left to the amount check.
+-    static final int C_BIT = 32;
++    static final int C_BIT = 32, ANY = 63;
+     static final String[] COLOR_SHORT = {"W", "U", "B", "R", "G", "C"};
+ 
+     static int colorsOf(final forge.game.spellability.AbilityManaPart mp, final SpellAbility ma) {
+         int m = 0;
++        if (ma.getApi() == ApiType.ManaReflected) {   // Exotic Orchard, Fellwar Stone: the colors the opponents' lands make
++            try {
++                for (final String c : forge.game.card.CardUtil.getReflectableManaColors(ma)) {
++                    final byte b = forge.card.MagicColor.fromName(c);
++                    m |= b == 0 ? C_BIT : b & 31;
++                }
++            } catch (final RuntimeException e) { /* unknown */ }
++            return m;
++        }
+         for (int i = 0; i < 6; i++) {
+             try {
+                 if (mp.canProduce(COLOR_SHORT[i], ma)) m |= 1 << i;
+@@ -271,7 +280,7 @@ public final class TurnPlan {
+                 } catch (final RuntimeException e) { /* skip an ability whose check throws */ }
+             }
+             if (best > 0) best += tapExtra(src, extra);
+-            for (int k = 0; k < best; k++) out.add(mask == 0 ? C_BIT : mask);
++            for (int k = 0; k < best; k++) out.add(mask == 0 ? ANY : mask);   // colors it doesn't tell: any, never a false "can't pay"
+         }
+         if (landDrop(p) > 0) {
+             int mask = 0;
+@@ -332,7 +341,7 @@ public final class TurnPlan {
+             }
+         }
+         final List<Integer> out = new ArrayList<>();
+-        for (int k = 0; k < back; k++) out.add(mask == 0 ? C_BIT : mask);
++        for (int k = 0; k < back; k++) out.add(mask == 0 ? ANY : mask);
+         return out;
+     }
+ 

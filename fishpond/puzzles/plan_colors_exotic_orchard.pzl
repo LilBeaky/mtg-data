@@ -1,0 +1,15 @@
+# title: Plains, Swamp, Plains and Exotic Orchard (an opponent has an Island), Zur the Enchanter in the command zone: the plan casts Zur, the Orchard paying its blue (patch 86: patch 84's color check read Exotic Orchard and Fellwar Stone as colorless, so Zur was "off color" on turn 4 and came a turn later; zur5_20261022 game 0)
+# card: Exotic Orchard
+# turns: 1
+# expect: cast Zur the Enchanter
+# forbid: "off_color": \[[^\]]*"Zur the Enchanter"
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0command=Zur the Enchanter|IsCommander
+p0battlefield=Plains;Swamp;Plains;Exotic Orchard
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Island;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
