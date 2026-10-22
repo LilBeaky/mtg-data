@@ -1,0 +1,14 @@
+# title: One Underground River, Dark Ritual and Merfolk Looter in hand: the AI doesn't cast the Ritual, whose black would leave nothing blue for the Looter (patch 84: a rock or ritual is paid from the mana there before it; its own mana paid for itself, the plan cast the Ritual for a spell it couldn't then pay for: Zur's Dark Ritual into Escape Protocol, zur35_20261022)
+# card: Dark Ritual
+# turns: 1
+# forbid: Ai\(1\)-P1 cast Dark Ritual
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Underground River
+p0hand=Dark Ritual;Merfolk Looter
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

@@ -69,11 +69,8 @@ public class ForgeRunner {
     // starts a fresh one for the rest of its plan (pod1500_20261018: one timeout per worker, then every later game out of memory).
     static String restart;
 
-    public static void main(String[] args) throws Exception {
-        out = new PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.out), true, "UTF-8");
-        System.setProperty("java.awt.headless", "true");
-        GuiBase.setInterface(new GuiDesktop());
-        FModel.initialize(null, null);
+    /** The hooks through which Forge asks a seat's pilot policy (runs and, with a '# deck:' line, puzzles). */
+    static void installPolicyHooks() {
         // fishpond patch 54: Forge's cast ordering asks the seat's pilot policy for the deck's plan (PilotPolicy.castPriority);
         // (the lookahead's game copies keep the same lobby players, so their seats get it too)
         // (set by reflection: the harness compiles against the stock jar, where the field doesn't exist)
@@ -86,6 +83,28 @@ public class ForgeRunner {
                 (p, c) -> p.getController() instanceof SafeControllerAi sc && sc.policy != null && sc.policy.keepCard(c.getName());
         try { forge.ai.AiController.class.getField("KEY_CARD").set(null, keyCard); }
         catch (ReflectiveOperationException e) { out.println("#FP-WARN no key-card hook in this Forge build (patch 55)"); }
+        // fishpond patch 85: the turn plan values a tutor by what the policy would fetch (its commander gate first, as the
+        // search itself picks)
+        java.util.function.BiFunction<Player, Object[], List<Card>> tutorRank = (p, a) -> {
+            if (!(p.getController() instanceof SafeControllerAi sc) || sc.policy == null) return null;
+            @SuppressWarnings("unchecked") List<Card> cands = (List<Card>) a[2];
+            var ranked = sc.policy.rank(new ArrayList<>(cands), p, (forge.game.spellability.SpellAbility) a[0], (ZoneType) a[1], null);
+            Card gated = sc.policy.commanderGate(p, ranked, null);
+            List<Card> out = new ArrayList<>();
+            if (gated != null) out.add(gated);
+            for (var e : ranked) if (e.getKey() != gated) out.add(e.getKey());
+            return out;
+        };
+        try { Class.forName("forge.ai.TurnPlan").getField("TUTOR_RANK").set(null, tutorRank); }
+        catch (ReflectiveOperationException e) { out.println("#FP-WARN no tutor-rank hook in this Forge build (patch 85)"); }
+    }
+
+    public static void main(String[] args) throws Exception {
+        out = new PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.out), true, "UTF-8");
+        System.setProperty("java.awt.headless", "true");
+        GuiBase.setInterface(new GuiDesktop());
+        FModel.initialize(null, null);
+        installPolicyHooks();
         ThreatModel.installHooks();   // patch 57: counterspells and removal weigh the threat model
         // fishpond patch 68: mulligans by the hand score (HandScore.java)
         java.util.function.BiFunction<Player, Integer, Boolean> mull = HandScore::wantMulligan;

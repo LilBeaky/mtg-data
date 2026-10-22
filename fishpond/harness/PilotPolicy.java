@@ -117,6 +117,9 @@ public final class PilotPolicy {
      *  the rule doesn't apply (no commander waiting, or it's affordable). */
     Card commanderGate(Player me, List<Map.Entry<Card, double[]>> ranked, Card forgePick) {
         if (!GATE_ON) return null;
+        // a pick that completes a combo goes first (the user, 2026-10-21: "Witherbloom wants to tutor for Sprout Swarm, most
+        // definitely. Combo."; the gate took Deadly Dispute, ramp by its Treasure, over Sprout Swarm with Witherbloom waiting)
+        if (!ranked.isEmpty() && ranked.get(0).getValue()[COMBO] >= 700) return null;
         Card cmdr = null;
         for (Card c : me.getCardsIn(ZoneType.Command)) if (c.isCommander() && me.equals(c.getOwner())) { cmdr = c; break; }
         if (cmdr == null) return null;

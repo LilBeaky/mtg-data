@@ -1,0 +1,16 @@
+# title: Two Forests, Dragon Tempest ({1}{R}) and Grizzly Bears in hand: the plan leaves out the Tempest, which the lands can't pay for, and casts the Bears without trying it first (patch 84: Klauth planned Dragon Tempest four turns running with no red source, bracket1000_20261021)
+# card: Dragon Tempest
+# turns: 1
+# expect: "off_color": \["Dragon Tempest"
+# expect: cast Grizzly Bears
+# forbid: failed to play Dragon Tempest
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest
+p0hand=Dragon Tempest;Grizzly Bears
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

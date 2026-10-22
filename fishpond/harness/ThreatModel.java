@@ -916,6 +916,12 @@ public final class ThreatModel {
         } catch (ReflectiveOperationException e) {
             ForgeRunner.out.println("#FP-WARN no turn-plan hooks in this Forge build (patch 64)");
         }
+        java.util.function.Function<Player, String> answer = p -> { Posture x = posture(p); return x == null ? null : x.answer(); };
+        try {   // patch 84: the plan keeps the held answer's colors too
+            Class.forName("forge.ai.TurnPlan").getField("HOLD_ANSWER").set(null, answer);
+        } catch (ReflectiveOperationException e) {
+            ForgeRunner.out.println("#FP-WARN no held-answer hook in this Forge build (patch 84)");
+        }
     }
 
     void check(int turn, Player active) {

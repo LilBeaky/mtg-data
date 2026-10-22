@@ -2,8 +2,9 @@
 // for a few turns, and prints the game log. fishpond/puzzles.py checks the log against the puzzle's expect/forbid lines.
 // Used to test the AI on one mechanic at a time (docs/FORGE_PLAN.md, "Pilot policy", Part 2).
 //
-// usage: java -cp <jar>:<dir> PuzzleRunner STATE_FILE TURNS SEED [SIM]   (cwd = the Forge install; SIM = off (default) or
-//   hybrid: seat 1's lookahead, as in a run)
+// usage: java -cp <jar>:<dir> PuzzleRunner STATE_FILE TURNS SEED [SIM [DCK]]   (cwd = the Forge install; SIM = off (default) or
+//   hybrid: seat 1's lookahead, as in a run; DCK: seat 1's deck file, whose <DCK>.policy.json gives seat 1 that deck's pilot
+//   policy: its key cards, combos and tutor picks, as in a run)
 // STATE_FILE: GameState lines (p0... = seat 1, the player under test; p1... = seat 2), e.g. p0battlefield=Astral Slide;Plains
 
 import java.io.File;
@@ -36,7 +37,13 @@ public class PuzzleRunner {
         GuiBase.setInterface(new GuiDesktop());
         FModel.initialize(null, null);
         MyRandom.setRandom(new Random(seed));
-        ThreatModel.installHooks();   // patch 57 (no deck intel in puzzles: no combos or key cards)
+        ThreatModel.installHooks();   // patch 57 (no deck intel in puzzles unless a '# deck:' line names seat 1's deck)
+        PilotPolicy policy = null;
+        if (args.length > 4) {
+            File dck = new File(args[4]);
+            policy = PilotPolicy.load(dck.getParent(), dck.getName());
+            ForgeRunner.installPolicyHooks();
+        }
 
         GameRules rules = new GameRules(GameType.Constructed);
         rules.setGamesPerMatch(1);
@@ -52,7 +59,7 @@ public class PuzzleRunner {
             Deck d = new Deck("Puzzle" + (i + 1));
             d.getMain().add("Wastes", 40);
             RegisteredPlayer rp = new RegisteredPlayer(d);
-            ForgeRunner.SafeLobbyPlayerAi lp = new ForgeRunner.SafeLobbyPlayerAi("Ai(" + (i + 1) + ")-P" + (i + 1), i == 0 && hybrid ? EnumSet.of(forge.ai.AIOption.USE_HYBRID_SIMULATION) : EnumSet.noneOf(forge.ai.AIOption.class), fb, null);
+            ForgeRunner.SafeLobbyPlayerAi lp = new ForgeRunner.SafeLobbyPlayerAi("Ai(" + (i + 1) + ")-P" + (i + 1), i == 0 && hybrid ? EnumSet.of(forge.ai.AIOption.USE_HYBRID_SIMULATION) : EnumSet.noneOf(forge.ai.AIOption.class), fb, i == 0 ? policy : null);
             rp.setPlayer(lp);
             players.add(rp);
         }
@@ -83,6 +90,9 @@ public class PuzzleRunner {
         List<GameLogEntry> log = game.getGameLog().getLogEntries(null);
         Collections.reverse(log);
         for (GameLogEntry e : log) System.out.println(e);
+        for (var p : game.getRegisteredPlayers())
+            if (p.getController() instanceof ForgeRunner.SafeControllerAi sc && sc.policy != null)
+                for (String l : sc.policy.log) System.out.println("#FP-POLICY " + l);   // the tutor picks, with a '# deck:' line
         for (var p : game.getRegisteredPlayers())
             System.out.println("#FP-PUZZLE end " + p.getName() + " life " + p.getLife() + " hand " + p.getCardsIn(forge.game.zone.ZoneType.Hand).size()
                     + " battlefield " + p.getCardsIn(forge.game.zone.ZoneType.Battlefield).stream().map(c -> c.getName()).toList());

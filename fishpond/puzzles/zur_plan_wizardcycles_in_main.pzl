@@ -1,0 +1,15 @@
+# title: Zur's deck, own main phase with four lands and only Step Through in hand (a Wizard to find): the turn plan Wizardcycles it now (patch 83: the spell side's own hint says never, so the plan holds no mana for it and plans the search instead; then Archaeomancer can be cast)
+# card: Step Through
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: activated Step Through
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Plains;Swamp
+p0hand=Step Through
+p0library=Archaeomancer;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

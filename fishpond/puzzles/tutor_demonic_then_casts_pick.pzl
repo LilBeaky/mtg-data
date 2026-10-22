@@ -1,0 +1,15 @@
+# title: Six Swamps, Demonic Tutor and two Phyrexian Ragers in hand, Sheoldred in the library: the plan casts Demonic Tutor and then Sheoldred (patch 85: a tutor to hand is worth its pick at the tutor's cost plus the pick's; it was valued as a 2-mana spell, 160, and lost to the two Ragers)
+# card: Demonic Tutor
+# turns: 1
+# expect: cast Demonic Tutor
+# expect: cast Sheoldred, the Apocalypse
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p0hand=Demonic Tutor;Phyrexian Rager;Phyrexian Rager
+p0library=Sheoldred, the Apocalypse;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

@@ -1,0 +1,104 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index a373308..fff3308 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -4192,7 +4192,10 @@ public class AiController {
+             return false;
+         }
+         final Card host = sa.getHostCard();
+-        if (!host.isInZone(ZoneType.Hand) || isKeyCard(host)) {
++        // fishpond patch 83: a key card is kept from plain cycling (Astral Slide), not from typecycling: the search is the
++        // card's play. Zur's key Step Through was never cycled here (25 Wizardcycles in 350 seat-games, bracket1000_20261021)
++        final boolean typecycle = sa.getApi() == ApiType.ChangeZone && "Library".equals(sa.getParam("Origin"));
++        if (!host.isInZone(ZoneType.Hand) || (!typecycle && isKeyCard(host))) {
+             return false;
+         }
+         final forge.game.phase.PhaseHandler ph = game.getPhaseHandler();
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 38c8ae1..4203c4d 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -145,7 +145,7 @@ public final class TurnPlan {
+         }
+         boolean dropped = false;
+         for (final Step s : p.steps) {
+-            if (!seen.contains(s.card.getId())) {
++            if (s.sa.isSpell() && !seen.contains(s.card.getId())) {   // patch 83: a planned ability isn't among the spells
+                 declined(ai).add(s.card.getId());
+                 dropped = true;
+             }
+@@ -241,9 +241,10 @@ public final class TurnPlan {
+     /** A planned ritual (a spell that makes mana now) whose mana the rest of the plan needs: cast it as planned. Forge's own
+      *  ritual logic doesn't know what the mana is for and passed on Dark Ritual with a 3-drop to follow. */
+     public static boolean force(final AiController aic, final Player ai, final SpellAbility sa) {
+-        // patch 73: a planned transmute is made (Forge's tutor logic passed on Brainspoil's)
+-        if (active(ai) && sa != null && sa.getHostCard() != null && !sa.isSpell() && sa.getHostCard().hasStartOfKeyword("Transmute")
+-                && "Hand".equals(sa.getParam("ActivationZone"))) {
++        // patch 73: a planned transmute is made (Forge's tutor logic passed on Brainspoil's); patch 83: a planned typecycling too
++        if (active(ai) && sa != null && sa.getHostCard() != null && !sa.isSpell()
++                && (sa.getHostCard().hasStartOfKeyword("Transmute") && "Hand".equals(sa.getParam("ActivationZone"))
++                    || sa.isCycling() && sa.getApi() == ApiType.ChangeZone && "Library".equals(sa.getParam("Origin")))) {
+             final Plan p = plan(aic, ai);
+             if (p != null) {
+                 for (final Step s : p.steps) {
+@@ -506,7 +507,12 @@ public final class TurnPlan {
+                 continue;
+             }
+             final SpellAbility tm = transmuteOf(ai, c);   // patch 73: a transmute card is planned as its tutor
+-            final SpellAbility sa = tm != null && !AiController.emergency(ai) ? tm : firstSpell(ai, c);
++            SpellAbility sa = tm != null && !AiController.emergency(ai) ? tm : firstSpell(ai, c);
++            // patch 83: a spell its own "only when" hint rules out now is never cast (Step Through: only ever Wizardcycled, the
++            // user's override); a typecycler is planned as its search instead, anything else left out
++            if (sa != null && sa.isSpell() && !hintAllows(c, sa)) {
++                sa = typecycleOf(ai, c);
++            }
+             if (sa == null || sa.getApi() == ApiType.Counter) {
+                 continue;   // counterspells are held, not planned (patch 58 keeps their mana)
+             }
+@@ -603,6 +609,38 @@ public final class TurnPlan {
+         return null;
+     }
+ 
++    /** fishpond patch 83: c's typecycling ability (Wizardcycling), when c is in hand and the search has something to find. */
++    public static SpellAbility typecycleOf(final Player ai, final Card c) {
++        if (!c.isInZone(ZoneType.Hand)) {
++            return null;
++        }
++        for (final SpellAbility sa : c.getAllSpellAbilities()) {
++            if (sa.isSpell() || !sa.isCycling() || sa.getApi() != ApiType.ChangeZone || !"Library".equals(sa.getParam("Origin"))) {
++                continue;
++            }
++            try {
++                sa.setActivatingPlayer(ai);
++                final String type = sa.getParamOrDefault("ChangeType", "Card");
++                if (!forge.game.card.CardLists.getValidCards(ai.getCardsIn(ZoneType.Library), type.split(","), ai, c, sa).isEmpty()) {
++                    return sa;
++                }
++            } catch (final RuntimeException e) { /* no search we can judge */ }
++        }
++        return null;
++    }
++
++    /** fishpond patch 83: the card's own "only when" hint (NeedsToPlay, NeedsToPlayVar) allows casting sa now. */
++    static boolean hintAllows(final Card c, final SpellAbility sa) {
++        if (!c.hasSVar("NeedsToPlayVar") && !c.hasSVar("NeedsToPlay")) {
++            return true;
++        }
++        try {
++            return ComputerUtilCard.checkNeedsToPlayReqs(c, sa) == AiPlayDecision.WillPlay;
++        } catch (final RuntimeException e) {
++            return true;
++        }
++    }
++
+     static SpellAbility firstSpell(final Player ai, final Card c) {
+         for (final SpellAbility sa : c.getSpells()) {
+             if (sa.isAlternativeCost(forge.game.spellability.AlternativeCost.Overload)) {
+@@ -697,6 +735,7 @@ public final class TurnPlan {
+         v -= DRAW_LIFE * forge.ai.ability.DrawAi.drawLifeCost(ai, sa);   // patch 76: life lost to the opponents' draw punishers
+         if (!sa.isSpell() && "Hand".equals(sa.getParam("ActivationZone")) && "Library".equals(sa.getParam("Origin"))
+                 && c.hasStartOfKeyword("Transmute")) v += TRANSMUTE;   // patch 73: a tutor
++        if (!sa.isSpell() && sa.isCycling() && "Library".equals(sa.getParam("Origin"))) v += TRANSMUTE;   // patch 83: typecycling too
+         v += prio >= 3 ? 500 : prio == 2 ? 200 : prio == 1 ? 60 : 0;
+         final int pay = aic.payoffUnits(sa);
+         v += 40 * pay;

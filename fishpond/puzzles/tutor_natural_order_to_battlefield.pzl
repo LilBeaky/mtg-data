@@ -1,0 +1,14 @@
+# title: Four Forests and Llanowar Elves, Natural Order, Leatherback Baloth and Grizzly Bears in hand, Ghalta, Stampede Tyrant in the library: the plan casts Natural Order (sacrificing a creature) for the 12/12 (patch 85: a tutor onto the battlefield is worth its pick at the tutor's cost; it was valued as a 4-mana spell and lost to the Baloth and the Bears)
+# card: Natural Order
+# turns: 1
+# expect: cast Natural Order
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest;Forest;Forest;Forest;Llanowar Elves
+p0hand=Natural Order;Leatherback Baloth;Grizzly Bears
+p0library=Ghalta, Stampede Tyrant;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

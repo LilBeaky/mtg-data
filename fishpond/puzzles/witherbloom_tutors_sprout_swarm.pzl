@@ -1,0 +1,16 @@
+# title: Witherbloom's deck (its pilot policy), Witherbloom waiting in the command zone, six lands and Diabolic Tutor: the tutor fetches Sprout Swarm, the combo with Witherbloom, not Deadly Dispute (the commander gate took ramp first: Deadly Dispute makes a Treasure; a combo completion now skips the gate)
+# card: Diabolic Tutor
+# deck: Gaiges_Balancer_Combo
+# turns: 1
+# expect: #FP-POLICY .*"src": "Diabolic Tutor".*"pick": "Sprout Swarm"
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0command=Witherbloom, the Balancer|IsCommander
+p0battlefield=Swamp;Swamp;Swamp;Forest;Forest;Forest
+p0hand=Diabolic Tutor
+p0library=Sprout Swarm;Deadly Dispute;Village Rites;Plumb the Forbidden;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

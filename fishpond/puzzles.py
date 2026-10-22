@@ -39,6 +39,16 @@ def load(path):
             state.append(line)
     return meta, state
 
+def _policy_dck(name):
+    """A .dck path whose <dck>.policy.json holds deck NAME's pilot policy (decks/NAME.txt), rewritten when the list changes."""
+    from . import decks as dk, policy
+    src = os.path.join(os.path.dirname(PUZZLE_DIR), "..", "decks", name + ".txt")
+    out = os.path.join(forge.run_home(quiet=True), "puzzle_decks"); os.makedirs(out, exist_ok=True)
+    fp = os.path.join(out, name + ".dck")
+    if not os.path.exists(fp + ".policy.json") or os.path.getmtime(fp + ".policy.json") < os.path.getmtime(src):
+        policy.write_for(dk.load(src), fp)
+    return os.path.abspath(fp)
+
 def run_one(path, quiet=True):
     """(passed, meta, log lines, failures) for one puzzle."""
     meta, state = load(path)
@@ -49,6 +59,8 @@ def run_one(path, quiet=True):
     cmd = ["java", "-Xmx1500m", "-XX:-OmitStackTraceInFastThrow", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8", *meta.get("jvm", "").split(),
            "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "PuzzleRunner", os.path.abspath(sf),
            str(meta["turns"]), str(meta["seed"]), meta["sim"]]
+    if meta.get("deck"):   # '# deck: NAME': seat 1 plays with that deck's pilot policy (key cards, combos, tutor picks)
+        cmd.append(_policy_dck(meta["deck"]))
     try:
         r = subprocess.run(cmd, cwd=forge.run_home(quiet=quiet), capture_output=True, text=True, timeout=400)
         out = r.stdout

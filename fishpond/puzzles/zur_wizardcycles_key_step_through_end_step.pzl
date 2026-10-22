@@ -1,0 +1,15 @@
+# title: Zur's deck (its real key list, where Step Through is a key card): Step Through in hand and two untapped Islands in the opponent's end step before Zur's turn: the AI Wizardcycles it (patch 83; patch 55 skipped every key card, so Zur's key Step Through was cycled 25 times in 350 seat-games, bracket1000_20261021)
+# card: Step Through
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: activated Step Through
+p0life=40
+p1life=40
+turn=1
+activeplayer=p1
+activephase=MAIN2
+p0battlefield=Island;Island;Plains;Swamp
+p0hand=Step Through
+p0library=Archaeomancer;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

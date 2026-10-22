@@ -1,0 +1,16 @@
+# title: Two Islands and two Forests, Counterspell and Merfolk Looter in hand, the opponent with three payoffs out (the hold of hold_mana_for_counter): the AI keeps UU up and doesn't cast the Looter, whose {U} would leave Counterspell one Island short (patch 84: the plan and its refusals keep the held answer's colors, not only its amount)
+# card: Counterspell
+# turns: 1
+# sim: hybrid
+# forbid: Ai\(1\)-P1 cast Merfolk Looter
+p0life=30
+p1life=30
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Forest;Forest
+p0hand=Counterspell;Merfolk Looter
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Plains;Plains;Plains;Plains;Soul Warden;Essence Warden;Ajani's Pridemate
+p1hand=Serra Angel
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

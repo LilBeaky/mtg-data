@@ -1,0 +1,292 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 4203c4d..c5b51a8 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -34,6 +34,9 @@ public final class TurnPlan {
+     public static volatile java.util.function.ToDoubleBiFunction<Player, Card> SETUP_VALUE;
+     /** The mana the harness's Phase 3 posture keeps up for an answer (0 when none). */
+     public static volatile java.util.function.ToIntFunction<Player> HOLD_KEEP;
++    /** fishpond patch 84: the answer Phase 3 keeps that mana for (a card name in hand; null when none), whose colors the plan
++     *  keeps too. */
++    public static volatile java.util.function.Function<Player, String> HOLD_ANSWER;
+     /** Whether a game is one the harness plays (not one of the lookahead's copies). */
+     public static volatile java.util.function.Predicate<Game> IS_REAL;
+ 
+@@ -52,6 +55,7 @@ public final class TurnPlan {
+         final SpellAbility sa;
+         final int cost, effCost, tier;
+         final double value;
++        List<Integer> pips = List.of(), units = List.of();   // patch 84: its colored pips; the mana it makes back (a rock)
+ 
+         Step(Card card, SpellAbility sa, int cost, int effCost, int tier, double value) {
+             this.card = card; this.sa = sa; this.cost = cost; this.effCost = effCost; this.tier = tier; this.value = value;
+@@ -67,6 +71,9 @@ public final class TurnPlan {
+         final List<Step> steps = new ArrayList<>();
+         final Map<Integer, Integer> rank = new HashMap<>();   // card id -> rank (higher goes first)
+         int budget, reserve, restricted;
++        final List<String> offColor = new ArrayList<>();   // patch 84: castable by amount, not by color
++        List<Integer> units = List.of(), keepPips = List.of();   // patch 84: the sources' units; the held answer's pips
++        String answer;   // patch 84: the held answer (its own casting isn't refused for its colors)
+         int remainingCost() {
+             int c = 0;
+             for (Step s : steps) c += s.cost;
+@@ -180,7 +187,22 @@ public final class TurnPlan {
+             return false;
+         }
+         final Plan p = plan(aic, ai);
+-        if (p == null || p.steps.isEmpty() || p.rank.containsKey(sa.getHostCard().getId())) {
++        if (p == null || p.rank.containsKey(sa.getHostCard().getId())) {
++            return false;
++        }
++        // patch 84: nor one whose colors would leave the plan's, or the held answer's, unpayable ({1}{U} off the Island
++        // Counterspell needs)
++        if ((!p.steps.isEmpty() || !p.keepPips.isEmpty()) && !sa.getHostCard().getName().equals(p.answer)) {
++            final List<Integer> mine = pips(ai, sa);
++            if (!mine.isEmpty()) {
++                final List<Integer> rest = new ArrayList<>(p.keepPips), units = new ArrayList<>(p.units);
++                for (final Step s : p.steps) { rest.addAll(s.pips); units.addAll(s.units); }
++                if (fits(rest, units) && !fits(concat(rest, mine), units)) {
++                    return true;
++                }
++            }
++        }
++        if (p.steps.isEmpty()) {
+             return false;
+         }
+         final int cost = payCost(ai, sa);
+@@ -191,6 +213,158 @@ public final class TurnPlan {
+         return avail - cost < p.remainingCost() + p.reserve;
+     }
+ 
++    // ---- fishpond patch 84: colors (the user, 2026-10-21: "it'll make better calls. We have to make sure it holds the right
++    // colors for interaction too. A big part of this simulator is going to be testing how a deck does with its colors.") ----
++    // A unit is one mana the seat can make now, as the set of colors it could be (bits W U B R G, and C_BIT for colorless): a
++    // dual land is W|U, a Talisman W|U|C, Sol Ring two units of C. A pip is one colored symbol of a cost, as the colors that pay
++    // it (a hybrid pip two). Generic mana, Phyrexian and 2/W pips are left to the amount check.
++    static final int C_BIT = 32;
++    static final String[] COLOR_SHORT = {"W", "U", "B", "R", "G", "C"};
++
++    static int colorsOf(final forge.game.spellability.AbilityManaPart mp, final SpellAbility ma) {
++        int m = 0;
++        for (int i = 0; i < 6; i++) {
++            try {
++                if (mp.canProduce(COLOR_SHORT[i], ma)) m |= 1 << i;
++            } catch (final RuntimeException e) { /* skip */ }
++        }
++        return m;
++    }
++
++    /** The units the seat can make now: its untapped usable sources (as manaNow counts them), its mana pool, and the land drop
++     *  (one unit of any color an untapped land in hand makes). */
++    static List<Integer> manaUnits(final Player p) {
++        final List<Integer> out = new ArrayList<>();
++        final forge.game.mana.ManaPool pool = p.getManaPool();
++        final byte[] wubrgc = {forge.card.MagicColor.WHITE, forge.card.MagicColor.BLUE, forge.card.MagicColor.BLACK,
++                forge.card.MagicColor.RED, forge.card.MagicColor.GREEN, forge.card.MagicColor.COLORLESS};
++        for (int i = 0; i < 6; i++) {
++            for (int k = pool.getAmountOfColor(wubrgc[i]); k > 0; k--) out.add(1 << i);
++        }
++        final List<forge.game.trigger.Trigger> extra = new ArrayList<>();
++        for (final Card t : p.getGame().getCardsIn(ZoneType.Battlefield)) {
++            for (final forge.game.trigger.Trigger tr : t.getTriggers()) {
++                if (tr.getMode() == forge.game.trigger.TriggerType.TapsForMana) extra.add(tr);
++            }
++        }
++        for (final Card src : p.getCardsIn(ZoneType.Battlefield)) {
++            int best = 0, mask = 0;
++            for (final SpellAbility ma : src.getManaAbilities()) {
++                try {
++                    ma.setActivatingPlayer(p);
++                    final forge.game.spellability.AbilityManaPart mp = ma.getManaPart();
++                    if (mp == null || !mp.getManaRestrictions().isEmpty() || !ma.canPlay()) continue;
++                    final int cost = ma.getPayCosts().getCostMana() != null ? ma.getPayCosts().getCostMana().convertAmount() : 0;
++                    final String prod = ma.getParamOrDefault("Produced", "");
++                    final int kinds = prod.startsWith("Combo") || prod.isEmpty() ? 1 : prod.split(" ").length;
++                    final int made = kinds * forge.game.ability.AbilityUtils.calculateAmount(src, ma.getParamOrDefault("Amount", "1"), ma) - cost;
++                    if (made <= 0) continue;
++                    best = Math.max(best, made);
++                    mask |= colorsOf(mp, ma);
++                } catch (final RuntimeException e) { /* skip an ability whose check throws */ }
++            }
++            if (best > 0) best += tapExtra(src, extra);
++            for (int k = 0; k < best; k++) out.add(mask == 0 ? C_BIT : mask);
++        }
++        if (landDrop(p) > 0) {
++            int mask = 0;
++            for (final Card c : p.getCardsIn(ZoneType.Hand)) {
++                if (!c.isLand() || !p.canPlayLand(c, false, null) || entersTapped(p, c)) continue;
++                for (final SpellAbility ma : c.getManaAbilities()) {
++                    try {
++                        ma.setActivatingPlayer(p);
++                        if (ma.getManaPart() != null && ma.getManaPart().getManaRestrictions().isEmpty()) mask |= colorsOf(ma.getManaPart(), ma);
++                    } catch (final RuntimeException e) { /* skip */ }
++                }
++            }
++            if (mask != 0) out.add(mask);
++        }
++        return out;
++    }
++
++    /** The colored pips of what sa costs now (cost changes in play included). */
++    static List<Integer> pips(final Player ai, final SpellAbility sa) {
++        final List<Integer> out = new ArrayList<>();
++        if (sa == null || sa.getPayCosts() == null || sa.getPayCosts().getTotalMana() == null) {
++            return out;
++        }
++        try {
++            if (sa.getActivatingPlayer() == null) sa.setActivatingPlayer(ai);
++            final forge.game.mana.ManaCostBeingPaid mc = ComputerUtilMana.calculateManaCost(sa.getPayCosts(), sa, ai, true, 0, false);
++            for (final forge.card.mana.ManaCostShard sh : mc.getDistinctShards()) {
++                if (sh.isGeneric() || sh.isPhyrexian() || sh.isOr2Generic() || sh.isSnow()) continue;
++                final int mask = sh.isColorless() ? C_BIT : sh.getColorMask() & 31;
++                if (mask == 0) continue;
++                for (int k = mc.getUnpaidShards(sh); k > 0; k--) out.add(mask);
++            }
++        } catch (final RuntimeException e) { /* no pips we can read: the amount check alone */ }
++        return out;
++    }
++
++    /** What a rock or a ritual in the plan makes back once cast, as units (its colors: Dark Ritual's three black). */
++    static List<Integer> rockUnits(final Player ai, final Step s) {
++        final int back = s.cost - s.effCost;
++        if (back <= 0) {
++            return List.of();
++        }
++        int mask = 0;
++        if (s.card.isPermanent()) {
++            for (final SpellAbility ma : s.card.getManaAbilities()) {
++                try {
++                    ma.setActivatingPlayer(ai);
++                    if (ma.getManaPart() != null) mask |= colorsOf(ma.getManaPart(), ma);
++                } catch (final RuntimeException e) { /* skip */ }
++            }
++        } else {
++            for (SpellAbility x = s.sa; x != null; x = x.getSubAbility()) {
++                if (x.getApi() != ApiType.Mana) continue;
++                for (final String t : x.getParamOrDefault("Produced", "").split(" ")) {
++                    if (t.equals("Any")) mask |= 31;
++                    for (int i = 0; i < 6; i++) if (t.equals(COLOR_SHORT[i])) mask |= 1 << i;
++                }
++            }
++        }
++        final List<Integer> out = new ArrayList<>();
++        for (int k = 0; k < back; k++) out.add(mask == 0 ? C_BIT : mask);
++        return out;
++    }
++
++    static List<Integer> concat(final List<Integer> a, final List<Integer> b) {
++        final List<Integer> out = new ArrayList<>(a);
++        out.addAll(b);
++        return out;
++    }
++
++    /** Every pip gets a unit of its own that can pay it (a bipartite matching, augmenting paths). */
++    static boolean fits(final List<Integer> pips, final List<Integer> units) {
++        if (pips.isEmpty()) {
++            return true;
++        }
++        if (pips.size() > units.size()) {
++            return false;
++        }
++        final int[] owner = new int[units.size()];
++        Arrays.fill(owner, -1);
++        for (int i = 0; i < pips.size(); i++) {
++            if (!augment(i, pips, units, owner, new boolean[units.size()])) {
++                return false;
++            }
++        }
++        return true;
++    }
++
++    static boolean augment(final int i, final List<Integer> pips, final List<Integer> units, final int[] owner, final boolean[] seen) {
++        for (int j = 0; j < units.size(); j++) {
++            if (seen[j] || (pips.get(i) & units.get(j)) == 0) continue;
++            seen[j] = true;
++            if (owner[j] < 0 || augment(owner[j], pips, units, owner, seen)) {
++                owner[j] = i;
++                return true;
++            }
++        }
++        return false;
++    }
++
+     /** Mana it can make now: untapped, usable sources (the harness's usableMana: a choice of colors counts once, mana
+      *  restricted to some spells counts none); Forge's estimate counted tapped sources and each color of a Talisman. */
+     static int manaNow(final Player p) {
+@@ -530,8 +704,38 @@ public final class TurnPlan {
+         final int room = plan.budget - plan.reserve;
+         final List<Restricted> restricted = restrictedMana(ai);
+         for (final Restricted r : restricted) plan.restricted += r.amount;
++        // patch 84: the colors. A step whose colored pips the seat's sources can't make is left out (7,583 planned steps in
++        // bracket1000_20261021 failed to pay, 83% for a color: Klauth planned Dragon Tempest four turns running with no red);
++        // a set is planned only if its pips and the held answer's fit the sources together
++        final List<Integer> units = manaUnits(ai);
++        List<Integer> keepPips = List.of();
++        final java.util.function.Function<Player, String> ha = HOLD_ANSWER;
++        final String answer = plan.reserve > 0 && ha != null ? ha.apply(ai) : null;
++        if (answer != null) {
++            for (final Card h : ai.getCardsIn(ZoneType.Hand)) {
++                final SpellAbility hs = h.getName().equals(answer) ? firstSpell(ai, h) : null;
++                if (hs != null) { keepPips = pips(ai, hs); break; }
++            }
++        }
++        if (!fits(keepPips, units)) {
++            keepPips = List.of();   // an answer the sources can't cast holds no colors
++        }
++        for (final Iterator<Step> it = cands.iterator(); it.hasNext(); ) {
++            final Step s = it.next();
++            s.pips = pips(ai, s.sa);
++            s.units = rockUnits(ai, s);
++            final List<Integer> need = new ArrayList<>(s.pips);
++            need.addAll(keepPips);
++            if (!fits(need, s.units.isEmpty() ? units : concat(units, s.units))) {
++                plan.offColor.add(s.card.getName());
++                it.remove();
++            }
++        }
+         cands.sort((a, b) -> Double.compare(b.value, a.value));
+-        final List<Step> pick = choose(cands.size() > 12 ? cands.subList(0, 12) : cands, room, restricted);
++        plan.units = units;
++        plan.keepPips = keepPips;
++        plan.answer = answer;
++        final List<Step> pick = choose(cands.size() > 12 ? cands.subList(0, 12) : cands, room, restricted, units, keepPips);
+         pick.sort((a, b) -> a.tier != b.tier ? Integer.compare(a.tier, b.tier) : Double.compare(b.value, a.value));
+         int r = 1000;
+         for (final Step s : pick) {
+@@ -546,6 +750,11 @@ public final class TurnPlan {
+     /** The best set within the mana: every set for up to 12 candidates (effective cost: a mana rock that taps now pays back;
+      *  patch 79: restricted mana pays first for the steps it may pay for). */
+     static List<Step> choose(final List<Step> cands, final int room, final List<Restricted> restricted) {
++        return choose(cands, room, restricted, null, List.of());
++    }
++
++    static List<Step> choose(final List<Step> cands, final int room, final List<Restricted> restricted, final List<Integer> units,
++                             final List<Integer> keepPips) {
+         final int n = cands.size(), k = restricted.size();
+         final boolean[][] pays = new boolean[n][k];
+         for (int i = 0; i < n; i++) for (int j = 0; j < k; j++) pays[i][j] = restricted.get(j).pays(cands.get(i).sa);
+@@ -574,6 +783,11 @@ public final class TurnPlan {
+                 run += need - (s.cost - s.effCost);
+                 v += s.net();
+             }
++            if (ok && v > best && units != null) {   // patch 84: the set's colors, and the held answer's, from the sources at once
++                final List<Integer> pipsAll = new ArrayList<>(keepPips), unitsAll = new ArrayList<>(units);
++                for (final int i : set) { pipsAll.addAll(cands.get(i).pips); unitsAll.addAll(cands.get(i).units); }
++                ok = fits(pipsAll, unitsAll);
++            }
+             if (ok && v > best) {
+                 best = v;
+                 bestMask = mask;
+@@ -855,6 +1069,12 @@ public final class TurnPlan {
+             first = false;
+             n++;
+         }
++        if (!plan.offColor.isEmpty()) {   // patch 84
++            sb.append("], \"off_color\": [");
++            for (int i = 0; i < Math.min(4, plan.offColor.size()); i++) {
++                sb.append(i > 0 ? ", " : "").append("\"").append(plan.offColor.get(i).replace("\"", "")).append("\"");
++            }
++        }
+         final String line = sb.append("]}").toString();
+         final String k = g.getId() + "|" + line.hashCode();
+         if (LOGGED.add(k)) {

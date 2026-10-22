@@ -1,0 +1,304 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index c5b51a8..d685175 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -37,6 +37,12 @@ public final class TurnPlan {
+     /** fishpond patch 84: the answer Phase 3 keeps that mana for (a card name in hand; null when none), whose colors the plan
+      *  keeps too. */
+     public static volatile java.util.function.Function<Player, String> HOLD_ANSWER;
++    /** fishpond patch 85: a tutor's targets as the harness would pick among them (the pilot policy, its commander gate
++     *  first), best first; the arguments are {the search ability, its destination zone, the valid cards}. Null or no hook:
++     *  Forge's own pick. */
++    public static volatile java.util.function.BiFunction<Player, Object[], List<Card>> TUTOR_RANK;
++    static final boolean TUTOR_VALUE = !"false".equals(System.getProperty("fishpond.tutorValue"));
++    static final ThreadLocal<Boolean> IN_TUTOR = ThreadLocal.withInitial(() -> false);
+     /** Whether a game is one the harness plays (not one of the lookahead's copies). */
+     public static volatile java.util.function.Predicate<Game> IS_REAL;
+ 
+@@ -56,6 +62,7 @@ public final class TurnPlan {
+         final int cost, effCost, tier;
+         final double value;
+         List<Integer> pips = List.of(), units = List.of();   // patch 84: its colored pips; the mana it makes back (a rock)
++        String pick;   // patch 85: what a tutor step would fetch
+ 
+         Step(Card card, SpellAbility sa, int cost, int effCost, int tier, double value) {
+             this.card = card; this.sa = sa; this.cost = cost; this.effCost = effCost; this.tier = tier; this.value = value;
+@@ -335,6 +342,22 @@ public final class TurnPlan {
+         return out;
+     }
+ 
++    /** The units left after paying pips (the most specific units first: a Swamp before a dual land), or null if they can't. */
++    static List<Integer> spend(final List<Integer> pips, final List<Integer> units) {
++        final List<Integer> u = new ArrayList<>(units);
++        u.sort(Comparator.comparingInt(Integer::bitCount));
++        final int[] owner = new int[u.size()];
++        Arrays.fill(owner, -1);
++        for (int i = 0; i < pips.size(); i++) {
++            if (!augment(i, pips, u, owner, new boolean[u.size()])) {
++                return null;
++            }
++        }
++        final List<Integer> out = new ArrayList<>();
++        for (int j = 0; j < u.size(); j++) if (owner[j] < 0) out.add(u.get(j));
++        return out;
++    }
++
+     /** Every pip gets a unit of its own that can pay it (a bipartite matching, augmenting paths). */
+     static boolean fits(final List<Integer> pips, final List<Integer> units) {
+         if (pips.isEmpty()) {
+@@ -429,6 +452,19 @@ public final class TurnPlan {
+             }
+             return false;
+         }
++        // patch 85: a tutor the plan valued by its pick is cast as planned (Forge's tutor logic waits for later turns or an end
++        // step); not an X tutor (Forge sizes X in that logic) or one that targets
++        if (TUTOR_VALUE && active(ai) && sa != null && sa.isSpell() && sa.getHostCard() != null && search(sa) != null
++                && !sa.usesTargeting() && (sa.getPayCosts() == null || !sa.getPayCosts().hasXInAnyCostPart())) {
++            final Plan p = plan(aic, ai);
++            if (p != null) {
++                for (final Step s : p.steps) {
++                    if (s.card.getId() == sa.getHostCard().getId() && s.pick != null) {
++                        return true;
++                    }
++                }
++            }
++        }
+         if (!active(ai) || sa == null || sa.getHostCard() == null || sa.getHostCard().isPermanent()) {
+             return false;
+         }
+@@ -445,6 +481,145 @@ public final class TurnPlan {
+         return me != null && me.effCost < me.cost && rest > manaNow(ai) - me.cost;
+     }
+ 
++    // ---- fishpond patch 85: a tutor is worth what it finds (the user, 2026-10-21) ----
++    // "Score the tutor as whatever the choice is, + the cost of casting the tutor itself ... if it goes to hand (or top
++    // library), the cost of the tutor is added to the cost of the spell when it's weighing whether to cast the tutor. If it goes
++    // to battlefield, like in Natural Order, the casting cost is replaced with the tutor's cost." The plan valued a tutor as
++    // any spell of its mana value (Diabolic Tutor 160 against 228 for the plays it made) and held tutors for turns
++    // (bracket1000_20261021: Wilson's Idyllic Tutor and Open the Armory 28 streaks each, Diabolic Tutor 22, Demonic 17).
++    //  - the pick: what the harness's pilot policy would fetch (TUTOR_RANK), else Forge's own pick; its value is the plan's own
++    //    value of casting it now (a win, an engine, the setup model's ramp all count)
++    //  - to hand: worth the pick, planned only when the tutor and the pick fit this turn's mana (cost = the tutor's + the
++    //    pick's, so the pick is cast after it); to the top of the library: the same against next turn's mana, costing the
++    //    tutor's now and the draw it replaces; onto the battlefield: worth the pick at the tutor's cost (X tutors: the pick's
++    //    mana value, planned last since Forge pays X with what's left); a sacrifice it costs takes the cheapest creature off
++    //  - a creature or permanent that tutors when it enters (Recruiter of the Guard) adds the pick to its own value
++    //  - when the pair doesn't fit, the tutor keeps its old value: never planned less than before
++    // Land tutors stay ramp (the setup model). -Dfishpond.tutorValue=false turns it off.
++
++    /** The library search in sa's chain, or in its card's "when this enters" trigger: a hidden-origin ChangeZone from the
++     *  library into hand, onto the battlefield or onto the library top, for nonland cards. */
++    static SpellAbility search(final SpellAbility sa) {
++        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++            if (isSearch(x)) return x;
++        }
++        return null;
++    }
++
++    static boolean isSearch(final SpellAbility x) {
++        if (x.getApi() != ApiType.ChangeZone || !x.getParamOrDefault("Origin", "").contains("Library") || x.hasParam("Defined")
++                || !x.hasParam("ChangeType")) {
++            return false;
++        }
++        final String dest = x.getParamOrDefault("Destination", "");
++        if (!dest.equals("Hand") && !dest.equals("Battlefield") && !dest.equals("Library")) {
++            return false;
++        }
++        for (final String t : x.getParam("ChangeType").split(",")) {
++            if (!t.startsWith("Land") && !t.startsWith("Basic") && !t.startsWith("Plains") && !t.startsWith("Island")
++                    && !t.startsWith("Swamp") && !t.startsWith("Mountain") && !t.startsWith("Forest")) return true;
++        }
++        return false;   // a land search is ramp
++    }
++
++    static SpellAbility etbSearch(final Card c) {
++        if (!c.isPermanent()) {
++            return null;
++        }
++        for (final forge.game.trigger.Trigger t : c.getTriggers()) {
++            if (t.getMode() != forge.game.trigger.TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))
++                    || !t.getParamOrDefault("ValidCard", "").startsWith("Card.Self")) continue;
++            try {
++                final SpellAbility x = search(t.ensureAbility());
++                if (x != null) return x;
++            } catch (final RuntimeException e) { /* skip */ }
++        }
++        return null;
++    }
++
++    static Step tutor(final AiController aic, final Player ai, final Step s, final int room, final int budget) {
++        if (!TUTOR_VALUE || IN_TUTOR.get()) {
++            return s;
++        }
++        final boolean xCost = s.sa.getPayCosts() != null && s.sa.getPayCosts().hasXInAnyCostPart();
++        SpellAbility x = search(s.sa);
++        final boolean etb = x == null && s.sa.isSpell();
++        if (etb) x = etbSearch(s.card);
++        if (x == null) {
++            return s;
++        }
++        try {
++            x.setActivatingPlayer(ai);
++            final Card host = s.card;
++            final String dest = x.getParam("Destination");
++            final boolean field = "Battlefield".equals(dest), top = "Library".equals(dest);
++            String type = x.getParam("ChangeType");
++            int max = Integer.MAX_VALUE, eq = -1;
++            final boolean le = type.contains("cmcLEX"), eqx = type.contains("cmcEQX");
++            type = type.replaceAll("[.+]cmc(LE|EQ)X", "");
++            if (le || eqx) {
++                int xv;
++                if (xCost) xv = room - s.cost;   // X tutor: what's left after its fixed cost
++                else xv = forge.game.ability.AbilityUtils.calculateAmount(host, "X", x);
++                if (le) max = xv; else eq = xv;
++            }
++            final List<Card> valid = new ArrayList<>();
++            for (final Card l : forge.game.card.CardLists.getValidCards(ai.getCardsIn(ZoneType.Library), type.split(","), ai, host, x)) {
++                if (l.getCMC() <= max && (eq < 0 || l.getCMC() == eq)) valid.add(l);
++            }
++            if (valid.isEmpty()) {
++                return xCost ? null : s;
++            }
++            final ZoneType dz = field ? ZoneType.Battlefield : top ? ZoneType.Library : ZoneType.Hand;
++            final java.util.function.BiFunction<Player, Object[], List<Card>> rk = TUTOR_RANK;
++            List<Card> ranked = rk == null ? null : rk.apply(ai, new Object[] {x, dz, valid});
++            Card pick = ranked == null || ranked.isEmpty() ? null : ranked.get(0);
++            if (pick == null) {
++                pick = forge.ai.ability.ChangeZoneAi.chooseCardToHiddenOriginChangeZone(dz, java.util.List.of(ZoneType.Library), x,
++                        new forge.game.card.CardCollection(valid), ai, ai);
++            }
++            if (pick == null) {
++                return s;
++            }
++            // the pick's own value: the plan's value of casting it now
++            double pv;
++            int pc;
++            IN_TUTOR.set(true);
++            try {
++                final SpellAbility ps = pick.isLand() ? null : firstSpell(ai, pick);
++                final Step p = ps == null ? null : step(aic, ai, pick, ps);
++                pv = p == null ? base(pick, pick.getCMC()) : p.value;
++                pc = p == null ? 0 : p.cost;
++            } finally {
++                IN_TUTOR.set(false);
++            }
++            int cost;
++            if (field) cost = xCost ? s.cost + pick.getCMC() : s.cost;
++            else if (top) cost = s.cost;
++            else cost = s.cost + pc;
++            if (field ? cost > room : top ? s.cost + pc > budget + 1 : cost > room) {
++                return xCost ? null : s;   // the pair doesn't fit: the tutor as it was valued before
++            }
++            if (top) pv -= CARD_HELD;   // the draw it replaces
++            // a sacrifice it costs (Natural Order): the cheapest creature it could take
++            if (s.sa.getPayCosts() != null && s.sa.getPayCosts().hasSpecificCostType(forge.game.cost.CostSacrifice.class)) {
++                double least = Double.MAX_VALUE;
++                for (final Card k : ai.getCreaturesInPlay()) least = Math.min(least, ComputerUtilCard.evaluateCreature(k));
++                if (least == Double.MAX_VALUE) return null;
++                pv -= least;
++            }
++            double own = base(host, manaCost(s.sa));
++            if (!s.sa.isSpell() && "Library".equals(s.sa.getParam("Origin"))) own += TRANSMUTE;   // patches 73/83's flat tutor bonus
++            final double v = etb ? s.value + pv : s.value - own + pv;
++            final int tier = xCost ? TIER_REST : s.tier;
++            final Step t = new Step(host, s.sa, cost, cost - (s.cost - s.effCost), tier, v);
++            t.pick = pick.getName();
++            return t;
++        } catch (final RuntimeException e) {
++            return xCost ? null : s;
++        }
++    }
++
+     static int manaCost(final SpellAbility sa) {
+         if (sa.getPayCosts() == null || sa.getPayCosts().getTotalMana() == null) {
+             return 0;
+@@ -676,6 +851,10 @@ public final class TurnPlan {
+         final List<Step> cands = new ArrayList<>();
+         final List<Card> pool = new ArrayList<>(ai.getCardsIn(ZoneType.Hand));
+         for (final Card c : ai.getCardsIn(ZoneType.Command)) if (c.isCommander() && c.getOwner() == ai) pool.add(c);
++        plan.budget = manaNow(ai) + landDrop(ai);
++        final java.util.function.ToIntFunction<Player> hk = HOLD_KEEP;
++        plan.reserve = hk == null ? 0 : Math.max(0, hk.applyAsInt(ai));
++        final int room = plan.budget - plan.reserve;
+         for (final Card c : pool) {
+             if (c.isLand() || declined.contains(c.getId())) {
+                 continue;
+@@ -690,18 +869,18 @@ public final class TurnPlan {
+             if (sa == null || sa.getApi() == ApiType.Counter) {
+                 continue;   // counterspells are held, not planned (patch 58 keeps their mana)
+             }
+-            if (sa.getPayCosts() != null && sa.getPayCosts().hasXInAnyCostPart()) {
+-                continue;   // X spells take what's left: Forge sizes them
++            final boolean x = sa.getPayCosts() != null && sa.getPayCosts().hasXInAnyCostPart();
++            if (x && search(sa) == null) {
++                continue;   // X spells take what's left: Forge sizes them (patch 85: an X tutor is planned last, at its target's X)
++            }
++            Step s = step(aic, ai, c, sa);
++            if (s != null) {
++                s = tutor(aic, ai, s, room, plan.budget);
+             }
+-            final Step s = step(aic, ai, c, sa);
+             if (s != null && s.net() > 0) {
+                 cands.add(s);
+             }
+         }
+-        plan.budget = manaNow(ai) + landDrop(ai);
+-        final java.util.function.ToIntFunction<Player> hk = HOLD_KEEP;
+-        plan.reserve = hk == null ? 0 : Math.max(0, hk.applyAsInt(ai));
+-        final int room = plan.budget - plan.reserve;
+         final List<Restricted> restricted = restrictedMana(ai);
+         for (final Restricted r : restricted) plan.restricted += r.amount;
+         // patch 84: the colors. A step whose colored pips the seat's sources can't make is left out (7,583 planned steps in
+@@ -726,8 +905,10 @@ public final class TurnPlan {
+             s.units = rockUnits(ai, s);
+             final List<Integer> need = new ArrayList<>(s.pips);
+             need.addAll(keepPips);
+-            if (!fits(need, s.units.isEmpty() ? units : concat(units, s.units))) {
+-                plan.offColor.add(s.card.getName());
++            final List<Integer> have = s.units.isEmpty() ? units : concat(units, s.units);
++            final List<Integer> left = s.units.isEmpty() ? null : spend(s.pips, units);
++            if (s.units.isEmpty() ? !fits(need, have) : left == null || !fits(keepPips, concat(left, s.units))) {
++                if (need.size() <= have.size() && s.cost <= plan.budget) plan.offColor.add(s.card.getName());   // not just short of mana
+                 it.remove();
+             }
+         }
+@@ -784,9 +965,16 @@ public final class TurnPlan {
+                 v += s.net();
+             }
+             if (ok && v > best && units != null) {   // patch 84: the set's colors, and the held answer's, from the sources at once
+-                final List<Integer> pipsAll = new ArrayList<>(keepPips), unitsAll = new ArrayList<>(units);
+-                for (final int i : set) { pipsAll.addAll(cands.get(i).pips); unitsAll.addAll(cands.get(i).units); }
+-                ok = fits(pipsAll, unitsAll);
++                final List<Integer> rest = new ArrayList<>(keepPips), made = new ArrayList<>(), rockPips = new ArrayList<>();
++                for (final int i : set) {
++                    final Step s = cands.get(i);
++                    if (s.units.isEmpty()) rest.addAll(s.pips);
++                    else { rockPips.addAll(s.pips); made.addAll(s.units); }
++                }
++                // a rock or ritual is paid from what's there before it (Dark Ritual's black doesn't pay for Dark Ritual); the
++                // rest from what's left and what they make
++                final List<Integer> spare = spend(rockPips, units);
++                ok = spare != null && fits(rest, concat(spare, made));
+             }
+             if (ok && v > best) {
+                 best = v;
+@@ -1056,7 +1244,8 @@ public final class TurnPlan {
+         boolean first = true;
+         for (final Step s : plan.steps) {
+             sb.append(first ? "" : ", ").append("{\"card\": \"").append(s.card.getName().replace("\"", "")).append("\", \"tier\": \"")
+-                    .append(TIER_NAME[s.tier]).append("\", \"cost\": ").append(s.cost).append(", \"value\": ").append(Math.round(s.value)).append("}");
++                    .append(TIER_NAME[s.tier]).append("\", \"cost\": ").append(s.cost).append(", \"value\": ").append(Math.round(s.value))
++                    .append(s.pick == null ? "" : ", \"pick\": \"" + s.pick.replace("\"", "") + "\"").append("}");
+             first = false;
+         }
+         sb.append("], \"left_out\": [");
+@@ -1065,7 +1254,8 @@ public final class TurnPlan {
+         for (final Step s : cands) {
+             if (plan.rank.containsKey(s.card.getId()) || n >= 4) continue;
+             sb.append(first ? "" : ", ").append("{\"card\": \"").append(s.card.getName().replace("\"", "")).append("\", \"cost\": ").append(s.cost)
+-                    .append(", \"value\": ").append(Math.round(s.value)).append("}");
++                    .append(", \"value\": ").append(Math.round(s.value))
++                    .append(s.pick == null ? "" : ", \"pick\": \"" + s.pick.replace("\"", "") + "\"").append("}");
+             first = false;
+             n++;
+         }
