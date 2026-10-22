@@ -1,0 +1,260 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index fff3308..1157518 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1049,6 +1049,10 @@ public class AiController {
+         if (holdMana(player, sa)) {
+             return AiPlayDecision.AnotherTime;   // fishpond patch 58: mana kept up for an answer
+         }
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.TUTOR_VALUE && TurnPlan.knownTop(player) != null
++                && TurnPlan.shufflesOwnLibrary(sa)) {
++            return AiPlayDecision.AnotherTime;   // fishpond patch 89: it would shuffle away the card a tutor put on top
++        }
+         if (forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.refills(sa) && !(sa.isSpell() && sa.getHostCard().isPermanent())
+                 && !wheelPays(sa) && !closerNow(sa)) {   // patch 53's wheels with payoffs and the closers decide on their own
+             final Boolean go = refillVerdict(sa);   // fishpond patch 78: a refill (discard the hand, draw) by the harness's projection
+@@ -3274,6 +3278,11 @@ public class AiController {
+         if (sa instanceof WrappedAbility)
+             return doTrigger(((WrappedAbility) sa).getWrappedAbility(), mandatory);
+         if (sa.getApi() != null) {
++            // fishpond patch 89: an optional search (Zur's attack trigger) shuffles away the card a tutor put on top: declined
++            if (!mandatory && forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.TUTOR_VALUE && TurnPlan.knownTop(player) != null
++                    && TurnPlan.shufflesOwnLibrary(sa)) {
++                return false;
++            }
+             final boolean yes = SpellApiToAi.Converter.get(sa).doTrigger(player, sa, mandatory);
+             // fishpond patch 78: an optional refill (Knollspine Dragon's) is the harness's projection's call
+             if (!mandatory && forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.refills(sa)) {
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index fd52e93..deecaad 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -550,14 +550,26 @@ public final class TurnPlan {
+             }
+             return false;
+         }
++        // patch 89: a planned draw that reaches the card a tutor put on top is cast as planned (Forge's draw logic waits for
++        // an end step, and the plan's Wurmcoil went first)
++        if (TUTOR_VALUE && active(ai) && sa != null && sa.isSpell() && sa.getHostCard() != null && !sa.usesTargeting()) {
++            final Card waiting = knownTop(ai);
++            if (waiting != null && drawsYou(sa) > knownTopIndex(ai, waiting)) {
++                final Plan p = plan(aic, ai);
++                if (p != null && p.rank.containsKey(sa.getHostCard().getId())) {
++                    return true;
++                }
++            }
++        }
+         // patch 85: a tutor the plan valued by its pick is cast as planned (Forge's tutor logic waits for later turns or an end
+         // step); not an X tutor (Forge sizes X in that logic) or one that targets
+         if (TUTOR_VALUE && active(ai) && sa != null && sa.isSpell() && sa.getHostCard() != null && search(sa) != null
+-                && !sa.usesTargeting() && (sa.getPayCosts() == null || !sa.getPayCosts().hasXInAnyCostPart())) {
++                && !sa.usesTargeting() && (sa.getPayCosts() == null || !sa.getPayCosts().hasXInAnyCostPart() && (sa.getPayCosts().isOnlyManaCost() || cheapSacrifice(ai, sa)))) {
++            // (patch 89: a mana cost, or a sacrifice of something cheap; else Forge's cost check: Diabolic Intent keeps Serra Angel)
+             final Plan p = plan(aic, ai);
+             if (p != null) {
+                 for (final Step s : p.steps) {
+-                    if (s.card.getId() == sa.getHostCard().getId() && s.pick != null) {
++                    if (s.card.getId() == sa.getHostCard().getId()) {   // patch 89: any planned tutor (Forge's waits for an end step)
+                         return true;
+                     }
+                 }
+@@ -595,6 +607,97 @@ public final class TurnPlan {
+     //  - when the pair doesn't fit, the tutor keeps its old value: never planned less than before
+     // Land tutors stay ramp (the setup model). -Dfishpond.tutorValue=false turns it off.
+ 
++    // ---- fishpond patch 89: a card a tutor put near the top of the library (the user, 2026-10-22: "These tutors, especially
++    // Long Term Plans, is a trap for an AI like this"). Zur's game 0 (zur5b_20261022): Long-Term Plans put Approach of the
++    // Second Sun third from the top, then Zur's attack search shuffled it away; later Personal Tutor and Mystical Tutor both
++    // fetched Approach to the top in one turn. While a tutored card waits in the top three: nothing that searches (and so
++    // shuffles) the seat's own library is played or planned (Zur's optional trigger is declined; Wizardcycling is a tutor too),
++    // a draw that reaches it is worth that card, and a top-of-library tutor's value counts the draws it waits for. ----
++    /** The card a pilot seat's own tutor last put into its library (set by the harness's search choice). */
++    public static final Map<Player, Card> TOP = Collections.synchronizedMap(new WeakHashMap<>());
++
++    /** That card, while it is still among the top three of its owner's library (a shuffle or a draw ends it). */
++    public static Card knownTop(final Player p) {
++        final Card c = p == null ? null : TOP.get(p);
++        if (c == null) {
++            return null;
++        }
++        final int i = knownTopIndex(p, c);
++        if (i < 0 || i > 2) {
++            TOP.remove(p);
++            return null;
++        }
++        return p.getCardsIn(ZoneType.Library).get(i);
++    }
++
++    /** Where card c (by id: the move within the library makes a new object) sits in its owner's library, -1 if not there. */
++    static int knownTopIndex(final Player p, final Card c) {
++        final forge.game.card.CardCollectionView lib = p.getCardsIn(ZoneType.Library);
++        for (int i = 0; i < Math.min(3, lib.size()); i++) if (lib.get(i).getId() == c.getId()) return i;
++        return -1;
++    }
++
++    /** sa (or its chain) searches its controller's library, which shuffles it: a tutor, a fetch, typecycling. */
++    public static boolean shufflesOwnLibrary(final SpellAbility sa) {
++        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++            if (x.getApi() == ApiType.Shuffle && !x.hasParam("Defined")) return true;
++            if (x.getApi() == ApiType.ChangeZone && x.getParamOrDefault("Origin", "").contains("Library") && x.hasParam("ChangeType")
++                    && !x.hasParam("Defined") && !x.hasParam("DefinedPlayer")) return true;
++        }
++        return false;
++    }
++
++    /** sa searches its controller's library and puts the card back on top (Mystical Tutor, Personal Tutor, Long-Term Plans). */
++    static boolean topTutor(final SpellAbility sa) {
++        final SpellAbility x = search(sa);
++        return x != null && sa.isSpell() && "Library".equals(x.getParam("Destination"));
++    }
++
++    /** Another card in hand that draws its controller a card (a draw after a top tutor reaches the card this turn). */
++    static boolean drawInHand(final Player ai, final Card not) {
++        for (final Card h : ai.getCardsIn(ZoneType.Hand)) {
++            if (h.getId() == not.getId()) continue;
++            final SpellAbility hs = firstSpell(ai, h);
++            if (hs != null && drawsYou(hs) > 0) return true;
++        }
++        return false;
++    }
++
++    /** Cards sa makes its controller draw (0 if none). */
++    static int drawsYou(final SpellAbility sa) {
++        int n = 0;
++        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++            if (x.getApi() != ApiType.Draw) continue;
++            final String def = x.getParamOrDefault("Defined", "You");
++            if (!def.equals("You") && !def.startsWith("Player")) continue;
++            try {
++                n += forge.game.ability.AbilityUtils.calculateAmount(sa.getHostCard(), x.getParamOrDefault("NumCards", "1"), x);
++            } catch (final RuntimeException e) {
++                n += 1;
++            }
++        }
++        return n;
++    }
++
++    /** fishpond patch 89: sa's only cost besides mana is sacrificing a creature, and a token or a small creature (mana value
++     *  and power 2 or less: Natural Order's Llanowar Elves, not Diabolic Intent's only Serra Angel) can be sacrificed. */
++    static boolean cheapSacrifice(final Player ai, final SpellAbility sa) {
++        forge.game.cost.CostSacrifice sac = null;
++        for (final forge.game.cost.CostPart part : sa.getPayCosts().getCostParts()) {
++            if (part instanceof forge.game.cost.CostSacrifice cs && !cs.payCostFromSource()) sac = cs;
++            else if (!(part instanceof forge.game.cost.CostPartMana)) return false;
++        }
++        if (sac == null) {
++            return false;
++        }
++        try {
++            for (final Card k : forge.game.card.CardLists.getValidCards(ai.getCardsIn(ZoneType.Battlefield), sac.getType().split(";"), ai, sa.getHostCard(), sa)) {
++                if (k.isToken() || k.isCreature() && k.getCMC() <= 2 && k.getNetPower() <= 2) return true;
++            }
++        } catch (final RuntimeException e) { /* none */ }
++        return false;
++    }
++
+     /** The library search in sa's chain, or in its card's "when this enters" trigger: a hidden-origin ChangeZone from the
+      *  library into hand, onto the battlefield or onto the library top, for nonland cards. */
+     static SpellAbility search(final SpellAbility sa) {
+@@ -679,6 +782,10 @@ public final class TurnPlan {
+             if (pick == null) {
+                 return s;
+             }
++            final Card waitingTop = knownTop(ai);
++            if (waitingTop != null && pick.getId() == waitingTop.getId()) {
++                return null;   // patch 89: it's already waiting on top (Personal Tutor, then Mystical Tutor, for the same Approach)
++            }
+             // the pick's own value: the plan's value of casting it now
+             double pv;
+             int pc;
+@@ -698,7 +805,11 @@ public final class TurnPlan {
+             if (field ? cost > room : top ? s.cost + pc > budget + 1 : cost > room) {
+                 return xCost ? null : s;   // the pair doesn't fit: the tutor as it was valued before
+             }
+-            if (top) pv -= CARD_HELD;   // the draw it replaces
++            if (top) {   // patch 89: the draws it waits for (Long-Term Plans puts it third from the top: three draws, and a shuffle undoes it)
++                int pos = 0;
++                try { pos = Integer.parseInt(x.getParamOrDefault("LibraryPosition", "0").trim()); } catch (final NumberFormatException e) { pos = 0; }
++                pv -= CARD_HELD * (1 + Math.max(0, pos));
++            }
+             // a sacrifice it costs (Natural Order): the cheapest creature it could take
+             if (s.sa.getPayCosts() != null && s.sa.getPayCosts().hasSpecificCostType(forge.game.cost.CostSacrifice.class)) {
+                 double least = Double.MAX_VALUE;
+@@ -953,6 +1064,8 @@ public final class TurnPlan {
+         final java.util.function.ToIntFunction<Player> hk = HOLD_KEEP;
+         plan.reserve = hk == null ? 0 : Math.max(0, hk.applyAsInt(ai));
+         final int room = plan.budget - plan.reserve;
++        int laterCost = 0;   // patch 89: a top tutor waiting for main 2 keeps its mana and colors
++        final List<Integer> laterPips = new ArrayList<>();
+         for (final Card c : pool) {
+             if (c.isLand() || declined.contains(c.getId())) {
+                 continue;
+@@ -971,6 +1084,14 @@ public final class TurnPlan {
+             if (x && search(sa) == null) {
+                 continue;   // X spells take what's left: Forge sizes them (patch 85: an X tutor is planned last, at its target's X)
+             }
++            if (TUTOR_VALUE && knownTop(ai) != null && (shufflesOwnLibrary(sa) || sa.isSpell() && etbSearch(c) != null)) {
++                continue;   // patch 89: it would shuffle away the card a tutor put on top
++            }
++            if (TUTOR_VALUE && topTutor(sa) && ai.getGame().getPhaseHandler().is(PhaseType.MAIN1) && !drawInHand(ai, c)) {
++                // patch 89: a top-of-library tutor waits for main 2 (Zur's attack search shuffles first), unless a draw follows it
++                if (laterCost == 0) { laterCost = payCost(ai, sa); laterPips.addAll(pips(ai, sa)); }
++                continue;
++            }
+             Step s = step(aic, ai, c, sa);
+             if (s != null) {
+                 s = tutor(aic, ai, s, room, plan.budget);
+@@ -985,13 +1106,13 @@ public final class TurnPlan {
+         // bracket1000_20261021 failed to pay, 83% for a color: Klauth planned Dragon Tempest four turns running with no red);
+         // a set is planned only if its pips and the held answer's fit the sources together
+         final List<Integer> units = manaUnits(ai);
+-        List<Integer> keepPips = List.of();
++        List<Integer> keepPips = new ArrayList<>(laterPips);
+         final java.util.function.Function<Player, String> ha = HOLD_ANSWER;
+         final String answer = plan.reserve > 0 && ha != null ? ha.apply(ai) : null;
+         if (answer != null) {
+             for (final Card h : ai.getCardsIn(ZoneType.Hand)) {
+                 final SpellAbility hs = h.getName().equals(answer) ? firstSpell(ai, h) : null;
+-                if (hs != null) { keepPips = pips(ai, hs); break; }
++                if (hs != null) { keepPips.addAll(pips(ai, hs)); break; }
+             }
+         }
+         if (!fits(keepPips, units)) {
+@@ -1014,7 +1135,7 @@ public final class TurnPlan {
+         plan.units = units;
+         plan.keepPips = keepPips;
+         plan.answer = answer;
+-        final List<Step> pick = choose(cands.size() > 12 ? cands.subList(0, 12) : cands, room, restricted, units, keepPips);
++        final List<Step> pick = choose(cands.size() > 12 ? cands.subList(0, 12) : cands, Math.max(0, room - laterCost), restricted, units, keepPips);
+         pick.sort((a, b) -> a.tier != b.tier ? Integer.compare(a.tier, b.tier) : Double.compare(b.value, a.value));
+         int r = 1000;
+         for (final Step s : pick) {
+@@ -1240,6 +1361,18 @@ public final class TurnPlan {
+         final int pay = aic.payoffUnits(sa);
+         v += 40 * pay;
+         boolean removal = false, wipe = false, info = false;
++        // patch 89: a draw that reaches the card a tutor put on top is worth that card (draw after the tutor)
++        final Card waiting = TUTOR_VALUE && !IN_TUTOR.get() ? knownTop(ai) : null;
++        if (waiting != null && waiting.getId() != c.getId() && drawsYou(sa) > knownTopIndex(ai, waiting)) {
++            IN_TUTOR.set(true);
++            try {
++                final SpellAbility ws = waiting.isLand() ? null : firstSpell(ai, waiting);
++                final Step w = ws == null ? null : step(aic, ai, waiting, ws);
++                v += w == null ? base(waiting, waiting.getCMC()) : w.value;
++            } catch (final RuntimeException e) { /* no bonus */ } finally {
++                IN_TUTOR.set(false);
++            }
++        }
+         for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
+             if (ComputerUtilCard.Wipe.isWipe(x)) {
+                 final double m = ComputerUtilCard.Wipe.margin(ai, x);
+@@ -1263,7 +1396,8 @@ public final class TurnPlan {
+                 v += best;
+             }
+             if (api == ApiType.Draw || api == ApiType.Dig || api == ApiType.Scry || api == ApiType.Surveil
+-                    || (api == ApiType.ChangeZone && "Library".equals(x.getParam("Origin")) && "Hand".equals(x.getParam("Destination")))) {
++                    || (api == ApiType.ChangeZone && "Library".equals(x.getParam("Origin")) && "Hand".equals(x.getParam("Destination")))
++                    || (api == ApiType.ChangeZone && "Library".equals(x.getParam("Origin")) && "Library".equals(x.getParam("Destination")))) {   // patch 89: a top tutor first, draws after
+                 info = true;
+             }
+             if (x.usesTargeting() && (api == ApiType.Destroy || api == ApiType.DealDamage || api == ApiType.Sacrifice

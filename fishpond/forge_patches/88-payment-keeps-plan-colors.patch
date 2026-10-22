@@ -1,0 +1,160 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java b/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java
+index 8dd815d..52aae9c 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java
+@@ -157,6 +157,8 @@ public class ComputerUtilMana {
+ 
+         // lower value means better choice
+         orderedCards.sort(Comparator.comparingInt(manaCardMap::get));
++        // fishpond patch 88: the colors the rest of the turn plan (and a held answer) still needs; sources that make them go last
++        final int needed = TurnPlan.neededColors(sa.getActivatingPlayer(), sa);
+ 
+         if (DEBUG_MANA_PAYMENT) {
+             System.out.print("Ordered Cards: " + orderedCards.size());
+@@ -191,6 +193,13 @@ public class ComputerUtilMana {
+             }
+ 
+             newAbilities.sort((ability1, ability2) -> {
++                if (needed != 0) {   // patch 88: a generic paid with the Plains before the Island the next planned spell needs
++                    final int k = Integer.bitCount(TurnPlan.colorsOf(ability1.getManaPart(), ability1) & needed)
++                            - Integer.bitCount(TurnPlan.colorsOf(ability2.getManaPart(), ability2) & needed);
++                    if (k != 0) {
++                        return k;
++                    }
++                }
+                 int preOrder = orderedCards.indexOf(ability1.getHostCard()) - orderedCards.indexOf(ability2.getHostCard());
+ 
+                 if (preOrder != 0) {
+@@ -717,7 +726,32 @@ public class ComputerUtilMana {
+         return null;
+     }
+ 
++    /** fishpond patch 88: a pilot seat's real payment keeps the sources the rest of its turn plan (or a held answer) needs
++     *  for its colors, when the spell can be paid without them (plainly or through patch 31's Signets and filter lands):
++     *  the plan fit Glen Elendra Archmage and Personal Tutor together, and Forge paid Glen's generic with the second blue
++     *  source, three turns running (zur5b_20261022 game 0). */
+     private static List<SpellAbility> payManaCost(final ManaCostBeingPaid cost, final SpellAbility sa, final Player ai, final boolean test, boolean checkPlayable, boolean effect) {
++        final List<Card> held = new ArrayList<>();
++        if (!test && !sa.isManaAbility() && pilotConvertOn(ai)) {
++            for (final Card h : TurnPlan.holdForPlan(ai, sa)) {
++                if (!AiCardMemory.isRememberedCard(ai, h, MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL)) {
++                    AiCardMemory.rememberCard(ai, h, MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
++                    held.add(h);
++                }
++            }
++            if (!held.isEmpty() && payManaCost0(new ManaCostBeingPaid(cost), sa, ai, true, checkPlayable, effect) == null) {
++                for (final Card h : held) AiCardMemory.forgetCard(ai, h, MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
++                held.clear();
++            }
++        }
++        try {
++            return payManaCost0(cost, sa, ai, test, checkPlayable, effect);
++        } finally {
++            for (final Card h : held) AiCardMemory.forgetCard(ai, h, MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
++        }
++    }
++
++    private static List<SpellAbility> payManaCost0(final ManaCostBeingPaid cost, final SpellAbility sa, final Player ai, final boolean test, boolean checkPlayable, boolean effect) {
+         if ((sa.isOffering() && sa.getSacrificedAsOffering() == null) || (sa.isEmerge() && sa.getSacrificedAsEmerge() == null)) {
+             // nothing was chosen
+             return null;
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index b3231b6..fd52e93 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -247,6 +247,95 @@ public final class TurnPlan {
+         return m;
+     }
+ 
++    /** fishpond patch 88: the colors (a mask of pip bits) the rest of this turn's plan and the held answer still need, besides
++     *  the spell being paid for, so Forge's mana payment taps the sources that don't make them first (the plan fit Glen
++     *  Elendra and Personal Tutor together; Forge paid Glen's generic with the blue the tutor needed, three turns running,
++     *  zur5b_20261022 game 0). The last plan made this phase (no rebuild mid-payment); outside the plan, the held answer. */
++    static final ThreadLocal<SpellAbility> PAYING = new ThreadLocal<>();   // the spell a nested payment (a Signet's {1}) is for
++
++    public static int neededColors(final Player ai, SpellAbility paying) {
++        if (paying != null && paying.isManaAbility()) {
++            paying = PAYING.get();   // a mana ability's own cost (Orzhov Signet's {1}) is paid for the spell it makes mana for
++        } else if (paying != null) {
++            PAYING.set(paying);
++        }
++        int m = 0;
++        for (final int pip : neededPips(ai, paying)) m |= pip;
++        return m;
++    }
++
++    /** The pips themselves (see neededColors). */
++    static List<Integer> neededPips(final Player ai, final SpellAbility paying) {
++        final List<Integer> out = new ArrayList<>();
++        if (ai == null || paying == null || !forge.ai.ability.DrawAi.pilotSeat(ai) || !real(ai.getGame())) {
++            return out;
++        }
++        try {
++            final Card host = paying.getHostCard();
++            final Object[] c = active(ai) ? CACHE.get(ai) : null;
++            if (c != null && String.valueOf(c[0]).startsWith(phaseKey(ai))) {
++                final Plan p = (Plan) c[1];
++                for (final Step s : p.steps) if (host == null || s.card.getId() != host.getId()) out.addAll(s.pips);   // by id: the spell being cast is a copy
++                if (host == null || !host.getName().equals(p.answer)) out.addAll(p.keepPips);
++            } else {
++                final java.util.function.Function<Player, String> ha = HOLD_ANSWER;
++                final String answer = ha == null ? null : ha.apply(ai);
++                if (answer != null && (host == null || !host.getName().equals(answer))) {
++                    for (final Card h : ai.getCardsIn(ZoneType.Hand)) {
++                        final SpellAbility hs = h.getName().equals(answer) ? firstSpell(ai, h) : null;
++                        if (hs != null) { out.addAll(pips(ai, hs)); break; }
++                    }
++                }
++            }
++        } catch (final RuntimeException e) {
++            out.clear();
++        }
++        return out;
++    }
++
++    /** fishpond patch 88: untapped plain sources (no mana in their cost) to keep out of this payment so the rest of the plan's
++     *  colors stay payable: a matching of those pips to sources, taking first the sources least useful to the spell being
++     *  paid for (then the most specific). Empty when nothing is needed or the pips can't all be held. ComputerUtilMana holds
++     *  them only if the spell can still be paid without them (a Signet fed from the Plains, not the Island). */
++    public static List<Card> holdForPlan(final Player ai, final SpellAbility paying) {
++        final List<Card> out = new ArrayList<>();
++        final List<Integer> rest = neededPips(ai, paying);
++        if (rest.isEmpty()) {
++            return out;
++        }
++        int spell = 0;
++        for (final int pip : pips(ai, paying)) spell |= pip;
++        final List<Card> srcs = new ArrayList<>();
++        final List<Integer> masks = new ArrayList<>();
++        for (final Card c : ai.getCardsIn(ZoneType.Battlefield)) {
++            if (c.isTapped() || paying.getHostCard() != null && c.getId() == paying.getHostCard().getId()) continue;
++            int mask = 0;
++            for (final SpellAbility ma : c.getManaAbilities()) {
++                try {
++                    ma.setActivatingPlayer(ai);
++                    if (ma.getManaPart() == null || ma.getPayCosts().hasManaCost() || !ma.canPlay()) continue;
++                    mask |= colorsOf(ma.getManaPart(), ma);
++                } catch (final RuntimeException e) { /* skip */ }
++            }
++            if (mask != 0) { srcs.add(c); masks.add(mask); }
++        }
++        final int sp = spell;
++        final List<Integer> order = new ArrayList<>();
++        for (int i = 0; i < srcs.size(); i++) order.add(i);
++        order.sort(Comparator.comparingInt((Integer i) -> Integer.bitCount(masks.get(i) & sp)).thenComparingInt(i -> Integer.bitCount(masks.get(i))));
++        final List<Integer> units = new ArrayList<>();
++        for (final int i : order) units.add(masks.get(i));
++        final int[] owner = new int[units.size()];
++        Arrays.fill(owner, -1);
++        for (int i = 0; i < rest.size(); i++) {
++            if (!augment(i, rest, units, owner, new boolean[units.size()])) {
++                return out;
++            }
++        }
++        for (int j = 0; j < units.size(); j++) if (owner[j] >= 0) out.add(srcs.get(order.get(j)));
++        return out;
++    }
++
+     /** The units the seat can make now: its untapped usable sources (as manaNow counts them), its mana pool, and the land drop
+      *  (one unit of any color an untapped land in hand makes). */
+     static List<Integer> manaUnits(final Player p) {

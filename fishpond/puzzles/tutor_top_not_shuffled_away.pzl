@@ -1,0 +1,17 @@
+# title: Zur's deck, Zur the Enchanter on the battlefield, seven lands, Personal Tutor and Mystical Tutor in hand: Zur attacks and searches first (a top-of-library tutor waits for main 2), then Personal Tutor puts Approach of the Second Sun on top, and Mystical Tutor (the same Approach again, and a shuffle) isn't cast while Approach waits (patch 89; zur5b_20261022 game 0: Long-Term Plans' Approach shuffled away by Zur's search, and two tutors for one Approach)
+# card: Personal Tutor
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: #FP-POLICY .*"src": "Personal Tutor".*"pick": "Approach of the Second Sun"
+# forbid: cast Mystical Tutor
+# order: #FP-POLICY .*"src": "Zur the Enchanter" << #FP-POLICY .*"src": "Personal Tutor"
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter;Plains;Plains;Island;Island;Swamp;Swamp;Island
+p0hand=Personal Tutor;Mystical Tutor
+p0library=Island;Astral Drift;Astral Slide;Approach of the Second Sun;Step Through;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

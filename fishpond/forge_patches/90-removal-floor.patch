@@ -1,0 +1,41 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+index a475d67..01aa474 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+@@ -1664,6 +1664,23 @@ public class ComputerUtilCard {
+         return chosen;
+     }
+ 
++    /** fishpond patch 90: the least a pilot seat spends single-target removal on: a creature worth REMOVAL_FLOOR (Forge's
++     *  creature value: a vanilla 1/1 is about 105, a 3/3 about 155, a 4/4 about 180) or a permanent the threat model rates
++     *  dangerous (THREAT_REMOVE_NOW; a noncreature at least THREAT_SAVE_BELOW). Below it the removal is held for something
++     *  that matters. -Dfishpond.removalFloor=0 turns it off. */
++    public static final double REMOVAL_FLOOR = Double.parseDouble(System.getProperty("fishpond.removalFloor", "160"));
++
++    public static boolean belowRemovalFloor(final Player ai, final Card c) {
++        if (REMOVAL_FLOOR <= 0 || ai == null || c == null || !forge.ai.ability.DrawAi.pilotSeat(ai) || c.getController() == ai) {
++            return false;
++        }
++        final double threat = AiController.cardThreatOf(ai, c);
++        if (threat >= AiController.THREAT_REMOVE_NOW) {
++            return false;
++        }
++        return c.isCreature() ? evaluateCreature(c) < REMOVAL_FLOOR : threat < AiController.THREAT_SAVE_BELOW;
++    }
++
+     public static boolean useRemovalNow(final SpellAbility sa, final Card c, final int dmg, ZoneType destination) {
+         final Player ai = sa.getActivatingPlayer();
+         final Game game = ai.getGame();
+@@ -1677,6 +1694,12 @@ public class ComputerUtilCard {
+         if (!sa.isSpell()) {
+             return true;
+         }
++        // fishpond patch 90: a floor on what single-target removal is spent on (the user, 2026-10-22: "Threat assess, compare it
++        // to the floor of what it's willing to burn a removal spell on"; Zur's Swords to Plowshares took a turn-1 Studious
++        // First-Year, zur5_20261022 game 4)
++        if (belowRemovalFloor(ai, c)) {
++            return false;
++        }
+         // fishpond patch 57: a target the threat model rates high (a combo piece, the threat leader's engine) is removed
+         // now; Forge held removal for targets that look big in combat, so it kept Swords while Walking Ballista sat next to
+         // Heliod a loop away

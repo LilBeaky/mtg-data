@@ -1,0 +1,16 @@
+# title: Eight Islands, Personal Tutor, Divination and Wurmcoil Engine in hand, Approach of the Second Sun in the library: after Personal Tutor puts Approach on top, Divination (it draws Approach) beats Wurmcoil Engine for the mana left (patch 89: a draw that reaches the card a tutor put on top is worth that card; the user: "use draw spells after any tutor that goes to the top of the library")
+# card: Personal Tutor
+# turns: 1
+# expect: cast Personal Tutor
+# expect: cast Divination
+# forbid: cast Wurmcoil Engine
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island;Island;Island;Island;Island;Island
+p0hand=Personal Tutor;Divination;Wurmcoil Engine
+p0library=Island;Island;Approach of the Second Sun;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

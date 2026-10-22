@@ -1,0 +1,85 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 10b33b0..b3231b6 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -95,7 +95,7 @@ public final class TurnPlan {
+     static final Map<Player, Object[]> DECLINED = Collections.synchronizedMap(new WeakHashMap<>());
+     static final Set<String> LOGGED = Collections.synchronizedSet(new LinkedHashSet<>());
+ 
+-    static boolean real(Game g) {
++    public static boolean real(Game g) {   // patch 87: public (CounterAi's log)
+         final java.util.function.Predicate<Game> f = IS_REAL;
+         return f != null && f.test(g);
+     }
+diff --git a/forge-ai/src/main/java/forge/ai/ability/CounterAi.java b/forge-ai/src/main/java/forge/ai/ability/CounterAi.java
+index 38580ae..6746c5c 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/CounterAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/CounterAi.java
+@@ -28,6 +28,47 @@ import forge.util.collect.FCollectionView;
+ 
+ public class CounterAi extends SpellAbilityAi {
+ 
++    /** fishpond patch 87: a counter whose cost sacrifices its own source (Glen Elendra Archmage: "{U}, sacrifice: counter
++     *  target noncreature spell", persist brings it back once). Forge's cost check lets the AI sacrifice its own creature only
++     *  when it is dying anyway or in the end step before its turn, so Glen Elendra never countered anything (zur5b_20261022:
++     *  Klauth resolved Dracogenesis and three Encroaching Dragonstorms into an untapped Island and Glen). Whether the spell is
++     *  worth the sacrifice is checkApiLogic's call: a source that comes back (persist, no -1/-1 counter yet) counters what
++     *  any counter would; one that doesn't, only what the threat model says must be countered (THREAT_COUNTER_AT). */
++    @Override
++    protected boolean willPayCosts(final Player payer, final SpellAbility sa, final Cost cost, final Card source) {
++        if (DrawAi.pilotSeat(payer) && ComputerUtilCost.isSacrificeSelfCost(cost)) {
++            return ComputerUtilCost.checkLifeCost(payer, cost, source, 4, sa) && ComputerUtilCost.checkDiscardCost(payer, cost, source, sa)
++                    && ComputerUtilCost.checkRemoveCounterCost(cost, source, sa);
++        }
++        return super.willPayCosts(payer, sa, cost, source);
++    }
++
++    /** fishpond patch 87: sacrificing the source costs a card for good (no persist return left). */
++    static boolean sacrificesForGood(final SpellAbility sa) {
++        final Card src = sa.getHostCard();
++        return sa.getPayCosts() != null && ComputerUtilCost.isSacrificeSelfCost(sa.getPayCosts()) && src != null
++                && !(src.hasKeyword(forge.game.keyword.Keyword.PERSIST) && src.getCounters(forge.game.card.CounterEnumType.M1M1) == 0)
++                && !(src.hasKeyword(forge.game.keyword.Keyword.UNDYING) && src.getCounters(forge.game.card.CounterEnumType.P1P1) == 0);
++    }
++
++    static final java.util.Set<String> LOGGED = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
++
++    /** fishpond patch 87: each counter decision a pilot seat's threat model makes, once per (counter, spell): #FP-COUNTER. */
++    static void logCounter(final Player ai, final SpellAbility sa, final SpellAbility tgt, final double threat, final String verdict) {
++        if (tgt.getHostCard() == null || sa.getHostCard() == null || !TurnPlan.real(ai.getGame())) {
++            return;
++        }
++        final String k = ai.getGame().getId() + "|" + sa.getHostCard().getId() + "|" + tgt.getHostCard().getId() + "|" + verdict;
++        if (!LOGGED.add(k)) {
++            return;
++        }
++        if (LOGGED.size() > 20000) LOGGED.clear();
++        System.out.println("#FP-COUNTER {\"turn\": " + ai.getGame().getPhaseHandler().getTurn() + ", \"seat\": \"" + ai.getName()
++                + "\", \"counter\": \"" + sa.getHostCard().getName().replace("\"", "") + "\", \"spell\": \""
++                + tgt.getHostCard().getName().replace("\"", "") + "\", \"caster\": \"" + tgt.getActivatingPlayer().getName()
++                + "\", \"threat\": " + Math.round(threat) + ", \"verdict\": \"" + verdict + "\"}");
++    }
++
+     /** fishpond patch 57: the spell targets ai or its permanents, or wipes the board ai is on. */
+     static boolean hitsSeat(final Player ai, final SpellAbility tgt) {
+         for (SpellAbility x = tgt; x != null; x = x.getSubAbility()) {
+@@ -166,11 +207,19 @@ public class CounterAi extends SpellAbilityAi {
+         if (tgtSA != null) {
+             final double threat = forge.ai.AiController.spellThreatOf(ai, tgtSA);
+             if (threat >= forge.ai.AiController.THREAT_COUNTER_AT) {
++                logCounter(ai, sa, tgtSA, threat, "counter");
+                 return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
+             }
+             if (threat >= 0 && threat < forge.ai.AiController.THREAT_SAVE_BELOW && !hitsSeat(ai, tgtSA)) {
++                logCounter(ai, sa, tgtSA, threat, "save");
++                return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
++            }
++            // patch 87: a counter that sacrifices its source for good is spent only on what must be countered
++            if (threat >= 0 && DrawAi.pilotSeat(ai) && sacrificesForGood(sa) && !hitsSeat(ai, tgtSA)) {
++                logCounter(ai, sa, tgtSA, threat, "save (sacrifice)");
+                 return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+             }
++            if (threat >= 0) logCounter(ai, sa, tgtSA, threat, "forge");
+         }
+ 
+         // Specific constraints for the AI to use/not use counterspells against specific groups of spells

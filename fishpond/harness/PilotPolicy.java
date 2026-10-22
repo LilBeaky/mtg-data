@@ -161,7 +161,7 @@ public final class PilotPolicy {
     static final class Board {
         Set<String> have = new HashSet<>();          // hand + battlefield + command zone (+ the source)
         Set<String> field = new HashSet<>();         // battlefield + command-zone commanders that are out
-        int lands, mana, hand, life, turn, oppPower, oppCreatures, myCreatures;
+        int lands, mana, hand, life, turn, oppPower, oppCreatures, myCreatures, oppTotal;   // oppTotal: every opponent's power together
         Map<String, Integer> fieldRoles = new HashMap<>();
         boolean engineOut;
     }
@@ -183,6 +183,7 @@ public final class PilotPolicy {
             int pw = 0;
             for (Card c : o.getCreaturesInPlay()) pw += Math.max(0, c.getNetPower());
             b.oppPower = Math.max(b.oppPower, pw);
+            b.oppTotal += pw;
             b.oppCreatures = Math.max(b.oppCreatures, o.getCreaturesInPlay().size());
         }
         for (String n : b.field) {
@@ -318,6 +319,13 @@ public final class PilotPolicy {
             // library top it's a dead card; put onto the battlefield (Zur) it works, the flag only stops casting
             if (ci.flag && (dest != ZoneType.Battlefield || ci.flag_dead)) for (int k = 0; k < s.length; k++) s[k] *= 0.1;
         }
+        // a lock on damage to its controller (Solitary Confinement): with the table's creatures set to kill, surviving comes
+        // before the deck's key engines (the user, 2026-10-22: "replace my next search for Zur with Solitary Confinement to make
+        // sure that I survive the board state"; Zur fetched Astral Slide at 23 life into Klauth's dragons, zur5b_20261022)
+        if (preventsDamageToYou(c)) {
+            double lethal = b.oppTotal >= b.life || b.oppPower * 5 >= b.life * 3 ? 1.0 : b.oppPower * 2 >= b.life || b.life <= 10 ? 0.5 : 0.0;
+            s[SURVIVAL] = Math.max(s[SURVIVAL], 1300 * lethal);   // over a key engine's ~1000 (Astral Drift in danger: 988)
+        }
         s[BOOST] = in.boost.getOrDefault(n, 0.0);
         // the deck's '# key:' cards (the user, 2026-10-16: "if I set a key card in a deck, it's there for a reason, and the
         // deck is typically designed to play around that card"): a big edge over any other engine or role pick, below a
@@ -330,6 +338,14 @@ public final class PilotPolicy {
     }
 
     static double sum(double[] s) { double t = 0; for (double x : s) t += x; return t; }
+
+    /** The card prevents all damage that would be dealt to its controller (Solitary Confinement). */
+    static boolean preventsDamageToYou(Card c) {
+        for (forge.game.replacement.ReplacementEffect re : c.getReplacementEffects())
+            if (re.getMode() == forge.game.replacement.ReplacementType.DamageDone && "True".equals(re.getParam("Prevent"))
+                    && re.getParamOrDefault("ValidTarget", "").equals("You")) return true;
+        return false;
+    }
 
     /** Rank candidates (best first) with their score vectors. */
     List<Map.Entry<Card, double[]>> rank(List<Card> cands, Player me, SpellAbility sa, ZoneType dest, Card forgePick) {

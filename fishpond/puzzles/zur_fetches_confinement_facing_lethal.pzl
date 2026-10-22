@@ -1,0 +1,15 @@
+# title: Zur's deck at 20 life, the opponent with two 6/6 Colossal Dreadmaws (12 power, three hits from dead) and Zur attacking: Zur's search takes Solitary Confinement (prevent all damage to you) over the key Astral Slide and Astral Drift (the user, 2026-10-22: replace the next Zur search with Solitary Confinement to survive the board; a general rule for damage locks when the table's creatures are set to kill)
+# card: Solitary Confinement
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: #FP-POLICY .*"src": "Zur the Enchanter".*"pick": "Solitary Confinement"
+p0life=20
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter;Plains;Island;Swamp;Island
+p0hand=Island
+p0library=Astral Drift;Astral Slide;Solitary Confinement;Escape Protocol;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Colossal Dreadmaw;Colossal Dreadmaw
+p1library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain

@@ -194,6 +194,23 @@ public class ForgeRunner {
         @Override public Card chooseSingleCardForZoneChange(ZoneType destination, List<ZoneType> origin, SpellAbility sa,
                 forge.game.card.CardCollection fetchList, forge.game.player.DelayedReveal delayedReveal, String selectPrompt,
                 boolean isOptional, Player decider) {
+            Card pick = chooseZoneChange(destination, origin, sa, fetchList, delayedReveal, selectPrompt, isOptional, decider);
+            // fishpond patch 89: a card the seat's own tutor puts into its library (Mystical Tutor, Long-Term Plans) is known
+            // there; the turn plan keeps it from being shuffled away and values the draws that reach it
+            Player me = getPlayer();
+            if (pick != null && destination == ZoneType.Library && origin != null && origin.contains(ZoneType.Library)
+                    && pick.getOwner() == me && me.getGame() == fb.game) {
+                try {
+                    @SuppressWarnings("unchecked") Map<Player, Card> top = (Map<Player, Card>) Class.forName("forge.ai.TurnPlan").getField("TOP").get(null);
+                    top.put(me, pick);
+                } catch (ReflectiveOperationException e) { /* a Forge build without patch 89 */ }
+            }
+            return pick;
+        }
+
+        Card chooseZoneChange(ZoneType destination, List<ZoneType> origin, SpellAbility sa,
+                forge.game.card.CardCollection fetchList, forge.game.player.DelayedReveal delayedReveal, String selectPrompt,
+                boolean isOptional, Player decider) {
             Player me = getPlayer();
             if (policy == null || sa == null || sa.getApi() == ApiType.Learn || !PilotPolicy.appliesToSearch(destination, origin, fetchList, decider, me))
                 return super.chooseSingleCardForZoneChange(destination, origin, sa, fetchList, delayedReveal, selectPrompt, isOptional, decider);

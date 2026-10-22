@@ -1,0 +1,15 @@
+# title: Zur's game-0 mana (Exotic Orchard, Choked Estuary, Orzhov Signet, Plains, Desert of the True), Glen Elendra Archmage and Personal Tutor planned together: Forge pays Glen without the second blue source (the Signet fed from a white land), so Personal Tutor is cast too (patch 88: it paid Glen's generic with the blue the tutor needed, three turns running, zur5b_20261022 game 0)
+# card: Personal Tutor
+# turns: 1
+# expect: cast Glen Elendra Archmage
+# expect: cast Personal Tutor
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Exotic Orchard;Choked Estuary;Orzhov Signet;Plains;Desert of the True
+p0hand=Glen Elendra Archmage;Personal Tutor
+p0library=Approach of the Second Sun;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Island;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

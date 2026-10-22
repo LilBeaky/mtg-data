@@ -1,0 +1,15 @@
+# title: Glen Elendra Archmage and an untapped Island, the opponent casts Dracogenesis (Dragons cost nothing) with Dragons in its library: the AI sacrifices Glen to counter it (patch 87: Forge let the AI sacrifice its own creature as a cost only when it was dying anyway, so Glen Elendra never countered; and a free-cast permanent is a threat: zur5b_20261022, Klauth resolved Dracogenesis into Glen)
+# card: Glen Elendra Archmage
+# turns: 1
+# expect: activated Glen Elendra Archmage
+# forbid: Resolve Stack: Dracogenesis
+p0life=40
+p1life=40
+turn=1
+activeplayer=p1
+activephase=MAIN1
+p0battlefield=Glen Elendra Archmage;Island;Plains;Plains
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1hand=Dracogenesis
+p1library=Shivan Dragon;Balefire Dragon;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain

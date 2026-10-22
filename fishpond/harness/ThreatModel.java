@@ -586,6 +586,8 @@ public final class ThreatModel {
         boolean combo = inCombo(pol, c.getName(), field, m);
         if (combo) v += m[0] == 0 ? (m[1] == 1 ? 95 : 55) : m[0] == 1 ? 40 : 0;
         if (pol != null && pol.in.keys.contains(c.getName())) v += 35;
+        else if (pol != null && pol.castPriority0(o, sa) >= 2) v += 25;   // it turns on the engine the caster's deck is built around
+        if (freeCasts(c)) v += 40;   // patch 87: Dracogenesis, Omniscience: the caster's spells cost nothing from here on
         int[] cl = c.isPermanent() ? cardLinks(c, o) : new int[2];
         v += Math.min(30, 15 * cl[0]) + (cl[1] == 1 ? 25 : 0);
         v += Math.min(40, 10 * fedTriggers(sa, c, o));   // what it sets off as it resolves (Serra Angel into Soul Warden)
@@ -603,6 +605,14 @@ public final class ThreatModel {
         // 2026-10-17: weigh it the same as removal; replaces a flat +25)
         if (c.isCommander()) out -= commanderPenalty(c, o, (combo && m[0] == 0) || cl[1] == 1 || (c.isCreature() && parts(o)[T_CLOCK] <= 2));
         return out;
+    }
+
+    /** A permanent that lets its controller cast spells without paying their mana costs (Dracogenesis: Dragons; Omniscience). */
+    static boolean freeCasts(Card c) {
+        if (!c.isPermanent()) return false;
+        for (forge.game.staticability.StaticAbility st : c.getStaticAbilities())
+            if (st.hasParam("MayPlayWithoutManaCost") && !st.getParamOrDefault("Affected", "").contains("Opp")) return true;
+        return false;
     }
 
     /** Events a spell makes as it resolves, with how often (up to 3): a permanent entering (a land: landfall too) and its own
