@@ -1,0 +1,85 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 953605d..8cb230a 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1470,6 +1470,10 @@ public class AiController {
+                 }
+             }
+             cycles = (s[S_OPP_LIFE] + (-d[S_OPP_LIFE]) - 1) / (-d[S_OPP_LIFE]);
++            // fishpond patch 96: the losses take effect now, as after the other jumps (without it the game went on; the next
++            // choice's lookahead copied a board of opponents at 0, lost them all and had no opponent to resolve with:
++            // zur300b_20261023 C11 g24, Heliod's Triskelion loop)
++            game.getAction().checkStateEffects(true);
+             reason = "lethal";
+         } else {
+             int n = Integer.MAX_VALUE;
+diff --git a/forge-ai/src/main/java/forge/ai/simulation/GameSimulator.java b/forge-ai/src/main/java/forge/ai/simulation/GameSimulator.java
+index d269ff6..ff770c7 100644
+--- a/forge-ai/src/main/java/forge/ai/simulation/GameSimulator.java
++++ b/forge-ai/src/main/java/forge/ai/simulation/GameSimulator.java
+@@ -264,34 +264,44 @@ public class GameSimulator {
+     }
+ 
+     public static void resolveStack(final Game game, final Player opponent) {
++        // fishpond patch 96: with every opponent already out of the copy there is no one to hand a controller to (the
++        // callers pass getWeakestOpponent(), null then): the stack resolves under the players' own controllers.
++        // zur300b_20261023 C11 g24: Heliod's Triskelion pings had Zur, the last opponent, at a loss in the copy; the land
++        // check's simulation threw a NullPointerException here and the decision fell back
++        if (opponent == null) {
++            resolveStackNow(game);
++            return;
++        }
+         // TODO: This needs to set an AI controller for all opponents, in case of multiplayer.
+         PlayerControllerAi sim = new PlayerControllerAi(game, opponent, opponent.getLobbyPlayer());
+         sim.getAi().setUseSimulation(AIOption.USE_FULL_SIMULATION);
+-        opponent.runWithController(() -> {
+-            final Set<Card> allAffectedCards = new HashSet<>();
+-            game.getAction().checkStateEffects(false, allAffectedCards);
+-            game.getStack().addAllTriggeredAbilitiesToStack();
+-            while (!game.getStack().isEmpty() && !game.isGameOver()) {
+-                debugPrint("Resolving:" + game.getStack().peekAbility());
++        opponent.runWithController(() -> resolveStackNow(game), sim);
++    }
+ 
+-                // Resolve the top effect on the stack.
+-                game.getStack().resolveStack();
++    private static void resolveStackNow(final Game game) {
++        final Set<Card> allAffectedCards = new HashSet<>();
++        game.getAction().checkStateEffects(false, allAffectedCards);
++        game.getStack().addAllTriggeredAbilitiesToStack();
++        while (!game.getStack().isEmpty() && !game.isGameOver()) {
++            debugPrint("Resolving:" + game.getStack().peekAbility());
+ 
+-                // Evaluate state based effects as a result of resolving stack.
+-                // Note: Needs to happen after resolve stack rather than at the
+-                // top of the loop to ensure state effects are evaluated after the
+-                // last resolved effect
+-                game.getAction().checkStateEffects(false, allAffectedCards);
++            // Resolve the top effect on the stack.
++            game.getStack().resolveStack();
+ 
+-                // Add any triggers additional triggers as a result of the above.
+-                // Must be below state effects, since legendary rule is evaluated
+-                // as part of state effects and trigger come afterward. (e.g. to
+-                // correctly handle two Dark Depths - one having no counters).
+-                game.getStack().addAllTriggeredAbilitiesToStack();
++            // Evaluate state based effects as a result of resolving stack.
++            // Note: Needs to happen after resolve stack rather than at the
++            // top of the loop to ensure state effects are evaluated after the
++            // last resolved effect
++            game.getAction().checkStateEffects(false, allAffectedCards);
+ 
+-                // Continue until stack is empty.
+-            }
+-        }, sim);
++            // Add any triggers additional triggers as a result of the above.
++            // Must be below state effects, since legendary rule is evaluated
++            // as part of state effects and trigger come afterward. (e.g. to
++            // correctly handle two Dark Depths - one having no counters).
++            game.getStack().addAllTriggeredAbilitiesToStack();
++
++            // Continue until stack is empty.
++        }
+     }
+ 
+     public Game getSimulatedGameState() {
