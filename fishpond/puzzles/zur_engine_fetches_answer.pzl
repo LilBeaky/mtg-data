@@ -1,0 +1,15 @@
+# title: Zur's loop running (Astral Slide and Archaeomancer out, Step Through in hand) and the opponent's Heliod, Sun-Crowned with Walking Ballista on the battlefield: Step Through's Wizardcycle fetches an answer for the table (Spellseeker for Swords to Plowshares), not another engine body (Glen Elendra, Vedalken Aethermage, Bloodline Necromancer) (the user, 2026-10-23: the Wizard network, levers over bodies; zur300b_20261023: the running loop took Glen 100 times, Aethermage 69, Spellseeker never)
+# card: Spellseeker
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: #FP-POLICY .*"src": "Step Through".*"pick": "Spellseeker"
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Astral Slide;Archaeomancer;Plains;Island;Island;Swamp;Island
+p0hand=Step Through
+p0library=Glen Elendra Archmage;Vedalken Aethermage;Bloodline Necromancer;Spellseeker;Drannith Magistrate;Swords to Plowshares;Pest Control;Island;Island;Island;Island
+p1battlefield=Heliod, Sun-Crowned;Walking Ballista|Counters:P1P1=2;Plains;Plains;Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

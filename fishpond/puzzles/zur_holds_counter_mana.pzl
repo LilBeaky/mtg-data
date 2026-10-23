@@ -1,0 +1,18 @@
+# title: Zur's deck in main 1 with Miscalculation, Step Through and Unquestioned Authority in hand and four lands: it keeps Miscalculation's two up rather than tapping out for Unquestioned Authority, and the held mana goes to Wizardcycling Step Through at the end of the opponent's turn (the user, 2026-10-23: hold mana for interaction; zur300b_20261023: the counter logic wanted 420 spells countered, about 31 were, Zur tapped out for 301 of the misses)
+# card: Miscalculation
+# deck: Ians_Zur_Wizardcycling
+# turns: 2
+# expect: #FP-PLAN .*"seat": "Ai\(1\).*"reserve": 2
+# expect: activated Step Through
+# forbid: cast Unquestioned Authority
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter|SummonSick;Plains;Island;Island;Swamp
+p0hand=Miscalculation;Step Through;Unquestioned Authority
+p0library=Archaeomancer;Tribute Mage;Spellseeker;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest
+p1hand=Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

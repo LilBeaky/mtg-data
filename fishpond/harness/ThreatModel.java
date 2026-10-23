@@ -745,10 +745,12 @@ public final class ThreatModel {
         if ((ph.is(PhaseType.END_OF_TURN) || ph.is(PhaseType.CLEANUP)) && ph.getNextTurn() == ai) return NONE;   // spend it now
         List<Card> answers = new ArrayList<>();
         for (Card c : ai.getCardsIn(ZoneType.Hand)) if (answerKind(c) > 0) answers.add(c);
-        if (answers.isEmpty()) return NONE;
         Player top = null;
         double best = -1;
         for (Player o : ai.getOpponents()) if (!o.hasLost() && threatNow(o) > best) { best = threatNow(o); top = o; }
+        Posture free = top == null ? null : freeHold(ai, answers, top);
+        if (free != null) return free;
+        if (answers.isEmpty()) return NONE;
         if (top == null || threatNow(ai) >= best) return NONE;   // the leader pushes
         double[] t = parts(top);
         boolean veryClose = t[T_CLOCK] <= 1 || t[T_COMBO] >= 90 || t[T_CYCLES] >= 1;
@@ -779,6 +781,60 @@ public final class ThreatModel {
             if (first != null && ph.getTurn() - first >= 4) return NONE;
         }
         return new Posture(Math.max(1, pick.getCMC()), pick.getName(), top, why);
+    }
+
+    // ---- a hold that costs little (the user, 2026-10-23: Zur "mana held up depends on hand and game speed"; zur300b_20261023:
+    // the counter logic wanted 420 spells countered and about 31 were, Zur having tapped out on its own turn for 301 of the
+    // misses; Thassa's Oracle, 60 of Zur's 270 losses). A seat whose held mana has an instant-speed use later (cycling and
+    // typecycling cards in hand, activated abilities that aren't sorcery-speed, other instants) loses little by holding: it
+    // keeps a counterspell's mana up through the opponents' turns by default, or a counter ability's on the battlefield
+    // (Glen Elendra Archmage's {U}), and the rest goes at the last end step before its turn (posture0 releases it there).
+    // The counter's own verdict still decides what is worth countering; the plan's key cards, commander, combo and engine
+    // pieces still go ahead (holdBlocks). ----
+    static Posture freeHold(Player ai, List<Card> answers, Player top) {
+        int sources = 0;
+        for (Card c : ai.getCardsIn(ZoneType.Battlefield)) if (!c.getManaAbilities().isEmpty()) sources++;
+        Card pick = null;
+        for (Card c : answers) {
+            if (answerKind(c) != 1 || c.getCMC() > sources || c.getCMC() < 1) continue;
+            boolean fits = false;
+            for (Player o : ai.getOpponents()) if (!o.hasLost() && counterShare(ai, c, o) >= 0.35) { fits = true; break; }
+            if (fits && (pick == null || c.getCMC() < pick.getCMC())) pick = c;
+        }
+        int keep = pick == null ? 0 : pick.getCMC();
+        String answer = pick == null ? null : pick.getName();
+        if (pick == null) {   // a counter ability on the battlefield (Glen Elendra Archmage)
+            for (Card c : ai.getCardsIn(ZoneType.Battlefield))
+                for (SpellAbility a : c.getSpellAbilities()) {
+                    if (a.isSpell() || a.isManaAbility() || a.getPayCosts() == null || a.getPayCosts().getTotalMana() == null) continue;
+                    boolean counter = false;
+                    for (SpellAbility x : chain(a)) if (x.getApi() == ApiType.Counter) counter = true;
+                    int cost = a.getPayCosts().getTotalMana().getCMC();
+                    if (counter && cost >= 1 && (keep == 0 || cost < keep)) { keep = cost; answer = c.getName(); }
+                }
+        }
+        if (keep == 0 || instantSink(ai, answer) < keep) return null;
+        return new Posture(keep, answer, top, "free");
+    }
+
+    /** Mana the seat could spend at instant speed later: its cycling and typecycling costs in hand, activated abilities on its
+     *  permanents that aren't sorcery-speed or mana abilities, its other instants and flash cards (not the held answer). */
+    static int instantSink(Player ai, String answer) {
+        int n = 0;
+        for (Card c : ai.getCardsIn(ZoneType.Hand)) {
+            if (c.getName().equals(answer)) continue;
+            for (SpellAbility a : c.getAllSpellAbilities()) {
+                if (a.isCycling() && a.getPayCosts() != null && a.getPayCosts().getTotalMana() != null) { n += a.getPayCosts().getTotalMana().getCMC(); break; }
+            }
+            if (c.isInstant() || c.hasKeyword(Keyword.FLASH)) n += c.getCMC();
+        }
+        for (Card c : ai.getCardsIn(ZoneType.Battlefield))
+            for (SpellAbility a : c.getSpellAbilities()) {
+                if (a.isSpell() || a.isManaAbility() || a.getPayCosts() == null || a.getPayCosts().getTotalMana() == null) continue;
+                if (c.getName().equals(answer) || a.getRestrictions() != null && a.getRestrictions().isSorcerySpeed()) continue;
+                n += a.getPayCosts().getTotalMana().getCMC();
+            }
+        return n;
     }
 
     static final Map<Game, Map<String, Double>> COUNTER_SHARE = Collections.synchronizedMap(new WeakHashMap<>());
@@ -863,7 +919,9 @@ public final class ThreatModel {
         if (host != null && sa.isSpell() && (host.isCommander() || host.getCMC() >= 6)) return false;
         if (host != null && pol != null && pol.isKey(host.getName())) return false;   // cast or used: Step Through is only ever wizardcycled
         if (pol != null && pol.castPriority0(ai, sa) >= 2) return false;
-        if (sa.isCycling() && cyclingPayoff(ai)) return false;   // cycling into Astral Drift is the engine itself
+        // cycling into Astral Drift is the engine itself; under a free hold it runs on the mana past the hold, the rest at the
+        // last end step before the seat's turn
+        if (sa.isCycling() && cyclingPayoff(ai) && !"free".equals(p.why())) return false;
         int avail = ComputerUtilMana.getAvailableManaEstimate(ai, false);
         if (avail < p.keep() || (!x && avail - cmc >= p.keep())) return false;   // nothing to keep, or enough left after it
         Game g = ai.getGame();

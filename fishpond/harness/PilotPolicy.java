@@ -265,9 +265,17 @@ public final class PilotPolicy {
     static int slotState(Player me, List<String> slot, boolean first) {
         int st = 0;
         for (Card c : me.getCardsIn(ZoneType.Battlefield)) if (slot.contains(c.getName())) return 2;
+        for (Card c : me.getCardsIn(ZoneType.Exile))   // blinked this turn by its own payoff: back at the end step
+            if (slot.contains(c.getName()) && c.isCreature() && c.getTurnInZone() == me.getGame().getPhaseHandler().getTurn() && blinkedBack(me)) return 2;
         for (Card c : me.getCardsIn(ZoneType.Hand)) if (slot.contains(c.getName())) { if (first && cycler(c)) return 2; st = 1; }
         if (first) for (Card c : me.getCardsIn(ZoneType.Graveyard)) if (slot.contains(c.getName()) && cycler(c)) return 2;
         return st;
+    }
+
+    /** A cycle-blink payoff of the seat's is on the battlefield (what it exiles comes back). */
+    static boolean blinkedBack(Player me) {
+        for (Card c : me.getCardsIn(ZoneType.Battlefield)) if (cycleBlinker(c)) return true;
+        return false;
     }
 
     /** What a card adds to building the seat's loops: 900 when it fills the last open slot, 300 when one more stays open
@@ -276,6 +284,7 @@ public final class PilotPolicy {
     double loopValue(Player me, Card c, boolean cast) {
         String n = c.getName();
         double best = 0;
+        boolean running = loopRunning(me);
         for (List<List<String>> l : loops(me)) {
             int at = -1;
             for (int i = 0; i < l.size(); i++) if (l.get(i).contains(n)) { at = i; break; }
@@ -285,9 +294,99 @@ public final class PilotPolicy {
             if (cast && (at == 0 && cycler(c) || !c.isPermanent())) continue;   // the fuel works from hand; nothing to build
             int open = 0;
             for (int i = 0; i < l.size(); i++) if (i != at && slotState(me, l.get(i), i == 0) < need) open++;
-            best = Math.max(best, open == 0 ? 900 : open == 1 ? 300 : 0);
+            double v = open == 0 ? 900 : open == 1 ? 300 : 0;
+            // a second loop adds little once one runs (zur300b_20261023: with Step Through > Archaeomancer > Slide running, the
+            // Glen Elendra > Slide line made Glen a 900 pick on every Wizardcycle, and Auramancer 300 off a found Drift loop)
+            best = Math.max(best, running ? v / 9 : v);
         }
         return best;
+    }
+
+    /** One of the seat's loops has every slot ready: the engine runs. */
+    boolean loopRunning(Player me) {
+        for (List<List<String>> l : loops(me)) {
+            boolean all = true;
+            for (int i = 0; i < l.size() && all; i++) if (slotState(me, l.get(i), i == 0) < 2) all = false;
+            if (all) return true;
+        }
+        return false;
+    }
+
+    // ------------------------------------------------------------------ what a running engine fetches (the user, 2026-10-23)
+    // "The loop opens a network of Wizards": Tribute Mage for Fluctuator, Emeritus when cards are needed, Auramancer or
+    // Bloodline Necromancer to rebuy a key piece, Spellseeker (Cyclonic Rift, Pest Control, Feed the Swarm, Fracture),
+    // Triskaidekaphile when ready to win, Drannith, Disciple. zur300b_20261023: in 133 games with the loop running, its
+    // Wizardcycles took Glen Elendra 100 times, Vedalken Aethermage 69 and Bloodline Necromancer 41 (engine and typal-payoff
+    // scores), Spellseeker never, and the levers were rare (Drannith cast 15 times, Disciple 7, Rule of Law 5); Zur won as
+    // often as without the loop. Once a loop runs: more engine adds little (engine and synergy layers a quarter), the
+    // answers the table calls for count double (removal, wipe, counter, hate, protection), a tutor is worth the card it
+    // would find (Spellseeker the best instant or sorcery of mana value 2 or less, Tribute Mage the best 2-mana artifact;
+    // the user's rule: a tutor is its pick), and a card that phases out all but a few permanents (Disciple of Caelus Nin)
+    // counts as a wipe.
+    static final ThreadLocal<Boolean> IN_FETCH = ThreadLocal.withInitial(() -> false);
+
+    /** The best score among the library cards its enter-the-battlefield search would find (to hand), 0 if none. */
+    double fetchValue(Card c, Board b) {
+        if (IN_FETCH.get() || b.me == null) return 0;
+        IN_FETCH.set(true);
+        try {
+            double best = 0;
+            for (forge.game.trigger.Trigger t : c.getTriggers()) {
+                if (t.getMode() != forge.game.trigger.TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))
+                        || !t.getParamOrDefault("ValidCard", "").startsWith("Card.Self")) continue;
+                for (SpellAbility x = t.ensureAbility(); x != null; x = x.getSubAbility()) {
+                    if (x.getApi() != ApiType.ChangeZone || !x.getParamOrDefault("Origin", "").contains("Library") || !x.hasParam("ChangeType")) continue;
+                    x.setActivatingPlayer(b.me);
+                    for (Card k : forge.game.card.CardLists.getValidCards(b.me.getCardsIn(ZoneType.Library), x.getParam("ChangeType").split(","), b.me, c, x))
+                        best = Math.max(best, sum(score(k, b, ZoneType.Hand, false)));
+                }
+            }
+            return best;
+        } catch (RuntimeException e) {
+            return 0;
+        } finally {
+            IN_FETCH.set(false);
+        }
+    }
+
+    /** The biggest threat (ThreatModel.cardThreat) among the opponents' permanents its targeted removal could hit, from its
+     *  spell or its enter trigger; -1 when it can hit none (Vedalken Aethermage bounces only Slivers). */
+    static double removalReach(Card c, Player me) {
+        List<SpellAbility> abs = new ArrayList<>(c.getSpells());
+        for (forge.game.trigger.Trigger t : c.getTriggers())
+            if (t.getMode() == forge.game.trigger.TriggerType.ChangesZone && "Battlefield".equals(t.getParam("Destination"))
+                    && t.getParamOrDefault("ValidCard", "").startsWith("Card.Self")) {
+                try { abs.add(t.ensureAbility()); } catch (RuntimeException e) { /* skip */ }
+            }
+        double best = -1;
+        for (SpellAbility sa : abs) {
+            for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
+                ApiType api = x.getApi();
+                if (!x.usesTargeting() || !(api == ApiType.Destroy || api == ApiType.Sacrifice || api == ApiType.DealDamage
+                        || api == ApiType.ChangeZone && "Battlefield".equals(x.getParam("Origin")))) continue;
+                String valid = x.getParamOrDefault("ValidTgts", "");
+                if (valid.isEmpty()) continue;
+                for (Player o : me.getOpponents())
+                    for (Card p : o.getCardsIn(ZoneType.Battlefield)) {
+                        if (p.isLand()) continue;
+                        boolean hit;
+                        try { hit = p.isValid(valid.split(","), me, c, x); } catch (RuntimeException e) { hit = false; }
+                        if (hit) best = Math.max(best, Math.max(0, ThreatModel.cardThreat(me, p)));
+                    }
+            }
+        }
+        return best;
+    }
+
+    /** Its enter trigger phases out all but some permanents (Disciple of Caelus Nin): a wipe by another name. */
+    static boolean phasesOthersOut(Card c) {
+        for (forge.game.trigger.Trigger t : c.getTriggers()) {
+            if (t.getMode() != forge.game.trigger.TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))) continue;
+            try {
+                for (SpellAbility x = t.ensureAbility(); x != null; x = x.getSubAbility()) if (x.getApi() == ApiType.Phases) return true;
+            } catch (RuntimeException e) { /* none */ }
+        }
+        return false;
     }
 
     /** A piece the loop can't do without: any slot's card but a fuel slot with alternatives (those cyclers are cycled; the
@@ -428,6 +527,7 @@ public final class PilotPolicy {
         String n = c.getName();
         CardIntel ci = in.cards.get(n);
         if (b.me != null) s[COMBO] = loopValue(b.me, c, false);   // building a repeatable engine
+        final boolean engineOn = b.me != null && loopRunning(b.me);
         // combo
         for (Combo cb : in.combos) {
             if (!cb.cards.contains(n)) continue;
@@ -469,26 +569,34 @@ public final class PilotPolicy {
             if (ci.roles.contains("engine") && ci.payoff.isEmpty() && !b.fieldRoles.containsKey("engine")) s[ENGINE] += 60;
             // role gap
             double role = 0;
-            for (String r : ci.roles) {
+            List<String> roles = new ArrayList<>(ci.roles);
+            if (!roles.contains("wipe") && phasesOthersOut(c)) roles.add("wipe");
+            for (String r : roles) {
                 double need = switch (r) {
                     case "ramp" -> b.turn <= 6 && (b.lands < 5 || b.mana < 5) ? 1.0 : 0.2;
                     case "land" -> dest == ZoneType.Battlefield && b.lands < 6 ? 0.8 : 0.1;
                     case "draw" -> b.hand <= 2 ? 1.0 : 0.4;
                     case "wincon" -> b.turn >= 8 || b.engineOut ? 0.9 : 0.25;
-                    case "removal" -> b.oppCreatures > 0 ? 0.5 : 0.2;
+                    case "removal" -> {   // only what it can hit: a real threat in reach counts most (Swords on Heliod)
+                        double reach = b.me == null ? 0 : removalReach(c, b.me);
+                        yield reach < 0 ? 0.0 : reach >= 40 ? 1.5 : b.oppCreatures > 0 ? 0.5 : 0.2;
+                    }
                     case "wipe" -> b.oppCreatures >= 3 && b.oppCreatures > b.myCreatures + 1 ? 0.7 : 0.1;
                     case "protection" -> b.engineOut ? 0.7 : 0.4;
                     case "counter" -> 0.35;
                     case "hate" -> 0.3;
                     default -> 0.0;
                 };
+                if (engineOn && (r.equals("removal") || r.equals("wipe") || r.equals("counter") || r.equals("hate") || r.equals("protection"))) need *= 2;
                 int onBoard = b.fieldRoles.getOrDefault(r, 0);
                 double share = in.role_share.getOrDefault(r, 0.0);
                 role = Math.max(role, 200 * need * (1 - Math.min(1.0, onBoard / 2.0)) * (0.5 + share));
             }
+            if (dest == ZoneType.Hand && c.isPermanent()) role = Math.max(role, 0.8 * fetchValue(c, b));   // a tutor is its pick
             if (dest == ZoneType.Hand && ci.cmc > b.mana + 2) role *= 0.6;   // to hand but far from castable
             s[ROLE] = role;
             s[SYNERGY] = 60 * ci.syn;
+            if (engineOn) { s[ENGINE] /= 4; s[SYNERGY] /= 4; }   // the engine runs: more of it adds little
             // Forge's AI never casts an AI:RemoveDeck:All card (unless fishpond overrides it), so fetched to hand or the
             // library top it's a dead card; put onto the battlefield (Zur) it works, the flag only stops casting
             if (ci.flag && (dest != ZoneType.Battlefield || ci.flag_dead)) for (int k = 0; k < s.length; k++) s[k] *= 0.1;
