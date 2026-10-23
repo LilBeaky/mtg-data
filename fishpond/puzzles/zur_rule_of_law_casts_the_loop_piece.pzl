@@ -1,0 +1,17 @@
+# title: Zur's deck under its own Rule of Law (one spell each turn), Astral Slide out and Step Through in the graveyard, Sol Ring and Archaeomancer in hand with mana for both: the one spell is Archaeomancer, the loop's missing piece (patch 95; zur300_20261023 game 55: the plan cast Sol Ring first and Archaeomancer waited a turn)
+# card: Rule of Law
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: cast Archaeomancer
+# forbid: cast Sol Ring
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Rule of Law;Astral Slide;Plains;Island;Island;Swamp;Island
+p0hand=Sol Ring;Archaeomancer
+p0graveyard=Step Through
+p0library=Tribute Mage;Spellseeker;Triskaidekaphile;Fluctuator;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

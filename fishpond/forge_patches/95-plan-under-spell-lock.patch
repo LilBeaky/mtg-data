@@ -1,0 +1,94 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index a80bc77..c86c940 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -209,6 +209,15 @@ public final class TurnPlan {
+         if (p == null || p.rank.containsKey(sa.getHostCard().getId())) {
+             return false;
+         }
++        // patch 95: under a spell lock (Rule of Law), an unplanned spell would take the cast a planned one needs
++        if (sa.isSpell()) {
++            final int[] lim = spellsLeft(ai);
++            for (final Step s : p.steps) {
++                if (s.sa.isSpell() && (lim[0] >= 0 || lim[1] >= 0 && !s.card.isCreature() && !sa.getHostCard().isCreature())) {
++                    return true;
++                }
++            }
++        }
+         // patch 84: nor one whose colors would leave the plan's, or the held answer's, unpayable ({1}{U} off the Island
+         // Counterspell needs)
+         if ((!p.steps.isEmpty() || !p.keepPips.isEmpty()) && !sa.getHostCard().getName().equals(p.answer)) {
+@@ -1285,7 +1294,8 @@ public final class TurnPlan {
+         plan.units = units;
+         plan.keepPips = keepPips;
+         plan.answer = answer;
+-        final List<Step> pick = choose(cands.size() > 12 ? cands.subList(0, 12) : cands, Math.max(0, room - laterCost), restricted, units, keepPips);
++        final List<Step> pick = choose(cands.size() > 12 ? cands.subList(0, 12) : cands, Math.max(0, room - laterCost), restricted, units, keepPips,
++                spellsLeft(ai));
+         pick.sort((a, b) -> a.tier != b.tier ? Integer.compare(a.tier, b.tier) : Double.compare(b.value, a.value));
+         int r = 1000;
+         for (final Step s : pick) {
+@@ -1305,6 +1315,47 @@ public final class TurnPlan {
+ 
+     static List<Step> choose(final List<Step> cands, final int room, final List<Restricted> restricted, final List<Integer> units,
+                              final List<Integer> keepPips) {
++        return choose(cands, room, restricted, units, keepPips, new int[] {-1, -1});
++    }
++
++    // ---- fishpond patch 95: a spell lock (zur300_20261023 game 55: under Zur's own Rule of Law the plan cast Sol Ring first,
++    // worth 125, and Archaeomancer, worth 1256 as the loop's missing piece, couldn't be cast that turn; two Triskaidekaphile
++    // draws spent the mana instead). Under "each player can't cast more than N spells each turn" (Rule of Law, Arcane
++    // Laboratory; Deafening Silence counts noncreature spells) a set holds no more spells than the lock still allows (the
++    // best set by value, as always), and a spell outside the plan isn't cast while the plan's spells need the cast.
++    // Abilities (cycling, Wizardcycling, activations) are never limited. ----
++    /** {spells the seat may still cast this turn, noncreature spells it may still cast}, -1 for no lock. */
++    static int[] spellsLeft(final Player ai) {
++        final int[] out = {-1, -1};
++        try {
++            final Game g = ai.getGame();
++            for (final Card c : g.getCardsIn(ZoneType.Battlefield)) {
++                for (final forge.game.staticability.StaticAbility st : c.getStaticAbilities()) {
++                    if (!st.checkMode(forge.game.staticability.StaticAbilityMode.CantBeCast) || !st.hasParam("NumLimitEachTurn")
++                            || !st.checkConditions()) continue;
++                    final String caster = st.getParamOrDefault("Caster", "Player");
++                    if (caster.equals("You") && c.getController() != ai || caster.equals("Opponent") && !c.getController().isOpponentOf(ai)) continue;
++                    final String valid = st.getParamOrDefault("ValidCard", "Card");
++                    final int n = Integer.parseInt(st.getParam("NumLimitEachTurn").trim());
++                    if (valid.equals("Card")) {
++                        final int left = Math.max(0, n - ai.getSpellsCastThisTurn());
++                        out[0] = out[0] < 0 ? left : Math.min(out[0], left);
++                    } else if (valid.equals("Card.nonCreature")) {
++                        int cast = 0;
++                        for (final SpellAbility x : g.getStack().getSpellsCastThisTurn()) {
++                            if (x.getActivatingPlayer() == ai && x.getHostCard() != null && !x.getHostCard().isCreature()) cast++;
++                        }
++                        final int left = Math.max(0, n - cast);
++                        out[1] = out[1] < 0 ? left : Math.min(out[1], left);
++                    }
++                }
++            }
++        } catch (final RuntimeException e) { /* no lock we can read */ }
++        return out;
++    }
++
++    static List<Step> choose(final List<Step> cands, final int room, final List<Restricted> restricted, final List<Integer> units,
++                             final List<Integer> keepPips, final int[] lim) {
+         final int n = cands.size(), k = restricted.size();
+         final boolean[][] pays = new boolean[n][k];
+         for (int i = 0; i < n; i++) for (int j = 0; j < k; j++) pays[i][j] = restricted.get(j).pays(cands.get(i).sa);
+@@ -1319,6 +1370,15 @@ public final class TurnPlan {
+             // a rock pays back only once cast: the most a set needs at once is checked in cost order, rocks first
+             final List<Integer> set = new ArrayList<>();
+             for (int i = 0; i < n; i++) if ((mask & (1 << i)) != 0) set.add(i);
++            if (lim[0] >= 0 || lim[1] >= 0) {   // patch 95: no more spells than the lock allows
++                int spells = 0, nonCreature = 0;
++                for (final int i : set) {
++                    if (!cands.get(i).sa.isSpell()) continue;
++                    spells++;
++                    if (!cands.get(i).card.isCreature()) nonCreature++;
++                }
++                if (lim[0] >= 0 && spells > lim[0] || lim[1] >= 0 && nonCreature > lim[1]) continue;
++            }
+             set.sort(Comparator.comparingInt((Integer i) -> cands.get(i).effCost - cands.get(i).cost));
+             for (final int i : set) {
+                 final Step s = cands.get(i);

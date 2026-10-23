@@ -238,16 +238,21 @@ public final class PilotPolicy {
         List<String> blinkers = new ArrayList<>();
         for (Card c : cards) if (cycleBlinker(c) && !blinkers.contains(c.getName())) blinkers.add(c.getName());
         if (blinkers.isEmpty()) return out;
+        // one loop per returner, its fuel slot every cycler it can return (zur300_20261023: one loop per cycling instant made
+        // each one look like the missing piece to a tutor)
         Set<String> done = new HashSet<>();
         for (Card r : cards) {
             String[] valid = returnsToHand(r);
-            if (valid == null) continue;
+            if (valid == null || !done.add("returner>" + r.getName())) continue;
+            List<String> fuel = new ArrayList<>();
             for (Card f : cards) {
-                if (f == r || !cycler(f) || !done.add(f.getName() + ">" + r.getName())) continue;
+                if (f == r || !cycler(f) || fuel.contains(f.getName())) continue;
                 boolean ok;
                 try { ok = f.isValid(valid, me, r, null); } catch (RuntimeException e) { ok = false; }
-                if (ok) out.add(List.of(List.of(f.getName()), List.of(r.getName()), new ArrayList<>(blinkers)));
+                if (ok) fuel.add(f.getName());
             }
+            Collections.sort(fuel);
+            if (!fuel.isEmpty()) out.add(List.of(fuel, List.of(r.getName()), new ArrayList<>(blinkers)));
         }
         for (Card c : cards)
             if (c.isCreature() && c.hasKeyword(forge.game.keyword.Keyword.PERSIST) && done.add("persist>" + c.getName()))
@@ -285,9 +290,11 @@ public final class PilotPolicy {
         return best;
     }
 
+    /** A piece the loop can't do without: any slot's card but a fuel slot with alternatives (those cyclers are cycled; the
+     *  loop needs one of them). */
     boolean loopPiece(String name) {
         for (List<List<String>> l : loops != null ? loops : in.loops == null ? List.<List<List<String>>>of() : in.loops)
-            for (List<String> slot : l) if (slot.contains(name)) return true;
+            for (int i = 0; i < l.size(); i++) if (l.get(i).contains(name) && (i > 0 || l.get(i).size() == 1)) return true;
         return false;
     }
 
