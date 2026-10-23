@@ -1,0 +1,78 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index c86c940..cedbef3 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -1552,6 +1552,50 @@ public final class TurnPlan {
+         return 60 + 25 * cost;
+     }
+ 
++    // ---- fishpond patch 97: a permanent whose upkeep trigger wins on hand size (Triskaidekaphile: exactly 13) is a closer
++    // once casting it leaves that hand, or leaves less with a pay-life draw on the battlefield to make it up (Necrodominance's
++    // end step; patch 92 sizes that draw), and the hand will keep (its own "no maximum hand size", or a limit at least that).
++    // zurb2nw_20261023 X1 g9: 13+ cards, Necrodominance and Rule of Law out, Triskaidekaphile in hand; the one spell went to
++    // Archaeomancer (the loop's last piece, 900), Necrodominance's limit of five discarded the hand, the game went to the cap. ----
++    static boolean upkeepWinNear(final Player ai, final Card c, final SpellAbility sa) {
++        if (!sa.isSpell() || !c.isPermanent() || c.isInZone(ZoneType.Battlefield)) return false;
++        for (final forge.game.trigger.Trigger t : c.getTriggers()) {
++            if (t.getMode() != forge.game.trigger.TriggerType.Phase || !"Upkeep".equals(t.getParam("Phase"))
++                    || !"Hand".equals(t.getParam("PresentZone"))) continue;
++            final String cmp = t.getParamOrDefault("PresentCompare", "");
++            if (!cmp.startsWith("EQ")) continue;
++            try {
++                boolean wins = false;
++                for (SpellAbility x = t.ensureAbility(); x != null && !wins; x = x.getSubAbility()) wins = x.getApi() == ApiType.WinsGame;
++                if (!wins) continue;
++                final int n = Integer.parseInt(cmp.substring(2).trim());
++                final int hand = ai.getCardsIn(ZoneType.Hand).size() - (c.isInZone(ZoneType.Hand) ? 1 : 0);
++                boolean unlimited = ai.isUnlimitedHandSize() || ai.getMaxHandSize() >= n;
++                for (final forge.game.staticability.StaticAbility st : c.getStaticAbilities())
++                    if ("Unlimited".equals(st.getParam("SetMaxHandSize"))) unlimited = true;
++                if (!unlimited) continue;
++                if (hand == n) return true;
++                if (hand < n && lifeDraw(ai) && ai.getLife() - (n - hand) >= 1) return true;
++            } catch (final RuntimeException e) { /* skip */ }
++        }
++        return false;
++    }
++
++    /** A permanent of the seat's draws X at its end step for X life (Necrodominance). */
++    static boolean lifeDraw(final Player ai) {
++        for (final Card k : ai.getCardsIn(ZoneType.Battlefield)) {
++            for (final forge.game.trigger.Trigger t : k.getTriggers()) {
++                if (t.getMode() != forge.game.trigger.TriggerType.Phase || !"End of Turn".equals(t.getParam("Phase"))) continue;
++                try {
++                    final SpellAbility x = t.ensureAbility();
++                    if (x != null && x.getApi() == ApiType.Draw && x.getPayCosts() != null
++                            && x.getPayCosts().hasSpecificCostType(forge.game.cost.CostPayLife.class)) return true;
++                } catch (final RuntimeException e) { /* skip */ }
++            }
++        }
++        return false;
++    }
++
+     static Step step(final AiController aic, final Player ai, final Card c, final SpellAbility sa) {
+         // the commander's tax is added at cast time, not in its printed cost; patch 79: the plan pays what it costs now
+         final int printed = manaCost(sa) + (c.isCommander() && c.isInZone(ZoneType.Command) ? 2 * ai.getCommanderCast(c) : 0);
+@@ -1561,7 +1605,7 @@ public final class TurnPlan {
+         // a closer the old order put first (a win now, a cheat into something big, a wheel with payoffs) is planned whenever
+         // it fits; a library cheat (Primal Surge) is worth the permanents it would put onto the battlefield
+         final double surge = libraryCheat(ai, sa);
+-        final boolean closer = aic.closerNow(sa) || surge > 0;
++        final boolean closer = aic.closerNow(sa) || surge > 0 || upkeepWinNear(ai, c, sa);
+         if (closer) v += CLOSER + surge;
+         v -= DRAW_LIFE * forge.ai.ability.DrawAi.drawLifeCost(ai, sa);   // patch 76: life lost to the opponents' draw punishers
+         if (!sa.isSpell() && "Hand".equals(sa.getParam("ActivationZone")) && "Library".equals(sa.getParam("Origin"))
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+index 44957a2..703823f 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+@@ -645,6 +645,9 @@ public class DrawAi extends SpellAbilityAi {
+         if (xPaid && pilotSeat(ai) && game.getPhaseHandler().isPlayerTurn(ai)) {
+             final int target = exactHandWin(ai);
+             final int need = target - computerHandSize + (source.isInZone(ZoneType.Hand) ? 1 : 0);
++            if (target > 0 && need == 0 && ai.isUnlimitedHandSize()) {
++                return false;   // fishpond patch 97: the hand already wins at the upkeep: draw nothing
++            }
+             if (target > 0 && need > 0 && ai.isUnlimitedHandSize() && need < computerLibrarySize
+                     && (!sa.getPayCosts().hasSpecificCostType(CostPayLife.class) || ai.getLife() - need >= 1)) {
+                 root.setXManaCostPaid(need);

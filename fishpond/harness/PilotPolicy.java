@@ -324,6 +324,67 @@ public final class PilotPolicy {
         return 0;
     }
 
+    // ------------------------------------------------------------------ lock pieces by what they do to this table (the user,
+    // 2026-10-23: Zur's levers against Bracket 2 tables; zurb2nw_20261023: Drannith cast in 8 of 40 games by turn 7, Rule of
+    // Law 5, Disciple of Caelus Nin 2 and held uncast in 5; the turn plan saw a 1/3, an enchantment, a 5-mana 3/4). Turn-plan
+    // value for casting one now, by its effect on the opponents:
+    //  - a spell limit (Rule of Law, Arcane Laboratory): "one of the easier ones, since this deck is pretty reliant on
+    //    activated abilities": a base for the table plus the opponents' spells past one a turn (their last turns), less the
+    //    seat's own; none while one is out;
+    //  - opponents can't cast from anywhere but their hands (Drannith Magistrate): "best as an opening hand play, since it's
+    //    asymmetric and prevents a lot of commanders from coming down": per opponent whose commander waits in the command
+    //    zone, less for one on the battlefield (once removed it can't come back; ThreatModel then rates removing it higher);
+    //  - an enter trigger that phases out all but a few permanents each (Disciple): the opponents' boards past five against
+    //    the seat's own (keeping the right five and sliding a piece out first are its own foresight, not modeled). ----
+    static double lockValue(Player me, Card c) {
+        if (c.isInZone(ZoneType.Battlefield)) return 0;
+        double v = 0;
+        List<Player> opps = new ArrayList<>();
+        for (Player o : me.getOpponents()) if (!o.hasLost()) opps.add(o);
+        for (forge.game.staticability.StaticAbility st : c.getStaticAbilities()) {
+            if (!st.checkMode(forge.game.staticability.StaticAbilityMode.CantBeCast)) continue;
+            String caster = st.getParamOrDefault("Caster", "Player"), valid = st.getParamOrDefault("ValidCard", "Card");
+            if (st.hasParam("NumLimitEachTurn") && (caster.equals("Player") || caster.equals("Opponent"))) {
+                if (spellLimitOut(me)) continue;
+                double t = opps.size() >= 2 ? 100 : 0;
+                for (Player o : opps) t += 60 * Math.max(0, o.getSpellsCastLastTurn() - 1);
+                if (caster.equals("Player")) t -= 30 * Math.max(0, me.getSpellsCastLastTurn() - 1);
+                v += Math.max(0, t);
+            } else if (valid.contains("!wasCastFromTheirHand") && caster.equals("Opponent")) {
+                for (Player o : opps)
+                    for (Card k : o.getCardsIn(ZoneType.Command)) if (k.isCommander()) { v += 150; break; }
+                for (Player o : opps)
+                    for (Card k : o.getCardsIn(ZoneType.Battlefield)) if (k.isCommander() && k.getOwner() == o) { v += 40; break; }
+            }
+        }
+        if (phasesOthersOut(c)) {
+            int oppExcess = 0;
+            for (Player o : opps) oppExcess += Math.max(0, o.getCardsIn(ZoneType.Battlefield).size() - 5);
+            int mine = Math.max(0, me.getCardsIn(ZoneType.Battlefield).size() - 5);
+            v += Math.max(0, 25 * oppExcess - 40 * mine);
+        }
+        return v;
+    }
+
+    /** A spell limit (Rule of Law) is already on the battlefield. */
+    static boolean spellLimitOut(Player me) {
+        for (Card k : me.getGame().getCardsIn(ZoneType.Battlefield))
+            for (forge.game.staticability.StaticAbility st : k.getStaticAbilities())
+                if (st.checkMode(forge.game.staticability.StaticAbilityMode.CantBeCast) && st.hasParam("NumLimitEachTurn")) return true;
+        return false;
+    }
+
+    /** The seat controls a lock on its opponents casting from anywhere but their hands (Drannith): their commanders can't
+     *  come back from the command zone. */
+    static boolean locksCommanders(Player me) {
+        for (Card k : me.getCardsIn(ZoneType.Battlefield))
+            for (forge.game.staticability.StaticAbility st : k.getStaticAbilities())
+                if (st.checkMode(forge.game.staticability.StaticAbilityMode.CantBeCast)
+                        && st.getParamOrDefault("ValidCard", "").contains("!wasCastFromTheirHand")
+                        && st.getParamOrDefault("Caster", "").equals("Opponent")) return true;
+        return false;
+    }
+
     /** One of the seat's loops has every slot ready: the engine runs. */
     boolean loopRunning(Player me) {
         for (List<List<String>> l : loops(me)) {

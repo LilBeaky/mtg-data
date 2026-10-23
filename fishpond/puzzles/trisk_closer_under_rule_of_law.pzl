@@ -1,0 +1,18 @@
+# title: Zur's deck under its own Rule of Law (one spell a turn) with Necrodominance and Astral Slide out, Step Through in the graveyard, fourteen cards in hand including Triskaidekaphile and Archaeomancer: the one spell is Triskaidekaphile (13 left in hand, no maximum hand size), Necrodominance draws nothing at the end step, and it wins at the upkeep (patch 97; zurb2nw_20261023 X1 g9: Archaeomancer took the spell, the hand was discarded to five)
+# card: Triskaidekaphile
+# deck: Ians_Zur_Wizardcycling
+# turns: 2
+# expect: cast Triskaidekaphile
+# expect: Ai\(1\)-P1 has won
+# forbid: cast Archaeomancer
+p0life=30
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Rule of Law;Necrodominance;Astral Slide;Plains;Island;Island;Swamp;Island;Swamp;Swamp
+p0hand=Triskaidekaphile;Archaeomancer;Island;Island;Island;Island;Island;Island;Plains;Plains;Plains;Plains;Swamp;Swamp
+p0graveyard=Step Through
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

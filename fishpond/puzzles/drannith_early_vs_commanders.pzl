@@ -1,0 +1,20 @@
+# title: Three players, Zur's deck on two lands with Drannith Magistrate and Mage's Attendant in hand, both opponents' commanders still in the command zone: it casts Drannith (the user, 2026-10-23: "Drannith is best as an opening hand play, since it's asymmetric and prevents a lot of commanders from coming down"; lock pieces valued by what they do to the table)
+# card: Drannith Magistrate
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: cast Drannith Magistrate
+p0life=40
+p1life=40
+p2life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Island
+p0hand=Drannith Magistrate;Mage's Attendant
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1command=Jarad, Golgari Lich Lord|IsCommander
+p1battlefield=Forest;Swamp
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p2command=Erebos, God of the Dead|IsCommander
+p2battlefield=Swamp;Swamp
+p2library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp

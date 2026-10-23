@@ -543,7 +543,10 @@ public final class ThreatModel {
         double v = Math.min(100, imp) * (0.4 + 0.6 * relative(viewer, o));
         if (c.isCommander()) {
             boolean necessary = (combo && m[0] == 0) || cl[1] == 1 || (c.isCreature() && parts(o)[T_CLOCK] <= 2);
-            v -= commanderPenalty(c, o, necessary);
+            // with Drannith out a removed commander can't be recast (the user, 2026-10-23: "get the Drannith down and then start
+            // taking commanders off the board, that's a very impactful play"): no recast discount, a bonus instead
+            if (PilotPolicy.locksCommanders(viewer)) v += 20;
+            else v -= commanderPenalty(c, o, necessary);
         }
         return v;
     }
@@ -837,6 +840,11 @@ public final class ThreatModel {
             if (pol != null && pol.isKey(c.getName()) && !ai.isCardInPlay(c.getName())) return true;
             if (c.getCMC() >= 6) return true;
             if (PilotPolicy.removalReach(c, ai) >= 40) return true;
+            // a counter ability coming down (Glen Elendra: "a relatively safe bet as long as we've got access to blue") is the
+            // hold itself from next turn on
+            if (c.isPermanent() && !ai.isCardInPlay(c.getName()))
+                for (SpellAbility a : c.getSpellAbilities())
+                    if (!a.isSpell()) for (SpellAbility x : chain(a)) if (x.getApi() == ApiType.Counter) return true;
         }
         return false;
     }
@@ -1001,7 +1009,8 @@ public final class ThreatModel {
         // commander that tutors every turn, PilotPolicy.commanderEngine)
         java.util.function.ToDoubleBiFunction<Player, Card> setup = (p, c) -> SetupModel.setupValue(p, c)
                 + (p.getController() instanceof ForgeRunner.SafeControllerAi sc && sc.policy != null ? sc.policy.loopValue(p, c, true) : 0)
-                + PilotPolicy.commanderEngine(p, c);   // a commander that tutors every turn comes down first
+                + PilotPolicy.commanderEngine(p, c)   // a commander that tutors every turn comes down first
+                + (REAL.contains(p.getGame()) ? PilotPolicy.lockValue(p, c) : 0);   // lock pieces by what they do to the table
         java.util.function.ToIntFunction<Player> keep = p -> { Posture x = posture(p); return x == null ? 0 : x.keep(); };
         java.util.function.Predicate<Game> real = REAL::contains;
         try {

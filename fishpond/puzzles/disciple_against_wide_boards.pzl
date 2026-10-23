@@ -1,0 +1,18 @@
+# title: Three players, Zur's deck with five lands and Disciple of Caelus Nin in hand, each opponent with twelve permanents (lands and creatures), Zur with six: it casts Disciple (each player keeps five, the rest phase out for good; lock pieces valued by what they do to the table: the opponents' boards past five against the seat's own)
+# card: Disciple of Caelus Nin
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: cast Disciple of Caelus Nin
+p0life=40
+p1life=40
+p2life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Island;Island;Swamp;Zur the Enchanter|SummonSick
+p0hand=Disciple of Caelus Nin
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest;Forest;Forest;Forest;Grizzly Bears;Grizzly Bears;Grizzly Bears;Llanowar Elves;Llanowar Elves;Elvish Mystic
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p2battlefield=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Walking Ballista|Counters:P1P1=1;Gray Merchant of Asphodel;Gray Merchant of Asphodel;Sol Ring;Arcane Signet;Mind Stone
+p2library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
