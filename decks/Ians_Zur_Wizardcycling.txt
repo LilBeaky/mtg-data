@@ -2,6 +2,8 @@
 # bracket: 3
 # plan: Grindy layered-tutor control. Zur finds Astral Slide/Drift (first enchantment, every game); tutors find Step Through (first instant/sorcery, every game). Cycle Step Through -> Archaeomancer, cast it to return Step Through, then cycle again while Sliding Archaeomancer back at end step: a repeatable wizard tutor that also finds control pieces. Win: Words of Worship -> Necrodominance -> Triskaidekaphile (life total to 13), or Approach of the Second Sun. Long flickers (Ephemerate, Ghostway) protect and reuse value pieces.
 # key: Zur the Enchanter; Astral Slide; Astral Drift; Step Through; Archaeomancer; Words of Worship; Necrodominance; Triskaidekaphile; Approach of the Second Sun
+# loop: Step Through > Archaeomancer > Astral Slide | Astral Drift | Escape Protocol
+# loop: Glen Elendra Archmage > Astral Slide | Astral Drift | Escape Protocol
 Commander
 1 Zur the Enchanter
 

@@ -457,6 +457,11 @@ public class ForgeRunner {
         for (String s : w.seq) out.println("#FP-SEQ " + s);           // sequencing meter, one per seat and own turn
         for (String s : w.setup) out.println("#FP-SETUP " + s);       // setup cards per deck (SetupModel), made at the first turn
         for (PilotPolicy pol : policies) for (String s : pol.log) out.println("#FP-POLICY " + s);
+        for (var p : game.getRegisteredPlayers())   // the seat's repeatable engines, declared and found (PilotPolicy.loops)
+            if (p.getController() instanceof SafeControllerAi sc && sc.policy != null) {
+                try { sc.policy.loops(p); } catch (RuntimeException e) { /* none */ }
+                if (sc.policy.loopsLine != null) out.println("#FP-LOOPS " + sc.policy.loopsLine);
+            }
         for (PilotPolicy pol : policies)    // patch 54's cast ordering: candidate answers by level (none, feeds, turns on, combo)
             out.println("#FP-CASTPLAN {\"deck\": " + js(pol.in.deck == null ? "" : pol.in.deck) + ", \"levels\": " + Arrays.toString(pol.castHits) + "}");
         if (w.lines != null) {

@@ -1,0 +1,42 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index cb505cb..953605d 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -361,6 +361,14 @@ public class AiController {
+                     // trigger will not run due to lack of targets and we 1. desperately need a creature or 2. are happy about that
+                     continue;
+                 }
++                // fishpond patch 94: with no target at all the trigger just does nothing; a pilot seat casts a permanent worth it
++                // by itself (the harness's setup value: a missing piece of a repeatable engine, an engine or mana source)
++                // instead of waiting for one (the user, 2026-10-23: the loop "valued incredibly highly"; zur20e_20261023:
++                // Archaeomancer sat in hand with Astral Slide out and Step Through in hand, nothing yet in the graveyard)
++                if (api == null && forge.ai.ability.DrawAi.pilotSeat(activator) && !ComputerUtilAbility.isFullyTargetable(exSA)
++                        && exSA.usesTargeting() && TurnPlan.selfValue(activator, card) >= TurnPlan.SELF_VALUE_AT) {
++                    continue;
++                }
+                 return false;
+             }
+         }
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index e8b09e7..a80bc77 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -32,6 +32,18 @@ public final class TurnPlan {
+ 
+     /** The harness's setup value of casting a card now (Forge value units; 0 in simulations). */
+     public static volatile java.util.function.ToDoubleBiFunction<Player, Card> SETUP_VALUE;
++    /** fishpond patch 94: a permanent worth casting with its enter trigger's targets missing (harness setup value). */
++    static final double SELF_VALUE_AT = 300;
++
++    static double selfValue(final Player ai, final Card c) {
++        final java.util.function.ToDoubleBiFunction<Player, Card> sv = SETUP_VALUE;
++        try {
++            return sv == null ? 0 : sv.applyAsDouble(ai, c);
++        } catch (final RuntimeException e) {
++            return 0;
++        }
++    }
++
+     /** The mana the harness's Phase 3 posture keeps up for an answer (0 when none). */
+     public static volatile java.util.function.ToIntFunction<Player> HOLD_KEEP;
+     /** fishpond patch 84: the answer Phase 3 keeps that mana for (a card name in hand; null when none), whose colors the plan

@@ -213,7 +213,17 @@ def build(d):
             "keys": [d.forge.get(k, k) for k in (k.strip() for k in str(d.meta.get("key") or "").replace(" + ", ";").split(";")) if k],
             # '# hand: Card=role; ...' (roles: ramp, tutor, draw, interaction, threat, other): how the deck wants a card counted
             # in an opening hand, over the oracle-tag reading (the mulligan score, harness/HandScore.java)
-            "hand": hand_roles(d)}
+            "hand": hand_roles(d),
+            # '# loop: A > B > C | D' (one line per engine loop, the user's: Step Through > Archaeomancer > Astral Slide |
+            # Astral Drift | Escape Protocol): the pieces in order (fuel, recursion, trigger), each slot its alternatives
+            "loops": loops(d)}
+
+def loops(d):
+    out = []
+    for line in d.meta.get("loop") or []:
+        slots = [[d.forge.get(n.strip(), n.strip()) for n in slot.split("|") if n.strip()] for slot in line.split(">")]
+        if len(slots) >= 2 and all(slots): out.append(slots)
+    return out
 
 HAND_ROLES = {"ramp", "tutor", "draw", "interaction", "threat", "other", "key"}
 

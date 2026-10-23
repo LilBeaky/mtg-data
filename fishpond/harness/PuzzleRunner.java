@@ -93,6 +93,11 @@ public class PuzzleRunner {
         for (var p : game.getRegisteredPlayers())
             if (p.getController() instanceof ForgeRunner.SafeControllerAi sc && sc.policy != null)
                 for (String l : sc.policy.log) System.out.println("#FP-POLICY " + l);   // the tutor picks, with a '# deck:' line
+        for (var p : game.getRegisteredPlayers())   // the seat's repeatable engines, declared and found (PilotPolicy.loops)
+            if (p.getController() instanceof ForgeRunner.SafeControllerAi sc && sc.policy != null) {
+                try { sc.policy.loops(p); } catch (RuntimeException e) { /* none */ }
+                if (sc.policy.loopsLine != null) System.out.println("#FP-LOOPS " + sc.policy.loopsLine);
+            }
         for (var p : game.getRegisteredPlayers())
             System.out.println("#FP-PUZZLE end " + p.getName() + " life " + p.getLife() + " hand " + p.getCardsIn(forge.game.zone.ZoneType.Hand).size()
                     + " battlefield " + p.getCardsIn(forge.game.zone.ZoneType.Battlefield).stream().map(c -> c.getName()).toList());

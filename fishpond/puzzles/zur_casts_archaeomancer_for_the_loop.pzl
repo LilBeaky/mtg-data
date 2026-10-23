@@ -1,0 +1,16 @@
+# title: Zur's deck with Astral Slide out, Step Through in hand and Archaeomancer in hand, nothing in the graveyard: the loop's missing piece is Archaeomancer, so the AI casts it (the user, 2026-10-23: "The pilot needs to notice when things like Step Through/Archaeomancer/Slide ... are repeatable, and value building that incredibly highly"; zur20e_20261023: Archaeomancer sat in hand when the graveyard had no target; PilotPolicy loops: casting a missing piece adds to the turn plan)
+# card: Archaeomancer
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: cast Archaeomancer
+# expect: #FP-LOOPS .*"detected": \[\[\["Step Through"\],\["Archaeomancer"\]
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Astral Slide;Plains;Island;Island;Swamp
+p0hand=Archaeomancer;Step Through
+p0library=Tribute Mage;Spellseeker;Triskaidekaphile;Fluctuator;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

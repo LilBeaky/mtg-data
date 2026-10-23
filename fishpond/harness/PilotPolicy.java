@@ -56,6 +56,7 @@ public final class PilotPolicy {
         Map<String, Double> role_share = new HashMap<>();
         List<String> keys = new ArrayList<>();       // the deck's '# key:' cards (policy.py)
         Map<String, String> hand = new HashMap<>();   // the deck's '# hand:' roles for the mulligan score (policy.py)
+        List<List<List<String>>> loops = new ArrayList<>();   // the deck's '# loop:' lines: slots in order, alternatives in each (policy.py)
     }
 
     final Intel in;
@@ -154,6 +155,142 @@ public final class PilotPolicy {
                 && in.cards.containsKey("Step Through");
     }
 
+    // ------------------------------------------------------------------ repeatable engines (the user, 2026-10-23)
+    // "The pilot needs to notice when things like Step Through/Archaeomancer/Slide ... are repeatable, and value building
+    // that incredibly highly." A loop is slots in order, each slot a card or its alternatives: the deck's '# loop:' lines
+    // and the loops found in the seat's own cards when the policy first looks (both; "I'd definitely want to do both on
+    // detection"), logged as #FP-LOOPS. Found from card text: a cycler that a creature's enter trigger returns from the
+    // graveyard to hand, with a payoff that blinks a creature whenever a card is cycled (Step Through > Archaeomancer >
+    // Astral Slide | Astral Drift | Escape Protocol), and a persist creature with that payoff (Glen Elendra's counter cleared).
+    // A slot is ready when one of its cards is on the battlefield (the loop's first card, a cycler, also in hand or the
+    // graveyard), held when it's ready or in hand. Building one: a tutor pick that completes it scores like a combo (900;
+    // 300 with one piece still missing), casting a missing permanent adds the same to the turn plan (SetupModel's hook), and
+    // its pieces are kept from discards and the cycling rule.
+
+    List<List<List<String>>> loops;   // declared + detected, on first use
+    String loopsLine;                 // the #FP-LOOPS record
+
+    List<List<List<String>>> loops(Player me) {
+        if (loops != null) return loops;
+        List<List<List<String>>> declared = in.loops == null ? new ArrayList<>() : in.loops, found = new ArrayList<>();
+        try { found = detectLoops(me); } catch (RuntimeException e) { /* none */ }
+        List<List<List<String>>> all = new ArrayList<>(declared);
+        Set<String> seen = new HashSet<>();
+        for (var l : declared) seen.add(loopKey(l));
+        for (var l : found) if (seen.add(loopKey(l))) all.add(l);
+        String seat = me.getName().replaceAll("^Ai\\((\\d+)\\).*", "$1");
+        loopsLine = "{\"seat\": " + seat + ", \"deck\": " + ForgeRunner.js(in.deck == null ? "" : in.deck)
+                + ", \"declared\": " + new Gson().toJson(declared) + ", \"detected\": " + new Gson().toJson(found) + "}";
+        return loops = all;
+    }
+
+    static String loopKey(List<List<String>> l) {
+        List<String> k = new ArrayList<>();
+        for (List<String> slot : l) { List<String> x = new ArrayList<>(slot); Collections.sort(x); k.add(String.join("|", x)); }
+        Collections.sort(k);
+        return String.join(">", k);
+    }
+
+    static List<Card> allCards(Player me) {
+        List<Card> out = new ArrayList<>();
+        for (ZoneType z : new ZoneType[]{ZoneType.Library, ZoneType.Hand, ZoneType.Battlefield, ZoneType.Graveyard, ZoneType.Command, ZoneType.Exile})
+            out.addAll(me.getCardsIn(z));
+        return out;
+    }
+
+    static boolean cycler(Card c) {
+        for (SpellAbility a : c.getAllSpellAbilities()) if (!a.isSpell() && a.isCycling()) return true;
+        return false;
+    }
+
+    /** Whenever a card is cycled while it's on the battlefield, it exiles a creature that comes back (Astral Slide, Drift,
+     *  Escape Protocol). */
+    static boolean cycleBlinker(Card c) {
+        boolean cyc = false;
+        for (forge.game.trigger.Trigger t : c.getTriggers())
+            if (t.getMode() == forge.game.trigger.TriggerType.Cycled && "Battlefield".equals(t.getParam("TriggerZones"))) cyc = true;
+        if (!cyc) return false;
+        String all = String.join("\n", c.getCurrentState().getSVars().values());
+        return all.contains("Destination$ Exile") && all.contains("Origin$ Battlefield")
+                && (all.contains("DelayedTrigger") || all.contains("Origin$ Exile | Destination$ Battlefield"));
+    }
+
+    /** The valid-card list of its enter trigger's return from the graveyard to hand (Archaeomancer), or null. */
+    static String[] returnsToHand(Card c) {
+        if (!c.isCreature()) return null;
+        for (forge.game.trigger.Trigger t : c.getTriggers()) {
+            if (t.getMode() != forge.game.trigger.TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))
+                    || !t.getParamOrDefault("ValidCard", "").startsWith("Card.Self")) continue;
+            for (SpellAbility x = t.ensureAbility(); x != null; x = x.getSubAbility()) {
+                if (x.getApi() == ApiType.ChangeZone && x.getParamOrDefault("Origin", "").equals("Graveyard")
+                        && "Hand".equals(x.getParam("Destination"))) {
+                    String v = x.getParamOrDefault("ValidTgts", x.getParamOrDefault("ChangeType", ""));
+                    if (!v.isEmpty()) return v.split(",");
+                }
+            }
+        }
+        return null;
+    }
+
+    List<List<List<String>>> detectLoops(Player me) {
+        List<List<List<String>>> out = new ArrayList<>();
+        List<Card> cards = allCards(me);
+        List<String> blinkers = new ArrayList<>();
+        for (Card c : cards) if (cycleBlinker(c) && !blinkers.contains(c.getName())) blinkers.add(c.getName());
+        if (blinkers.isEmpty()) return out;
+        Set<String> done = new HashSet<>();
+        for (Card r : cards) {
+            String[] valid = returnsToHand(r);
+            if (valid == null) continue;
+            for (Card f : cards) {
+                if (f == r || !cycler(f) || !done.add(f.getName() + ">" + r.getName())) continue;
+                boolean ok;
+                try { ok = f.isValid(valid, me, r, null); } catch (RuntimeException e) { ok = false; }
+                if (ok) out.add(List.of(List.of(f.getName()), List.of(r.getName()), new ArrayList<>(blinkers)));
+            }
+        }
+        for (Card c : cards)
+            if (c.isCreature() && c.hasKeyword(forge.game.keyword.Keyword.PERSIST) && done.add("persist>" + c.getName()))
+                out.add(List.of(List.of(c.getName()), new ArrayList<>(blinkers)));
+        return out;
+    }
+
+    /** 2 when a card of the slot is ready (on the battlefield; the first slot's cycler also in hand or the graveyard), 1 when
+     *  one is in hand (to cast), else 0. */
+    static int slotState(Player me, List<String> slot, boolean first) {
+        int st = 0;
+        for (Card c : me.getCardsIn(ZoneType.Battlefield)) if (slot.contains(c.getName())) return 2;
+        for (Card c : me.getCardsIn(ZoneType.Hand)) if (slot.contains(c.getName())) { if (first && cycler(c)) return 2; st = 1; }
+        if (first) for (Card c : me.getCardsIn(ZoneType.Graveyard)) if (slot.contains(c.getName()) && cycler(c)) return 2;
+        return st;
+    }
+
+    /** What a card adds to building the seat's loops: 900 when it fills the last open slot, 300 when one more stays open
+     *  (best over its loops); 0 if it fills none. cast: it is being cast from hand (a slot counts open until it's ready);
+     *  otherwise it is being fetched (a slot counts filled once held). */
+    double loopValue(Player me, Card c, boolean cast) {
+        String n = c.getName();
+        double best = 0;
+        for (List<List<String>> l : loops(me)) {
+            int at = -1;
+            for (int i = 0; i < l.size(); i++) if (l.get(i).contains(n)) { at = i; break; }
+            if (at < 0) continue;
+            int need = cast ? 2 : 1;
+            if (slotState(me, l.get(at), at == 0) >= need) continue;   // that slot is already covered
+            if (cast && (at == 0 && cycler(c) || !c.isPermanent())) continue;   // the fuel works from hand; nothing to build
+            int open = 0;
+            for (int i = 0; i < l.size(); i++) if (i != at && slotState(me, l.get(i), i == 0) < need) open++;
+            best = Math.max(best, open == 0 ? 900 : open == 1 ? 300 : 0);
+        }
+        return best;
+    }
+
+    boolean loopPiece(String name) {
+        for (List<List<String>> l : loops != null ? loops : in.loops == null ? List.<List<List<String>>>of() : in.loops)
+            for (List<String> slot : l) if (slot.contains(name)) return true;
+        return false;
+    }
+
     static Card named(List<Card> cands, String name) {
         for (Card c : cands) if (c.getName().equals(name) && c.isInZone(ZoneType.Library)) return c;
         return null;
@@ -191,10 +328,12 @@ public final class PilotPolicy {
         int lands, mana, hand, life, turn, oppPower, oppCreatures, myCreatures, oppTotal;   // oppTotal: every opponent's power together
         Map<String, Integer> fieldRoles = new HashMap<>();
         boolean engineOut;
+        Player me;
     }
 
     Board board(Player me, SpellAbility sa) {
         Board b = new Board();
+        b.me = me;
         for (Card c : me.getCardsIn(ZoneType.Hand)) b.have.add(c.getName());
         for (Card c : me.getCardsIn(ZoneType.Command)) b.have.add(c.getName());
         for (Card c : me.getCardsIn(ZoneType.Battlefield)) { b.have.add(c.getName()); b.field.add(c.getName()); }
@@ -237,7 +376,7 @@ public final class PilotPolicy {
     boolean keepCard(String name) {
         if (isKey(name)) return true;
         for (Combo cb : in.combos) if (cb.win && cb.cards.contains(name)) return true;
-        return false;
+        return loopPiece(name);   // a repeatable engine's pieces
     }
 
     final int[] castHits = new int[4];   // how often each level was answered (0 = no plan for that spell), for #FP-CASTPLAN
@@ -281,6 +420,7 @@ public final class PilotPolicy {
         double[] s = new double[LAYERS.length];
         String n = c.getName();
         CardIntel ci = in.cards.get(n);
+        if (b.me != null) s[COMBO] = loopValue(b.me, c, false);   // building a repeatable engine
         // combo
         for (Combo cb : in.combos) {
             if (!cb.cards.contains(n)) continue;

@@ -915,7 +915,9 @@ public final class ThreatModel {
             ForgeRunner.out.println("#FP-WARN no mana-posture hook in this Forge build (patch 58)");
         }
         // patch 64: the turn plan asks for setup values, the mana Phase 3 keeps up, and which games are real
-        java.util.function.ToDoubleBiFunction<Player, Card> setup = SetupModel::setupValue;
+        // (plus building the seat's repeatable engines: casting a missing piece of a loop, PilotPolicy.loopValue)
+        java.util.function.ToDoubleBiFunction<Player, Card> setup = (p, c) -> SetupModel.setupValue(p, c)
+                + (p.getController() instanceof ForgeRunner.SafeControllerAi sc && sc.policy != null ? sc.policy.loopValue(p, c, true) : 0);
         java.util.function.ToIntFunction<Player> keep = p -> { Posture x = posture(p); return x == null ? 0 : x.keep(); };
         java.util.function.Predicate<Game> real = REAL::contains;
         try {

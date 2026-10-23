@@ -1,0 +1,19 @@
+# title: Three players: Zur's deck with Zur ready to attack and enchantments to find; seat 2 is low on life behind an untapped Serra Angel (4 power, kills Zur in a block), seat 3 has only Grizzly Bears (can't block a flier). Zur attacks seat 3, where it survives, for its search (patch 93; the user, 2026-10-23: "Did Zur not attack on 5?", zur20e_20261023 game 8: Forge kept Zur home facing Klauth's 6/6 flier though the other opponents couldn't kill it)
+# card: Zur the Enchanter
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: assigned Zur the Enchanter .* to attack Ai\(3\)-P3
+# forbid: assigned Zur the Enchanter .* to attack Ai\(2\)-P2
+p0life=30
+p1life=12
+p2life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter;Plains;Island;Swamp;Island
+p0hand=Island
+p0library=Astral Slide;Rule of Law;Solitary Confinement;Escape Protocol;Island;Island;Island;Island;Island;Island
+p1battlefield=Serra Angel;Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p2battlefield=Grizzly Bears;Forest;Forest
+p2library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

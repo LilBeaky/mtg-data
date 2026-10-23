@@ -1,0 +1,92 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiAttackController.java b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+index 87d1d9c..218f32a 100644
+--- a/forge-ai/src/main/java/forge/ai/AiAttackController.java
++++ b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+@@ -871,6 +871,7 @@ public class AiAttackController {
+         try {
+             final int result = declareAttackers0(combat);
+             commanderAttackSafety(combat);   // fishpond patch 24
++            attackTriggerAttackers(combat);   // fishpond patch 93
+             return result;
+         } finally {
+             ComputerUtilCombat.endCombatPlan();
+@@ -903,6 +904,79 @@ public class AiAttackController {
+         }
+     }
+ 
++    // ---- fishpond patch 93: a creature whose attack trigger does something attacks where it survives (the user, 2026-10-23:
++    // "Did Zur not attack on 5?"; zur20e_20261023 game 8: Forge kept Zur home, Klauth's 6/6 flying Lathliss facing it, though
++    // neither other opponent could kill it in a block and Zur's search is the deck's engine). A pilot seat's creature with an
++    // attack trigger (SVar HasAttackEffect) that Forge kept home attacks an opponent none of whose untapped creatures can kill
++    // it in a block, when it isn't needed as a blocker, attacking that player costs nothing, and the trigger has work (its
++    // search finds a card, and no tutored card waits on top: patch 89). One attacking into a player who can kill it moves to
++    // a safe one, if any. The preferred defender (patch 69) first, else the first safe opponent. ----
++    private void attackTriggerAttackers(final Combat combat) {
++        if (!forge.ai.ability.DrawAi.pilotSeat(ai)) {
++            return;
++        }
++        for (final Card att : ai.getCreaturesInPlay()) {
++            if (!"TRUE".equals(att.getSVar("HasAttackEffect")) || !hasAttackTrigger(att) || !attackTriggerWorks(att)) {
++                continue;
++            }
++            final boolean in = combat.isAttacking(att);
++            if (in) {
++                final Player d = defendingPlayer(combat.getDefenderByAttacker(att));
++                if (d == null || !canKillInBlock(att, d, combat)) {
++                    continue;
++                }
++            } else if (!CombatUtil.canAttack(att) || !notNeededAsBlockers(combat.getAttackers(), new ArrayList<>(List.of(att))).contains(att)) {
++                continue;
++            }
++            Player safe = null;
++            final java.util.function.Function<Player, Player> hook = DEFENDER;
++            final Player pref = hook == null ? null : hook.apply(ai);
++            for (final Player o : ai.getOpponents()) {
++                if (CombatUtil.canAttack(att, o) && CombatUtil.getAttackCost(ai.getGame(), att, o) == null && !canKillInBlock(att, o, combat)) {
++                    if (safe == null || o == pref) {
++                        safe = o;
++                    }
++                }
++            }
++            if (safe == null) {
++                continue;
++            }
++            if (in) {
++                combat.removeFromCombat(att);
++            }
++            combat.addAttacker(att, safe);
++        }
++    }
++
++    /** Its attack trigger has something to do: a library search finds a card (and wouldn't shuffle away one a tutor put on
++     *  top), any other effect counts. */
++    private boolean attackTriggerWorks(final Card c) {
++        for (final forge.game.trigger.Trigger t : c.getTriggers()) {
++            if (t.getMode() != forge.game.trigger.TriggerType.Attacks || t.isStatic() || !"Card.Self".equals(t.getParamOrDefault("ValidCard", ""))) {
++                continue;
++            }
++            try {
++                final SpellAbility sa = t.ensureAbility();
++                if (sa == null) {
++                    continue;
++                }
++                sa.setActivatingPlayer(ai);
++                for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++                    if (x.getApi() == forge.game.ability.ApiType.ChangeZone && x.getParamOrDefault("Origin", "").contains("Library") && x.hasParam("ChangeType")) {
++                        if (TurnPlan.TUTOR_VALUE && TurnPlan.knownTop(ai) != null && TurnPlan.shufflesOwnLibrary(x)) {
++                            return false;
++                        }
++                        return !forge.game.card.CardLists.getValidCards(ai.getCardsIn(ZoneType.Library), x.getParam("ChangeType"), ai, c, x).isEmpty();
++                    }
++                }
++                return true;
++            } catch (final RuntimeException e) {
++                return true;
++            }
++        }
++        return false;
++    }
++
+     private static Player defendingPlayer(final GameEntity def) {
+         return def instanceof Player ? (Player) def : def instanceof Card ? ((Card) def).getController() : null;
+     }

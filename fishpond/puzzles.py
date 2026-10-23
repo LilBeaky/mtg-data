@@ -17,7 +17,7 @@ regex does.
   p0battlefield=Astral Slide;Plains;Plains;Plains
   ...
 """
-import glob, os, re, subprocess, sys
+import glob, os, re, subprocess, sys, threading
 
 from . import forge, runner
 
@@ -39,14 +39,17 @@ def load(path):
             state.append(line)
     return meta, state
 
+_POLICY_LOCK = threading.Lock()   # puzzles run in threads; the card lookup loads lazily and two builds at once came out empty
+
 def _policy_dck(name):
     """A .dck path whose <dck>.policy.json holds deck NAME's pilot policy (decks/NAME.txt), rewritten when the list changes."""
     from . import decks as dk, policy
     src = os.path.join(os.path.dirname(PUZZLE_DIR), "..", "decks", name + ".txt")
     out = os.path.join(forge.run_home(quiet=True), "puzzle_decks"); os.makedirs(out, exist_ok=True)
     fp = os.path.join(out, name + ".dck")
-    if not os.path.exists(fp + ".policy.json") or os.path.getmtime(fp + ".policy.json") < os.path.getmtime(src):
-        policy.write_for(dk.load(src), fp)
+    with _POLICY_LOCK:
+        if not os.path.exists(fp + ".policy.json") or os.path.getmtime(fp + ".policy.json") < os.path.getmtime(src):
+            policy.write_for(dk.load(src), fp)
     return os.path.abspath(fp)
 
 def run_one(path, quiet=True):
