@@ -302,6 +302,28 @@ public final class PilotPolicy {
         return best;
     }
 
+    /** A commander whose own attack or upkeep trigger searches its library (Zur: an enchantment onto the battlefield every
+     *  attack) is a tutor every turn: worth casting the moment it's affordable (the user: "Zur on turn 3 consistently";
+     *  zurb2b_20261023: Zur came down on its owner's turn 6.5 by the median, left out for Archaeomancer, Glen Elendra,
+     *  Bloodline Necromancer and Greater Auramancy in 34 of 44 turns it was castable). Turn-plan value while it waits in
+     *  the command zone; 0 otherwise. */
+    static final double COMMANDER_ENGINE = 700;
+
+    static double commanderEngine(Player me, Card c) {
+        if (!c.isCommander() || c.getOwner() != me || !c.isInZone(ZoneType.Command)) return 0;
+        for (forge.game.trigger.Trigger t : c.getTriggers()) {
+            boolean own = t.getMode() == forge.game.trigger.TriggerType.Attacks && "Card.Self".equals(t.getParamOrDefault("ValidCard", ""))
+                    || t.getMode() == forge.game.trigger.TriggerType.Phase && "Upkeep".equals(t.getParam("Phase"));
+            if (!own) continue;
+            try {
+                for (SpellAbility x = t.ensureAbility(); x != null; x = x.getSubAbility())
+                    if (x.getApi() == ApiType.ChangeZone && x.getParamOrDefault("Origin", "").contains("Library") && x.hasParam("ChangeType"))
+                        return COMMANDER_ENGINE;
+            } catch (RuntimeException e) { /* none */ }
+        }
+        return 0;
+    }
+
     /** One of the seat's loops has every slot ready: the engine runs. */
     boolean loopRunning(Player me) {
         for (List<List<String>> l : loops(me)) {

@@ -792,6 +792,7 @@ public final class ThreatModel {
     // The counter's own verdict still decides what is worth countering; the plan's key cards, commander, combo and engine
     // pieces still go ahead (holdBlocks). ----
     static Posture freeHold(Player ai, List<Card> answers, Player top) {
+        if (developsFirst(ai)) return null;
         int sources = 0;
         for (Card c : ai.getCardsIn(ZoneType.Battlefield)) if (!c.getManaAbilities().isEmpty()) sources++;
         Card pick = null;
@@ -815,6 +816,29 @@ public final class ThreatModel {
         }
         if (keep == 0 || instantSink(ai, answer) < keep) return null;
         return new Posture(keep, answer, top, "free");
+    }
+
+    /** The free hold steps aside for the seat's own plan and for the threat on the board (zurb2_20261023 W3 g8: Zur held
+     *  Miscalculation's two and cast its commander on turn 7, Glen Elendra waited in hand four turns, Disciple of Caelus Nin
+     *  never came down; W2 g9: Feed the Swarm stayed in hand for the hold while Wilson's double strike took Zur to 24, and the
+     *  counter went to New Horizons). It doesn't hold on a turn the seat can cast its commander, a key card (its own '# key:'
+     *  list, not one only ever cycled), a spell of 6 or more, or removal that reaches a real threat on an opponent's
+     *  battlefield (PilotPolicy.removalReach 40+). */
+    static boolean developsFirst(Player ai) {
+        int avail = ComputerUtilMana.getAvailableManaEstimate(ai, false);
+        PilotPolicy pol = policyOf(ai);
+        List<Card> plays = new ArrayList<>(ai.getCardsIn(ZoneType.Hand));
+        for (Card c : ai.getCardsIn(ZoneType.Command)) if (c.isCommander() && c.getOwner() == ai) plays.add(c);
+        for (Card c : plays) {
+            if (c.isLand() || answerKind(c) > 0 || c.hasSVar("NeedsToPlayVar") || c.hasSVar("NeedsToPlay")) continue;
+            int cost = c.getCMC() + (c.isCommander() && c.isInZone(ZoneType.Command) ? 2 * ai.getCommanderCast(c) : 0);
+            if (cost > avail) continue;
+            if (c.isCommander() && c.isInZone(ZoneType.Command)) return true;
+            if (pol != null && pol.isKey(c.getName()) && !ai.isCardInPlay(c.getName())) return true;
+            if (c.getCMC() >= 6) return true;
+            if (PilotPolicy.removalReach(c, ai) >= 40) return true;
+        }
+        return false;
     }
 
     /** Mana the seat could spend at instant speed later: its cycling and typecycling costs in hand, activated abilities on its
@@ -973,9 +997,11 @@ public final class ThreatModel {
             ForgeRunner.out.println("#FP-WARN no mana-posture hook in this Forge build (patch 58)");
         }
         // patch 64: the turn plan asks for setup values, the mana Phase 3 keeps up, and which games are real
-        // (plus building the seat's repeatable engines: casting a missing piece of a loop, PilotPolicy.loopValue)
+        // (plus building the seat's repeatable engines: casting a missing piece of a loop, PilotPolicy.loopValue; and a
+        // commander that tutors every turn, PilotPolicy.commanderEngine)
         java.util.function.ToDoubleBiFunction<Player, Card> setup = (p, c) -> SetupModel.setupValue(p, c)
-                + (p.getController() instanceof ForgeRunner.SafeControllerAi sc && sc.policy != null ? sc.policy.loopValue(p, c, true) : 0);
+                + (p.getController() instanceof ForgeRunner.SafeControllerAi sc && sc.policy != null ? sc.policy.loopValue(p, c, true) : 0)
+                + PilotPolicy.commanderEngine(p, c);   // a commander that tutors every turn comes down first
         java.util.function.ToIntFunction<Player> keep = p -> { Posture x = posture(p); return x == null ? 0 : x.keep(); };
         java.util.function.Predicate<Game> real = REAL::contains;
         try {

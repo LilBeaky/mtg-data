@@ -1,0 +1,15 @@
+# title: Zur's deck, three lands, Feed the Swarm, Miscalculation and Step Through in hand, the opponent's Heliod, Sun-Crowned and Walking Ballista (a combo) on the battlefield: it casts Feed the Swarm on the combo (Walking Ballista costs no life) rather than keeping Miscalculation's mana up (the free hold steps aside for removal that reaches a real threat; zurb2_20261023 W2 g9: Feed the Swarm waited in hand while Wilson took Zur from 32 to 13)
+# card: Feed the Swarm
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: cast Feed the Swarm targeting \[(Heliod|Walking Ballista)
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter|SummonSick;Plains;Island;Swamp
+p0hand=Feed the Swarm;Miscalculation;Step Through
+p0library=Archaeomancer;Tribute Mage;Spellseeker;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Heliod, Sun-Crowned;Walking Ballista|Counters:P1P1=1;Plains;Plains;Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

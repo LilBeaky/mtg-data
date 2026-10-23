@@ -1,0 +1,16 @@
+# title: Zur's deck with Zur in the command zone, four lands, Miscalculation and Step Through in hand: it casts Zur rather than keeping Miscalculation's mana up (the free hold steps aside for the commander; zurb2_20261023 W3 g8: the hold put Zur off to turn 7)
+# card: Zur the Enchanter
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: cast Zur the Enchanter
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0command=Zur the Enchanter|IsCommander
+p0battlefield=Plains;Island;Island;Swamp
+p0hand=Miscalculation;Step Through
+p0library=Archaeomancer;Tribute Mage;Spellseeker;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

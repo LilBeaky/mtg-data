@@ -1,0 +1,18 @@
+# title: Zur's deck with Zur in the command zone and four lands, Archaeomancer and Glen Elendra Archmage (both four) in hand: it casts Zur first, a commander whose attack trigger tutors every turn (the user: "Zur on turn 3 consistently"; zurb2b_20261023: Zur came down on its owner's turn 6.5 by the median, left out for Archaeomancer, Glen Elendra and others in 34 of 44 castable turns)
+# card: Zur the Enchanter
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: cast Zur the Enchanter
+# forbid: cast Archaeomancer
+# forbid: cast Glen Elendra Archmage
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0command=Zur the Enchanter|IsCommander
+p0battlefield=Plains;Island;Island;Swamp
+p0hand=Archaeomancer;Glen Elendra Archmage
+p0library=Astral Slide;Step Through;Tribute Mage;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
