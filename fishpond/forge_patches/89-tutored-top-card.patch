@@ -25,8 +25,26 @@ index fff3308..1157518 100644
              final boolean yes = SpellApiToAi.Converter.get(sa).doTrigger(player, sa, mandatory);
              // fishpond patch 78: an optional refill (Knollspine Dragon's) is the harness's projection's call
              if (!mandatory && forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.refills(sa)) {
+diff --git a/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java b/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
+index 5cbc32f..35243c2 100644
+--- a/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
++++ b/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
+@@ -408,6 +408,13 @@ public class PlayerControllerAi extends PlayerController {
+     public boolean confirmTrigger(WrappedAbility wrapper) {
+         final SpellAbility sa = wrapper.getWrappedAbility();
+         //final Trigger regtrig = wrapper.getTrigger();
++        // fishpond patch 89: an optional search ("you may search ... then shuffle": Zur's attack trigger, asked here as it
++        // resolves) would shuffle away the card a tutor put on top; declined while that card waits (zur5c_20261022 game 0:
++        // Long-Term Plans' Approach went from the top to 86th)
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.TUTOR_VALUE && TurnPlan.knownTop(player) != null
++                && TurnPlan.shufflesOwnLibrary(sa)) {
++            return false;
++        }
+         if (wrapper.isMandatory()) {
+             return true;
+         }
 diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
-index fd52e93..deecaad 100644
+index fd52e93..e1047e3 100644
 --- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
 +++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
 @@ -550,14 +550,26 @@ public final class TurnPlan {
@@ -58,7 +76,7 @@ index fd52e93..deecaad 100644
                          return true;
                      }
                  }
-@@ -595,6 +607,97 @@ public final class TurnPlan {
+@@ -595,6 +607,109 @@ public final class TurnPlan {
      //  - when the pair doesn't fit, the tutor keeps its old value: never planned less than before
      // Land tutors stay ramp (the setup model). -Dfishpond.tutorValue=false turns it off.
  
@@ -71,18 +89,30 @@ index fd52e93..deecaad 100644
 +    /** The card a pilot seat's own tutor last put into its library (set by the harness's search choice). */
 +    public static final Map<Player, Card> TOP = Collections.synchronizedMap(new WeakHashMap<>());
 +
-+    /** That card, while it is still among the top three of its owner's library (a shuffle or a draw ends it). */
++    static final Set<Integer> PLACED = Collections.synchronizedSet(new HashSet<>());   // tutored cards seen in their place
++
++    /** That card, while it is still among the top three of its owner's library (a shuffle or a draw ends it). It is recorded
++     *  when chosen, before the tutor moves it, so it only expires once it has been seen in place (zur5c_20261022 game 0:
++     *  checked mid-resolution, Long-Term Plans' Approach was dropped and Zur's search shuffled it away). */
 +    public static Card knownTop(final Player p) {
-+        final Card c = p == null ? null : TOP.get(p);
++        // the real game only: a lookahead copy's player equals the real one as a map key, and its simulated search shuffled the
++        // copy's library and wiped the real entry (zur5c_20261022 game 0: Zur's trigger, simulated in main 1)
++        final Card c = p == null || !real(p.getGame()) ? null : TOP.get(p);
 +        if (c == null) {
 +            return null;
 +        }
 +        final int i = knownTopIndex(p, c);
 +        if (i < 0 || i > 2) {
-+            TOP.remove(p);
++            if (PLACED.remove(c.getId()) || !inLibrary(p, c)) TOP.remove(p);   // shuffled away, drawn, or gone
 +            return null;
 +        }
++        PLACED.add(c.getId());
 +        return p.getCardsIn(ZoneType.Library).get(i);
++    }
++
++    static boolean inLibrary(final Player p, final Card c) {
++        for (final Card l : p.getCardsIn(ZoneType.Library)) if (l.getId() == c.getId()) return true;
++        return false;
 +    }
 +
 +    /** Where card c (by id: the move within the library makes a new object) sits in its owner's library, -1 if not there. */
@@ -156,7 +186,7 @@ index fd52e93..deecaad 100644
      /** The library search in sa's chain, or in its card's "when this enters" trigger: a hidden-origin ChangeZone from the
       *  library into hand, onto the battlefield or onto the library top, for nonland cards. */
      static SpellAbility search(final SpellAbility sa) {
-@@ -679,6 +782,10 @@ public final class TurnPlan {
+@@ -679,6 +794,10 @@ public final class TurnPlan {
              if (pick == null) {
                  return s;
              }
@@ -167,7 +197,7 @@ index fd52e93..deecaad 100644
              // the pick's own value: the plan's value of casting it now
              double pv;
              int pc;
-@@ -698,7 +805,11 @@ public final class TurnPlan {
+@@ -698,7 +817,11 @@ public final class TurnPlan {
              if (field ? cost > room : top ? s.cost + pc > budget + 1 : cost > room) {
                  return xCost ? null : s;   // the pair doesn't fit: the tutor as it was valued before
              }
@@ -180,7 +210,7 @@ index fd52e93..deecaad 100644
              // a sacrifice it costs (Natural Order): the cheapest creature it could take
              if (s.sa.getPayCosts() != null && s.sa.getPayCosts().hasSpecificCostType(forge.game.cost.CostSacrifice.class)) {
                  double least = Double.MAX_VALUE;
-@@ -953,6 +1064,8 @@ public final class TurnPlan {
+@@ -953,6 +1076,8 @@ public final class TurnPlan {
          final java.util.function.ToIntFunction<Player> hk = HOLD_KEEP;
          plan.reserve = hk == null ? 0 : Math.max(0, hk.applyAsInt(ai));
          final int room = plan.budget - plan.reserve;
@@ -189,7 +219,7 @@ index fd52e93..deecaad 100644
          for (final Card c : pool) {
              if (c.isLand() || declined.contains(c.getId())) {
                  continue;
-@@ -971,6 +1084,14 @@ public final class TurnPlan {
+@@ -971,6 +1096,14 @@ public final class TurnPlan {
              if (x && search(sa) == null) {
                  continue;   // X spells take what's left: Forge sizes them (patch 85: an X tutor is planned last, at its target's X)
              }
@@ -204,7 +234,7 @@ index fd52e93..deecaad 100644
              Step s = step(aic, ai, c, sa);
              if (s != null) {
                  s = tutor(aic, ai, s, room, plan.budget);
-@@ -985,13 +1106,13 @@ public final class TurnPlan {
+@@ -985,13 +1118,13 @@ public final class TurnPlan {
          // bracket1000_20261021 failed to pay, 83% for a color: Klauth planned Dragon Tempest four turns running with no red);
          // a set is planned only if its pips and the held answer's fit the sources together
          final List<Integer> units = manaUnits(ai);
@@ -220,7 +250,7 @@ index fd52e93..deecaad 100644
              }
          }
          if (!fits(keepPips, units)) {
-@@ -1014,7 +1135,7 @@ public final class TurnPlan {
+@@ -1014,7 +1147,7 @@ public final class TurnPlan {
          plan.units = units;
          plan.keepPips = keepPips;
          plan.answer = answer;
@@ -229,7 +259,7 @@ index fd52e93..deecaad 100644
          pick.sort((a, b) -> a.tier != b.tier ? Integer.compare(a.tier, b.tier) : Double.compare(b.value, a.value));
          int r = 1000;
          for (final Step s : pick) {
-@@ -1240,6 +1361,18 @@ public final class TurnPlan {
+@@ -1240,6 +1373,18 @@ public final class TurnPlan {
          final int pay = aic.payoffUnits(sa);
          v += 40 * pay;
          boolean removal = false, wipe = false, info = false;
@@ -248,7 +278,7 @@ index fd52e93..deecaad 100644
          for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
              if (ComputerUtilCard.Wipe.isWipe(x)) {
                  final double m = ComputerUtilCard.Wipe.margin(ai, x);
-@@ -1263,7 +1396,8 @@ public final class TurnPlan {
+@@ -1263,7 +1408,8 @@ public final class TurnPlan {
                  v += best;
              }
              if (api == ApiType.Draw || api == ApiType.Dig || api == ApiType.Scry || api == ApiType.Surveil
