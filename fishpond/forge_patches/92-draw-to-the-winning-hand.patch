@@ -1,0 +1,68 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 2aa261d..e8b09e7 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -691,6 +691,13 @@ public final class TurnPlan {
+             } catch (final RuntimeException e) { /* skip */ }
+         }
+         if (c.hasKeyword(forge.game.keyword.Keyword.PERSIST) && c.getCounters(forge.game.card.CounterEnumType.M1M1) > 0) v += 150;
++        // patch 92: a "no maximum hand size" creature under a later hand-size limit (Triskaidekaphile before Necrodominance)
++        // comes back with a new timestamp and lifts it: the draw to 13 is on again
++        if (!ai.isUnlimitedHandSize()) {
++            for (final forge.game.staticability.StaticAbility st : c.getStaticAbilities()) {
++                if ("Unlimited".equals(st.getParam("SetMaxHandSize")) && st.getParamOrDefault("Affected", "").equals("You")) v += 300;
++            }
++        }
+         for (final Card a : c.getEnchantedBy()) if (a.getController() == ai) v -= base(a, a.getCMC());
+         return v;
+     }
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+index 68a91af..44957a2 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+@@ -359,6 +359,23 @@ public class DrawAi extends SpellAbilityAi {
+         return overridden.contains(name);
+     }
+ 
++    /** fishpond patch 92: the hand size that wins at the player's upkeep (Triskaidekaphile: exactly 13), 0 if none. */
++    public static int exactHandWin(final Player ai) {
++        for (final Card c : ai.getCardsIn(ZoneType.Battlefield)) {
++            for (final Trigger t : c.getTriggers()) {
++                if (t.getMode() != TriggerType.Phase || !"Upkeep".equals(t.getParam("Phase")) || !"Hand".equals(t.getParam("PresentZone"))) continue;
++                final String cmp = t.getParamOrDefault("PresentCompare", "");
++                if (!cmp.startsWith("EQ")) continue;
++                try {
++                    boolean wins = false;
++                    for (SpellAbility x = t.ensureAbility(); x != null && !wins; x = x.getSubAbility()) wins = x.getApi() == ApiType.WinsGame;
++                    if (wins) return Integer.parseInt(cmp.substring(2));
++                } catch (RuntimeException e) { /* skip */ }
++            }
++        }
++        return 0;
++    }
++
+     /** fishpond patch 55: hasCyclingPayoff for AiController's cycling rule. */
+     public static boolean hasCyclingPayoffPublic(Player ai) {
+         return hasCyclingPayoff(ai);
+@@ -622,6 +639,21 @@ public class DrawAi extends SpellAbilityAi {
+             }
+         }
+ 
++        // fishpond patch 92: draw to exactly the hand that wins (Triskaidekaphile: 13 at the upkeep) when the hand size has no
++        // limit: Necrodominance's "pay any amount of life, draw that many" paid 2 where 13 minus the hand wins (the user's
++        // goal win, 2026-10-22: "Trisk with 13 off Necrodominance")
++        if (xPaid && pilotSeat(ai) && game.getPhaseHandler().isPlayerTurn(ai)) {
++            final int target = exactHandWin(ai);
++            final int need = target - computerHandSize + (source.isInZone(ZoneType.Hand) ? 1 : 0);
++            if (target > 0 && need > 0 && ai.isUnlimitedHandSize() && need < computerLibrarySize
++                    && (!sa.getPayCosts().hasSpecificCostType(CostPayLife.class) || ai.getLife() - need >= 1)) {
++                root.setXManaCostPaid(need);
++                sa.resetTargets();
++                if (sa.usesTargeting()) sa.getTargets().add(ai);
++                return true;
++            }
++        }
++
+         // Logic for cards that require special handling
+         if ("YawgmothsBargain".equals(logic)) {
+             return SpecialCardAi.YawgmothsBargain.consider(ai, sa);

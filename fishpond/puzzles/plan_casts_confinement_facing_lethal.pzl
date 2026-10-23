@@ -1,0 +1,14 @@
+# title: 16 life, the opponent's creatures at 24 power, four mana, Solitary Confinement, Glen Elendra Archmage and Flickering Hound in hand: the plan casts Solitary Confinement (patch 91: a damage lock outranks the rest when the table's creatures are set to kill; zur20c_20261023, Zur held Confinement at 16 life and died to Heliod's swing)
+# card: Solitary Confinement
+# turns: 1
+# expect: cast Solitary Confinement
+p0life=16
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Island;Swamp;Plains
+p0hand=Solitary Confinement;Glen Elendra Archmage;Flickering Hound;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Plains;Plains;Serra Angel;Serra Angel;Colossal Dreadmaw;Colossal Dreadmaw
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

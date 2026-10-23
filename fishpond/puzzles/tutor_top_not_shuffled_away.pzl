@@ -12,6 +12,6 @@ activeplayer=p0
 activephase=MAIN1
 p0battlefield=Zur the Enchanter;Plains;Plains;Island;Island;Swamp;Swamp;Island
 p0hand=Personal Tutor;Mystical Tutor
-p0library=Island;Astral Drift;Astral Slide;Approach of the Second Sun;Step Through;Island;Island;Island;Island;Island;Island
+p0library=Island;Astral Drift;Astral Slide;Approach of the Second Sun;Unearth;Island;Island;Island;Island;Island;Island
 p1battlefield=Forest;Forest
 p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

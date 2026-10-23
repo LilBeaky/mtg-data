@@ -1,0 +1,17 @@
+# title: Zur's deck with Astral Slide and Archaeomancer on the battlefield and Step Through in hand: the AI Wizardcycles Step Through, Slides Archaeomancer (it comes back at the end step) and gets Step Through back (the user, 2026-10-22: Step Through and Archaeomancer are "married"; patch 91: blinks by what they're worth, and the plan counts the blink a cycle sets off)
+# card: Astral Slide
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: activated Step Through
+# expect: triggered Astral Slide targeting \[Archaeomancer
+# expect: triggered Archaeomancer targeting \[Step Through
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Astral Slide;Archaeomancer;Plains;Island;Island;Swamp;Island
+p0hand=Step Through;Island
+p0library=Tribute Mage;Spellseeker;Triskaidekaphile;Fluctuator;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

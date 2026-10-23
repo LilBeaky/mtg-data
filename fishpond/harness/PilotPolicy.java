@@ -132,6 +132,33 @@ public final class PilotPolicy {
         return forgePick;
     }
 
+    // ------------------------------------------------------------------ deck rules (the user's, for one deck)
+
+    /** The user's rules for Zur's engine (2026-10-22, conceded as overrides: "This framework should guarantee it at least
+     *  attempts to establish this engine"). With Zur the Enchanter the commander and Archaeomancer, Astral Slide and Step
+     *  Through in the deck: any search that can choose Step Through (still in the library) does; Zur's enchantment search
+     *  takes Astral Slide (Slide only); Step Through's Wizardcycle takes Archaeomancer. Null when no rule applies. */
+    Card deckRule(SpellAbility sa, List<Card> cands) {
+        if (!zurEngine() || sa == null || sa.getHostCard() == null) return null;
+        String src = sa.getHostCard().getName();
+        Card step = named(cands, "Step Through"), slide = named(cands, "Astral Slide"), arch = named(cands, "Archaeomancer");
+        if (step != null) return step;
+        if (src.equals("Zur the Enchanter") && slide != null) return slide;
+        if (src.equals("Step Through") && arch != null) return arch;
+        return null;
+    }
+
+    boolean zurEngine() {
+        CardIntel z = in.cards.get("Zur the Enchanter");
+        return z != null && z.cmdr && in.cards.containsKey("Archaeomancer") && in.cards.containsKey("Astral Slide")
+                && in.cards.containsKey("Step Through");
+    }
+
+    static Card named(List<Card> cands, String name) {
+        for (Card c : cands) if (c.getName().equals(name) && c.isInZone(ZoneType.Library)) return c;
+        return null;
+    }
+
     // ------------------------------------------------------------------ when the policy applies
 
     /** A library search of the player's own library into hand, play or the top of the library (not lands-only lists). */
@@ -332,6 +359,18 @@ public final class PilotPolicy {
         // combo completion and an urgent survival pick. Zur's trigger fetched Escape Protocol over the key Astral Slide/Drift
         // in about 20 of 30 games on a few points of synergy (study150_20261016_p54). Not for one already on the battlefield.
         if (in.keys.contains(n) && !b.field.contains(n)) s[BOOST] += KEY_BONUS;
+        // the user's Wizard network for Zur's loop (2026-10-22): "Typically, it's going to be Tribute Mage if I have the room to
+        // make that loop essentially free through Fluctuator, or it'll be Archmage Emeritus if I need cards"; Trisk "when I'm
+        // ready to win" (Necrodominance out: the draw to 13)
+        if (zurEngine()) {
+            if (n.equals("Triskaidekaphile") && !b.field.contains("Necrodominance")) s[BOOST] -= KEY_BONUS;
+            if (n.equals("Tribute Mage") && !b.have.contains("Fluctuator")) s[BOOST] += 200;
+            if (n.equals("Emeritus of Ideation") && b.hand <= 2) s[BOOST] += 200;
+            // Zur's search after Slide/Drift: "Solitary Confinement or Rule of Law (maybe 75% of total games between the two)";
+            // Confinement takes over through the survival layer when the board is set to kill
+            if (n.equals("Rule of Law") && dest == ZoneType.Battlefield && (b.field.contains("Astral Slide") || b.field.contains("Astral Drift"))
+                    && !b.field.contains("Rule of Law")) s[BOOST] += 800;
+        }
         if (b.field.contains(n) && c.getType().isLegendary()) Arrays.fill(s, 0);   // legend rule: a second copy is useless
         if (forgePick) s[FORGE] = 15;
         return s;

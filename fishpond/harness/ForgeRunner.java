@@ -90,6 +90,8 @@ public class ForgeRunner {
             @SuppressWarnings("unchecked") List<Card> cands = (List<Card>) a[2];
             var ranked = sc.policy.rank(new ArrayList<>(cands), p, (forge.game.spellability.SpellAbility) a[0], (ZoneType) a[1], null);
             Card gated = sc.policy.commanderGate(p, ranked, null);
+            Card ruled = sc.policy.deckRule((forge.game.spellability.SpellAbility) a[0], cands);
+            if (ruled != null) gated = ruled;   // the deck's own rule goes first, as the search itself picks
             List<Card> out = new ArrayList<>();
             if (gated != null) out.add(gated);
             for (var e : ranked) if (e.getKey() != gated) out.add(e.getKey());
@@ -221,7 +223,9 @@ public class ForgeRunner {
             Card pick = ranked.get(0).getKey();
             String mode = "policy";
             Card gated = policy.commanderGate(me, ranked, forgePick);   // the user's tutor rule (hand, battlefield or top of library)
-            if (gated != null) { pick = gated; mode = "commander-gate"; }
+            Card ruled = policy.deckRule(sa, new ArrayList<>(fetchList));   // the user's rules for one deck (Zur's engine)
+            if (ruled != null) { pick = ruled; mode = "deck-rule"; }
+            else if (gated != null) { pick = gated; mode = "commander-gate"; }
             else if (getAi().usesFullSimulation()) {
                 forge.game.card.CardCollection shortlist = new forge.game.card.CardCollection();
                 for (int i = 0; i < Math.min(3, ranked.size()); i++) shortlist.add(ranked.get(i).getKey());

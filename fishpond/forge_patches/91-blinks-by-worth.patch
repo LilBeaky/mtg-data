@@ -1,0 +1,197 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 1157518..cb505cb 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -4208,7 +4208,10 @@ public class AiController {
+             return false;
+         }
+         final forge.game.phase.PhaseHandler ph = game.getPhaseHandler();
+-        if (ph.isPlayerTurn(player) || !ph.is(PhaseType.END_OF_TURN) || !player.equals(ph.getNextTurn()) || !game.getStack().isEmpty()) {
++        // fishpond patch 91: with a cycling payoff out, typecycle in response to removal or a wipe (the payoff blinks the
++        // threatened creature away)
++        final boolean save = typecycle && forge.ai.ability.DrawAi.hasCyclingPayoffPublic(player) && TurnPlan.savesFromStack(player);
++        if (!save && (ph.isPlayerTurn(player) || !ph.is(PhaseType.END_OF_TURN) || !player.equals(ph.getNextTurn()) || !game.getStack().isEmpty())) {
+             return false;
+         }
+         if (sa.getApi() == ApiType.ChangeZone && "Library".equals(sa.getParam("Origin"))) {
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index e1047e3..2aa261d 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -659,6 +659,125 @@ public final class TurnPlan {
+         return false;
+     }
+ 
++    // ---- fishpond patch 91: blinks by what they're worth (the user, 2026-10-22: Astral Slide is "mostly for blinking my own
++    // stuff": Wizardcycle Step Through, Slide Archaeomancer, which comes back at the end step and returns Step Through; recur
++    // value pieces; dodge removal; reset Glen Elendra's persist). Forge blinked opponents' creatures first and its own by
++    // creature value. A blink (exile, back at the next end step) is worth: an own creature's enter trigger run again (a card
++    // back from the graveyard at its own worth, a typecycler more since it tutors again; a search; draws; tokens), a persist
++    // counter cleared, less any of its auras that fall off; an opponent's token (it's gone for good); an opponent's creature
++    // attacking the seat (out of combat). Never the seat's commander (it would go to the command zone). ----
++    static final double BLINK_AT = 60;
++
++    public static double blinkValue(final Player ai, final Card c, final Card toGraveyard) {
++        if (c == null || !c.isCreature()) return -1;
++        final Game g = ai.getGame();
++        if (c.getController() != ai) {
++            if (c.isToken()) return ComputerUtilCard.evaluateCreature(c);
++            final forge.game.combat.Combat combat = g.getCombat();
++            if (combat != null && combat.isAttacking(c) && combat.getDefenderPlayerByAttacker(c) == ai) {
++                return 40 + 10 * Math.max(0, c.getNetCombatDamage());
++            }
++            return -1;
++        }
++        if (c.isToken() || c.isCommander() && c.getOwner() == ai) return -1;
++        double v = 0;
++        for (final forge.game.trigger.Trigger t : c.getTriggers()) {
++            if (t.getMode() != forge.game.trigger.TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))
++                    || !t.getParamOrDefault("ValidCard", "").startsWith("Card.Self")) continue;
++            try {
++                for (SpellAbility x = t.ensureAbility(); x != null; x = x.getSubAbility()) {
++                    v += enterValue(ai, c, x, toGraveyard);
++                }
++            } catch (final RuntimeException e) { /* skip */ }
++        }
++        if (c.hasKeyword(forge.game.keyword.Keyword.PERSIST) && c.getCounters(forge.game.card.CounterEnumType.M1M1) > 0) v += 150;
++        for (final Card a : c.getEnchantedBy()) if (a.getController() == ai) v -= base(a, a.getCMC());
++        return v;
++    }
++
++    static double enterValue(final Player ai, final Card host, final SpellAbility x, final Card toGraveyard) {
++        final ApiType api = x.getApi();
++        if (api == ApiType.ChangeZone && x.getParamOrDefault("Origin", "").contains("Graveyard")) {
++            final List<Card> gy = new ArrayList<>(ai.getCardsIn(ZoneType.Graveyard));
++            if (toGraveyard != null && !gy.contains(toGraveyard)) gy.add(toGraveyard);
++            final String valid = x.getParamOrDefault("ValidTgts", x.getParamOrDefault("ChangeType", ""));
++            double best = 0;
++            if (!valid.isEmpty()) {
++                for (final Card k : gy) {
++                    try {
++                        if (!k.isValid(valid.split(","), ai, host, x)) continue;
++                    } catch (final RuntimeException e) { continue; }
++                    double kv = base(k, k.getCMC());
++                    for (final SpellAbility ks : k.getAllSpellAbilities()) {
++                        if (!ks.isSpell() && ks.isCycling() && ks.getApi() == ApiType.ChangeZone) { kv += 150; break; }   // it tutors again
++                    }
++                    best = Math.max(best, kv);
++                }
++            }
++            return best;
++        }
++        if (search(x) != null) return 200;
++        if (api == ApiType.Draw) return 80 * Math.max(1, drawsYou(x));
++        if (api == ApiType.Token) return 60;
++        if (api == null) return 0;
++        return 40;
++    }
++
++    /** The most valuable blink among list (an own creature whose enter trigger matters, an opponent's token or attacker),
++     *  or null when none is worth BLINK_AT. */
++    public static Card bestBlink(final Player ai, final Iterable<Card> list, final Card toGraveyard) {
++        Card best = null;
++        double bv = BLINK_AT;
++        for (final Card c : list) {
++            final double v = blinkValue(ai, c, toGraveyard);
++            if (v >= bv) { bv = v; best = c; }
++        }
++        return best;
++    }
++
++    /** The card prevents all damage that would be dealt to its controller (Solitary Confinement). */
++    static boolean preventsDamageToYou(final Card c) {
++        for (final forge.game.replacement.ReplacementEffect re : c.getReplacementEffects()) {
++            if (re.getMode() == forge.game.replacement.ReplacementType.DamageDone && "True".equals(re.getParam("Prevent"))
++                    && "You".equals(re.getParamOrDefault("ValidTarget", ""))) return true;
++        }
++        return false;
++    }
++
++    /** How close the opponents' creatures are to killing the seat (the pilot policy's survival rule): 1 when they all
++     *  together reach its life or one opponent's reach three fifths of it, 0.5 at half or at 10 life, else 0. */
++    static double lethalDanger(final Player ai) {
++        int total = 0, most = 0;
++        for (final Player o : ai.getOpponents()) {
++            if (o.hasLost()) continue;
++            int pw = 0;
++            for (final Card k : o.getCreaturesInPlay()) pw += Math.max(0, k.getNetCombatDamage());
++            total += pw;
++            most = Math.max(most, pw);
++        }
++        final int life = ai.getLife();
++        return total >= life || most * 5 >= life * 3 ? 1.0 : most * 2 >= life || life <= 10 ? 0.5 : 0.0;
++    }
++
++    /** What the best blink a cycle sets off is worth (the seat's creatures and its opponents' tokens), 0 if none. */
++    static double cycleBlinkValue(final Player ai, final Card cycled) {
++        double bv = 0;
++        for (final Card c : ai.getGame().getCardsIn(ZoneType.Battlefield)) bv = Math.max(bv, blinkValue(ai, c, cycled));
++        return bv >= BLINK_AT ? bv : 0;
++    }
++
++    /** A creature of the seat's worth saving is threatened by what's on the stack (targeted removal, a wipe). */
++    public static boolean savesFromStack(final Player ai) {
++        if (ai.getGame().getStack().isEmpty()) return false;
++        try {
++            for (final forge.game.GameObject o : ComputerUtil.predictThreatenedObjects(ai, null)) {
++                if (o instanceof Card k && k.isCreature() && k.getController() == ai && !k.isToken()
++                        && (ComputerUtilCard.evaluateCreature(k) >= 150 || blinkValue(ai, k, null) >= BLINK_AT || k.isCommander())) return true;
++            }
++        } catch (final RuntimeException e) { /* none */ }
++        return false;
++    }
++
+     /** sa searches its controller's library and puts the card back on top (Mystical Tutor, Personal Tutor, Long-Term Plans). */
+     static boolean topTutor(final SpellAbility sa) {
+         final SpellAbility x = search(sa);
+@@ -1369,6 +1488,12 @@ public final class TurnPlan {
+         if (!sa.isSpell() && "Hand".equals(sa.getParam("ActivationZone")) && "Library".equals(sa.getParam("Origin"))
+                 && c.hasStartOfKeyword("Transmute")) v += TRANSMUTE;   // patch 73: a tutor
+         if (!sa.isSpell() && sa.isCycling() && "Library".equals(sa.getParam("Origin"))) v += TRANSMUTE;   // patch 83: typecycling too
++        // patch 91: with a cycling payoff out (Astral Slide, Drift, Escape Protocol), a cycle also blinks: the loop's Step Through
++        // slides Archaeomancer, which comes back at the end step and returns it
++        if (!sa.isSpell() && sa.isCycling() && forge.ai.ability.DrawAi.hasCyclingPayoffPublic(ai)) v += cycleBlinkValue(ai, c);
++        // patch 91: a lock on damage to the seat (Solitary Confinement) with the table's creatures set to kill it: surviving
++        // first (zur20c_20261023: Zur held Confinement at 16 life into Heliod's 73-damage swing)
++        if (sa.isSpell() && preventsDamageToYou(c)) v += 1300 * lethalDanger(ai);
+         v += prio >= 3 ? 500 : prio == 2 ? 200 : prio == 1 ? 60 : 0;
+         final int pay = aic.payoffUnits(sa);
+         v += 40 * pay;
+diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+index 59dfab4..dcb3148 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+@@ -1084,6 +1084,19 @@ public class ChangeZoneAi extends SpellAbilityAi {
+ 
+                     return true;
+                 }
++                // fishpond patch 91: a pilot seat blinks what's worth it (TurnPlan.blinkValue): its own creature's enter trigger
++                // (Archaeomancer returning the cycled Step Through), a persist counter cleared, an opponent's token or attacker;
++                // an optional trigger with nothing worth it is declined
++                if (blink && DrawAi.pilotSeat(ai)) {
++                    final Card best = forge.ai.TurnPlan.bestBlink(ai, list, null);
++                    if (best != null) {
++                        sa.getTargets().add(best);
++                        return true;
++                    }
++                    if (sa.isTrigger()) {
++                        return false;
++                    }
++                }
+                 // blink logic: get my own permanents back or blink permanents with ETB effects
+                 if (blink) {
+                     CardCollection blinkTargets = CardLists.filter(list, c -> !c.isToken() && c.getOwner().equals(ai) && (c.getController().isOpponentOf(ai) || c.hasETBTrigger(false)));
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+index 722b613..68a91af 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+@@ -393,6 +393,9 @@ public class DrawAi extends SpellAbilityAi {
+         if (ComputerUtil.aiLifeInDanger(ai, false, 0)) {
+             return true;
+         }
++        if (forge.ai.TurnPlan.savesFromStack(ai)) {
++            return true;   // fishpond patch 91: cycle in response, and the payoff blinks the threatened creature out of it
++        }
+         if (!ph.isPlayerTurn(ai)) {
+             if ((ph.is(PhaseType.COMBAT_DECLARE_ATTACKERS) || ph.is(PhaseType.COMBAT_DECLARE_BLOCKERS))
+                     && ph.getCombat() != null && !ph.getCombat().getAttackersOf(ai).isEmpty()) {

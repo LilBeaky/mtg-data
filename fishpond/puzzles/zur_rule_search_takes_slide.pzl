@@ -1,0 +1,14 @@
+# title: Zur's deck, Zur attacking with Astral Drift, Astral Slide, Rule of Law and Solitary Confinement in the library: Zur's search takes Astral Slide (the user's rule, 2026-10-22: "If Zur is searching for an enchantment and Astral Slide is in the library, it always chooses it")
+# card: Zur the Enchanter
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: #FP-POLICY .*"src": "Zur the Enchanter".*"pick": "Astral Slide"
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter;Plains;Island;Swamp;Island
+p0library=Astral Drift;Rule of Law;Solitary Confinement;Astral Slide;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

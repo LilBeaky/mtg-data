@@ -1,0 +1,15 @@
+# title: Astral Slide and Serra Angel on the battlefield, Miscalculation (cycling {2}) and spare cards in hand, the opponent casts Swords to Plowshares on the Angel: the AI cycles in response and Slides the Angel out of it (the user, 2026-10-22: Slide "essentially counters targeted removal spells on creatures"; patch 91)
+# card: Astral Slide
+# turns: 1
+# expect: triggered Astral Slide targeting \[Serra Angel
+p0life=40
+p1life=40
+turn=1
+activeplayer=p1
+activephase=MAIN1
+p0battlefield=Astral Slide;Serra Angel;Island;Island;Plains;Plains
+p0hand=Miscalculation;Plains;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Plains;Plains
+p1hand=Swords to Plowshares
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

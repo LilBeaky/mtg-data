@@ -1,0 +1,15 @@
+# title: Zur's deck, Step Through Wizardcycled with Archaeomancer in the library (and Tribute Mage, Spellseeker, Triskaidekaphile): it takes Archaeomancer (the user's rule, 2026-10-22: "If Step Through is Wizardcycled, and Archaeomancer is in the Library, it always chooses it")
+# card: Step Through
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: #FP-POLICY .*"src": "Step Through".*"pick": "Archaeomancer".*"mode": "deck-rule"
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Island;Island;Swamp
+p0hand=Step Through
+p0library=Tribute Mage;Spellseeker;Triskaidekaphile;Archaeomancer;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

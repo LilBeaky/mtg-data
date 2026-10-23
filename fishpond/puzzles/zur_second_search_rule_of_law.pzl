@@ -1,0 +1,14 @@
+# title: Zur's deck with Astral Slide out, Zur attacking (no lethal board) with Astral Drift, Rule of Law, Escape Protocol and Greater Auramancy in the library: Zur's second search takes Rule of Law (the user, 2026-10-22: after Slide/Drift, "Solitary Confinement or Rule of Law (maybe 75% of total games between the two)")
+# card: Rule of Law
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: #FP-POLICY .*"src": "Zur the Enchanter".*"pick": "Rule of Law"
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter;Astral Slide;Plains;Island;Swamp;Island
+p0library=Astral Drift;Rule of Law;Escape Protocol;Greater Auramancy;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

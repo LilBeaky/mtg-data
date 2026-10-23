@@ -1,0 +1,15 @@
+# title: Necrodominance, then Triskaidekaphile (no maximum hand size, the later timestamp), eight cards in hand at 30 life: at the end step Necrodominance pays life to draw exactly to 13 (5, or 6 after playing a land), and Triskaidekaphile wins at the upkeep (patch 92; the user's goal win, 2026-10-22: "Trisk with 13 off Necrodominance")
+# card: Triskaidekaphile
+# turns: 2
+# expect: Ai\(1\)-P1 has won due to effect of 'Triskaidekaphile'
+# expect: #FP-PUZZLE end Ai\(1\)-P1 .* hand 13
+p0life=30
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN2
+p0battlefield=Necrodominance;Triskaidekaphile;Swamp;Swamp;Swamp;Island;Island
+p0hand=Island;Island;Island;Island;Island;Island;Island;Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

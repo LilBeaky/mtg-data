@@ -1,0 +1,15 @@
+# title: Zur's deck, Solve the Equation with Step Through and Approach of the Second Sun in the library: it takes Step Through (the user's rule, 2026-10-22: with Zur, Archaeomancer, Astral Slide and Step Through, "any search effect that can choose it does so")
+# card: Solve the Equation
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: #FP-POLICY .*"src": "Solve the Equation".*"pick": "Step Through"
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Island;Island;Swamp;Island;Island;Plains;Swamp;Island;Island
+p0hand=Solve the Equation
+p0library=Approach of the Second Sun;Necrodominance;Step Through;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
