@@ -837,7 +837,7 @@ public final class ThreatModel {
             int cost = c.getCMC() + (c.isCommander() && c.isInZone(ZoneType.Command) ? 2 * ai.getCommanderCast(c) : 0);
             if (cost > avail) continue;
             if (c.isCommander() && c.isInZone(ZoneType.Command)) return true;
-            if (pol != null && pol.isKey(c.getName()) && !ai.isCardInPlay(c.getName())) return true;
+            if (pol != null && pol.isKey(c.getName()) && !ai.isCardInPlay(c.getName()) && !triskWaits(ai, pol, c)) return true;
             if (c.getCMC() >= 6) return true;
             if (PilotPolicy.removalReach(c, ai) >= 40) return true;
             // a counter ability coming down (Glen Elendra: "a relatively safe bet as long as we've got access to blue") is the
@@ -846,6 +846,16 @@ public final class ThreatModel {
                 for (SpellAbility a : c.getSpellAbilities())
                     if (!a.isSpell()) for (SpellAbility x : chain(a)) if (x.getApi() == ApiType.Counter) return true;
         }
+        return false;
+    }
+
+    /** Zur's Triskaidekaphile waits behind the hold unless the seat leads the table or its hand is at the win (the user,
+     *  2026-10-23: "Trisk is a play if the deck is in the lead or it can hold up interaction in addition to casting it"). */
+    static boolean triskWaits(Player ai, PilotPolicy pol, Card c) {
+        if (pol == null || !pol.zurEngine() || !c.getName().equals("Triskaidekaphile")) return false;
+        if (ai.getCardsIn(ZoneType.Hand).size() - 1 >= 13) return false;
+        double me = threatNow(ai);
+        for (Player o : ai.getOpponents()) if (!o.hasLost() && threatNow(o) > me) return true;
         return false;
     }
 
@@ -949,7 +959,7 @@ public final class ThreatModel {
         // the Infinite; Zur over Triskaidekaphile, Astral Drift and itself, 2026-10-17)
         PilotPolicy pol = policyOf(ai);
         if (host != null && sa.isSpell() && (host.isCommander() || host.getCMC() >= 6)) return false;
-        if (host != null && pol != null && pol.isKey(host.getName())) return false;   // cast or used: Step Through is only ever wizardcycled
+        if (host != null && pol != null && pol.isKey(host.getName()) && !triskWaits(ai, pol, host)) return false;   // cast or used: Step Through is only ever wizardcycled
         if (pol != null && pol.castPriority0(ai, sa) >= 2) return false;
         // cycling into Astral Drift is the engine itself; under a free hold it runs on the mana past the hold, the rest at the
         // last end step before the seat's turn

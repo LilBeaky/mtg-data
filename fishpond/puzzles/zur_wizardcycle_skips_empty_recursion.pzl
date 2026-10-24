@@ -1,0 +1,15 @@
+# title: Zur's loop running (Astral Slide and Archaeomancer out, Step Through in hand), eight lands, nothing in the graveyard: Step Through's Wizardcycle takes Emeritus of Ideation (high-resources draw), not Bloodline Necromancer or Auramancer with nothing to return (the user, 2026-10-23: "Fuck bloodline necromancer unless we got an important wizard in the graveyard"; "Emeritus is super good and it should be rated highly in general")
+# card: Emeritus of Ideation
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: #FP-POLICY .*"src": "Step Through".*"pick": "Emeritus of Ideation"
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Astral Slide;Archaeomancer;Plains;Plains;Island;Island;Island;Swamp;Swamp;Island
+p0hand=Step Through
+p0library=Bloodline Necromancer;Auramancer;Emeritus of Ideation;Dour Port-Mage;Vedalken Aethermage;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

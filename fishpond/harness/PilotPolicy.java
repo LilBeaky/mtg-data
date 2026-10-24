@@ -146,6 +146,14 @@ public final class PilotPolicy {
         if (step != null) return step;
         if (src.equals("Zur the Enchanter") && slide != null) return slide;
         if (src.equals("Step Through") && arch != null) return arch;
+        // the user, 2026-10-23: "Archaeomancer is always first if we don't have it"; "Tribute Mage always gets Fluctuator"
+        Player me = sa.getActivatingPlayer();
+        if (arch != null && me != null && !me.isCardInPlay("Archaeomancer")) {
+            boolean held = false;
+            for (Card h : me.getCardsIn(ZoneType.Hand)) if (h.getName().equals("Archaeomancer")) held = true;
+            if (!held) return arch;
+        }
+        if (src.equals("Tribute Mage")) { Card f = named(cands, "Fluctuator"); if (f != null) return f; }
         return null;
     }
 
@@ -353,15 +361,17 @@ public final class PilotPolicy {
             } else if (valid.contains("!wasCastFromTheirHand") && caster.equals("Opponent")) {
                 for (Player o : opps)
                     for (Card k : o.getCardsIn(ZoneType.Command)) if (k.isCommander()) { v += 150; break; }
+                // "Drannith if we can remove commanders": one on the battlefield the seat's removal in hand reaches can then
+                // be taken off for good
                 for (Player o : opps)
-                    for (Card k : o.getCardsIn(ZoneType.Battlefield)) if (k.isCommander() && k.getOwner() == o) { v += 40; break; }
+                    for (Card k : o.getCardsIn(ZoneType.Battlefield)) if (k.isCommander() && k.getOwner() == o) { v += 40 + (canRemove(me, k, c) ? 120 : 0); break; }
             }
         }
         if (phasesOthersOut(c)) {
             int oppExcess = 0;
             for (Player o : opps) oppExcess += Math.max(0, o.getCardsIn(ZoneType.Battlefield).size() - 5);
             int mine = Math.max(0, me.getCardsIn(ZoneType.Battlefield).size() - 5);
-            v += Math.max(0, 25 * oppExcess - 40 * mine);
+            v += Math.max(0, 10 * oppExcess - 60 * mine);   // "hard to play under" (the user): only far behind on board
         }
         return v;
     }
@@ -435,30 +445,131 @@ public final class PilotPolicy {
     /** The biggest threat (ThreatModel.cardThreat) among the opponents' permanents its targeted removal could hit, from its
      *  spell or its enter trigger; -1 when it can hit none (Vedalken Aethermage bounces only Slivers). */
     static double removalReach(Card c, Player me) {
-        List<SpellAbility> abs = new ArrayList<>(c.getSpells());
+        double best = -1;
+        for (Player o : me.getOpponents())
+            for (Card p : o.getCardsIn(ZoneType.Battlefield))
+                if (!p.isLand() && hits(c, me, p)) best = Math.max(best, reachValue(me, p));
+        return best;
+    }
+
+    /** How much answering p matters: the threat model's score, or for a creature its size (a 12/12 Lord of Extinction scored
+     *  under 20 on threat alone: zurb2nw2_20261023 X3 g8, Jarad sacrificed it for 17). */
+    static double reachValue(Player me, Card p) {
+        double v = Math.max(0, ThreatModel.cardThreat(me, p));
+        if (p.isCreature()) {
+            try { v = Math.max(v, Math.min(80, forge.ai.ComputerUtilCard.evaluateCreature(p) / 5.0)); } catch (RuntimeException e) { /* threat only */ }
+        }
+        return v;
+    }
+
+    /** The targeted removal parts of c: its spell and enter trigger, a charm's choices too (Aether Channeler's bounce). */
+    static List<SpellAbility> removalParts(Card c) {
+        List<SpellAbility> abs = new ArrayList<>(c.getSpells()), out = new ArrayList<>();
         for (forge.game.trigger.Trigger t : c.getTriggers())
             if (t.getMode() == forge.game.trigger.TriggerType.ChangesZone && "Battlefield".equals(t.getParam("Destination"))
                     && t.getParamOrDefault("ValidCard", "").startsWith("Card.Self")) {
                 try { abs.add(t.ensureAbility()); } catch (RuntimeException e) { /* skip */ }
             }
-        double best = -1;
-        for (SpellAbility sa : abs) {
+        List<SpellAbility> all = new ArrayList<>();
+        for (SpellAbility sa : abs)
             for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
-                ApiType api = x.getApi();
-                if (!x.usesTargeting() || !(api == ApiType.Destroy || api == ApiType.Sacrifice || api == ApiType.DealDamage
-                        || api == ApiType.ChangeZone && "Battlefield".equals(x.getParam("Origin")))) continue;
-                String valid = x.getParamOrDefault("ValidTgts", "");
-                if (valid.isEmpty()) continue;
-                for (Player o : me.getOpponents())
-                    for (Card p : o.getCardsIn(ZoneType.Battlefield)) {
-                        if (p.isLand()) continue;
-                        boolean hit;
-                        try { hit = p.isValid(valid.split(","), me, c, x); } catch (RuntimeException e) { hit = false; }
-                        if (hit) best = Math.max(best, Math.max(0, ThreatModel.cardThreat(me, p)));
-                    }
+                all.add(x);
+                if (x.getApi() == ApiType.Charm && x.getAdditionalAbilityList("Choices") != null)
+                    for (SpellAbility ch : x.getAdditionalAbilityList("Choices")) for (SpellAbility y = ch; y != null; y = y.getSubAbility()) all.add(y);
             }
+        for (SpellAbility x : all) {
+            ApiType api = x.getApi();
+            if (x.usesTargeting() && (api == ApiType.Destroy || api == ApiType.Sacrifice || api == ApiType.DealDamage
+                    || api == ApiType.ChangeZone && "Battlefield".equals(x.getParam("Origin")))
+                    && !x.getParamOrDefault("ValidTgts", "").isEmpty()) out.add(x);
+        }
+        return out;
+    }
+
+    static boolean hits(Card c, Player me, Card p) {
+        for (SpellAbility x : removalParts(c)) {
+            String valid = x.getParamOrDefault("ValidTgts", "");
+            if (valid.contains("YouCtrl") && !valid.contains("OppCtrl")) continue;
+            try { if (p.isValid(valid.split(","), me, c, x)) return true; } catch (RuntimeException e) { /* not a fit */ }
+        }
+        return false;
+    }
+
+    /** A card in the seat's hand (other than skip) can remove p. */
+    static boolean canRemove(Player me, Card p, Card skip) {
+        for (Card h : me.getCardsIn(ZoneType.Hand)) if (h != skip && hits(h, me, p)) return true;
+        return false;
+    }
+
+    /** -1 when its enter trigger doesn't return a card from the seat's graveyard; else the best score among the graveyard cards
+     *  it could return (0 with none). A key card or loop piece counts at least 400 (the user, 2026-10-23: Bloodline Necromancer
+     *  "unless we got an important wizard in the graveyard"; Auramancer "can recur a key enchantment if something important is
+     *  in the graveyard"). */
+    double recurValue(Card c, Board b) {
+        if (b.me == null) return -1;
+        double best = -1;
+        for (forge.game.trigger.Trigger t : c.getTriggers()) {
+            if (t.getMode() != forge.game.trigger.TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))
+                    || !t.getParamOrDefault("ValidCard", "").startsWith("Card.Self")) continue;
+            try {
+                for (SpellAbility x = t.ensureAbility(); x != null; x = x.getSubAbility()) {
+                    if (x.getApi() != ApiType.ChangeZone || !x.getParamOrDefault("Origin", "").contains("Graveyard")) continue;
+                    best = Math.max(best, 0);
+                    String valid = x.getParamOrDefault("ValidTgts", x.getParamOrDefault("ChangeType", ""));
+                    if (valid.isEmpty() || IN_FETCH.get()) continue;
+                    IN_FETCH.set(true);
+                    try {
+                        for (Card k : b.me.getCardsIn(ZoneType.Graveyard)) {
+                            boolean ok;
+                            try { ok = k.isValid(valid.split(","), b.me, c, x); } catch (RuntimeException e) { ok = false; }
+                            if (!ok) continue;
+                            double kv = sum(score(k, b, ZoneType.Hand, false));
+                            if (in.keys.contains(k.getName()) || loopPiece(k.getName())) kv = Math.max(kv, 400);
+                            best = Math.max(best, kv);
+                        }
+                    } finally {
+                        IN_FETCH.set(false);
+                    }
+                }
+            } catch (RuntimeException e) { /* skip */ }
         }
         return best;
+    }
+
+    /** An opponent can turn its board into life loss (Jarad's sacrifice, Bontu's Monument, a drain on a permanent or a
+     *  commander): a lock on damage doesn't stop that. */
+    static boolean lifeLossOutlet(Player me) {
+        for (Player o : me.getOpponents()) {
+            if (o.hasLost()) continue;
+            List<Card> cs = new ArrayList<>(o.getCardsIn(ZoneType.Battlefield));
+            for (Card k : o.getCardsIn(ZoneType.Command)) if (k.isCommander()) cs.add(k);
+            for (Card k : cs) {
+                for (SpellAbility a : k.getSpellAbilities()) if (!a.isSpell() && drains(a)) return true;
+                for (forge.game.trigger.Trigger t : k.getTriggers()) {
+                    try { if (drains(t.ensureAbility())) return true; } catch (RuntimeException e) { /* skip */ }
+                }
+            }
+        }
+        return false;
+    }
+
+    static boolean drains(SpellAbility sa) {
+        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
+            if (x.getApi() != ApiType.LoseLife) continue;
+            String d = x.getParamOrDefault("Defined", "");
+            if (d.contains("Opponent") || d.contains("Player")) return true;
+        }
+        return false;
+    }
+
+    /** Another card of a loop slot that holds name is already on the battlefield (Astral Drift with Astral Slide out). */
+    boolean slotFilledByAnother(Player me, String name) {
+        for (List<List<String>> l : loops(me))
+            for (List<String> slot : l) {
+                if (!slot.contains(name) || slot.size() < 2) continue;
+                for (Card k : me.getCardsIn(ZoneType.Battlefield)) if (!k.getName().equals(name) && slot.contains(k.getName())) return true;
+            }
+        return false;
     }
 
     /** Its enter trigger phases out all but some permanents (Disciple of Caelus Nin): a wipe by another name. */
@@ -518,11 +629,13 @@ public final class PilotPolicy {
         Map<String, Integer> fieldRoles = new HashMap<>();
         boolean engineOut;
         Player me;
+        String src;   // the searching card's name
     }
 
     Board board(Player me, SpellAbility sa) {
         Board b = new Board();
         b.me = me;
+        b.src = sa != null && sa.getHostCard() != null ? sa.getHostCard().getName() : null;
         for (Card c : me.getCardsIn(ZoneType.Hand)) b.have.add(c.getName());
         for (Card c : me.getCardsIn(ZoneType.Command)) b.have.add(c.getName());
         for (Card c : me.getCardsIn(ZoneType.Battlefield)) { b.have.add(c.getName()); b.field.add(c.getName()); }
@@ -626,11 +739,18 @@ public final class PilotPolicy {
                 double v = 0;
                 if (ci.roles.contains("wipe") && b.oppCreatures >= 3 && b.oppCreatures > b.myCreatures) v = Math.max(v, 420);
                 if (ci.roles.contains("protection")) v = Math.max(v, 360);
-                if (ci.roles.contains("removal")) v = Math.max(v, 260);
+                if (ci.roles.contains("removal")) {   // by what it can reach (the user: "the quality of those potential permanents needs to be weighed")
+                    double reach = b.me == null ? 40 : removalReach(c, b.me);
+                    v = Math.max(v, reach >= 40 ? 260 : reach >= 20 ? 160 : reach >= 0 ? 80 : 0);
+                }
                 if (ci.roles.contains("lifegain")) v = Math.max(v, 120);
                 if (ci.roles.contains("counter")) v = Math.max(v, 100);
                 s[SURVIVAL] = v * danger;
             }
+            // something that really needs to come off the board (reach 60+: a big creature, a threat engine) makes the removal
+            // that reaches it urgent, danger or not (the user, 2026-10-23: "If we really need to get a specific thing off the
+            // board, getting a specific removal piece is fine"; Zur's search took Astral Drift over Grasp of Fate for a 12/12)
+            if (ci.roles.contains("removal") && b.me != null && removalReach(c, b.me) >= 60) s[SURVIVAL] = Math.max(s[SURVIVAL], 450);
             // engine
             double pay = 0, en = 0;
             for (String m : ci.payoff) {
@@ -689,6 +809,9 @@ public final class PilotPolicy {
         // sure that I survive the board state"; Zur fetched Astral Slide at 23 life into Klauth's dragons, zur5b_20261022)
         if (preventsDamageToYou(c)) {
             double lethal = b.oppTotal >= b.life || b.oppPower * 5 >= b.life * 3 ? 1.0 : b.oppPower * 2 >= b.life || b.life <= 10 ? 0.5 : 0.0;
+            // an opponent that turns its board into life loss isn't stopped by it (zurb2nw2_20261023 X3 g8: Confinement over
+            // Grasp of Fate while Jarad sacrificed Lord of Extinction for 17, then 38)
+            if (lethal > 0 && b.me != null && lifeLossOutlet(b.me)) lethal *= 0.35;
             s[SURVIVAL] = Math.max(s[SURVIVAL], 1300 * lethal);   // over a key engine's ~1000 (Astral Drift in danger: 988)
         }
         s[BOOST] = in.boost.getOrDefault(n, 0.0);
@@ -696,18 +819,31 @@ public final class PilotPolicy {
         // deck is typically designed to play around that card"): a big edge over any other engine or role pick, below a
         // combo completion and an urgent survival pick. Zur's trigger fetched Escape Protocol over the key Astral Slide/Drift
         // in about 20 of 30 games on a few points of synergy (study150_20261016_p54). Not for one already on the battlefield.
-        if (in.keys.contains(n) && !b.field.contains(n)) s[BOOST] += KEY_BONUS;
+        if (in.keys.contains(n) && !b.field.contains(n))   // less when its loop slot is already filled (Drift with Slide out)
+            s[BOOST] += KEY_BONUS * (b.me != null && slotFilledByAnother(b.me, n) ? 0.4 : 1);
         // the user's Wizard network for Zur's loop (2026-10-22): "Typically, it's going to be Tribute Mage if I have the room to
         // make that loop essentially free through Fluctuator, or it'll be Archmage Emeritus if I need cards"; Trisk "when I'm
         // ready to win" (Necrodominance out: the draw to 13)
         if (zurEngine()) {
             if (n.equals("Triskaidekaphile") && !b.field.contains("Necrodominance")) s[BOOST] -= KEY_BONUS;
             if (n.equals("Tribute Mage") && !b.have.contains("Fluctuator")) s[BOOST] += 200;
-            if (n.equals("Emeritus of Ideation") && b.hand <= 2) s[BOOST] += 200;
+            // the user, 2026-10-23: "Emeritus is super good and it should be rated highly in general" (high-resources draw;
+            // flickered it re-prepares Ancestral Recall); "Dour Port-Mage is low-resources draw"; "Cyclonic Rift is a powerful
+            // first choice for Spellseeker"; "de-prioritize Disciple, it's hard to play under"
+            if (n.equals("Emeritus of Ideation")) s[BOOST] += 350 + (b.mana >= 6 ? 150 : 0) + (b.hand <= 2 ? 100 : 0);
+            if (n.equals("Dour Port-Mage") && b.mana <= 5) s[BOOST] += 250;
+            if (n.equals("Cyclonic Rift") && "Spellseeker".equals(b.src)) s[BOOST] += 400;
+            if (n.equals("Disciple of Caelus Nin")) s[BOOST] -= 250;
             // Zur's search after Slide/Drift: "Solitary Confinement or Rule of Law (maybe 75% of total games between the two)";
             // Confinement takes over through the survival layer when the board is set to kill
             if (n.equals("Rule of Law") && dest == ZoneType.Battlefield && (b.field.contains("Astral Slide") || b.field.contains("Astral Drift"))
                     && !b.field.contains("Rule of Law")) s[BOOST] += 800;
+        }
+        // a graveyard-return creature is its target: nothing worth recurring, little worth (not a loop piece: Archaeomancer)
+        if (dest == ZoneType.Hand && !loopPiece(n)) {
+            double recur = recurValue(c, b);
+            if (recur >= 0 && recur < 300) for (int k = 0; k < s.length; k++) s[k] *= 0.2;
+            else if (recur >= 300) s[ROLE] = Math.max(s[ROLE], 0.8 * recur);
         }
         if (b.field.contains(n) && c.getType().isLegendary()) Arrays.fill(s, 0);   // legend rule: a second copy is useless
         if (forgePick) s[FORGE] = 15;
@@ -747,7 +883,7 @@ public final class PilotPolicy {
             }
         } else if (p != null && pick == forgePick) layer = "agree";
         StringBuilder top = new StringBuilder();
-        for (int i = 0; i < Math.min(3, ranked.size()); i++) {
+        for (int i = 0; i < Math.min(Integer.getInteger("fishpond.policyTop", 3), ranked.size()); i++) {   // -Dfishpond.policyTop=N for more
             var e = ranked.get(i);
             if (i > 0) top.append(", ");
             top.append("[").append(ForgeRunner.js(e.getKey().getName())).append(", ").append(Math.round(sum(e.getValue()))).append(", {");

@@ -1,0 +1,175 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index cedbef3..220f396 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -711,7 +711,11 @@ public final class TurnPlan {
+                 }
+             } catch (final RuntimeException e) { /* skip */ }
+         }
+-        if (c.hasKeyword(forge.game.keyword.Keyword.PERSIST) && c.getCounters(forge.game.card.CounterEnumType.M1M1) > 0) v += 150;
++        // fishpond patch 98: a persist creature with its counter has to be flickered (the user, 2026-10-23: Glen Elendra "is a
++        // repeatable counter, and she has to get flickered if she has the counter"); a creature that enters prepared and isn't
++        // (Emeritus of Ideation: "Flickering to re-prepare it and repeatedly cast Ancestral Recall is disgusting")
++        if (c.hasKeyword(forge.game.keyword.Keyword.PERSIST) && c.getCounters(forge.game.card.CounterEnumType.M1M1) > 0) v += 350;
++        if (!c.isPrepared() && entersPrepared(c)) v += 250;
+         // patch 92: a "no maximum hand size" creature under a later hand-size limit (Triskaidekaphile before Necrodominance)
+         // comes back with a new timestamp and lifts it: the draw to 13 is on again
+         if (!ai.isUnlimitedHandSize()) {
+@@ -723,6 +727,11 @@ public final class TurnPlan {
+         return v;
+     }
+ 
++    static boolean entersPrepared(final Card c) {
++        for (final String sv : c.getCurrentState().getSVars().values()) if (sv.contains("Attributes$ Prepared") && sv.contains("AlterAttribute")) return true;
++        return false;
++    }
++
+     static double enterValue(final Player ai, final Card host, final SpellAbility x, final Card toGraveyard) {
+         final ApiType api = x.getApi();
+         if (api == ApiType.ChangeZone && x.getParamOrDefault("Origin", "").contains("Graveyard")) {
+@@ -1582,7 +1591,7 @@ public final class TurnPlan {
+     }
+ 
+     /** A permanent of the seat's draws X at its end step for X life (Necrodominance). */
+-    static boolean lifeDraw(final Player ai) {
++    public static boolean lifeDraw(final Player ai) {
+         for (final Card k : ai.getCardsIn(ZoneType.Battlefield)) {
+             for (final forge.game.trigger.Trigger t : k.getTriggers()) {
+                 if (t.getMode() != forge.game.trigger.TriggerType.Phase || !"End of Turn".equals(t.getParam("Phase"))) continue;
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+index 703823f..feb9eb8 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+@@ -359,6 +359,16 @@ public class DrawAi extends SpellAbilityAi {
+         return overridden.contains(name);
+     }
+ 
++    /** fishpond patch 98: a life payment for draws that Words of Worship shields turn into 5 life each is a gain, not a risk:
++     *  Forge's 4-life floor turned down Necrodominance's six shielded draws at 8 life. */
++    static boolean shieldedLifePayment(final Player payer, final Cost cost, final SpellAbility sa) {
++        if (!pilotSeat(payer) || cost == null) return false;
++        int amount = 0;
++        for (final forge.game.cost.CostPart part : cost.getCostParts())
++            if (part instanceof CostPayLife pl) amount += pl.getAbilityAmount(sa);
++        return amount > 0 && amount < payer.getLife() && amount <= EffectAi.drawShields(payer);
++    }
++
+     /** fishpond patch 92: the hand size that wins at the player's upkeep (Triskaidekaphile: exactly 13), 0 if none. */
+     public static int exactHandWin(final Player ai) {
+         for (final Card c : ai.getCardsIn(ZoneType.Battlefield)) {
+@@ -434,7 +444,7 @@ public class DrawAi extends SpellAbilityAi {
+             return false;
+         }
+ 
+-        if (!ComputerUtilCost.checkLifeCost(payer, cost, source, 4, sa)) {
++        if (!ComputerUtilCost.checkLifeCost(payer, cost, source, 4, sa) && !shieldedLifePayment(payer, cost, sa)) {
+             return false;
+         }
+ 
+@@ -626,6 +636,10 @@ public class DrawAi extends SpellAbilityAi {
+                         while (ComputerUtil.aiLifeInDanger(ai, aggroAI, numCards) && numCards > 0) {
+                             numCards--;
+                         }
++                        // fishpond patch 98: each Words of Worship shield turns one paid draw into 5 life: pay for them all
++                        if (pilotSeat(ai)) {
++                            numCards = Math.max(numCards, Math.min(EffectAi.drawShields(ai), ai.getLife() - 1));
++                        }
+                     }
+ 
+                     root.setXManaCostPaid(numCards);
+diff --git a/forge-ai/src/main/java/forge/ai/ability/EffectAi.java b/forge-ai/src/main/java/forge/ai/ability/EffectAi.java
+index 687a029..761fef2 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/EffectAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/EffectAi.java
+@@ -36,12 +36,91 @@ import java.util.Map;
+ import java.util.Set;
+ 
+ public class EffectAi extends SpellAbilityAi {
++    // ---- fishpond patch 98: Words of Worship ("{1}: The next time you would draw a card this turn, you gain 5 life instead";
++    // Forge had no AI for it, a known gap; the user, 2026-10-23: "Could've crawled some life back with Words of Worship";
++    // "Fix Words of Worship if you can"). A pilot seat makes a shield when its life is under 20 (or in danger) and one of its
++    // own draws is coming that its shields don't cover: a draw of its on the stack, its own draw step from the upkeep when
++    // nothing skips it, or, in its main 2, Necrodominance's end-step "pay any amount of life, draw that many" (the AI isn't
++    // asked while that trigger is on the stack; counted as up to six, and DrawAi then pays at least one life per shield:
++    // +4 life each). ----
++    static final int SHIELD_LIFE = 20;
++
++    /** sa makes an effect that replaces its controller's next draw with life (Words of Worship). */
++    public static boolean drawToLife(final SpellAbility sa) {
++        if (sa == null || sa.getApi() != ApiType.Effect || !sa.hasParam("ReplacementEffects") || sa.getHostCard() == null) return false;
++        for (final String r : sa.getParam("ReplacementEffects").split(",")) {
++            final String re = sa.getHostCard().getSVar(r.trim());
++            if (!re.contains("Event$ Draw")) continue;
++            final java.util.regex.Matcher m = java.util.regex.Pattern.compile("ReplaceWith\\$ (\\w+)").matcher(re);
++            if (m.find() && sa.getHostCard().getSVar(m.group(1)).contains("GainLife")) return true;
++        }
++        return false;
++    }
++
++    /** The seat's live shields: effects in its command zone that replace a draw of its with life. */
++    public static int drawShields(final Player ai) {
++        int n = 0;
++        for (final Card k : ai.getCardsIn(ZoneType.Command)) {
++            for (final ReplacementEffect re : k.getReplacementEffects()) {
++                if (re.getMode() != ReplacementType.Draw) continue;
++                final SpellAbility over = re.getOverridingAbility();
++                if (over != null && over.getApi() == ApiType.GainLife) n++;
++            }
++        }
++        return n;
++    }
++
++    static boolean shieldNow(final Player ai) {
++        if (ai.getLife() >= SHIELD_LIFE && !ComputerUtil.aiLifeInDanger(ai, false, 0)) return false;
++        return pendingDraws(ai) > drawShields(ai);
++    }
++
++    /** Draws of the seat's own coming this turn: its draws on the stack, and its draw step from the upkeep. */
++    static int pendingDraws(final Player ai) {
++        final Game game = ai.getGame();
++        int n = 0;
++        for (final SpellAbilityStackInstance si : game.getStack()) {
++            final SpellAbility top = si.getSpellAbility();
++            if (top == null || top.getActivatingPlayer() != ai) continue;
++            for (SpellAbility x = top; x != null; x = x.getSubAbility()) {
++                if (x.getApi() != ApiType.Draw) continue;
++                final String def = x.getParamOrDefault("Defined", "You");
++                if (!def.equals("You")) continue;
++                final String num = x.getParamOrDefault("NumCards", "1");
++                if (num.equals("X") && x.getPayCosts() != null && x.getPayCosts().hasSpecificCostType(forge.game.cost.CostPayLife.class)) {
++                    n += Math.max(0, Math.min(6, ai.getLife() - 1));
++                } else {
++                    try { n += Math.max(0, AbilityUtils.calculateAmount(x.getHostCard(), num, x)); } catch (final RuntimeException e) { n += 1; }
++                }
++            }
++        }
++        final PhaseHandler ph = game.getPhaseHandler();
++        if (ph.isPlayerTurn(ai) && ph.is(PhaseType.UPKEEP) && !skipsDrawStep(ai)) n++;
++        // its own end step's pay-life draw (Necrodominance): the AI isn't asked while that trigger is on the stack, and the
++        // shields last the turn, so they're made in main 2
++        if (ph.isPlayerTurn(ai) && ph.is(PhaseType.MAIN2) && forge.ai.TurnPlan.lifeDraw(ai)) n += Math.max(0, Math.min(6, ai.getLife() - 1));
++        return n;
++    }
++
++    static boolean skipsDrawStep(final Player ai) {
++        for (final Card k : ai.getCardsIn(ZoneType.Battlefield)) {
++            for (final ReplacementEffect re : k.getReplacementEffects()) {
++                if (re.getMode() == ReplacementType.BeginPhase && "Draw".equals(re.getParam("Phase")) && "True".equals(re.getParam("Skip"))) return true;
++            }
++        }
++        return false;
++    }
++
+     @Override
+     protected AiAbilityDecision checkApiLogic(final Player ai, final SpellAbility sa) {
+         final Game game = ai.getGame();
+         final PhaseHandler phase = game.getPhaseHandler();
+         boolean randomReturn = MyRandom.getRandom().nextFloat() <= .6667;
+         String logic = "";
++        // fishpond patch 98: a draw turned into life (Words of Worship) at a pilot seat
++        if (DrawAi.pilotSeat(ai) && drawToLife(sa)) {
++            return shieldNow(ai) ? new AiAbilityDecision(100, AiPlayDecision.WillPlay) : new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
++        }
+ 
+         if (sa.hasParam("AILogic")) {
+             logic = sa.getParam("AILogic");

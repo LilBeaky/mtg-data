@@ -1,0 +1,9 @@
+# fishpond override (Forge 2.0.15 script minus AI:RemoveDeck:All/Random): Forge patch 98 gives it an AI (EffectAi: a pilot seat shields a coming draw at low life); puzzle fishpond/puzzles/words_of_worship_lifegain.pzl
+Name:Words of Worship
+ManaCost:2 W
+Types:Enchantment
+A:AB$ Effect | Cost$ 1 | ReplacementEffects$ DrawReplace | SpellDescription$ The next time you would draw a card this turn, you gain 5 life instead.
+SVar:DrawReplace:Event$ Draw | ValidPlayer$ You | ReplaceWith$ WordLife | Description$ The next time you would draw a card this turn, you gain 5 life instead.
+SVar:WordLife:DB$ GainLife | LifeAmount$ 5 | SubAbility$ ExileEffect
+SVar:ExileEffect:DB$ ChangeZone | Defined$ Self | Origin$ Command | Destination$ Exile
+Oracle:{1}: The next time you would draw a card this turn, you gain 5 life instead.

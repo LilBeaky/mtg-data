@@ -1,0 +1,15 @@
+# title: Zur's deck casting Spellseeker with Cyclonic Rift, Swords to Plowshares, Pest Control and Mystical Tutor in the library, the opponent's Heliod and Walking Ballista out: the search takes Cyclonic Rift (the user, 2026-10-23: "Cyclonic Rift is a powerful first choice for Spellseeker")
+# card: Spellseeker
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: #FP-POLICY .*"src": "Spellseeker".*"pick": "Cyclonic Rift"
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter|SummonSick;Plains;Island;Island;Swamp
+p0hand=Spellseeker
+p0library=Cyclonic Rift;Swords to Plowshares;Pest Control;Mystical Tutor;Island;Island;Island;Island;Island;Island
+p1battlefield=Heliod, Sun-Crowned;Walking Ballista|Counters:P1P1=1;Plains;Plains;Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

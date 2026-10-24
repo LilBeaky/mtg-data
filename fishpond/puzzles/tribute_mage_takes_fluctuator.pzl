@@ -1,0 +1,15 @@
+# title: Zur's deck casting Tribute Mage with Fluctuator, Wishclaw Talisman and the Signets in the library: it takes Fluctuator (the user, 2026-10-23: "Tribute Mage always gets Fluctuator")
+# card: Tribute Mage
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: #FP-POLICY .*"src": "Tribute Mage".*"pick": "Fluctuator"
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Island;Island;Swamp
+p0hand=Tribute Mage
+p0library=Wishclaw Talisman;Fluctuator;Dimir Signet;Orzhov Signet;Azorius Signet;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

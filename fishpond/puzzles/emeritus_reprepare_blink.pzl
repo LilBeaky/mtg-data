@@ -1,0 +1,15 @@
+# title: Zur's deck with Astral Slide out, Emeritus of Ideation on the battlefield and not prepared (its Ancestral Recall spent), and a land to cycle: the Slide trigger blinks Emeritus, which comes back prepared (patch 98; the user, 2026-10-23: "Flickering to re-prepare it and repeatedly cast Ancestral Recall is disgusting")
+# card: Emeritus of Ideation
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: triggered Astral Slide targeting \[Emeritus of Ideation
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Astral Slide;Emeritus of Ideation;Plains;Island;Island;Swamp
+p0hand=Secluded Steppe;Lonely Sandbar
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

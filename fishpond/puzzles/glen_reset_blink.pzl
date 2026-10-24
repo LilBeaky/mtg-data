@@ -1,0 +1,15 @@
+# title: Zur's deck with Astral Slide out, Glen Elendra Archmage carrying its persist counter, and a land to cycle: the cycle's Slide trigger blinks Glen to clear the counter (patch 98; the user, 2026-10-23: Glen "has to get flickered if she has the counter")
+# card: Glen Elendra Archmage
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: triggered Astral Slide targeting \[Glen Elendra Archmage
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Astral Slide;Glen Elendra Archmage|Counters:M1M1=1;Plains;Island;Island;Swamp
+p0hand=Secluded Steppe;Lonely Sandbar
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

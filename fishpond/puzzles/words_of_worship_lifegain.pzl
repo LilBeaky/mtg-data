@@ -1,5 +1,4 @@
-# title: Words of Worship: at low life the AI trades draws for 5 life (known gap: Forge has no AI for it; the card stays flagged)
-# known_gap: yes
+# title: Words of Worship at 4 life before its draw step: the AI trades the draw for 5 life (patch 98 gives it an AI; it was a known gap, the card flagged and never activated)
 # card: Words of Worship
 # turns: 2
 # expect: activated Words of Worship
