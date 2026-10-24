@@ -1,0 +1,16 @@
+# title: Zur's deck with Zur ready to attack, Necrodominance out, eight lands and Approach of the Second Sun in hand at 30 life: Approach after the attack (7 life, seventh from the top), Necrodominance draws down to it, and the second cast from hand wins next turn without waiting (patch 100; zurgold_20261024: 9 of the 14 games that cast Approach held the armed second one and never cast it)
+# card: Approach of the Second Sun
+# deck: Ians_Zur_Wizardcycling
+# turns: 3
+# expect: cast Approach of the Second Sun
+# expect: has won due to effect of .Approach of the Second Sun
+p0life=30
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter;Necrodominance;Plains;Plains;Island;Island;Swamp;Island;Swamp;Swamp
+p0hand=Approach of the Second Sun
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

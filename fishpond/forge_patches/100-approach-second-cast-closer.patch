@@ -1,0 +1,46 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 0e81828..2354444 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -1255,7 +1255,7 @@ public final class TurnPlan {
+             if (TUTOR_VALUE && cardWaits(ai) && (shufflesOwnLibrary(sa) || sa.isSpell() && etbSearch(c) != null)) {
+                 continue;   // patch 89: it would shuffle away the card a tutor put on top (patch 99: or the waiting Approach)
+             }
+-            if (TUTOR_VALUE && sa.isSpell() && selfPlacingWin(c) && approachWaiting(ai) < 0 && ai.getGame().getPhaseHandler().is(PhaseType.MAIN1)
++            if (TUTOR_VALUE && sa.isSpell() && selfPlacingWin(c) && !approachArmed(ai) && ai.getGame().getPhaseHandler().is(PhaseType.MAIN1)
+                     && attackSearchReady(ai)) {
+                 if (laterCost == 0) { laterCost = payCost(ai, sa); laterPips.addAll(pips(ai, sa)); }
+                 continue;   // patch 99: the first Approach goes after the attack's search has shuffled
+@@ -1404,7 +1404,20 @@ public final class TurnPlan {
+     /** A first Approach waits for main 2 while the seat's attack trigger would search (and shuffle) this turn. */
+     public static boolean waitsForMain2(final Player ai, final SpellAbility sa) {
+         return TUTOR_VALUE && sa != null && sa.isSpell() && sa.getHostCard() != null && selfPlacingWin(sa.getHostCard())
+-                && approachWaiting(ai) < 0 && ai.getGame().getPhaseHandler().is(PhaseType.MAIN1) && attackSearchReady(ai);
++                && !approachArmed(ai) && ai.getGame().getPhaseHandler().is(PhaseType.MAIN1) && attackSearchReady(ai);
++    }
++
++    // ---- fishpond patch 100: the second Approach wins (zurgold_20261024: 9 of the 14 goldfish games that cast Approach held
++    // the armed second one in hand and never cast it; game 9 left it out at 435, a first cast's value, behind Naban). ----
++    /** The seat's first Approach has resolved (its ApproachingSuns effect). */
++    public static boolean approachArmed(final Player ai) {
++        for (final Card k : ai.getCardsIn(ZoneType.Command)) if ("ApproachingSuns".equals(k.getName())) return true;
++        return false;
++    }
++
++    /** Casting c from hand now wins: an armed Approach. */
++    static boolean approachWins(final Player ai, final Card c, final SpellAbility sa) {
++        return sa.isSpell() && c.isInZone(ZoneType.Hand) && selfPlacingWin(c) && approachArmed(ai);
+     }
+ 
+     /** A card the seat knows waits in its library: a tutored top card (patch 89) or the waiting Approach. */
+@@ -1708,7 +1721,9 @@ public final class TurnPlan {
+         // a closer the old order put first (a win now, a cheat into something big, a wheel with payoffs) is planned whenever
+         // it fits; a library cheat (Primal Surge) is worth the permanents it would put onto the battlefield
+         final double surge = libraryCheat(ai, sa);
+-        final boolean closer = aic.closerNow(sa) || surge > 0 || upkeepWinNear(ai, c, sa);
++        final boolean closer = aic.closerNow(sa) || surge > 0 || upkeepWinNear(ai, c, sa) || approachWins(ai, c, sa);
++        // patch 100: a first Approach with the dig to it on the battlefield (Necrodominance) wins next turn
++        if (!closer && sa.isSpell() && selfPlacingWin(c) && !approachArmed(ai) && lifeDraw(ai) && ai.getLife() >= 9) v += CLOSER / 2;
+         if (closer) v += CLOSER + surge;
+         v -= DRAW_LIFE * forge.ai.ability.DrawAi.drawLifeCost(ai, sa);   // patch 76: life lost to the opponents' draw punishers
+         if (!sa.isSpell() && "Hand".equals(sa.getParam("ActivationZone")) && "Library".equals(sa.getParam("Origin"))

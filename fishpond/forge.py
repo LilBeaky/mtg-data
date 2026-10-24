@@ -60,7 +60,9 @@ def pilot_on():
 def patch_files():
     """The repo's fixes to Forge (fishpond/forge_patches/*.patch, unified diffs against the pinned release's source).
     '-pilot-' patches improve the AI's play (docs/FORGE_PLAN.md, "Pilot policy"); the rest fix crashes."""
-    fs = sorted(glob.glob(os.path.join(PATCH_DIR, "*.patch")))
+    # by number, not name: "100-..." comes after "99-..." (a name sort put it before "11-...")
+    fs = sorted(glob.glob(os.path.join(PATCH_DIR, "*.patch")),
+                key=lambda f: (int(re.match(r"\d+", os.path.basename(f)).group()) if re.match(r"\d+", os.path.basename(f)) else 10 ** 9, os.path.basename(f)))
     return fs if pilot_on() else [f for f in fs if "-pilot-" not in os.path.basename(f)]
 
 def patched_classes(version=FORGE_VERSION, quiet=False):
