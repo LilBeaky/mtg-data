@@ -1,0 +1,15 @@
+# title: Zur's deck on turn 3 with three lands, Solve the Equation, Greater Auramancy and Words of Worship in hand and Step Through in the library: it casts Solve the Equation for Step Through (Wizardcycled next turn for 2), not Words or Auramancy (patch 101; zurgold2_20261024 game 17 held Solve to turn 12: the plan priced Step Through as a 5-mana cast it never gets)
+# card: Solve the Equation
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: cast Solve the Equation
+p0life=40
+p1life=40
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Plains;Swamp
+p0hand=Solve the Equation;Greater Auramancy;Words of Worship
+p0library=Island;Island;Island;Island;Island;Step Through;Archaeomancer;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

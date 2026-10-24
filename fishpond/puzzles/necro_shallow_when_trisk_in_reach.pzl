@@ -1,0 +1,15 @@
+# title: Zur's deck with Necrodominance and one Island out at 40 life and Step Through in hand with Triskaidekaphile in the library (Wizardcycling finds it): set up to search for Trisk, the end-step payment stays shallow (patch 101; the user, 2026-10-24: "If I can, I probably won't waste the effort ripping a bunch of cards")
+# card: Necrodominance
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# forbid: Life: Life: Ai(1)-P1 40 > 3[0-7]$
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN2
+p0battlefield=Necrodominance;Island
+p0hand=Step Through;Neutralize;Miscalculation
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Triskaidekaphile
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

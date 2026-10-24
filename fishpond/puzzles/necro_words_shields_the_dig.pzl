@@ -1,0 +1,16 @@
+# title: Zur's deck with Necrodominance and Words of Worship out at 40 life, no win piece in reach: in main 2 it makes two Words shields, and at the end step pays 7 (two draws become 10 life, five are cards) (patch 101; the user, 2026-10-24: "You can pay 1 or 2 mana into it and recover all the life from the cards you draw")
+# card: Words of Worship
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: activated Words of Worship
+# expect: Life: Life: Ai\(1\)-P1 40 > 33
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN2
+p0battlefield=Necrodominance;Words of Worship;Plains;Plains;Island;Island;Swamp;Island;Swamp;Swamp
+p0hand=Neutralize;Miscalculation;Complicate
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Triskaidekaphile
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

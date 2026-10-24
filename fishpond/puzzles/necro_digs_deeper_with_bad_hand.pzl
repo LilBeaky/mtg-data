@@ -1,0 +1,15 @@
+# title: Zur's deck with Necrodominance out at 40 life, no win piece in reach and a hand of three lands with eight on the battlefield: at the end step Necrodominance digs 7 to throw the bad hand away (patch 101; the user, 2026-10-24: "If I have a bad hand, I'll rip more to get more cards and throw the bad hand away")
+# card: Necrodominance
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: Life: Life: Ai\(1\)-P1 40 > 33
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN2
+p0battlefield=Necrodominance;Plains;Plains;Island;Island;Swamp;Island;Swamp;Swamp
+p0hand=Island;Plains;Swamp
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Triskaidekaphile
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

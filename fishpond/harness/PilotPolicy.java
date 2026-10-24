@@ -884,11 +884,16 @@ public final class PilotPolicy {
                     && (b.field.contains("Astral Slide") || b.field.contains("Astral Drift")) && b.field.contains("Rule of Law")) s[BOOST] += 300;
             // the Approach line: with an Approach cast once (or in hand), Necrodominance digs to the second cast
             if (n.equals("Necrodominance") && b.me != null && approachLine(b.me)) s[BOOST] += 500;
-            // "dive for the Necro game": with Triskaidekaphile in hand or out, Necrodominance draws to 13; Words of Worship (life
-            // for Necrodominance) only matters once Necrodominance is out or life runs low (zurgold_20261024: Words was Zur's
-            // third search in 18 of 50 goldfish games at 40 life)
+            // "dive for the Necro game": with Triskaidekaphile in hand or out, Necrodominance draws to 13
             if (n.equals("Necrodominance") && b.have.contains("Triskaidekaphile")) s[BOOST] += 400;
-            if (n.equals("Words of Worship") && !b.field.contains("Necrodominance") && b.life >= 25) s[BOOST] -= KEY_BONUS;
+            // Words of Worship is off the key list (the user, 2026-10-24: "Words of Worship at 40 life is silly, full stop. Words
+            // of Worship is an oh-shit piece for me. And it's only legitimately valuable if we have card flow"; with
+            // Necrodominance "You can pay 1 or 2 mana into it and recover all the life from the cards you draw"): worth little at
+            // high life without Necrodominance, more once it's out or life runs low
+            if (n.equals("Words of Worship") && dest == ZoneType.Battlefield && !b.field.contains(n)) {
+                if (b.field.contains("Necrodominance") || b.life <= 20) s[BOOST] += 200;
+                else if (b.life >= 30) for (int k = 0; k < s.length; k++) s[k] *= 0.3;
+            }
             // Zur's search after Slide/Drift: "Solitary Confinement or Rule of Law (maybe 75% of total games between the two)";
             // Confinement takes over through the survival layer when the board is set to kill
             if (n.equals("Rule of Law") && dest == ZoneType.Battlefield && (b.field.contains("Astral Slide") || b.field.contains("Astral Drift"))
