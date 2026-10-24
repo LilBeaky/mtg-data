@@ -1,0 +1,121 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java b/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java
+index 52aae9c..55363fa 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilMana.java
+@@ -158,7 +158,7 @@ public class ComputerUtilMana {
+         // lower value means better choice
+         orderedCards.sort(Comparator.comparingInt(manaCardMap::get));
+         // fishpond patch 88: the colors the rest of the turn plan (and a held answer) still needs; sources that make them go last
+-        final int needed = TurnPlan.neededColors(sa.getActivatingPlayer(), sa);
++        final int needed = KEEP_OFF.get() ? 0 : TurnPlan.neededColors(sa.getActivatingPlayer(), sa);   // patch 103
+ 
+         if (DEBUG_MANA_PAYMENT) {
+             System.out.print("Ordered Cards: " + orderedCards.size());
+@@ -732,6 +732,7 @@ public class ComputerUtilMana {
+      *  source, three turns running (zur5b_20261022 game 0). */
+     private static List<SpellAbility> payManaCost(final ManaCostBeingPaid cost, final SpellAbility sa, final Player ai, final boolean test, boolean checkPlayable, boolean effect) {
+         final List<Card> held = new ArrayList<>();
++        boolean keepOff = false;
+         if (!test && !sa.isManaAbility() && pilotConvertOn(ai)) {
+             for (final Card h : TurnPlan.holdForPlan(ai, sa)) {
+                 if (!AiCardMemory.isRememberedCard(ai, h, MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL)) {
+@@ -744,13 +745,41 @@ public class ComputerUtilMana {
+                 held.clear();
+             }
+         }
++        // fishpond patch 103: patch 88's preferences (the held sources, the color order) only for a payment that works without
++        // patch 31's Signets and filter lands: patch 31's test of those is optimistic (it doesn't pay their own {1} around the
++        // held sources), so the real payment ran out (zuropp_20261024 B2a g3: Zur's {B} needed the Plains tapped into Orzhov
++        // Signet while the Farmland was kept for Mystical Tutor's {U}; the payment failed and Zur was never cast that game).
++        // Otherwise the payment goes as patch 31 alone would.
++        if (!sa.isManaAbility() && pilotConvertOn(ai) && !PILOT_CONVERTING.get() && !KEEP_OFF.get()
++                && (!held.isEmpty() || TurnPlan.neededColors(ai, sa) != 0)) {
++            boolean plain;
++            PILOT_CONVERTING.set(true);   // no converters: the plain payment
++            try {
++                plain = payManaCost0(new ManaCostBeingPaid(cost), sa, ai, true, checkPlayable, effect) != null;
++            } finally {
++                PILOT_CONVERTING.set(false);
++                AiCardMemory.clearMemorySet(ai, MemorySet.PAYS_TAP_COST);
++                AiCardMemory.clearMemorySet(ai, MemorySet.PAYS_SAC_COST);
++            }
++            if (!plain) {
++                for (final Card h : held) AiCardMemory.forgetCard(ai, h, MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
++                held.clear();
++                KEEP_OFF.set(true);
++                keepOff = true;
++            }
++        }
+         try {
+             return payManaCost0(cost, sa, ai, test, checkPlayable, effect);
+         } finally {
++            if (keepOff) KEEP_OFF.set(false);
+             for (final Card h : held) AiCardMemory.forgetCard(ai, h, MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
+         }
+     }
+ 
++    static final ThreadLocal<Boolean> KEEP_OFF = ThreadLocal.withInitial(() -> false);   // fishpond patch 103
++    static final ThreadLocal<Boolean> CONVERTER_REAL = ThreadLocal.withInitial(() -> false);   // fishpond patch 103
++    static final ThreadLocal<Boolean> SKIP_POOL = ThreadLocal.withInitial(() -> false);        // fishpond patch 103
++
+     private static List<SpellAbility> payManaCost0(final ManaCostBeingPaid cost, final SpellAbility sa, final Player ai, final boolean test, boolean checkPlayable, boolean effect) {
+         if ((sa.isOffering() && sa.getSacrificedAsOffering() == null) || (sa.isEmerge() && sa.getSacrificedAsEmerge() == null)) {
+             // nothing was chosen
+@@ -817,6 +846,7 @@ public class ComputerUtilMana {
+                                     }
+                                 }
+                             }
++                            CONVERTER_REAL.set(true);   // patch 103: their own costs from the sources, not the mana made for the spell
+                             try {
+                                 for (final Pair<SpellAbility, String> step : plan) {
+                                     final SpellAbility m = step.getLeft();
+@@ -827,6 +857,7 @@ public class ComputerUtilMana {
+                                     ComputerUtil.playNoStack(ai, m, ai.getGame(), true);
+                                 }
+                             } finally {
++                                CONVERTER_REAL.set(false);
+                                 for (final Card c : held) {
+                                     AiCardMemory.forgetCard(ai, c, MemorySet.HELD_MANA_SOURCES_FOR_NEXT_SPELL);
+                                 }
+@@ -843,9 +874,21 @@ public class ComputerUtilMana {
+                 }
+             }
+         }
+-
++        // fishpond patch 103: while patch 31 activates Signets for a spell, a Signet's own {1} is paid from the sources when they
++        // can pay it, not with the mana an earlier Signet made for the spell (zuropp_20261024 B2a g3: Azorius Signet's {1} took
++        // the {B} Orzhov Signet made for Zur, with the Swamp untapped; Zur's payment failed on {B})
++        boolean skipPool = false;
++        if (!test && sa.isManaAbility() && CONVERTER_REAL.get() && !SKIP_POOL.get() && manapool.totalMana() > 0) {
++            SKIP_POOL.set(true);
++            try {
++                skipPool = payManaCost0(new ManaCostBeingPaid(cost), sa, ai, true, checkPlayable, effect) != null;
++            } finally {
++                SKIP_POOL.set(false);
++                AiCardMemory.clearMemorySet(ai, MemorySet.PAYS_TAP_COST);
++            }
++        }
+         // not worth checking if it makes sense to not spend floating first
+-        if (manapool.payManaCostFromPool(cost, sa, test, manaSpentToPay)) {
++        if (!skipPool && !SKIP_POOL.get() && manapool.payManaCostFromPool(cost, sa, test, manaSpentToPay)) {
+             CostPayment.handleOfferings(sa, test, cost.isPaid());
+             // paid all from floating mana
+             return paymentList;
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 572d1c1..6a5db9a 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -1280,8 +1280,11 @@ public final class TurnPlan {
+                 if (laterCost == 0) { laterCost = payCost(ai, sa); laterPips.addAll(pips(ai, sa)); }
+                 continue;   // patch 99: the first Approach goes after the attack's search has shuffled
+             }
+-            if (TUTOR_VALUE && topTutor(sa) && ai.getGame().getPhaseHandler().is(PhaseType.MAIN1) && !drawInHand(ai, c)) {
+-                // patch 89: a top-of-library tutor waits for main 2 (Zur's attack search shuffles first), unless a draw follows it
++            if (TUTOR_VALUE && topTutor(sa) && ai.getGame().getPhaseHandler().is(PhaseType.MAIN1) && !drawInHand(ai, c)
++                    && attackSearchReady(ai)) {
++                // patch 89: a top-of-library tutor waits for main 2 (Zur's attack search shuffles first), unless a draw follows it;
++                // patch 103: only when that search can happen this turn (zuropp_20261024 B3b g0: with Zur in the command zone,
++                // Long-Term Plans kept 3 of 4 mana and the black source out of main 1 for turns, and was discarded uncast)
+                 if (laterCost == 0) { laterCost = payCost(ai, sa); laterPips.addAll(pips(ai, sa)); }
+                 continue;
+             }

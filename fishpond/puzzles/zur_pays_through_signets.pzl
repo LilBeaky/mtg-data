@@ -1,0 +1,17 @@
+# title: Zur's deck on turn 4: Plains, Swamp, Irrigated Farmland, Orzhov Signet and Azorius Signet, Zur in the command zone, Mystical Tutor among the hand: it casts Zur (the {B} needs the Plains tapped into Orzhov Signet). Patch 88 kept the Farmland for Mystical Tutor's {U} and patch 31's optimistic Signet test let the real payment run out (patch 103; zuropp_20261024 B2a g3: Zur never cast that game)
+# card: Orzhov Signet
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# sim: hybrid
+# expect: cast Zur the Enchanter
+p0life=38
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0command=Zur the Enchanter|IsCommander
+p0battlefield=Plains;Swamp;Irrigated Farmland;Orzhov Signet;Azorius Signet
+p0hand=Mystical Tutor;Tribute Mage;Spellseeker;Flickering Hound;Drifting Meadow;Escape Protocol
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
