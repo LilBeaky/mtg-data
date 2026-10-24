@@ -827,16 +827,25 @@ public final class ThreatModel {
      *  counter went to New Horizons). It doesn't hold on a turn the seat can cast its commander, a key card (its own '# key:'
      *  list, not one only ever cycled), a spell of 6 or more, or removal that reaches a real threat on an opponent's
      *  battlefield (PilotPolicy.removalReach 40+). */
+    static final int RAMP_UNDER = 5;
+
     static boolean developsFirst(Player ai) {
         int avail = ComputerUtilMana.getAvailableManaEstimate(ai, false);
         PilotPolicy pol = policyOf(ai);
         List<Card> plays = new ArrayList<>(ai.getCardsIn(ZoneType.Hand));
         for (Card c : ai.getCardsIn(ZoneType.Command)) if (c.isCommander() && c.getOwner() == ai) plays.add(c);
+        // short of mana: under five, or the commander in the command zone not yet affordable
+        boolean short_ = avail < RAMP_UNDER;
+        for (Card c : ai.getCardsIn(ZoneType.Command))
+            if (c.isCommander() && c.getOwner() == ai && c.getCMC() + 2 * ai.getCommanderCast(c) > avail) short_ = true;
         for (Card c : plays) {
             if (c.isLand() || answerKind(c) > 0 || c.hasSVar("NeedsToPlayVar") || c.hasSVar("NeedsToPlay")) continue;
             int cost = c.getCMC() + (c.isCommander() && c.isInZone(ZoneType.Command) ? 2 * ai.getCommanderCast(c) : 0);
             if (cost > avail) continue;
             if (c.isCommander() && c.isInZone(ZoneType.Command)) return true;
+            // ramp while short of mana (the user, 2026-10-24, on a Signet held three turns on three lands for Neutralize's
+            // mana: "that's a brutal fucking whiff. We need to prioritize ramp a lot harder"; zuropp_20261024 B3c g0)
+            if (short_ && pol != null && pol.isRamp(c) && ai.getLandsInPlay().size() < 7) return true;
             if (pol != null && pol.isKey(c.getName()) && !ai.isCardInPlay(c.getName()) && !triskWaits(ai, pol, c)) return true;
             if (c.getCMC() >= 6) return true;
             if (PilotPolicy.removalReach(c, ai) >= 40) return true;
@@ -1019,7 +1028,7 @@ public final class ThreatModel {
         // commander that tutors every turn, PilotPolicy.commanderEngine)
         java.util.function.ToDoubleBiFunction<Player, Card> setup = (p, c) -> SetupModel.setupValue(p, c)
                 + (p.getController() instanceof ForgeRunner.SafeControllerAi sc && sc.policy != null ? sc.policy.loopValue(p, c, true) : 0)
-                + PilotPolicy.commanderEngine(p, c)   // a commander that tutors every turn comes down first
+                + PilotPolicy.commanderEngine(p, c, p.getController() instanceof ForgeRunner.SafeControllerAi sc2 ? sc2.policy : null)   // a commander that tutors every turn comes down first
                 + PilotPolicy.doublerValue(p, c)      // a trigger doubler before the creatures it doubles
                 + (REAL.contains(p.getGame()) ? PilotPolicy.lockValue(p, c) : 0);   // lock pieces by what they do to the table
         java.util.function.ToIntFunction<Player> keep = p -> { Posture x = posture(p); return x == null ? 0 : x.keep(); };

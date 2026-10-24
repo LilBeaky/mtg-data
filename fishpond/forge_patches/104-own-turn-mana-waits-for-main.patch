@@ -1,0 +1,50 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 79b79d6..2af2375 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1057,6 +1057,9 @@ public class AiController {
+         if (overloadOnly(sa)) {
+             return AiPlayDecision.CantPlayAi;   // fishpond patch 102: this card is only ever cast overloaded
+         }
++        if (beforeMain(sa)) {
++            return AiPlayDecision.AnotherTime;   // fishpond patch 104: the turn's mana goes through main 1's plan
++        }
+         if (holdMana(player, sa)) {
+             return AiPlayDecision.AnotherTime;   // fishpond patch 58: mana kept up for an answer
+         }
+@@ -1404,7 +1407,10 @@ public class AiController {
+             return null;
+         }
+         final int[] a = sigs.get(sigs.size() - 3), b = sigs.get(sigs.size() - 2), c = sigs.get(sigs.size() - 1);
+-        if (a[S_PERMS] != b[S_PERMS] || b[S_PERMS] != c[S_PERMS] || a[S_TURN] != c[S_TURN] || a[S_PHASE] != c[S_PHASE]) {
++        // fishpond patch 104: within one turn, not one phase: an instant loop Forge runs an iteration per combat step is still the
++        // loop (loop_jump_draws_into_oracle: once the opponent's upkeep changed, Sprout Swarm's iterations spread over the
++        // declare-attackers, end-of-combat and end steps and never jumped); the deltas still have to match
++        if (a[S_PERMS] != b[S_PERMS] || b[S_PERMS] != c[S_PERMS] || a[S_TURN] != c[S_TURN]) {
+             return null;
+         }
+         final int[] d = new int[a.length];
+@@ -4230,6 +4236,23 @@ public class AiController {
+     // The deck's '# key:' cards, from the harness (PilotPolicy.isKey); none in simulated games and puzzles.
+     public static volatile java.util.function.BiPredicate<Player, Card> KEY_CARD;
+ 
++    // fishpond patch 104: on its own turn before main 1 (upkeep, draw step), with nothing on the stack to answer, a pilot seat
++    // spends no mana on optional plays: the turn plan decides in main 1 (the user, 2026-10-24: "We need to prioritize ramp a
++    // lot harder"; zuropp_20261024 B3b g3: Forsake the Worldly on Rings of Brighthearth in Zur's upkeep took 3 of the 4 mana
++    // that cast Zur that turn; it came down a turn later). A top-of-library tutor still goes in the upkeep (Mystical Tutor,
++    // Vampiric Tutor: the draw step takes the card), and so does anything when the seat's life is in danger.
++    private boolean beforeMain(final SpellAbility sa) {
++        if (sa == null || sa.isManaAbility() || sa.isTrigger() || !forge.ai.ability.DrawAi.pilotSeat(player) || TurnPlan.manaCost(sa) <= 0) {
++            return false;
++        }
++        final forge.game.phase.PhaseHandler ph = game.getPhaseHandler();
++        if (!ph.isPlayerTurn(player) || !(ph.is(PhaseType.UPKEEP) || ph.is(PhaseType.DRAW)) || !game.getStack().isEmpty()) {
++            return false;
++        }
++        // a draw shield (Words of Worship) is made for the draw step
++        return !TurnPlan.topTutor(sa) && !forge.ai.ability.EffectAi.drawToLife(sa) && !ComputerUtil.aiLifeInDanger(player, false, 0);
++    }
++
+     // fishpond patch 102: a card script's "AIOverloadOnly" hint (Cyclonic Rift; the user, 2026-10-24: "always overload Cyc
+     // Rift"): the AI never casts its plain single-target spell, only the overload (judged as a wipe by patch 61).
+     public static boolean overloadOnly(final SpellAbility sa) {

@@ -1,0 +1,18 @@
+# title: Zur's deck: Zur died once (recast for 6), Astral Slide and Rule of Law are out, six lands, Tribute Mage in hand: it casts Glen and passes on Zur (the user, 2026-10-24: "He's mission critical once, and diminishes from there ... if we already have slide and something decent, I'm probably passing on him")
+# card: Zur the Enchanter
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# jvm: -Dfishpond.puzzleCommanderCasts=1
+# expect: cast Tribute Mage
+# forbid: cast Zur the Enchanter
+p0life=40
+p1life=40
+turn=8
+activeplayer=p0
+activephase=MAIN1
+p0command=Zur the Enchanter|IsCommander
+p0battlefield=Plains;Island;Swamp;Island;Plains;Island;Astral Slide;Rule of Law
+p0hand=Tribute Mage
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Fluctuator
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,16 @@
+# title: Turn 3, four Mountains, one Lightning Bolt and Gray Ogre in hand, the opponent has a Grizzly Bears: the last removal waits for something that matters (patch 105: the floor rises for the last single-target removal and in the first four rounds; the user, 2026-10-24: "it does seem like he can tend to burn it early just for the sake of burning it")
+# card: Lightning Bolt
+# turns: 1
+# expect: Ai\(1\)-P1 cast Gray Ogre
+# forbid: Ai\(1\)-P1 cast Lightning Bolt
+# expect: #FP-REMOVAL .*"target": "Grizzly Bears".*"verdict": "hold"
+p0life=20
+p1life=20
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Mountain;Mountain;Mountain;Mountain
+p0hand=Gray Ogre;Lightning Bolt
+p0library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain
+p1battlefield=Forest;Forest;Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

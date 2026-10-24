@@ -317,7 +317,7 @@ public final class PilotPolicy {
      *  the command zone; 0 otherwise. */
     static final double COMMANDER_ENGINE = 700;
 
-    static double commanderEngine(Player me, Card c) {
+    static double commanderEngine(Player me, Card c, PilotPolicy pol) {
         if (!c.isCommander() || c.getOwner() != me || !c.isInZone(ZoneType.Command)) return 0;
         for (forge.game.trigger.Trigger t : c.getTriggers()) {
             boolean own = t.getMode() == forge.game.trigger.TriggerType.Attacks && "Card.Self".equals(t.getParamOrDefault("ValidCard", ""))
@@ -326,10 +326,28 @@ public final class PilotPolicy {
             try {
                 for (SpellAbility x = t.ensureAbility(); x != null; x = x.getSubAbility())
                     if (x.getApi() == ApiType.ChangeZone && x.getParamOrDefault("Origin", "").contains("Library") && x.hasParam("ChangeType"))
-                        return COMMANDER_ENGINE;
+                        return COMMANDER_ENGINE * recastShare(me, c, x, pol);
             } catch (RuntimeException e) { /* none */ }
         }
         return 0;
+    }
+
+    /** A recast of a commander that tutors (the user, 2026-10-24, on recasting Zur: "He's mission critical once, and
+     *  diminishes from there"; "if we already have slide and something decent, I'm probably passing on him"; "It depends on
+     *  if I need an enchantment piece and how bad"). The first cast is worth the whole engine; a recast, what its search
+     *  still has to add: nothing with a key card of the type it finds out and another of that type beside it, a third with
+     *  only the key card out, two thirds with none. */
+    static double recastShare(Player me, Card c, SpellAbility search, PilotPolicy pol) {
+        if (me.getCommanderCast(c) == 0) return 1;
+        String type = search.getParam("ChangeType").split("[.+,]")[0];
+        int keys = 0, others = 0;
+        for (Card k : me.getCardsIn(ZoneType.Battlefield)) {
+            if (!k.getType().hasStringType(type) && !(type.equals("Enchantment") && k.isEnchantment())
+                    && !(type.equals("Artifact") && k.isArtifact()) && !(type.equals("Creature") && k.isCreature())) continue;
+            if (pol != null && pol.isKey(k.getName())) keys++; else others++;
+        }
+        if (keys > 0 && keys + others >= 2) return 0;
+        return keys > 0 ? 1 / 3.0 : 2 / 3.0;
     }
 
     // ------------------------------------------------------------------ lock pieces by what they do to this table (the user,

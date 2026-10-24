@@ -1,0 +1,16 @@
+# title: Guard: Zur's deck from the opponent's end step into its own turn with four lands, Zur in the command zone and Forsake the Worldly in hand against Rings of Brighthearth, Basalt Monolith and Hedron Archive: main 1 casts Zur. Patch 104 keeps a pilot seat's optional plays out of its own upkeep and draw step (zuropp_20261024 B3b g3: Forsake in Zur's upkeep took 3 of the 4 mana Zur needed; that needed the 4-player hold, checked by replay)
+# card: Forsake the Worldly
+# deck: Ians_Zur_Wizardcycling
+# turns: 2
+# expect: cast Zur the Enchanter
+p0life=40
+p1life=40
+turn=5
+activeplayer=p1
+activephase=END_OF_TURN
+p0command=Zur the Enchanter|IsCommander
+p0battlefield=Plains;Island;Swamp;Island
+p0hand=Forsake the Worldly
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest;Rings of Brighthearth;Basalt Monolith;Hedron Archive
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

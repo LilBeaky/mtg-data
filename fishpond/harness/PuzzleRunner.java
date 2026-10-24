@@ -78,7 +78,15 @@ public class PuzzleRunner {
         });
         ExecutorService ex = Executors.newSingleThreadExecutor();
         // Forge's own puzzle hook: the state is applied once the game is set up, before the first turn
-        Future<?> fut = ex.submit(() -> match.startGame(game, () -> state.applyHere(game)));
+        // -Dfishpond.puzzleCommanderCasts=N ('# jvm:' line): seat 1's commander was cast N times before (its tax, recasts)
+        final int casts = Integer.getInteger("fishpond.puzzleCommanderCasts", 0);
+        Future<?> fut = ex.submit(() -> match.startGame(game, () -> {
+            state.applyHere(game);
+            if (casts > 0) {
+                var p0 = game.getRegisteredPlayers().get(0);
+                for (var cmd : p0.getCommanders()) for (int i = 0; i < casts; i++) p0.incCommanderCast(cmd);
+            }
+        }));
         try { fut.get(300, TimeUnit.SECONDS); }
         catch (TimeoutException e) { if (!game.isGameOver()) game.setGameOver(GameEndReason.Draw); fut.cancel(true); }
         catch (ExecutionException e) {

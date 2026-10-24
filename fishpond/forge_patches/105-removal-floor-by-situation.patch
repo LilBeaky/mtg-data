@@ -1,0 +1,90 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+index c97a1d6..d874147 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+@@ -1674,14 +1674,61 @@ public class ComputerUtilCard {
+     public static final double REMOVAL_FLOOR = Double.parseDouble(System.getProperty("fishpond.removalFloor", "160"));
+ 
+     public static boolean belowRemovalFloor(final Player ai, final Card c) {
++        return belowRemovalFloor(ai, c, null, false);
++    }
++
++    // ---- fishpond patch 105: the floor moves with the seat's situation (the user, 2026-10-24: "I do want to set some kind of
++    // floor on what we're willing to remove, it does seem like he can tend to burn it early just for the sake of burning
++    // it"; zuropp_20261024: Swords to Plowshares on Myr Retriever, Forsake the Worldly on Piggy Bank). Patch 90's floor (a
++    // creature worth about a 3/3, a noncreature the threat model rates THREAT_SAVE_BELOW) scales by scarcity (the last
++    // single-target removal in hand x1.25, three or more x0.8) and the game's stage (the first four rounds x1.2: early
++    // answers wait for what must be answered). A target the threat model rates must-answer (THREAT_REMOVE_NOW) is removed
++    // at once, and its threat already weighs who leads the table. The turn plan values removal only by targets above the
++    // floor. Each decision is logged once per turn, card and target (#FP-REMOVAL). ----
++    static final java.util.Set<String> REMOVAL_LOGGED = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
++
++    public static boolean belowRemovalFloor(final Player ai, final Card c, final SpellAbility sa, final boolean log) {
+         if (REMOVAL_FLOOR <= 0 || ai == null || c == null || !forge.ai.ability.DrawAi.pilotSeat(ai) || c.getController() == ai) {
+             return false;
+         }
+         final double threat = AiController.cardThreatOf(ai, c);
+-        if (threat >= AiController.THREAT_REMOVE_NOW) {
+-            return false;
++        final int answers = removalInHand(ai);
++        final Game g = ai.getGame();
++        final boolean early = g.getPhaseHandler().getTurn() <= 4 * Math.max(1, g.getRegisteredPlayers().size());
++        final double mult = (answers <= 1 ? 1.25 : answers >= 3 ? 0.8 : 1.0) * (early ? 1.2 : 1.0);
++        final double value = c.isCreature() ? evaluateCreature(c) : 0;
++        final boolean below = threat < AiController.THREAT_REMOVE_NOW
++                && (c.isCreature() ? value < REMOVAL_FLOOR * mult : threat < AiController.THREAT_SAVE_BELOW * mult);
++        if (log && sa != null && sa.getHostCard() != null && TurnPlan.real(g)) {
++            final String k = g.getId() + "|" + g.getPhaseHandler().getTurn() + "|" + sa.getHostCard().getId() + "|" + c.getId();
++            if (REMOVAL_LOGGED.add(k)) {
++                System.out.println("#FP-REMOVAL {\"t\": " + g.getPhaseHandler().getTurn() + ", \"seat\": \"" + ai.getName() + "\", \"card\": \""
++                        + sa.getHostCard().getName().replace("\"", "") + "\", \"target\": \"" + c.getName().replace("\"", "") + "\", \"owner\": \""
++                        + c.getController().getName() + "\", \"creature\": " + c.isCreature() + ", \"value\": " + Math.round(value) + ", \"threat\": "
++                        + Math.round(threat) + ", \"answers\": " + answers + ", \"early\": " + early + ", \"floor\": "
++                        + Math.round(c.isCreature() ? REMOVAL_FLOOR * mult : AiController.THREAT_SAVE_BELOW * mult) + ", \"verdict\": \""
++                        + (threat >= AiController.THREAT_REMOVE_NOW ? "must-answer" : below ? "hold" : "above-floor") + "\"}");
++            }
++        }
++        return below;
++    }
++
++    /** Single-target removal the seat holds: a spell that targets a permanent to destroy, exile, bounce, or damage it. */
++    static int removalInHand(final Player ai) {
++        int n = 0;
++        for (final Card h : ai.getCardsIn(ZoneType.Hand)) {
++            boolean r = false;
++            for (final SpellAbility s : h.getSpells()) {
++                for (SpellAbility x = s; x != null && !r; x = x.getSubAbility()) {
++                    if (!x.usesTargeting()) continue;
++                    final ApiType api = x.getApi();
++                    r = api == ApiType.Destroy || api == ApiType.DealDamage
++                            || api == ApiType.ChangeZone && "Battlefield".equals(x.getParam("Origin"));
++                }
++            }
++            if (r) n++;
+         }
+-        return c.isCreature() ? evaluateCreature(c) < REMOVAL_FLOOR : threat < AiController.THREAT_SAVE_BELOW;
++        return n;
+     }
+ 
+     public static boolean useRemovalNow(final SpellAbility sa, final Card c, final int dmg, ZoneType destination) {
+@@ -1700,7 +1747,7 @@ public class ComputerUtilCard {
+         // fishpond patch 90: a floor on what single-target removal is spent on (the user, 2026-10-22: "Threat assess, compare it
+         // to the floor of what it's willing to burn a removal spell on"; Zur's Swords to Plowshares took a turn-1 Studious
+         // First-Year, zur5_20261022 game 4)
+-        if (belowRemovalFloor(ai, c)) {
++        if (belowRemovalFloor(ai, c, sa, true)) {
+             return false;
+         }
+         // fishpond patch 57: a target the threat model rates high (a combo piece, the threat leader's engine) is removed
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 6a5db9a..9744e9e 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -1819,6 +1819,7 @@ public final class TurnPlan {
+                         } catch (final RuntimeException e) {
+                             continue;
+                         }
++                        if (ComputerUtilCard.belowRemovalFloor(ai, t, sa, false)) continue;   // patch 105: nothing worth it below the floor
+                         final double tv = 4 * Math.max(0, AiController.cardThreatOf(ai, t)) + (t.isCreature() ? ComputerUtilCard.evaluateCreature(t) / 2.0 : 40);
+                         bestT = Math.max(bestT, tv);
+                     }

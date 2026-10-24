@@ -1,15 +1,15 @@
-# title: The opponent has its commander (Centaur Courser, a 3/3 it can recast next turn with mana to spare) and a Trained Armodon (a vanilla 3/3); the AI casts Reave Soul on the Armodon: the commander would come back for 2 more (the user, 2026-10-17: a mild, graded penalty on removing a commander; patch 58 harness)
+# title: The opponent has its commander (Centaur Courser, a 3/3 it can recast next turn with mana to spare) and a Trained Armodon (a vanilla 3/3); the AI casts Reave Soul on the Armodon: the commander would come back for 2 more (the user, 2026-10-17: a mild, graded penalty on removing a commander; patch 58 harness). Turn 9 with two Reave Souls: patch 105 holds the last removal early for something above a raised floor
 # card: Reave Soul
 # turns: 1
 # sim: hybrid
 # expect: Ai\(1\)-P1 cast Reave Soul targeting .*Trained Armodon
 p0life=30
 p1life=30
-turn=1
+turn=9
 activeplayer=p0
 activephase=MAIN1
 p0battlefield=Swamp;Swamp;Swamp
-p0hand=Reave Soul
+p0hand=Reave Soul;Reave Soul
 p0library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
 p1battlefield=Forest;Forest;Forest;Forest;Forest;Forest;Centaur Courser|IsCommander;Trained Armodon
 p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

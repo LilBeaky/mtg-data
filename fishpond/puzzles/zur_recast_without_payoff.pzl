@@ -1,0 +1,17 @@
+# title: Guard for zur_recast_passes_with_slide_out: Zur died once, no enchantment out, six lands, Tribute Mage in hand: it recasts Zur for 6 (the search still has the engine to find)
+# card: Zur the Enchanter
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# jvm: -Dfishpond.puzzleCommanderCasts=1
+# expect: cast Zur the Enchanter
+p0life=40
+p1life=40
+turn=8
+activeplayer=p0
+activephase=MAIN1
+p0command=Zur the Enchanter|IsCommander
+p0battlefield=Plains;Island;Swamp;Island;Plains;Island
+p0hand=Tribute Mage
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Astral Slide;Fluctuator
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,16 @@
+# title: Zur's deck on three lands with Zur in the command zone, Orzhov Signet and Neutralize in hand (cycling cards to spend the held mana on later): it casts the Signet instead of keeping Neutralize's mana up (the free hold yields to ramp while the seat is short of mana; the user, 2026-10-24: "We need to prioritize ramp a lot harder"; zuropp_20261024 B3c g0 held the Signet three turns on three lands)
+# card: Orzhov Signet
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: cast Orzhov Signet
+p0life=40
+p1life=40
+turn=4
+activeplayer=p0
+activephase=MAIN1
+p0command=Zur the Enchanter|IsCommander
+p0battlefield=Plains;Island;Swamp
+p0hand=Orzhov Signet;Neutralize;Lonely Sandbar;Step Through
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Archaeomancer
+p1battlefield=Forest;Forest;Forest;Llanowar Elves
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
