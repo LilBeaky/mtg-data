@@ -1,0 +1,10 @@
+# fishpond override (Forge 2.0.15 script plus an AIOverloadOnly hint, Forge patch 102): the user, 2026-10-24: "always overload
+# Cyc Rift" (with Rule of Law out it's "a disgusting wipe"). The AI never casts the single-target spell; the overload is judged as a
+# wipe (patch 61). Applies to every deck that runs it (Zur, Yusri). Puzzle: rift_never_single_target.
+Name:Cyclonic Rift
+ManaCost:1 U
+Types:Instant
+A:SP$ ChangeZone | ValidTgts$ Permanent.nonLand+YouDontCtrl | TgtPrompt$ Select target nonland permanent you don't control | Origin$ Battlefield | Destination$ Hand | SpellDescription$ Return target nonland permanent you don't control to its owner's hand.
+K:Overload:6 U
+SVar:AIOverloadOnly:True
+Oracle:Return target nonland permanent you don't control to its owner's hand.\nOverload {6}{U} (You may cast this spell for its overload cost. If you do, change "target" in its text to "each.")

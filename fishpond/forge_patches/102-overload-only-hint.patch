@@ -1,0 +1,46 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index dbe49e2..79b79d6 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1054,6 +1054,9 @@ public class AiController {
+         if (!sa.canCastTiming(player)) {
+             return AiPlayDecision.TimingRestrictions;
+         }
++        if (overloadOnly(sa)) {
++            return AiPlayDecision.CantPlayAi;   // fishpond patch 102: this card is only ever cast overloaded
++        }
+         if (holdMana(player, sa)) {
+             return AiPlayDecision.AnotherTime;   // fishpond patch 58: mana kept up for an answer
+         }
+@@ -4225,7 +4228,15 @@ public class AiController {
+     private static final boolean CYCLE_ENGINE = !"false".equals(System.getProperty("fishpond.cycleEngine"));
+     static final int CYCLE_HOLD_LANDS = Integer.getInteger("fishpond.cycleHoldLands", 6);   // patch 56
+     // The deck's '# key:' cards, from the harness (PilotPolicy.isKey); none in simulated games and puzzles.
+-    public static volatile java.util.function.BiPredicate<Player, Card> KEY_CARD;
++    public static volatile java.util.function.BiPredicate<Player, Card> KEY_CARD;
++
++    // fishpond patch 102: a card script's "AIOverloadOnly" hint (Cyclonic Rift; the user, 2026-10-24: "always overload Cyc
++    // Rift"): the AI never casts its plain single-target spell, only the overload (judged as a wipe by patch 61).
++    public static boolean overloadOnly(final SpellAbility sa) {
++        final Card c = sa == null ? null : sa.getHostCard();
++        return c != null && sa.isSpell() && c.hasSVar("AIOverloadOnly")
++                && !sa.isAlternativeCost(forge.game.spellability.AlternativeCost.Overload);
++    }
+ 
+     private boolean isKeyCard(final Card c) {
+         final java.util.function.BiPredicate<Player, Card> f = KEY_CARD;
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index c647f47..572d1c1 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -1614,8 +1614,9 @@ public final class TurnPlan {
+     }
+ 
+     static SpellAbility firstSpell(final Player ai, final Card c) {
++        final boolean overloadOnly = c.hasSVar("AIOverloadOnly");   // patch 102: planned as its overload
+         for (final SpellAbility sa : c.getSpells()) {
+-            if (sa.isAlternativeCost(forge.game.spellability.AlternativeCost.Overload)) {
++            if (sa.isAlternativeCost(forge.game.spellability.AlternativeCost.Overload) != overloadOnly) {
+                 continue;
+             }
+             sa.setActivatingPlayer(ai);

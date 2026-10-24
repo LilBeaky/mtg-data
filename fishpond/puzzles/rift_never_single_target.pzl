@@ -1,0 +1,15 @@
+# title: The opponent's end step; it has Grave Titan and Ghalta, Primal Hunger; the AI has three Islands and Cyclonic Rift: it doesn't bounce one permanent for 2 (Cyclonic Rift is only ever overloaded: card override, patch 102; the user, 2026-10-24: "always overload Cyc Rift")
+# card: Cyclonic Rift
+# turns: 2
+# sim: hybrid
+# forbid: Ai\(1\)-P1 cast Cyclonic Rift targeting
+p0life=30
+p1life=30
+turn=1
+activeplayer=p1
+activephase=END_OF_TURN
+p0battlefield=Island;Island;Island
+p0hand=Cyclonic Rift
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest;Forest;Forest;Forest;Grave Titan;Ghalta, Primal Hunger
+p1library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
