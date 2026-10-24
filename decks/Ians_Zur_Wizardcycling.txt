@@ -26,7 +26,7 @@ Deck
 1 Command Tower
 1 Complicate
 1 Cyclonic Rift
-1 Dark Ritual
+1 Duty Beyond Death
 1 Desert of the Mindful
 1 Desert of the True
 1 Deserted Beach

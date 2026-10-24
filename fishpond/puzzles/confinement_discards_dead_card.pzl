@@ -1,0 +1,16 @@
+# title: Zur's deck with Solitary Confinement out, Spellseeker and Bloodline Necromancer in hand Cyclonic Rift and Swords to Plowshares in the library for Spellseeker, the opponent with Serra Angel and Grizzly Bears, nothing in the graveyard: at the upkeep it keeps Confinement by discarding Bloodline Necromancer (nothing to return), not Spellseeker (patch 99: discards by the policy's value; the user, 2026-10-23: "I'll discard Brainspoil, Bloodline Necromancer, and Wander in Death")
+# card: Bloodline Necromancer
+# deck: Ians_Zur_Wizardcycling
+# turns: 2
+# expect: discards Bloodline Necromancer
+# forbid: discards Spellseeker
+p0life=40
+p1life=40
+turn=1
+activeplayer=p1
+activephase=MAIN2
+p0battlefield=Solitary Confinement;Plains;Island;Island;Swamp
+p0hand=Spellseeker;Bloodline Necromancer
+p0library=Cyclonic Rift;Swords to Plowshares;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Serra Angel;Grizzly Bears;Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

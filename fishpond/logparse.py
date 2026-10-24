@@ -328,7 +328,10 @@ def parse_game(lines, seats, hero=1):
                 use = min(n, left)
                 if use > 0: parts.append((use, "combat" if combat else "noncombat", sk, src)); left -= use
             if left > 0:
-                parts.append((left, "life loss", last_res[1] if last_res else None, last_res[0] if last_res else "?"))
+                # the resolving item is the stack's top: Forge logs the life change before its "Resolve Stack" line, so the last
+                # resolution would be the one before (zurb2nw_20261023 X2 g1: Jarad's sacrifice drain charged to Necrodominance)
+                res = (stack[-1][1], stack[-1][0]) if stack else last_res
+                parts.append((left, "life loss", res[1] if res else None, res[0] if res else "?"))
             for n, route, sk, src in parts:
                 if sk == hero and k != hero:
                     t = T(idx()); t["dmg"] += n

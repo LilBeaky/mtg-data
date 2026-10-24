@@ -166,8 +166,12 @@ final class HandScore {
             if (rampNow) det.add(x.name() + ":ramp " + round(x.ramp()));   // a cost reducer is ramp and a spell
             // ramp the hand can't cast by turn 3 (Crypt Ghast on two lands) is a spell of its role, late (the user, 2026-10-18)
             spells++;
-            double v = BASE + W.get(x.role()) * (cmdRoles.contains(x.role()) ? COMMANDER_ROLE : 1);
-            String note = cmdRoles.contains(x.role()) ? " (commander's role" : " (";
+            // a tutor that finds a key card the commander's own search can't (Zur finds enchantments; Solve the Equation finds
+            // Step Through) isn't the commander's role over again (the user, 2026-10-23: "Prioritizing a tutor for Step Through
+            // is typically mulligan policy")
+            boolean halve = cmdRoles.contains(x.role()) && !(x.role().equals("tutor") && findsWhatCommanderCant(ai, pol, x.name(), commanders));
+            double v = BASE + W.get(x.role()) * (halve ? COMMANDER_ROLE : 1);
+            String note = halve ? " (commander's role" : " (";
             boolean colorsOk = true;
             for (char ch : x.pips().toCharArray()) if (!cols.contains(ch)) colorsOk = false;
             if (!colorsOk) { v *= UNCASTABLE; note += note.endsWith("(") ? "off-color" : ", off-color"; }
@@ -206,6 +210,42 @@ final class HandScore {
     }
 
     // ---------------------------------------------------------------- what a card is
+    /** The searches a card makes: its spells, its enter trigger, its typecycling; attack triggers too (a commander's). */
+    static List<forge.game.spellability.SpellAbility> searches(Card c) {
+        List<forge.game.spellability.SpellAbility> roots = new ArrayList<>(c.getAllSpellAbilities()), out = new ArrayList<>();
+        for (forge.game.trigger.Trigger t : c.getTriggers()) {
+            try { roots.add(t.ensureAbility()); } catch (RuntimeException e) { /* skip */ }
+        }
+        for (forge.game.spellability.SpellAbility sa : roots)
+            for (forge.game.spellability.SpellAbility x = sa; x != null; x = x.getSubAbility())
+                if (x.getApi() == forge.game.ability.ApiType.ChangeZone && x.getParamOrDefault("Origin", "").contains("Library") && x.hasParam("ChangeType")
+                        && !x.getParamOrDefault("ChangeType", "").contains("Land")) out.add(x);
+        return out;
+    }
+
+    static boolean finds(Player ai, Card src, forge.game.spellability.SpellAbility x, Card k) {
+        try { return k.isValid(x.getParam("ChangeType").split(","), ai, src, x); } catch (RuntimeException e) { return false; }
+    }
+
+    /** The hand's tutor named name can find one of the deck's '# key:' cards in the library that no commander's search can. */
+    static boolean findsWhatCommanderCant(Player ai, PilotPolicy pol, String name, List<Card> commanders) {
+        if (pol == null) return false;
+        Card tutor = null;
+        for (Card c : ai.getCardsIn(ZoneType.Hand)) if (c.getName().equals(name)) { tutor = c; break; }
+        if (tutor == null) return false;
+        List<forge.game.spellability.SpellAbility> mine = searches(tutor);
+        if (mine.isEmpty()) return false;
+        for (Card k : ai.getCardsIn(ZoneType.Library)) {
+            if (!pol.isKey(k.getName())) continue;
+            boolean me = false, cmd = false;
+            for (forge.game.spellability.SpellAbility x : mine) if (finds(ai, tutor, x, k)) me = true;
+            if (!me) continue;
+            for (Card c : commanders) for (forge.game.spellability.SpellAbility x : searches(c)) if (finds(ai, c, x, k)) cmd = true;
+            if (!cmd) return true;
+        }
+        return false;
+    }
+
     static Info info(Player ai, PilotPolicy pol, Card c) {
         Map<String, Info> m = INFO.computeIfAbsent(ai, k -> new HashMap<>());
         Info x = m.get(c.getName());

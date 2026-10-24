@@ -1,0 +1,16 @@
+# title: Zur's deck with six lands, Naban, Dean of Iteration and Archaeomancer in hand, Step Through and Fracture in the graveyard: Naban comes down before Archaeomancer, whose enter trigger it doubles (the user, 2026-10-23: Naban had Archaeomancer return Step Through and Fracture)
+# card: Naban, Dean of Iteration
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# order: cast Naban, Dean of Iteration << cast Archaeomancer
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Island;Island;Swamp;Island;Island
+p0hand=Naban, Dean of Iteration;Archaeomancer
+p0graveyard=Step Through;Fracture
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

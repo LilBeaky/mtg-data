@@ -1,0 +1,16 @@
+# title: Zur's deck with Necrodominance out, eight lands and Approach of the Second Sun in hand at 30 life, no Zur to attack: it casts Approach (7 life, back seventh from the top), and at the end step Necrodominance pays to draw down to it (patch 99; the user, 2026-10-23: "Cast an Approach, Zur fetches Necrodominance, rip to Approach, Win on 9")
+# card: Approach of the Second Sun
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: cast Approach of the Second Sun
+# expect: Life: Life: Ai\(1\)-P1 37 > 30
+p0life=30
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Necrodominance;Plains;Plains;Island;Island;Swamp;Island;Swamp;Swamp
+p0hand=Approach of the Second Sun
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1020,6 +1020,7 @@ public final class ThreatModel {
         java.util.function.ToDoubleBiFunction<Player, Card> setup = (p, c) -> SetupModel.setupValue(p, c)
                 + (p.getController() instanceof ForgeRunner.SafeControllerAi sc && sc.policy != null ? sc.policy.loopValue(p, c, true) : 0)
                 + PilotPolicy.commanderEngine(p, c)   // a commander that tutors every turn comes down first
+                + PilotPolicy.doublerValue(p, c)      // a trigger doubler before the creatures it doubles
                 + (REAL.contains(p.getGame()) ? PilotPolicy.lockValue(p, c) : 0);   // lock pieces by what they do to the table
         java.util.function.ToIntFunction<Player> keep = p -> { Posture x = posture(p); return x == null ? 0 : x.keep(); };
         java.util.function.Predicate<Game> real = REAL::contains;

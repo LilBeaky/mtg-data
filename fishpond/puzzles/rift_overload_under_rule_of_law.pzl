@@ -1,0 +1,18 @@
+# title: Three players, Zur's deck with its own Rule of Law out and seven lands, Cyclonic Rift in hand, both opponents with modest boards: it overloads Rift (under the spell limit each bounced player recasts one spell a turn, so the bounce is nearly a wipe: patch 99; the user, 2026-10-23: Rule of Law + overloaded Rift, "That's a disgusting wipe")
+# card: Cyclonic Rift
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: cast Cyclonic Rift$
+p0life=40
+p1life=40
+p2life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Rule of Law;Plains;Island;Island;Swamp;Island;Plains;Island
+p0hand=Cyclonic Rift
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Grizzly Bears;Llanowar Elves;Sol Ring;Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p2battlefield=Gray Merchant of Asphodel;Arcane Signet;Mind Stone;Swamp;Swamp;Swamp
+p2library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp

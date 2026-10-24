@@ -395,6 +395,43 @@ public final class PilotPolicy {
         return false;
     }
 
+    /** The seat has cast Approach of the Second Sun once (its ApproachingSuns effect) or holds one in hand. */
+    static boolean approachLine(Player me) {
+        for (Card k : me.getCardsIn(ZoneType.Command)) if ("ApproachingSuns".equals(k.getName())) return true;
+        for (Card k : me.getCardsIn(ZoneType.Hand)) if (k.getName().equals("Approach of the Second Sun")) return true;
+        return false;
+    }
+
+    /** A trigger doubler for one creature type entering (Naban, Dean of Iteration: Wizards) comes before the creatures in hand
+     *  whose enter triggers it doubles (the user, 2026-10-23: Naban made Archaeomancer return two and Spellseeker fetch two):
+     *  turn-plan value per such creature in hand. */
+    static double doublerValue(Player me, Card c) {
+        if (c.isInZone(ZoneType.Battlefield)) return 0;
+        for (forge.game.staticability.StaticAbility st : c.getStaticAbilities()) {
+            if (!st.checkMode(forge.game.staticability.StaticAbilityMode.Panharmonicon)) continue;
+            String cause = st.getParamOrDefault("ValidCause", "Card");
+            String type = cause.split("[.+,]")[0];
+            int n = 0;
+            for (Card h : me.getCardsIn(ZoneType.Hand)) {
+                if (h == c || !h.isCreature() || !h.getType().hasStringType(type)) continue;
+                for (forge.game.trigger.Trigger t : h.getTriggers())
+                    if (t.getMode() == forge.game.trigger.TriggerType.ChangesZone && "Battlefield".equals(t.getParam("Destination"))
+                            && t.getParamOrDefault("ValidCard", "").startsWith("Card.Self")) { n++; break; }
+            }
+            return 150.0 * n;
+        }
+        return 0;
+    }
+
+    /** What keeping c in hand is worth (patch 99's discards go lowest first): the policy's score for having it. */
+    double keepValue(Player me, Card c) {
+        Board b = board(me, null);
+        double v = sum(score(c, b, ZoneType.Hand, false));
+        if (keepCard(c.getName())) v += 1000;
+        if (Boolean.getBoolean("fishpond.debugKeep")) System.out.println("#FP-KEEP " + c.getName() + " " + Math.round(v) + " " + Arrays.toString(score(c, b, ZoneType.Hand, false)));
+        return v;
+    }
+
     /** One of the seat's loops has every slot ready: the engine runs. */
     boolean loopRunning(Player me) {
         for (List<List<String>> l : loops(me)) {
@@ -422,6 +459,8 @@ public final class PilotPolicy {
     double fetchValue(Card c, Board b) {
         if (IN_FETCH.get() || b.me == null) return 0;
         IN_FETCH.set(true);
+        String src = b.src;
+        b.src = c.getName();   // its picks as it would make them (Spellseeker's Cyclonic Rift)
         try {
             double best = 0;
             for (forge.game.trigger.Trigger t : c.getTriggers()) {
@@ -439,6 +478,7 @@ public final class PilotPolicy {
             return 0;
         } finally {
             IN_FETCH.set(false);
+            b.src = src;
         }
     }
 
@@ -834,6 +874,16 @@ public final class PilotPolicy {
             if (n.equals("Dour Port-Mage") && b.mana <= 5) s[BOOST] += 250;
             if (n.equals("Cyclonic Rift") && "Spellseeker".equals(b.src)) s[BOOST] += 400;
             if (n.equals("Disciple of Caelus Nin")) s[BOOST] -= 250;
+            // "I don't search for Naban very often, but he's awesome in the opening hand. He's a waste of tempo on a search"
+            if (n.equals("Naban, Dean of Iteration")) s[BOOST] -= 300;
+            // the proactive groove: "Astral Slide > Rule of Law > Confinement", a preference, not an order ("I want him to be able
+            // to flex to a piece like Grasp of Fate if necessary"): Confinement third while nothing presses (under pressure the
+            // survival layer and the must-answer removal decide)
+            boolean pressed = b.oppTotal >= b.life || b.oppPower * 2 >= b.life || b.life <= 10;
+            if (n.equals("Solitary Confinement") && dest == ZoneType.Battlefield && !pressed && !b.field.contains(n)
+                    && (b.field.contains("Astral Slide") || b.field.contains("Astral Drift")) && b.field.contains("Rule of Law")) s[BOOST] += 300;
+            // the Approach line: with an Approach cast once (or in hand), Necrodominance digs to the second cast
+            if (n.equals("Necrodominance") && b.me != null && approachLine(b.me)) s[BOOST] += 500;
             // Zur's search after Slide/Drift: "Solitary Confinement or Rule of Law (maybe 75% of total games between the two)";
             // Confinement takes over through the survival layer when the board is set to kill
             if (n.equals("Rule of Law") && dest == ZoneType.Battlefield && (b.field.contains("Astral Slide") || b.field.contains("Astral Drift"))

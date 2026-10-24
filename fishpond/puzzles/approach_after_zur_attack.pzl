@@ -1,0 +1,15 @@
+# title: Zur's deck with Zur ready to attack (its search shuffles the library), eight lands and Approach of the Second Sun in hand: Approach waits for main 2, after the attack's search (patch 99: the second Approach has to stay seventh from the top for the dig)
+# card: Approach of the Second Sun
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# order: triggered Zur the Enchanter << cast Approach of the Second Sun
+p0life=30
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter;Plains;Plains;Island;Island;Swamp;Island;Swamp;Swamp
+p0hand=Approach of the Second Sun
+p0library=Necrodominance;Rule of Law;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

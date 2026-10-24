@@ -1,0 +1,252 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiAttackController.java b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+index 218f32a..8fea9c4 100644
+--- a/forge-ai/src/main/java/forge/ai/AiAttackController.java
++++ b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+@@ -963,7 +963,7 @@ public class AiAttackController {
+                 sa.setActivatingPlayer(ai);
+                 for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
+                     if (x.getApi() == forge.game.ability.ApiType.ChangeZone && x.getParamOrDefault("Origin", "").contains("Library") && x.hasParam("ChangeType")) {
+-                        if (TurnPlan.TUTOR_VALUE && TurnPlan.knownTop(ai) != null && TurnPlan.shufflesOwnLibrary(x)) {
++                        if (TurnPlan.TUTOR_VALUE && TurnPlan.cardWaits(ai) && TurnPlan.shufflesOwnLibrary(x)) {
+                             return false;
+                         }
+                         return !forge.game.card.CardLists.getValidCards(ai.getCardsIn(ZoneType.Library), x.getParam("ChangeType"), ai, c, x).isEmpty();
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 8cb230a..dbe49e2 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1057,9 +1057,12 @@ public class AiController {
+         if (holdMana(player, sa)) {
+             return AiPlayDecision.AnotherTime;   // fishpond patch 58: mana kept up for an answer
+         }
+-        if (forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.TUTOR_VALUE && TurnPlan.knownTop(player) != null
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.TUTOR_VALUE && TurnPlan.cardWaits(player)
+                 && TurnPlan.shufflesOwnLibrary(sa)) {
+-            return AiPlayDecision.AnotherTime;   // fishpond patch 89: it would shuffle away the card a tutor put on top
++            return AiPlayDecision.AnotherTime;   // fishpond patch 89: it would shuffle away the card a tutor put on top (99: or Approach)
++        }
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.waitsForMain2(player, sa)) {
++            return AiPlayDecision.AnotherTime;   // fishpond patch 99: the first Approach goes after the attack's search has shuffled
+         }
+         if (forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.refills(sa) && !(sa.isSpell() && sa.getHostCard().isPermanent())
+                 && !wheelPays(sa) && !closerNow(sa)) {   // patch 53's wheels with payoffs and the closers decide on their own
+@@ -2148,10 +2151,35 @@ public class AiController {
+         }
+ 
+         // choose rest
++        final java.util.function.ToDoubleBiFunction<Player, Card> dv = DISCARD_VALUE;
+         for (int i = 0; i < discardsLeft; i++) {
+             if (validCards.isEmpty()) {
+                 continue;
+             }
++            // fishpond patch 99: a pilot seat's nonland discards go by the harness's value of keeping each card (the user,
++            // 2026-10-23, discarding to Solitary Confinement: "Brainspoil, Bloodline Necromancer, and Wander in Death"; the
++            // sim had pitched Spellseeker, Forge's "worst card" by its creature rating); excess lands still go first
++            if (dv != null && forge.ai.ability.DrawAi.pilotSeat(player)) {
++                final CardCollection lands = CardLists.filter(validCards, CardPredicates.LANDS);
++                final int inPlay = CardLists.count(player.getCardsIn(ZoneType.Battlefield), CardPredicates.LANDS_PRODUCING_MANA);
++                Card pick = null;
++                if (!lands.isEmpty() && (lands.size() > 3 || (lands.size() > 2 && inPlay > 0) || (lands.size() > 1 && inPlay > 2) || inPlay > 5)) {
++                    pick = lands.get(0);
++                } else {
++                    double low = Double.MAX_VALUE;
++                    for (final Card c : validCards) {
++                        if (c.isLand() && validCards.size() > lands.size()) continue;
++                        double v;
++                        try { v = dv.applyAsDouble(player, c); } catch (final RuntimeException e) { v = 0; }
++                        if (v < low) { low = v; pick = c; }
++                    }
++                }
++                if (pick != null) {
++                    discardList.add(pick);
++                    validCards.remove(pick);
++                    continue;
++                }
++            }
+             final int numLandsInPlay = CardLists.count(player.getCardsIn(ZoneType.Battlefield), CardPredicates.LANDS_PRODUCING_MANA);
+             final CardCollection landsInHand = CardLists.filter(validCards, CardPredicates.LANDS);
+             final int numLandsInHand = landsInHand.size();
+@@ -3291,7 +3319,7 @@ public class AiController {
+             return doTrigger(((WrappedAbility) sa).getWrappedAbility(), mandatory);
+         if (sa.getApi() != null) {
+             // fishpond patch 89: an optional search (Zur's attack trigger) shuffles away the card a tutor put on top: declined
+-            if (!mandatory && forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.TUTOR_VALUE && TurnPlan.knownTop(player) != null
++            if (!mandatory && forge.ai.ability.DrawAi.pilotSeat(player) && TurnPlan.TUTOR_VALUE && TurnPlan.cardWaits(player)
+                     && TurnPlan.shufflesOwnLibrary(sa)) {
+                 return false;
+             }
+@@ -4301,7 +4329,9 @@ public class AiController {
+ 
+     // The deck's plan, from the harness (PilotPolicy.castPriority: completes a combo 3, turns an engine on 2, feeds one 1),
+     // for pilot seats in the real game; simulated games have no policy and get 0.
+-    public static volatile java.util.function.ToIntBiFunction<Player, SpellAbility> CAST_PRIORITY;
++    public static volatile java.util.function.ToIntBiFunction<Player, SpellAbility> CAST_PRIORITY;
++    /** fishpond patch 99: the harness's value of keeping a card in hand (discards go lowest first). */
++    public static volatile java.util.function.ToDoubleBiFunction<Player, Card> DISCARD_VALUE;
+ 
+     /** fishpond patch 64: a play the old order put ahead of everything (a win now, patch 49; a cheat into something big, 50; a
+      *  wheel with payoffs, 53; a win effect): the turn plan takes it whenever it can pay and never refuses it. Chulane's
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+index 01aa474..c97a1d6 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+@@ -781,8 +781,11 @@ public class ComputerUtilCard {
+             final boolean bounce = sa != null && kind(sa) == ApiType.ChangeZoneAll && "Hand".equals(sa.getParam("Destination"));
+             final boolean gy = sa != null && kind(sa) == ApiType.ChangeZoneAll && "Graveyard".equals(sa.getParam("Origin"));
+             double v = 0;
++            // fishpond patch 99: under a spell limit (Rule of Law) a bounced player recasts one spell a turn, so a mass bounce is
++            // nearly a wipe (the user, 2026-10-23: Rule of Law + an overloaded Cyclonic Rift, "That's a disgusting wipe")
++            final double back = bounce && TurnPlan.spellLimited(p) ? 0.85 : 0.4;
+             for (final Card c : cards) {
+-                v += gy ? (c.isCreature() ? 15 : 8) : bounce && !c.isToken() ? 0.4 * value(ai, c) : value(ai, c);
++                v += gy ? (c.isCreature() ? 15 : 8) : bounce && !c.isToken() ? back * value(ai, c) : value(ai, c);
+             }
+             return v;
+         }
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 220f396..0e81828 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -1252,8 +1252,13 @@ public final class TurnPlan {
+             if (x && search(sa) == null) {
+                 continue;   // X spells take what's left: Forge sizes them (patch 85: an X tutor is planned last, at its target's X)
+             }
+-            if (TUTOR_VALUE && knownTop(ai) != null && (shufflesOwnLibrary(sa) || sa.isSpell() && etbSearch(c) != null)) {
+-                continue;   // patch 89: it would shuffle away the card a tutor put on top
++            if (TUTOR_VALUE && cardWaits(ai) && (shufflesOwnLibrary(sa) || sa.isSpell() && etbSearch(c) != null)) {
++                continue;   // patch 89: it would shuffle away the card a tutor put on top (patch 99: or the waiting Approach)
++            }
++            if (TUTOR_VALUE && sa.isSpell() && selfPlacingWin(c) && approachWaiting(ai) < 0 && ai.getGame().getPhaseHandler().is(PhaseType.MAIN1)
++                    && attackSearchReady(ai)) {
++                if (laterCost == 0) { laterCost = payCost(ai, sa); laterPips.addAll(pips(ai, sa)); }
++                continue;   // patch 99: the first Approach goes after the attack's search has shuffled
+             }
+             if (TUTOR_VALUE && topTutor(sa) && ai.getGame().getPhaseHandler().is(PhaseType.MAIN1) && !drawInHand(ai, c)) {
+                 // patch 89: a top-of-library tutor waits for main 2 (Zur's attack search shuffles first), unless a draw follows it
+@@ -1306,6 +1311,15 @@ public final class TurnPlan {
+         final List<Step> pick = choose(cands.size() > 12 ? cands.subList(0, 12) : cands, Math.max(0, room - laterCost), restricted, units, keepPips,
+                 spellsLeft(ai));
+         pick.sort((a, b) -> a.tier != b.tier ? Integer.compare(a.tier, b.tier) : Double.compare(b.value, a.value));
++        // patch 99: a trigger doubler (Naban) comes before the creatures in the plan whose enter triggers it doubles
++        for (int i = 0; i < pick.size(); i++) {
++            for (int j = 0; j < i; j++) {
++                if (doubles(pick.get(i).card, pick.get(j).card)) {
++                    pick.add(j, pick.remove(i));
++                    break;
++                }
++            }
++        }
+         int r = 1000;
+         for (final Step s : pick) {
+             plan.steps.add(s);
+@@ -1333,6 +1347,86 @@ public final class TurnPlan {
+     // Laboratory; Deafening Silence counts noncreature spells) a set holds no more spells than the lock still allows (the
+     // best set by value, as always), and a spell outside the plan isn't cast while the plan's spells need the cast.
+     // Abilities (cycling, Wizardcycling, activations) are never limited. ----
++    /** fishpond patch 99: a "no more than N spells each turn" lock applies to p (Rule of Law). */
++    public static boolean spellLimited(final Player p) {
++        final int[] lim = spellsLeft(p);
++        return lim[0] >= 0 || lim[1] >= 0;
++    }
++
++    // ---- fishpond patch 99: Approach of the Second Sun's second cast (the user, 2026-10-23: "Cast an Approach, Zur fetches
++    // Necrodominance, rip to Approach, Win on 9"; "tutor -> Approach -> tutor Approach again is a line to keep"). Once the
++    // first cast resolved (its ApproachingSuns effect in the command zone), the Approach it put seventh from the top waits in
++    // the library: nothing shuffles it away (as patch 89's tutored top cards), Necrodominance's end-step payment draws down to
++    // it, and a first Approach waits for main 2 when the seat's attack trigger would search (and shuffle) this turn. ----
++    /** The library index of an Approach whose next cast from hand wins (its first resolved), or -1. */
++    public static int approachWaiting(final Player ai) {
++        boolean armed = false;
++        for (final Card k : ai.getCardsIn(ZoneType.Command)) if ("ApproachingSuns".equals(k.getName())) armed = true;
++        if (!armed) return -1;
++        final List<Card> lib = new ArrayList<>(ai.getCardsIn(ZoneType.Library));
++        for (int i = 0; i < lib.size(); i++) if (selfPlacingWin(lib.get(i))) return i;
++        return -1;
++    }
++
++    /** A spell that wins on a later cast and otherwise puts itself into its owner's library (Approach of the Second Sun). */
++    static boolean selfPlacingWin(final Card c) {
++        for (final SpellAbility sa : c.getSpells()) {
++            boolean win = false, back = false;
++            final List<SpellAbility> parts = new ArrayList<>();
++            for (SpellAbility x = sa; x != null; x = x.getSubAbility()) parts.add(x);
++            for (final String br : new String[] {"TrueSubAbility", "FalseSubAbility"}) {
++                final SpellAbility b = sa.getAdditionalAbility(br);
++                for (SpellAbility x = b; x != null; x = x.getSubAbility()) parts.add(x);
++            }
++            for (final SpellAbility x : parts) {
++                if (x.getApi() == ApiType.WinsGame) win = true;
++                if (x.getApi() == ApiType.ChangeZone && "Stack".equals(x.getParam("Origin")) && "Library".equals(x.getParam("Destination"))) back = true;
++            }
++            if (win && back) return true;
++        }
++        return false;
++    }
++
++    /** a's static doubles the enter triggers of creature b (Naban, Dean of Iteration and a Wizard with one). */
++    static boolean doubles(final Card a, final Card b) {
++        if (a == b || !b.isCreature()) return false;
++        for (final forge.game.staticability.StaticAbility st : a.getStaticAbilities()) {
++            if (!st.checkMode(forge.game.staticability.StaticAbilityMode.Panharmonicon)) continue;
++            final String type = st.getParamOrDefault("ValidCause", "Card").split("[.+,]")[0];
++            if (!type.equals("Card") && !type.equals("Permanent") && !b.getType().hasStringType(type)) continue;
++            for (final forge.game.trigger.Trigger t : b.getTriggers())
++                if (t.getMode() == forge.game.trigger.TriggerType.ChangesZone && "Battlefield".equals(t.getParam("Destination"))
++                        && t.getParamOrDefault("ValidCard", "").startsWith("Card.Self")) return true;
++        }
++        return false;
++    }
++
++    /** A first Approach waits for main 2 while the seat's attack trigger would search (and shuffle) this turn. */
++    public static boolean waitsForMain2(final Player ai, final SpellAbility sa) {
++        return TUTOR_VALUE && sa != null && sa.isSpell() && sa.getHostCard() != null && selfPlacingWin(sa.getHostCard())
++                && approachWaiting(ai) < 0 && ai.getGame().getPhaseHandler().is(PhaseType.MAIN1) && attackSearchReady(ai);
++    }
++
++    /** A card the seat knows waits in its library: a tutored top card (patch 89) or the waiting Approach. */
++    public static boolean cardWaits(final Player ai) {
++        return knownTop(ai) != null || approachWaiting(ai) >= 0;
++    }
++
++    /** An untapped creature of the seat's has an attack trigger that searches its library (Zur): this combat may shuffle. */
++    static boolean attackSearchReady(final Player ai) {
++        for (final Card c : ai.getCreaturesInPlay()) {
++            if (c.isTapped() || c.isSick()) continue;
++            for (final forge.game.trigger.Trigger t : c.getTriggers()) {
++                if (t.getMode() != forge.game.trigger.TriggerType.Attacks) continue;
++                try {
++                    for (SpellAbility x = t.ensureAbility(); x != null; x = x.getSubAbility())
++                        if (x.getApi() == ApiType.ChangeZone && x.getParamOrDefault("Origin", "").contains("Library") && x.hasParam("ChangeType")) return true;
++                } catch (final RuntimeException e) { /* skip */ }
++            }
++        }
++        return false;
++    }
++
+     /** {spells the seat may still cast this turn, noncreature spells it may still cast}, -1 for no lock. */
+     static int[] spellsLeft(final Player ai) {
+         final int[] out = {-1, -1};
+diff --git a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+index feb9eb8..1139e97 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/DrawAi.java
+@@ -671,6 +671,19 @@ public class DrawAi extends SpellAbilityAi {
+             }
+         }
+ 
++        // fishpond patch 99: the end-step pay-life draw reaches the Approach waiting in the library (its next cast wins); each
++        // Words of Worship shield takes a draw first
++        if (xPaid && pilotSeat(ai) && game.getPhaseHandler().isPlayerTurn(ai) && sa.getPayCosts() != null
++                && sa.getPayCosts().hasSpecificCostType(CostPayLife.class)) {
++            final int at = forge.ai.TurnPlan.approachWaiting(ai);
++            final int need = at + 1 + EffectAi.drawShields(ai);
++            if (at >= 0 && need < computerLibrarySize && ai.getLife() - need >= 1) {
++                root.setXManaCostPaid(need);
++                sa.resetTargets();
++                if (sa.usesTargeting()) sa.getTargets().add(ai);
++                return true;
++            }
++        }
+         // Logic for cards that require special handling
+         if ("YawgmothsBargain".equals(logic)) {
+             return SpecialCardAi.YawgmothsBargain.consider(ai, sa);

@@ -83,6 +83,11 @@ public class ForgeRunner {
                 (p, c) -> p.getController() instanceof SafeControllerAi sc && sc.policy != null && sc.policy.keepCard(c.getName());
         try { forge.ai.AiController.class.getField("KEY_CARD").set(null, keyCard); }
         catch (ReflectiveOperationException e) { out.println("#FP-WARN no key-card hook in this Forge build (patch 55)"); }
+        // fishpond patch 99: a pilot seat's discards go by the policy's value of keeping each card, lowest first
+        java.util.function.ToDoubleBiFunction<Player, Card> discard =
+                (p, c) -> p.getController() instanceof SafeControllerAi sc && sc.policy != null ? sc.policy.keepValue(p, c) : 0;
+        try { forge.ai.AiController.class.getField("DISCARD_VALUE").set(null, discard); }
+        catch (ReflectiveOperationException e) { out.println("#FP-WARN no discard-value hook in this Forge build (patch 99)"); }
         // fishpond patch 85: the turn plan values a tutor by what the policy would fetch (its commander gate first, as the
         // search itself picks)
         java.util.function.BiFunction<Player, Object[], List<Card>> tutorRank = (p, a) -> {
