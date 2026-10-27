@@ -227,7 +227,10 @@ def cmd_run(args):
     else:
         records, wall = runner.run_cli(builds, pods, args.trials, args.seed, args.clock, jobs, run_dir, hero_ai=args.ai,
                                        opp_ai=opp_ai, quiet=args.quiet)
-    meta.update(wall=wall, complete=True)
+    # a game with no result (a worker that couldn't start) leaves the run to --resume, which replays it from its seed; a study
+    # skipped such a pod as finished (trends_20261027 T01: two lanes building the card overrides at once)
+    done = len({(r["build"], r["game"]) for r in records})
+    meta.update(wall=wall, complete=engine != "harness" or done >= args.trials * len(builds))
     runner.save(run_dir, meta, records)
     _report(meta, records, builds, args.json, run_dir)
 

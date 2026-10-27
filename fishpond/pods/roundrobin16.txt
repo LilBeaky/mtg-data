@@ -1,0 +1,22 @@
+# All 16 saved decks, every pair in exactly one pod (an affine plane of order 4: 5 rounds of 4 pods). 2026-10-27 trends study:
+#   python -m fishpond study fishpond/pods/roundrobin16.txt --out data/fishpond/trends_20261027 --games 4 --seed 20261027 --lanes 2 --jobs 5
+T01|Coles_Heliod_Life|Gaiges_Balancer_Combo|Ians_Araumi_Reanimator|Ians_Ragost_Burn
+T02|Gaiges_Jarad_Graveyard|Ians_Chulane_Surge|Ians_Wilson_Auras|Coles_Lumra_Lands
+T03|Ians_Erebos_Apostles|Ians_Yusri_Omni|Coles_Niv_Combo|Gaiges_Xyris_Wheels
+T04|Ians_Zur_Wizardcycling|Coles_Omnath_Big_Mana|Gaiges_Zhulodok_Eldrazi|Ians_Klauth_Dragons
+T05|Coles_Heliod_Life|Gaiges_Jarad_Graveyard|Ians_Erebos_Apostles|Ians_Zur_Wizardcycling
+T06|Gaiges_Balancer_Combo|Ians_Klauth_Dragons|Ians_Yusri_Omni|Coles_Lumra_Lands
+T07|Ians_Araumi_Reanimator|Ians_Wilson_Auras|Coles_Niv_Combo|Gaiges_Zhulodok_Eldrazi
+T08|Ians_Ragost_Burn|Coles_Omnath_Big_Mana|Gaiges_Xyris_Wheels|Ians_Chulane_Surge
+T09|Coles_Heliod_Life|Gaiges_Xyris_Wheels|Ians_Klauth_Dragons|Ians_Wilson_Auras
+T10|Gaiges_Zhulodok_Eldrazi|Ians_Erebos_Apostles|Ians_Ragost_Burn|Coles_Lumra_Lands
+T11|Ians_Chulane_Surge|Ians_Zur_Wizardcycling|Coles_Niv_Combo|Gaiges_Balancer_Combo
+T12|Ians_Yusri_Omni|Coles_Omnath_Big_Mana|Gaiges_Jarad_Graveyard|Ians_Araumi_Reanimator
+T13|Coles_Heliod_Life|Gaiges_Zhulodok_Eldrazi|Ians_Chulane_Surge|Ians_Yusri_Omni
+T14|Gaiges_Xyris_Wheels|Ians_Araumi_Reanimator|Ians_Zur_Wizardcycling|Coles_Lumra_Lands
+T15|Ians_Klauth_Dragons|Ians_Ragost_Burn|Coles_Niv_Combo|Gaiges_Jarad_Graveyard
+T16|Ians_Wilson_Auras|Coles_Omnath_Big_Mana|Gaiges_Balancer_Combo|Ians_Erebos_Apostles
+T17|Coles_Heliod_Life|Coles_Lumra_Lands|Coles_Niv_Combo|Coles_Omnath_Big_Mana
+T18|Gaiges_Jarad_Graveyard|Gaiges_Xyris_Wheels|Gaiges_Zhulodok_Eldrazi|Gaiges_Balancer_Combo
+T19|Ians_Erebos_Apostles|Ians_Klauth_Dragons|Ians_Araumi_Reanimator|Ians_Chulane_Surge
+T20|Ians_Zur_Wizardcycling|Ians_Ragost_Burn|Ians_Wilson_Auras|Ians_Yusri_Omni

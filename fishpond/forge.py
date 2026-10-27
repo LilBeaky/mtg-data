@@ -185,6 +185,8 @@ def run_home(version=FORGE_VERSION, quiet=False):
     if missing: sys.exit(f"fishpond: card overrides name cards Forge {version} doesn't have: {sorted(missing)}")
     _say(f"fishpond: card overrides applied ({len(repl)}): {', '.join(sorted(repl))}", quiet)
     open(os.path.join(tmp, "ok"), "w").write("\n".join(sorted(repl)))
+    if os.path.exists(os.path.join(d, "ok")):     # another process (a study's other lane) finished first and may be reading it
+        shutil.rmtree(tmp, ignore_errors=True); return d
     shutil.rmtree(d, ignore_errors=True)
     try: os.replace(tmp, d)
     except OSError: shutil.rmtree(tmp, ignore_errors=True)

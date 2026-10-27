@@ -45,6 +45,67 @@ Working doc for Claude: what is left to build in Fishpond and in what order. Usa
 - **Threat model** (2026-10-16, `harness/ThreatModel.java`, the user's design review): phase 1 logs each player's threat and vulnerability every turn (`#FP-THREAT`, game record `threat`); v1 (combo proximity, clock with a two-turn override, engines, resources, alt-win) had the winner ranked first one round before the end in 63% of `study150_20261016_p56` games (most life 51%, chance 34%). v2 added mana capacity and lead (Klauth's attack mana), enabler -> payoff links and cycles from the card scripts (Astral Slide's blink into Archaeomancer, Heliod <-> Walking Ballista), momentum; on a fresh seed (`study150_20261017_threat`, 104 games, stopped at 7 pods) it scored 62% vs v1's 69%, the links swamping the score; every lighter weighting landed at 67-71% (noise). v2.1 (light links, cycles 15, mana kept, momentum logged only, opponents' draws and self-feeding permanents for Xyris) on the Klauth and Xyris pods (`threat_kx_20261016`, 44 games): 61% vs v1 64%, within the noise; it flags Klauth's mana and Xyris's self-feeding engine for the decisions. Phase 2 (patch 57): counters and removal. Phase 3 (next): holding mana for answers.
 - **Reference runs** (`data/fishpond/`, gitignored): `varied_20261012` (pods and launcher as `varied_20261007`: `pods.txt`, `lane.sh`; `fishpond study data/fishpond/varied_20261007/pods.txt --out DIR --seed 20261007` replays the same study) is the current baseline, `varied_20261012_p35` the post-fix run, `varied_20261013_p40` the full build, `varied_20261013_p45` the final build (01-45), `study150_20261014` the 150-game study (01-46), `study150_20261014_lines` the win-line baseline (01-48), `study150_20261014_p49` the patch 49 test, `study150_20261014_p50` and `study150_20261014_p51` the patch 50 and 51 tests; `varied_20261007`, `powermatch_20261007_p16`, `pilot_study_20261004` are older.
 
+## Cross-deck trends (2026-10-27, `trends_20261027`)
+
+The user, after the Zur work: zoom out, find the biggest trends across all decks, and fix those rather than tuning one deck
+deep. **Study:** `fishpond/pods/roundrobin16.txt` (all 16 saved decks; every pair meets in exactly one pod, so no deck's record
+leans on its opponents), 4 games a pod, seed 20261027, build f5c0b10 (patches 01-106), hybrid, a 4-CPU cloud box (`--lanes 2
+--jobs 2`). 80 games, 7.6 h of game time: 77 natural, 3 at the 30-minute cap (T10 g0, T13 g1, T14 g0: Lumra, Zhulodok and Xyris
+boards), 5 AI timeouts (all T14 g0), 0 lookahead fallbacks. Every seat is measured (320 seat-games, 20 per deck); trends are
+ranked by what they measurably cost, not by how often a log line fires. Records (wins of decided games): Heliod 10/18, Wilson
+9/20, Xyris 8/19, Klauth 8/20, Zhulodok 7/18, Niv 7/19, Jarad 6/20, Erebos 5/19, Yusri 4/19, Lumra 3/17, Araumi 2/19, Zur 2/19,
+Witherbloom 2/20, Ragost 1/19, Chulane 1/19, Omnath 1/19.
+
+1. **Chulane decks itself: 6 of its 20 seats** (T08 g1, g3; T11 g2, g3; T13 g1; T19 g2), 1 win. Each is an engine turn of 13-16
+   casts that each draw through Chulane, then death at the next draw step. Patch 20 judges each spell alone (floor 1 + half its
+   draws, about 2 cards for a Chulane creature), so every cast passes and the turn walks the library down to 1-2; draws outside
+   casts (Esper Sentinel, Primal Surge and Lurking Predators puts) aren't counted. In T11 g2 Thassa's Oracle entered mid-turn with
+   too many cards left to win. This is D6's turn-level reserve, never started. **Proposal:** a non-winning spell keeps a library
+   reserve for the draws due before the seat's next turn (at least 5, patch 18's Surge reserve), the empty-library win cards
+   exempt; Oracle-style cards aren't put onto the battlefield by a mass put while they can't win. Applies to every draw-engine
+   deck; in this data only Chulane pays for it (plus one each: Omnath under Xyris's Forced Fruition, Zhulodok, Witherbloom).
+2. **Two-land keeps cause most missed land drops.** 100 of 320 kept hands had 2 lands; they missed 19% of turn 1-4 land drops
+   against 4% for 3-landers, 76% of all missed early drops, and ramp in hand doesn't change it (18% with none, 19% with some).
+   Seats that missed an early drop won 17% against 27%. The first mulligan is free in these pods (7, 7, 6, ...), so a 2-land
+   seven costs little to send back. HandScore (patch 68) docks a 2-lander 1.5 against bars of 5-8 and hands scoring 7-15, so
+   almost every one passes, 44 with no ramp at all (the 2026-10-07 floor was 3 lands, or 2 lands and 2+ ramp). **The user's
+   call** ("there are keepable 2's"): e.g. on the free mulligan only, a 2-land 7 keeps with 2+ ramp or a curve it casts on two
+   lands; or raise SHORT on the free mulligan.
+3. **Commanders that never resolve:** Klauth 8 of 20 seats, Niv 8, Lumra 8, Xyris 6, Zhulodok 6, Witherbloom 6, Chulane 5;
+   median first turn Klauth 7 and Niv 7 (Klauth's target is 4). The same gap as 2026-10-17 (DECK_YARDSTICK). Land sequencing
+   isn't it: the heroes' 65 own turns 1-6 with no land drop all had no land in hand (snapshots; other seats have none). Whether
+   an affordable commander ever waited isn't measured (`#FP-SEQ`'s castable list leaves the command zone out). Early mana looks
+   like the cause, so item 2 is the lever; Klauth also missed a land drop on 21% of
+   its turns 1-6.
+4. **Removal doesn't see noncreature engines.** Patch 105's floor holds every noncreature but combo pieces, 3+ mana sources and
+   must-answers: Flaming Fist on Wilson held against on 30 turns, Lightning Greaves 18, Krark's Thumb 17, Wishclaw Talisman 16,
+   Astral Drift and Escape Protocol 10, Forced Fruition 5 (Omnath held Krosan Grip and decked), Necrodominance, Smothering Tithe.
+   `ThreatModel.cardThreat` gives a key card +20 where `spellThreat` gives +35 and an engine payoff +25, and nothing for an aura or
+   equipment on an attacker. **Measured cost is weak:** across 72 noncreature targets held against all game, the target's
+   controller won 29% (creature targets 20%, base rate 25%). A prototype (key and engine parity, an attachment counted at its
+   host's clock) lands at the floor's edge because the noncreature score is scaled by 0.4 + 0.6 x the controller's relative
+   threat; a real fix judges an attachment by its host's value against the creature floor and gives engines a fixed place above
+   the noncreature floor. The removal floor is the user's design: not changed (prototype diff kept out of the repo).
+5. **The free hold reaches decks that aren't built to counter** (Wilson's Mana Tithe, Heliod's Rebuff the Wicked, Yusri's Muddle
+   the Mixture; only Zur and Yusri run 5+ counterspells, every other list 0-3). Raw `#FP-HOLD` counts overstate it badly (an
+   instant is re-asked at every priority; a refused spell is often cast after a re-plan): 34 own turns with a main-phase
+   refusal in 80 games, 5 of them ended with the refused card castable and mana unspent. Not worth a change now; if it grows, a
+   5+ counter-role gate in `ThreatModel.freeHold` leaves Zur and Yusri as they are.
+6. **Dead cards in the lists** (castable, held on turns 1-6 with mana up): Scheming Symmetry (Erebos, 11 turns; known gap),
+   Perpetual Timepiece (Jarad 8; flagged), Demonic Consultation (Niv 5; known gap), Autumn's Veil (Lumra 5; flagged), Titan's
+   Presence (Zhulodok 4; known gap), Profane Command (Witherbloom 4; known gap). Those decks' numbers are a floor; AI logic or a
+   swap is the owner's call.
+7. **Lifegain locks are invisible.** Erebos ("your opponents can't gain life") turned off Heliod + Walking Ballista in all four T05
+   games: Heliod pinged for 1 a turn and the line audit counted the closer as available (it looked like a regression from p51's
+   81%; it isn't, the puzzles pass). Small: the Heliod lines need "no lifegain lock", and a lock on the seat's own engine could
+   rate as must-answer.
+
+Checked and not a trend: land sequencing (no missed drop with a land in hand), the threat model (the eventual winner ranked first
+the round before the end in 63% of decided games, as calibrated 2026-10-16). Fixed on the way:
+two study lanes building the card-override folder at once (the second deleted the first's finished folder as its JVM started:
+T01's four games never ran, `forge.run_home`), and `run` marked a run complete with no games, so a study skipped that
+pod as finished (`cmd_run`).
+
 ## Plan as of 2026-10-12 (the user's order)
 
 | # | Item | Status |
@@ -52,7 +113,7 @@ Working doc for Claude: what is left to build in Fishpond and in what order. Usa
 | 0 | Merge the pending branch (D5 second pass, patch 32) | **Done** (bddebb6) |
 | 1 | Fresh baseline + dead-card meter | **Done**: `varied_20261012` above; `fishpond held`, report section, idle flag |
 | 2 | Pilot-error audit of #1 | **Partly done**: findings A-F below, each with game and turn; B fixed (patch 35); A: the main-2 wait lifted (patch 40), the ranking left to Forge |
-| 3 | D6 decks drawing themselves out | **Partly done**: attack-trigger draws (patch 33); Wildspeaker not reproduced in a vacuum; Chulane's turn-level reserve not started |
+| 3 | D6 decks drawing themselves out | **Partly done**: attack-trigger draws (patch 33); Wildspeaker not reproduced in a vacuum; Chulane's turn-level reserve not started (2026-10-27: Chulane decked in 6 of 20 seats, "Cross-deck trends" item 1) |
 | 4 | Remaining flagged cards | **Partly done**: Utopia Sprawl, Greater Good and Nyx Weaver unflagged (an AILogic; patch 38; an AITgts), Everflowing Chalice's hint fixed; Perpetual Timepiece tested and kept flagged (it mills, then exiles itself to shuffle the graveyard back: needs logic for that ability); Scapeshift, Magus of the Candelabra, Sylvan Safekeeper, Autumn's Veil, Lim-Dul's Vault and the 6 known gaps left |
 | 5 | Reports show usable mana | **Done** (with #1): snapshots' `usable`, the report's mana column |
 | 6 | D7 crash root fixes | **Done**: Invasion of Ikoria (patch 34), ChooseCT token copies and the stack lookup NPE (patch 46), the prepared card's leftover effect, one-faced copies of double-faced cards and departed remembered cards (patch 47). Lookahead crashes inside the decision thread are counted now (patch 47; they were silent passes). Open: a token copying a token in the copy (counted fallback; see patch 47) |
