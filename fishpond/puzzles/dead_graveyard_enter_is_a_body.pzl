@@ -1,4 +1,4 @@
-# title: A creature whose enter trigger has nothing to return is a body: Necrodominance out (cards go to exile, the graveyard holds no enchantment), Astral Slide out, five lands, Auramancer and Tribute Mage in hand (room for one): the AI casts Tribute Mage, whose search is live (patch 107: a graveyard-return enter trigger with no target gets no plan priority and less its trigger; zuronegame_20261027 T10 cast Auramancer at 199 as an engine over Tribute Mage at 196)
+# title: Guard for patch 107's dead enter trigger: Necrodominance out (cards go to exile, the graveyard holds no enchantment), Astral Slide out, five lands, Auramancer and Tribute Mage in hand (room for one): the AI casts Tribute Mage, whose search is live. A guard, not a repro: in zuronegame_20261027 T10 Auramancer (199, planned as an engine) beat Tribute Mage (196) by 3 points that hang on late-game setup values a puzzle can't set (the seat's own turn count); patch 107 plans it as a body at 139 on that board
 # card: Auramancer
 # deck: Ians_Zur_Wizardcycling
 # turns: 1
