@@ -1,0 +1,18 @@
+# title: A tutor that searches now goes before a tutor in play: Zur's second turn, Command Tower and Silent Clearing out, Step Through (Wizardcycling {2}) and Wishclaw Talisman ({1}{B}) in hand, two mana: the AI Wizardcycles Step Through and casts Wishclaw later (patch 107: a battlefield tutor waits a turn and costs its activation, so it plans just under typecycling; ab107_20261027 g0: the two tied at 260 and Wishclaw went first, the loop a turn late)
+# card: Wishclaw Talisman
+# turns: 1
+# sim: hybrid
+# deck: Ians_Zur_Wizardcycling
+# expect: activated Step Through
+# forbid: cast Wishclaw Talisman
+p0life=40
+p1life=40
+turn=2
+activeplayer=p0
+activephase=MAIN1
+p0command=Zur the Enchanter|IsCommander
+p0battlefield=Command Tower;Silent Clearing
+p0hand=Wishclaw Talisman;Step Through;Dour Port-Mage;Neutralize;Archaeomancer;Raffine's Tower
+p0library=Triskaidekaphile;Tribute Mage;Spellseeker;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

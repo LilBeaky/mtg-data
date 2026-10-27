@@ -1,8 +1,30 @@
 diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
-index 3b07648..9548682 100644
+index 3b07648..465ef33 100644
 --- a/forge-ai/src/main/java/forge/ai/AiController.java
 +++ b/forge-ai/src/main/java/forge/ai/AiController.java
-@@ -604,7 +604,14 @@ public class AiController {
+@@ -487,6 +487,21 @@ public class AiController {
+         return landList;
+     }
+ 
++    /** fishpond patch 107: land's own enter trigger returns a land its controller controls to hand (a bounce land). */
++    private static boolean bouncesOwnLand(final Card land) {
++        for (final forge.game.trigger.Trigger t : land.getTriggers()) {
++            if (t.getMode() != forge.game.trigger.TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))
++                    || !t.getParamOrDefault("ValidCard", "").startsWith("Card.Self")) continue;
++            try {
++                final SpellAbility x = t.ensureAbility();
++                if (x != null && x.getApi() == ApiType.ChangeZone && x.getParamOrDefault("Origin", "").contains("Battlefield")
++                        && "Hand".equals(x.getParam("Destination")) && x.getParamOrDefault("ChangeType", "").startsWith("Land")
++                        && x.getParamOrDefault("ChangeType", "").contains("YouCtrl")) return true;
++            } catch (final RuntimeException e) { /* skip */ }
++        }
++        return false;
++    }
++
+     /** Whether land would enter tapped if played now (its replacement effects with their conditions; Forge's own check). */
+     private boolean landEntersTapped(final Card land) {
+         final Map<AbilityKey, Object> repParams = AbilityKey.mapFromAffected(land);
+@@ -604,7 +619,14 @@ public class AiController {
          // battlefield plus in hand reached max(biggest cost in hand, 6), so Zur missed 17 drops under 6 lands holding only
          // cycling lands. Any other land goes first; a cycling land when it's all there is.
          if (forge.ai.ability.DrawAi.pilotSeat(player)) {
@@ -18,7 +40,25 @@ index 3b07648..9548682 100644
              if (!noCycling.isEmpty()) {
                  landList = noCycling;
              } else if (forge.ai.ability.DrawAi.hasCyclingPayoffPublic(player) && player.getLandsInPlay().size() >= CYCLE_HOLD_LANDS) {
-@@ -644,6 +651,13 @@ public class AiController {
+@@ -615,6 +637,17 @@ public class AiController {
+             }
+         }
+ 
++        // fishpond patch 107: a land whose enter trigger returns a land its controller controls (Golgari Rot Farm and the other
++        // bounce lands) returns itself when it's the only one: never played onto a board with no other land. Patches 26 and 29
++        // passed over Forge's own hint (NeedsToPlay: a basic out), and Jarad played Rot Farm onto an empty board for eleven
++        // turns, bounced it every time and never cast a spell (zuronegame_20261027)
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && player.getLandsInPlay().isEmpty()) {
++            landList = CardLists.filter(landList, l -> !bouncesOwnLand(l));
++            if (landList.isEmpty()) {
++                return null;
++            }
++        }
++
+         // fishpond patch 26: play a land that enters tapped unless an untapped one lets a spell (or the commander) be cast
+         // this turn that couldn't be otherwise. Forge's own check below uses the mana estimate, which counts lands like
+         // Castle Garenbrig as six mana, so it played untapped lands early whether or not the mana was needed.
+@@ -644,6 +677,13 @@ public class AiController {
                          continue;
                      }
                      sp.setActivatingPlayer(player);
@@ -32,7 +72,7 @@ index 3b07648..9548682 100644
                      int cost = c.getCMC();
                      if (c.isCommander() && c.isInZone(ZoneType.Command)) {
                          cost += 2 * player.getCommanderCast(c);
-@@ -4233,6 +4247,7 @@ public class AiController {
+@@ -4233,6 +4273,7 @@ public class AiController {
      // (Astral Slide out) still decide plain cycling then. -Dfishpond.cycleEngine=false turns it off.
      private static final boolean CYCLE_ENGINE = !"false".equals(System.getProperty("fishpond.cycleEngine"));
      static final int CYCLE_HOLD_LANDS = Integer.getInteger("fishpond.cycleHoldLands", 6);   // patch 56
@@ -41,7 +81,7 @@ index 3b07648..9548682 100644
      public static volatile java.util.function.BiPredicate<Player, Card> KEY_CARD;
  
 diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
-index 8792675..3ac5581 100644
+index 8792675..9b78d78 100644
 --- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
 +++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
 @@ -735,6 +735,25 @@ public final class TurnPlan {
@@ -118,23 +158,26 @@ index 8792675..3ac5581 100644
      static SpellAbility etbSearch(final Card c) {
          if (!c.isPermanent()) {
              return null;
-@@ -1641,6 +1687,7 @@ public final class TurnPlan {
+@@ -1641,6 +1687,8 @@ public final class TurnPlan {
      static final double EARLY_RAMP = 300;           // fishpond patch 74: a mana rock or dork while the seat makes under 5 mana
      static final int EARLY_RAMP_UNDER = 5;
      static final double TRANSMUTE = 150;
++    static final double TUTOR_IN_PLAY = 140;       // fishpond patch 107: a battlefield tutor (Wishclaw), under TRANSMUTE
 +    static final double DEAD_ENTER = 60;          // fishpond patch 107: a graveyard-return enter trigger with nothing to return
      static final double KEY_PICK = 250;          // fishpond patch 101: a tutor's key-card pick to hand or the top
      static final double DRAW_LIFE = 5;   // fishpond patch 76: a life point lost to a draw punisher (a card in hand is 80)   // fishpond patch 73: a transmute is a tutor (Gamble, Long-Term Plans plan on their own value)
  
-@@ -1768,13 +1815,23 @@ public final class TurnPlan {
+@@ -1768,13 +1816,25 @@ public final class TurnPlan {
          if (!sa.isSpell() && "Hand".equals(sa.getParam("ActivationZone")) && "Library".equals(sa.getParam("Origin"))
                  && c.hasStartOfKeyword("Transmute")) v += TRANSMUTE;   // patch 73: a tutor
          if (!sa.isSpell() && sa.isCycling() && "Library".equals(sa.getParam("Origin"))) v += TRANSMUTE;   // patch 83: typecycling too
 +        // patch 107: a permanent whose ability on the battlefield searches the library for a nonland card (Wishclaw Talisman)
-+        // is a tutor in play: worth a transmute's tutor, and setup that wants to be down before the mana to use it
-+        // (zuronegame_20261027: Wishclaw at a vanilla 2-drop's 110 sat in hand from turn 1 to turn 7)
++        // is a tutor in play: setup that wants to be down before the mana to use it (zuronegame_20261027: Wishclaw at a vanilla
++        // 2-drop's 110 sat in hand from turn 1 to turn 7), worth a bit less than a tutor that searches now (TRANSMUTE: Step
++        // Through's Wizardcycle), since it waits a turn and costs its activation (ab107 g0: the two tied at 260 on turn 2 and
++        // Wishclaw went first, the loop a turn late)
 +        final boolean tutorInPlay = sa.isSpell() && c.isPermanent() && !c.isLand() && activatedSearch(c);
-+        if (tutorInPlay) v += TRANSMUTE;
++        if (tutorInPlay) v += TUTOR_IN_PLAY;
          // patch 91: with a cycling payoff out (Astral Slide, Drift, Escape Protocol), a cycle also blinks: the loop's Step Through
          // slides Archaeomancer, which comes back at the end step and returns it
          if (!sa.isSpell() && sa.isCycling() && forge.ai.ability.DrawAi.hasCyclingPayoffPublic(ai)) v += cycleBlinkValue(ai, c);
@@ -151,7 +194,7 @@ index 8792675..3ac5581 100644
          final int pay = aic.payoffUnits(sa);
          v += 40 * pay;
          boolean removal = false, wipe = false, info = false;
-@@ -1876,7 +1933,7 @@ public final class TurnPlan {
+@@ -1876,7 +1936,7 @@ public final class TurnPlan {
          else if (ComputerUtil.isRamp(ai, sa) || eff < cost) tier = TIER_MANA;   // ramp, and whatever pays back mana now (rocks, rituals)
          else if (wipe) tier = TIER_WIPE;
          else if (removal) tier = TIER_REMOVAL;

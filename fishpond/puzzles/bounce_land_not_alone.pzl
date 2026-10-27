@@ -1,0 +1,16 @@
+# title: A bounce land is never the only land: no lands out, Golgari Rot Farm, two Forests and Svogthos in hand (Jarad's opening): the AI plays a Forest, not the Rot Farm, which would return itself (patch 107: zuronegame_20261027, Jarad played Rot Farm onto an empty board for eleven turns, bounced it every time, and never cast a spell)
+# card: Golgari Rot Farm
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-\S+ played Forest
+# forbid: Ai\(1\)-\S+ played Golgari Rot Farm
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0command=Jarad, Golgari Lich Lord|IsCommander
+p0hand=Golgari Rot Farm;Forest;Forest;Svogthos, the Restless Tomb;Arcane Signet;Swiftfoot Boots
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

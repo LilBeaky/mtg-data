@@ -1,0 +1,15 @@
+# title: Guard for patch 107's bounce-land rule: a Forest out and Golgari Rot Farm the only land in hand: the AI plays it (it returns the Forest, a land drop's worth more next turn)
+# card: Golgari Rot Farm
+# turns: 1
+# sim: hybrid
+# expect: Ai\(1\)-\S+ played Golgari Rot Farm
+p0life=40
+p1life=40
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Forest
+p0hand=Golgari Rot Farm;Grizzly Bears
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
