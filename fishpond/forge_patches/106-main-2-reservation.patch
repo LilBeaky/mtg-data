@@ -1,0 +1,47 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 9744e9e..87a52dc 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -89,7 +89,8 @@ public final class TurnPlan {
+     static final class Plan {
+         final List<Step> steps = new ArrayList<>();
+         final Map<Integer, Integer> rank = new HashMap<>();   // card id -> rank (higher goes first)
+-        int budget, reserve, restricted;
++        int budget, reserve, restricted;
++        int later;   // fishpond patch 106: the mana a play waiting for main 2 keeps (a first Approach, a top tutor)
+         final List<String> offColor = new ArrayList<>();   // patch 84: castable by amount, not by color
+         List<Integer> units = List.of(), keepPips = List.of();   // patch 84: the sources' units; the held answer's pips
+         String answer;   // patch 84: the held answer (its own casting isn't refused for its colors)
+@@ -230,15 +231,22 @@ public final class TurnPlan {
+                 }
+             }
+         }
+-        if (p.steps.isEmpty()) {
++        // fishpond patch 106: the mana a play waiting for main 2 keeps counts too (zurclose_20261024 B2b g7: the plan held
++        // Approach of the Second Sun, 2935, for main 2 with Necrodominance out, but kept that mana only from its own steps;
++        // Forge cast Emeritus, then Mage's Attendant and Drannith outside the plan in main 1, two turns running, and main 2 had
++        // 1 mana left)
++        if (p.steps.isEmpty() && p.later == 0) {
+             return false;
+         }
++        if (p.later > 0 && sa.getHostCard() != null && (selfPlacingWin(sa.getHostCard()) || topTutor(sa))) {
++            return false;   // the waiting play itself
++        }
+         final int cost = payCost(ai, sa);
+         if (cost <= 0) {
+             return false;
+         }
+         final int avail = manaNow(ai) + landDrop(ai);
+-        return avail - cost < p.remainingCost() + p.reserve;
++        return avail - cost < p.remainingCost() + p.reserve + p.later;
+     }
+ 
+     // ---- fishpond patch 84: colors (the user, 2026-10-21: "it'll make better calls. We have to make sure it holds the right
+@@ -1331,6 +1339,7 @@ public final class TurnPlan {
+         plan.units = units;
+         plan.keepPips = keepPips;
+         plan.answer = answer;
++        plan.later = laterCost;   // patch 106: plays outside the plan keep it too
+         final List<Step> pick = choose(cands.size() > 12 ? cands.subList(0, 12) : cands, Math.max(0, room - laterCost), restricted, units, keepPips,
+                 spellsLeft(ai));
+         pick.sort((a, b) -> a.tier != b.tier ? Integer.compare(a.tier, b.tier) : Double.compare(b.value, a.value));

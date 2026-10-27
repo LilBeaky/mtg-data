@@ -1,0 +1,16 @@
+# title: Zur's deck: Zur out, Astral Slide just destroyed (in the graveyard), four lands, Rule of Law and Auramancer in hand: Rule of Law first (Zur's attack fetches Drift; the user, 2026-10-24: "Astral Slide > Rule of Law > Confinement groove"; zurclose_20261024 B2b g7 left it at 295 behind Auramancer, 466, and discarded it uncast that turn)
+# card: Rule of Law
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: cast Rule of Law
+p0life=31
+p1life=40
+turn=6
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter|IsCommander;Plains;Island;Swamp;Island
+p0graveyard=Astral Slide
+p0hand=Rule of Law;Auramancer
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Forest;Llanowar Elves
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

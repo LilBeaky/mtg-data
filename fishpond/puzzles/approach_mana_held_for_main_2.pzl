@@ -1,0 +1,16 @@
+# title: Zur's deck: Zur out (it will attack and search), Necrodominance out, eight lands, Approach of the Second Sun and Emeritus of Ideation in hand at 26 life: Approach waits for main 2 (the search would shuffle it away), and main 1 doesn't spend its mana on Emeritus outside the plan; Approach is cast in main 2 (patch 106; zurclose_20261024 B2b g7: Emeritus, then Mage's Attendant and Drannith, ate Approach's mana two turns running)
+# card: Approach of the Second Sun
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: cast Approach of the Second Sun
+# forbid: cast Emeritus of Ideation
+p0life=26
+p1life=40
+turn=8
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter|IsCommander;Necrodominance;Plains;Island;Swamp;Island;Plains;Island;Swamp;Island
+p0hand=Approach of the Second Sun;Emeritus of Ideation
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Astral Slide;Rule of Law
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

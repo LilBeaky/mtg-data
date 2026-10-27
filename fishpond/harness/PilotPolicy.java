@@ -157,6 +157,19 @@ public final class PilotPolicy {
         return null;
     }
 
+    /** Turn-plan value of a deck rule for casting c from hand now (ThreatModel's setup hook). Zur: Rule of Law once Astral
+     *  Slide or Drift is out or Zur is (the user, 2026-10-24: "I'm settling into the Astral Slide > Rule of Law > Confinement groove";
+     *  zurclose_20261024 B2b g7 held it from turn 3 at 235-295 and discarded it uncast on turn 6; the +800 only reached
+     *  Zur's search). */
+    double planBoost(Player me, Card c) {
+        if (!zurEngine() || c.isInZone(ZoneType.Battlefield)) return 0;
+        // Slide or Drift out, or Zur out to fetch one this turn (the game above: Slide destroyed, Zur's attack fetched Drift after
+        // the plan had passed on Rule of Law)
+        if (c.getName().equals("Rule of Law") && !me.isCardInPlay("Rule of Law")
+                && (me.isCardInPlay("Astral Slide") || me.isCardInPlay("Astral Drift") || me.isCardInPlay("Zur the Enchanter"))) return 600;
+        return 0;
+    }
+
     boolean zurEngine() {
         CardIntel z = in.cards.get("Zur the Enchanter");
         return z != null && z.cmdr && in.cards.containsKey("Archaeomancer") && in.cards.containsKey("Astral Slide")

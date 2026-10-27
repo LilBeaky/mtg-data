@@ -1027,7 +1027,7 @@ public final class ThreatModel {
         // (plus building the seat's repeatable engines: casting a missing piece of a loop, PilotPolicy.loopValue; and a
         // commander that tutors every turn, PilotPolicy.commanderEngine)
         java.util.function.ToDoubleBiFunction<Player, Card> setup = (p, c) -> SetupModel.setupValue(p, c)
-                + (p.getController() instanceof ForgeRunner.SafeControllerAi sc && sc.policy != null ? sc.policy.loopValue(p, c, true) : 0)
+                + (p.getController() instanceof ForgeRunner.SafeControllerAi sc && sc.policy != null ? sc.policy.loopValue(p, c, true) + sc.policy.planBoost(p, c) : 0)
                 + PilotPolicy.commanderEngine(p, c, p.getController() instanceof ForgeRunner.SafeControllerAi sc2 ? sc2.policy : null)   // a commander that tutors every turn comes down first
                 + PilotPolicy.doublerValue(p, c)      // a trigger doubler before the creatures it doubles
                 + (REAL.contains(p.getGame()) ? PilotPolicy.lockValue(p, c) : 0);   // lock pieces by what they do to the table
