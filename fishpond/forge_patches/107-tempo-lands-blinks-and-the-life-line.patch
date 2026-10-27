@@ -1,0 +1,179 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 3b07648..9548682 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -604,7 +604,14 @@ public class AiController {
+         // battlefield plus in hand reached max(biggest cost in hand, 6), so Zur missed 17 drops under 6 lands holding only
+         // cycling lands. Any other land goes first; a cycling land when it's all there is.
+         if (forge.ai.ability.DrawAi.pilotSeat(player)) {
+-            final CardCollection noCycling = CardLists.filter(landList, l -> !l.getSpellAbilities().anyMatch(SpellAbility::isCycling));
++            // fishpond patch 107: while the seat is still developing (under CYCLE_TEMPO_LANDS lands, no cycling payoff out), a
++            // cycling land that enters tapped stays in the running: patch 26 below plays it on a turn that can spare the mana,
++            // and the untapped land goes down next turn. zuronegame_20261027 T3: Raffine's Tower (cycling {3}) was held behind
++            // Plains with two untapped lands enough for the turn, and Zur came a turn late
++            final boolean developing = player.getLandsInPlay().size() < CYCLE_TEMPO_LANDS
++                    && !forge.ai.ability.DrawAi.hasCyclingPayoffPublic(player);
++            final CardCollection noCycling = CardLists.filter(landList, l -> !l.getSpellAbilities().anyMatch(SpellAbility::isCycling)
++                    || developing && landEntersTapped(l));
+             if (!noCycling.isEmpty()) {
+                 landList = noCycling;
+             } else if (forge.ai.ability.DrawAi.hasCyclingPayoffPublic(player) && player.getLandsInPlay().size() >= CYCLE_HOLD_LANDS) {
+@@ -644,6 +651,13 @@ public class AiController {
+                         continue;
+                     }
+                     sp.setActivatingPlayer(player);
++                    // fishpond patch 107: only a card the turn would cast in its own main phase needs the untapped land: not a
++                    // counterspell (held, never planned) or a card its own "only when" hint rules out (Step Through: only ever
++                    // Wizardcycled). zuronegame_20261027 T3: Neutralize's 3 mana played the Plains over Raffine's Tower, and
++                    // Zur came a turn late
++                    if (sp.getApi() == ApiType.Counter || !TurnPlan.hintAllows(c, sp)) {
++                        continue;
++                    }
+                     int cost = c.getCMC();
+                     if (c.isCommander() && c.isInZone(ZoneType.Command)) {
+                         cost += 2 * player.getCommanderCast(c);
+@@ -4233,6 +4247,7 @@ public class AiController {
+     // (Astral Slide out) still decide plain cycling then. -Dfishpond.cycleEngine=false turns it off.
+     private static final boolean CYCLE_ENGINE = !"false".equals(System.getProperty("fishpond.cycleEngine"));
+     static final int CYCLE_HOLD_LANDS = Integer.getInteger("fishpond.cycleHoldLands", 6);   // patch 56
++    static final int CYCLE_TEMPO_LANDS = Integer.getInteger("fishpond.cycleTempoLands", 5);   // patch 107
+     // The deck's '# key:' cards, from the harness (PilotPolicy.isKey); none in simulated games and puzzles.
+     public static volatile java.util.function.BiPredicate<Player, Card> KEY_CARD;
+ 
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 8792675..3ac5581 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -735,6 +735,25 @@ public final class TurnPlan {
+         return v;
+     }
+ 
++    /** fishpond patch 107: every one of c's own enter triggers (at least one) returns a card from its controller's graveyard,
++     *  and the graveyard holds nothing any of them could take (Auramancer with no enchantment there). */
++    static boolean deadGraveyardEnter(final Player ai, final Card c) {
++        boolean any = false;
++        for (final forge.game.trigger.Trigger t : c.getTriggers()) {
++            if (t.getMode() != forge.game.trigger.TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))
++                    || !t.getParamOrDefault("ValidCard", "").startsWith("Card.Self")) continue;
++            try {
++                final SpellAbility x = t.ensureAbility();
++                if (x == null || x.getApi() != ApiType.ChangeZone || !x.getParamOrDefault("Origin", "").contains("Graveyard")) return false;
++                if (enterValue(ai, c, x, null) > 0) return false;
++                any = true;
++            } catch (final RuntimeException e) {
++                return false;
++            }
++        }
++        return any;
++    }
++
+     static boolean entersPrepared(final Card c) {
+         for (final String sv : c.getCurrentState().getSVars().values()) if (sv.contains("Attributes$ Prepared") && sv.contains("AlterAttribute")) return true;
+         return false;
+@@ -768,12 +787,28 @@ public final class TurnPlan {
+         return 40;
+     }
+ 
++    /** fishpond patch 107: c is already the target of something of ai's on the stack that takes it off the battlefield (the
++     *  other blink a single cycle set off: Astral Slide and Astral Drift both trigger on one cycle, and the second aimed at
++     *  the creature the first had exiled, then fizzled; zuronegame_20261027 T10, Spellseeker). */
++    public static boolean leavingFromStack(final Player ai, final Card c) {
++        for (final forge.game.spellability.SpellAbilityStackInstance si : ai.getGame().getStack()) {
++            final SpellAbility top = si.getSpellAbility();
++            if (top == null || top.getActivatingPlayer() != ai) continue;
++            for (SpellAbility x = top; x != null; x = x.getSubAbility()) {
++                if (x.getApi() == ApiType.ChangeZone && x.getParamOrDefault("Origin", "").contains("Battlefield")
++                        && x.usesTargeting() && x.getTargets().contains(c)) return true;
++            }
++        }
++        return false;
++    }
++
+     /** The most valuable blink among list (an own creature whose enter trigger matters, an opponent's token or attacker),
+-     *  or null when none is worth BLINK_AT. */
++     *  or null when none is worth BLINK_AT; patch 107: never one another of the seat's blinks on the stack already takes. */
+     public static Card bestBlink(final Player ai, final Iterable<Card> list, final Card toGraveyard) {
+         Card best = null;
+         double bv = BLINK_AT;
+         for (final Card c : list) {
++            if (leavingFromStack(ai, c)) continue;
+             final double v = blinkValue(ai, c, toGraveyard);
+             if (v >= bv) { bv = v; best = c; }
+         }
+@@ -899,6 +934,17 @@ public final class TurnPlan {
+         return false;   // a land search is ramp
+     }
+ 
++    /** fishpond patch 107: c has an activated ability, used from the battlefield, that searches its controller's library for
++     *  a nonland card (Wishclaw Talisman; not a fetch land's land search, not cycling from hand). */
++    static boolean activatedSearch(final Card c) {
++        for (final SpellAbility a : c.getSpellAbilities()) {
++            if (!a.isActivatedAbility() || a.isManaAbility() || a.isCycling()) continue;
++            if (a.getRestrictions() != null && a.getRestrictions().getZone() != null && a.getRestrictions().getZone() != ZoneType.Battlefield) continue;
++            if (search(a) != null) return true;
++        }
++        return false;
++    }
++
+     static SpellAbility etbSearch(final Card c) {
+         if (!c.isPermanent()) {
+             return null;
+@@ -1641,6 +1687,7 @@ public final class TurnPlan {
+     static final double EARLY_RAMP = 300;           // fishpond patch 74: a mana rock or dork while the seat makes under 5 mana
+     static final int EARLY_RAMP_UNDER = 5;
+     static final double TRANSMUTE = 150;
++    static final double DEAD_ENTER = 60;          // fishpond patch 107: a graveyard-return enter trigger with nothing to return
+     static final double KEY_PICK = 250;          // fishpond patch 101: a tutor's key-card pick to hand or the top
+     static final double DRAW_LIFE = 5;   // fishpond patch 76: a life point lost to a draw punisher (a card in hand is 80)   // fishpond patch 73: a transmute is a tutor (Gamble, Long-Term Plans plan on their own value)
+ 
+@@ -1768,13 +1815,23 @@ public final class TurnPlan {
+         if (!sa.isSpell() && "Hand".equals(sa.getParam("ActivationZone")) && "Library".equals(sa.getParam("Origin"))
+                 && c.hasStartOfKeyword("Transmute")) v += TRANSMUTE;   // patch 73: a tutor
+         if (!sa.isSpell() && sa.isCycling() && "Library".equals(sa.getParam("Origin"))) v += TRANSMUTE;   // patch 83: typecycling too
++        // patch 107: a permanent whose ability on the battlefield searches the library for a nonland card (Wishclaw Talisman)
++        // is a tutor in play: worth a transmute's tutor, and setup that wants to be down before the mana to use it
++        // (zuronegame_20261027: Wishclaw at a vanilla 2-drop's 110 sat in hand from turn 1 to turn 7)
++        final boolean tutorInPlay = sa.isSpell() && c.isPermanent() && !c.isLand() && activatedSearch(c);
++        if (tutorInPlay) v += TRANSMUTE;
+         // patch 91: with a cycling payoff out (Astral Slide, Drift, Escape Protocol), a cycle also blinks: the loop's Step Through
+         // slides Archaeomancer, which comes back at the end step and returns it
+         if (!sa.isSpell() && sa.isCycling() && forge.ai.ability.DrawAi.hasCyclingPayoffPublic(ai)) v += cycleBlinkValue(ai, c);
+         // patch 91: a lock on damage to the seat (Solitary Confinement) with the table's creatures set to kill it: surviving
+         // first (zur20c_20261023: Zur held Confinement at 16 life into Heliod's 73-damage swing)
+         if (sa.isSpell() && preventsDamageToYou(c)) v += 1300 * lethalDanger(ai);
+-        v += prio >= 3 ? 500 : prio == 2 ? 200 : prio == 1 ? 60 : 0;
++        // patch 107: a creature whose only enter triggers return a card from the graveyard, with nothing there they could
++        // return, is a body: no plan priority (it isn't the engine it's listed as) and less its trigger (zuronegame_20261027
++        // T10: Auramancer, 199 as an engine with Necrodominance exiling every card, over Tribute Mage's live search at 196)
++        final boolean deadEnter = sa.isSpell() && c.isCreature() && deadGraveyardEnter(ai, c);
++        if (deadEnter) v -= DEAD_ENTER;
++        else v += prio >= 3 ? 500 : prio == 2 ? 200 : prio == 1 ? 60 : 0;
+         final int pay = aic.payoffUnits(sa);
+         v += 40 * pay;
+         boolean removal = false, wipe = false, info = false;
+@@ -1876,7 +1933,7 @@ public final class TurnPlan {
+         else if (ComputerUtil.isRamp(ai, sa) || eff < cost) tier = TIER_MANA;   // ramp, and whatever pays back mana now (rocks, rituals)
+         else if (wipe) tier = TIER_WIPE;
+         else if (removal) tier = TIER_REMOVAL;
+-        else if (prio == 2 || (setup > 0 && c.isPermanent())) tier = TIER_ENGINE;
++        else if (!deadEnter && (prio == 2 || (setup > 0 && c.isPermanent()) || tutorInPlay)) tier = TIER_ENGINE;
+         else if (pay > 0) tier = TIER_FEEDER;
+         else if (c.isCreature() || c.isCommander()) tier = TIER_BODY;
+         else tier = TIER_REST;
+diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+index dcb3148..0207042 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+@@ -1063,6 +1063,12 @@ public class ChangeZoneAi extends SpellAbilityAi {
+             final boolean blink = (destination.equals(ZoneType.Exile) && (subApi == ApiType.DelayedTrigger
+                     || "DelayedBlink".equals(sa.getParam("AILogic")) || (subApi == ApiType.ChangeZone && subAffected.equals("Remembered"))));
+             if ((destination.equals(ZoneType.Hand) || blink) && sa.getMinTargets() <= 1) {
++                // fishpond patch 107: never a creature another of the seat's blinks or bounces on the stack already takes: the
++                // save below read Astral Slide's exile of Archaeomancer as a threat and aimed Astral Drift's trigger from the same
++                // cycle at it too, which then fizzled (zuronegame_20261027 T10)
++                if (DrawAi.pilotSeat(ai)) {
++                    list = CardLists.filter(list, c -> !forge.ai.TurnPlan.leavingFromStack(ai, c));
++                }
+                 // save my about to die stuff
+                 Card tobounce = canBouncePermanent(ai, sa, list);
+                 if (tobounce != null) {

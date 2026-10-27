@@ -1,4 +1,4 @@
-# title: Cycling lands go last: 3 Islands out, an Island and Remote Isle in hand: the AI plays the Island and keeps the cycler
+# title: Cycling lands go last once the seat has developed (patch 107: under 5 lands a tapped cycler goes down when the turn can spare it): 5 Islands out, an Island and Remote Isle in hand: the AI plays the Island and keeps the cycler
 # card: (land sequencing: cycling lands)
 # turns: 1
 # expect: played Island
@@ -8,7 +8,7 @@ p1life=40
 turn=4
 activeplayer=p0
 activephase=MAIN1
-p0battlefield=Island;Island;Island
+p0battlefield=Island;Island;Island;Island;Island
 p0hand=Remote Isle;Island;Phantom Warrior
 p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
 p1battlefield=Forest;Forest

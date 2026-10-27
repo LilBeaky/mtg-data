@@ -1,0 +1,18 @@
+# title: Tapped land on the turn that can spare it: Command Tower and Silent Clearing out, Raffine's Tower (enters tapped) and Plains in hand, Zur the Enchanter (4) in the command zone, two 2-drops and Neutralize (a counterspell) in hand. The 2-drop fits on two untapped lands, so the Tower goes down now and the Plains next turn casts Zur on curve (zuronegame_20261027 T3: the Plains went down for Neutralize, which is never cast in its own main phase, and Zur came a turn late)
+# card: (land sequencing)
+# turns: 3
+# sim: hybrid
+# deck: Ians_Zur_Wizardcycling
+# expect: Ai\(1\)-\S+ played Raffine's Tower
+# expect: cast Zur the Enchanter
+p0life=40
+p1life=40
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0command=Zur the Enchanter|IsCommander
+p0battlefield=Command Tower;Silent Clearing
+p0hand=Raffine's Tower;Plains;Triskaidekaphile;Dour Port-Mage;Neutralize;Archaeomancer
+p0library=Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

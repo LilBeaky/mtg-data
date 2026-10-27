@@ -1,0 +1,18 @@
+# title: A tutor in play goes down early and a win piece waits: Command Tower, Silent Clearing and a tapped Raffine's Tower out on Zur's third turn, Wishclaw Talisman, Triskaidekaphile and Dour Port-Mage in hand (two mana): the AI casts Wishclaw (patch 107: a battlefield tutor is worth a transmute's tutor; a "you win the game" permanent gets no plan priority before its owner's sixth turn. zuronegame_20261027: Trisk at 447 on turn 3, Wishclaw at 110 held to turn 7)
+# card: Wishclaw Talisman
+# turns: 1
+# sim: hybrid
+# deck: Ians_Zur_Wizardcycling
+# expect: cast Wishclaw Talisman
+# forbid: cast Triskaidekaphile
+p0life=40
+p1life=40
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0command=Zur the Enchanter|IsCommander
+p0battlefield=Command Tower;Silent Clearing;Raffine's Tower|Tapped
+p0hand=Triskaidekaphile;Dour Port-Mage;Neutralize;Archaeomancer;Wishclaw Talisman
+p0library=Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears;Grizzly Bears
+p1battlefield=Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

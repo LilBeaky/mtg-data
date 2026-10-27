@@ -1,0 +1,19 @@
+# title: Zur attacking at 8 life with Necrodominance, Triskaidekaphile and Astral Slide out (Solitary Confinement already in the library's reach but no board set to kill): Zur's search takes Words of Worship, the life that feeds Necrodominance's draw to 13, over Astral Drift, a second blink payoff next to Slide (patch 107, the life line; the user, 2026-10-27: "at 8 life and Necro out, we need the life to feed it, and Words can help you recover it"; zuronegame_20261027 T10 took Drift at 519 over Words at 345)
+# card: Words of Worship
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: #FP-POLICY .*"src": "Zur the Enchanter".*"pick": "Words of Worship"
+p0life=8
+p1life=11
+p2life=14
+turn=40
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter|IsCommander;Astral Slide;Rule of Law;Necrodominance;Triskaidekaphile;Archaeomancer;Plains;Island;Swamp;Island;Plains;Island
+p0hand=Island;Forsake the Worldly
+p0graveyard=Mystical Tutor;Neutralize;Cyclonic Rift
+p0library=Words of Worship;Astral Drift;Escape Protocol;Greater Auramancy;Unquestioned Authority;Island;Island;Island;Island;Island
+p1battlefield=Erebos, God of the Dead;Swamp;Swamp;Swamp;Swamp;Swamp
+p1library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p2battlefield=Ragost, Deft Gastronaut;Mountain;Plains;Mountain;Arcane Signet
+p2library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain

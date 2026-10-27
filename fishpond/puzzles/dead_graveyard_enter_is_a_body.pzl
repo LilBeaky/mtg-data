@@ -1,0 +1,18 @@
+# title: A creature whose enter trigger has nothing to return is a body: Necrodominance out (cards go to exile, the graveyard holds no enchantment), Astral Slide out, five lands, Auramancer and Tribute Mage in hand (room for one): the AI casts Tribute Mage, whose search is live (patch 107: a graveyard-return enter trigger with no target gets no plan priority and less its trigger; zuronegame_20261027 T10 cast Auramancer at 199 as an engine over Tribute Mage at 196)
+# card: Auramancer
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# sim: hybrid
+# expect: cast Tribute Mage
+# forbid: cast Auramancer
+p0life=12
+p1life=40
+turn=40
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter|IsCommander;Astral Slide;Rule of Law;Necrodominance;Plains;Island;Swamp;Island;Plains
+p0hand=Auramancer;Tribute Mage
+p0graveyard=Mystical Tutor;Neutralize;Cyclonic Rift
+p0library=Talisman of Progress;Fellwar Stone;Thought Vessel;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,18 @@
+# title: Astral Slide and Astral Drift both out: one cycle sets off both blinks, and the AI aims them at two different creatures (Spellseeker, which searches again, and Archaeomancer, which returns the cycled Step Through), not both at the best one (patch 107: zuronegame_20261027 T10, Slide and Drift both targeted Spellseeker and Slide's trigger fizzled)
+# card: Astral Drift
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# expect: activated Step Through
+# expect: triggered Astral (Slide|Drift) targeting \[Spellseeker
+# expect: triggered Astral (Slide|Drift) targeting \[Archaeomancer
+# forbid: ability fizzles
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Astral Slide;Astral Drift;Archaeomancer;Spellseeker;Plains;Island;Island;Swamp;Island
+p0hand=Step Through;Island
+p0library=Tribute Mage;Opt;Triskaidekaphile;Fluctuator;Brainstorm;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

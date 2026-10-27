@@ -1,0 +1,17 @@
+# title: Guard for patch 107's dead enter trigger: the same board with Rule of Law in the graveyard instead of on the battlefield and no Necrodominance: Auramancer's trigger has a target, so it is no dead body (it's cast)
+# card: Auramancer
+# deck: Ians_Zur_Wizardcycling
+# turns: 1
+# sim: hybrid
+# expect: cast Auramancer
+p0life=30
+p1life=40
+turn=40
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Zur the Enchanter|IsCommander;Astral Slide;Plains;Island;Swamp;Island;Plains
+p0hand=Auramancer
+p0graveyard=Rule of Law;Neutralize
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest;Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -760,6 +760,8 @@ public final class PilotPolicy {
         return p;
     }
 
+    static final int WINCON_WAIT = Integer.getInteger("fishpond.winconWait", 6);   // patch 107
+
     int castPriority0(Player me, SpellAbility sa) {
         if (!CAST_ON || !sa.isSpell()) return 0;
         Card c = sa.getHostCard();
@@ -773,6 +775,14 @@ public final class PilotPolicy {
             boolean rest = true;
             for (String x : cb.cards) if (!x.equals(n) && !field.contains(x)) { rest = false; break; }
             if (rest) return 3;
+        }
+        // patch 107: a permanent that wins the game (Triskaidekaphile's 13 cards) waits until the seat's own turn WINCON_WAIT:
+        // early it only draws removal; the turn plan's closer bonus casts it once the win is near (zuronegame_20261027 T3:
+        // Trisk at 447, as a key card, over Wishclaw Talisman on Zur's third turn)
+        if (c.isPermanent() && ci.roles.contains("wincon")) {
+            Game g = me.getGame();
+            int seats = Math.max(1, g.getRegisteredPlayers().size());
+            if ((g.getPhaseHandler().getTurn() + seats - 1) / seats < WINCON_WAIT) return 0;
         }
         Set<String> paidOut = new HashSet<>();
         for (String f : field) {
@@ -814,7 +824,9 @@ public final class PilotPolicy {
                     double reach = b.me == null ? 40 : removalReach(c, b.me);
                     v = Math.max(v, reach >= 40 ? 260 : reach >= 20 ? 160 : reach >= 0 ? 80 : 0);
                 }
-                if (ci.roles.contains("lifegain")) v = Math.max(v, 120);
+                // patch 107: with a pay-life draw on the battlefield (Necrodominance), life is the deck's fuel: at 10 or less a
+                // lifegain card keeps the engine and the seat alive, as much as protection does
+                if (ci.roles.contains("lifegain")) v = Math.max(v, b.me != null && b.life <= 10 && lifeDraw(b.me) ? 360 : 120);
                 if (ci.roles.contains("counter")) v = Math.max(v, 100);
                 s[SURVIVAL] = v * danger;
             }
@@ -885,6 +897,13 @@ public final class PilotPolicy {
             if (lethal > 0 && b.me != null && lifeLossOutlet(b.me)) lethal *= 0.35;
             s[SURVIVAL] = Math.max(s[SURVIVAL], 1300 * lethal);   // over a key engine's ~1000 (Astral Drift in danger: 988)
         }
+        // patch 107: the life line. A pay-life draw out (Necrodominance) and a hand-size win piece the seat has (Triskaidekaphile:
+        // exactly 13 at upkeep; in hand, out, or blinked and coming back): life turns into the cards that win, and lifegain
+        // turns mana back into life (the user, 2026-10-27, Zur's search at 8 life: "we need the life to feed it, and Words can
+        // help you recover it ... it already had the Trisk win ready"; zuronegame_20261027 T10 took a second blink payoff,
+        // Astral Drift at 519, over Words of Worship at 345)
+        if (ci != null && ci.roles.contains("lifegain") && b.me != null && !b.field.contains(n) && lifeLine(b.me))
+            s[COMBO] = Math.max(s[COMBO], LIFE_LINE * (b.life <= 20 ? 1 : 0.5));
         s[BOOST] = in.boost.getOrDefault(n, 0.0);
         // the deck's '# key:' cards (the user, 2026-10-16: "if I set a key card in a deck, it's there for a reason, and the
         // deck is typically designed to play around that card"): a big edge over any other engine or role pick, below a
@@ -939,6 +958,51 @@ public final class PilotPolicy {
         if (b.field.contains(n) && c.getType().isLegendary()) Arrays.fill(s, 0);   // legend rule: a second copy is useless
         if (forgePick) s[FORGE] = 15;
         return s;
+    }
+
+    static final double LIFE_LINE = Double.parseDouble(System.getProperty("fishpond.lifeLine", "400"));   // patch 107
+
+    /** patch 107: me has a pay-life draw on the battlefield and a hand-size win piece in hand, on the battlefield, or exiled by
+     *  one of its own permanents (a blink that brings it back at the end step). */
+    static boolean lifeLine(Player me) {
+        if (!lifeDraw(me)) return false;
+        for (ZoneType z : new ZoneType[] {ZoneType.Battlefield, ZoneType.Hand, ZoneType.Exile}) {
+            for (Card c : me.getCardsIn(z)) {
+                if (!handSizeWin(c)) continue;
+                if (z != ZoneType.Exile) return true;
+                Card by = c.getExiledWith();
+                if (by != null && by.getController() == me && by.isInZone(ZoneType.Battlefield)) return true;
+            }
+        }
+        return false;
+    }
+
+    /** patch 107: a permanent of me's draws X at its end step for X life (Necrodominance; Forge patch 101's TurnPlan.lifeDraw,
+     *  which the harness can't see: it compiles against the release jar). */
+    static boolean lifeDraw(Player me) {
+        for (Card k : me.getCardsIn(ZoneType.Battlefield)) {
+            for (forge.game.trigger.Trigger t : k.getTriggers()) {
+                if (t.getMode() != forge.game.trigger.TriggerType.Phase || !"End of Turn".equals(t.getParam("Phase"))) continue;
+                try {
+                    SpellAbility x = t.ensureAbility();
+                    if (x != null && x.getApi() == ApiType.Draw && x.getPayCosts() != null
+                            && x.getPayCosts().hasSpecificCostType(forge.game.cost.CostPayLife.class)) return true;
+                } catch (RuntimeException e) { /* skip */ }
+            }
+        }
+        return false;
+    }
+
+    /** c's upkeep trigger wins the game on an exact hand size (Triskaidekaphile). */
+    static boolean handSizeWin(Card c) {
+        for (forge.game.trigger.Trigger t : c.getTriggers()) {
+            if (t.getMode() != forge.game.trigger.TriggerType.Phase || !"Upkeep".equals(t.getParam("Phase"))
+                    || !"Hand".equals(t.getParam("PresentZone")) || !t.getParamOrDefault("PresentCompare", "").startsWith("EQ")) continue;
+            try {
+                for (SpellAbility x = t.ensureAbility(); x != null; x = x.getSubAbility()) if (x.getApi() == ApiType.WinsGame) return true;
+            } catch (RuntimeException e) { /* skip */ }
+        }
+        return false;
     }
 
     static double sum(double[] s) { double t = 0; for (double x : s) t += x; return t; }
