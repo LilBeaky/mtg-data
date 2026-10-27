@@ -1,5 +1,5 @@
 diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
-index 3b07648..465ef33 100644
+index 3b07648..3b794b3 100644
 --- a/forge-ai/src/main/java/forge/ai/AiController.java
 +++ b/forge-ai/src/main/java/forge/ai/AiController.java
 @@ -487,6 +487,21 @@ public class AiController {
@@ -40,7 +40,7 @@ index 3b07648..465ef33 100644
              if (!noCycling.isEmpty()) {
                  landList = noCycling;
              } else if (forge.ai.ability.DrawAi.hasCyclingPayoffPublic(player) && player.getLandsInPlay().size() >= CYCLE_HOLD_LANDS) {
-@@ -615,6 +637,17 @@ public class AiController {
+@@ -615,6 +637,18 @@ public class AiController {
              }
          }
  
@@ -48,7 +48,8 @@ index 3b07648..465ef33 100644
 +        // bounce lands) returns itself when it's the only one: never played onto a board with no other land. Patches 26 and 29
 +        // passed over Forge's own hint (NeedsToPlay: a basic out), and Jarad played Rot Farm onto an empty board for eleven
 +        // turns, bounced it every time and never cast a spell (zuronegame_20261027)
-+        if (forge.ai.ability.DrawAi.pilotSeat(player) && player.getLandsInPlay().isEmpty()) {
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && player.getLandsInPlay().isEmpty()
++                && !"false".equals(System.getProperty("fishpond.bounceLands"))) {   // -Dfishpond.bounceLands=false to compare
 +            landList = CardLists.filter(landList, l -> !bouncesOwnLand(l));
 +            if (landList.isEmpty()) {
 +                return null;
@@ -58,7 +59,7 @@ index 3b07648..465ef33 100644
          // fishpond patch 26: play a land that enters tapped unless an untapped one lets a spell (or the commander) be cast
          // this turn that couldn't be otherwise. Forge's own check below uses the mana estimate, which counts lands like
          // Castle Garenbrig as six mana, so it played untapped lands early whether or not the mana was needed.
-@@ -644,6 +677,13 @@ public class AiController {
+@@ -644,6 +678,13 @@ public class AiController {
                          continue;
                      }
                      sp.setActivatingPlayer(player);
@@ -72,7 +73,7 @@ index 3b07648..465ef33 100644
                      int cost = c.getCMC();
                      if (c.isCommander() && c.isInZone(ZoneType.Command)) {
                          cost += 2 * player.getCommanderCast(c);
-@@ -4233,6 +4273,7 @@ public class AiController {
+@@ -4233,6 +4274,7 @@ public class AiController {
      // (Astral Slide out) still decide plain cycling then. -Dfishpond.cycleEngine=false turns it off.
      private static final boolean CYCLE_ENGINE = !"false".equals(System.getProperty("fishpond.cycleEngine"));
      static final int CYCLE_HOLD_LANDS = Integer.getInteger("fishpond.cycleHoldLands", 6);   // patch 56
