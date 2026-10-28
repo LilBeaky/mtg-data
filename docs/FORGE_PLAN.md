@@ -163,7 +163,8 @@ Pilot failures, biggest first (the line audit and the turn plan's own logs; exam
 **Worked 2026-10-28, afternoon (the user's calls on the overnight items):**
 1. "This we have to fix, especially for decks like Yusri": patch 112, the commander in the command zone is worth +1000 in the
    turn plan unless the seat's life is in danger ("I don't want to say commander first needs to be a law ... we can try that"),
-   and a commander buff counts only a commander on the battlefield (Flaming Fist).
+   and a commander buff counts only a commander on the battlefield (Flaming Fist). The first cast only (patch 116): a recast
+   keeps its diminishing value, the Zur rule ("mission critical once, and diminishes from there").
 2. "Try to work this out too": patch 114, a wipe that defuses the next combat when the seat's life is in danger, and auras that
    fall off a wiped or bounced creature counted as removed ("The auras aren't lost for cyc rift, they go back to hand, but if
    they'd fall off and go to grave, consider them removed by the effect").

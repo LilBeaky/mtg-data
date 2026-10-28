@@ -1,0 +1,15 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index bc92873..5d48624 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -1892,7 +1892,9 @@ public final class TurnPlan {
+             // want to say commander first needs to be a law, but a lot of these decks do rely on them"; pilot_20261028: an
+             // affordable commander sat out 38 of every 100 seat-games' turns, Strong Back 995 over Wilson 351). Closers and
+             // combos (5000) still go first, and none of it while the seat faces lethal (patch 24's exception).
+-            if (c.isCreature() && AiController.commanderRulesOn() && !ComputerUtil.aiLifeInDanger(ai, true, 0)) {
++            // patch 116: the first cast only; a recast keeps patch 104's diminishing value (the user, 2026-10-24, on Zur: "He's
++            // mission critical once, and diminishes from there"; puzzle zur_recast_passes_with_slide_out)
++            if (c.isCreature() && AiController.commanderRulesOn() && ai.getCommanderCast(c) == 0 && !ComputerUtil.aiLifeInDanger(ai, true, 0)) {
+                 v += COMMANDER_PLAN;
+             }
+         }
