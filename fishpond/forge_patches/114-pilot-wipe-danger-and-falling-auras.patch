@@ -1,0 +1,117 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+index d9f7e53..f46ff1d 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+@@ -774,9 +774,60 @@ public class ComputerUtilCard {
+                 }
+                 out.put(p, lost);
+             }
++            // fishpond patch 114: an aura on a creature the wipe takes goes to the graveyard unless the wipe takes it too (the
++            // user, 2026-10-28: "if they'd fall off and go to grave, consider them removed by the effect"); an overloaded
++            // Cyclonic Rift bounces the auras with the creature, so those stay a bounce
++            if (!gy) {
++                final java.util.Set<Card> all = new java.util.HashSet<>();
++                for (final java.util.Set<Card> v : out.values()) all.addAll(v);
++                for (final java.util.Map.Entry<Player, java.util.Set<Card>> e : out.entrySet()) {
++                    final java.util.List<Card> add = new java.util.ArrayList<>();
++                    for (final Card c : e.getValue()) {
++                        if (!c.isCreature()) continue;
++                        for (final Card a : c.getEnchantedBy()) {
++                            if (a.getController() == e.getKey() && !all.contains(a)) {
++                                add.add(a);
++                                FALLS_OFF.add(a);
++                            }
++                        }
++                    }
++                    e.getValue().addAll(add);
++                }
++            }
+             return out;
+         }
+ 
++        static final java.util.Set<Card> FALLS_OFF = java.util.Collections.synchronizedSet(java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>()));
++
++        /** patch 114: the seat faces lethal from the next combats (commander damage included) and this wipe takes at least half
++         *  of the attack of the opponent with the biggest one, or leaves no opponent able to kill it unblocked. */
++        static boolean defuses(final Player ai, final java.util.Map<Player, java.util.Set<Card>> hits) {
++            if (!forge.ai.ability.DrawAi.pilotSeat(ai) || !ComputerUtil.aiLifeInDanger(ai, true, 0)) {
++                return false;
++            }
++            Player killer = null;
++            double worstBefore = -1, killerAfter = 0, maxAfter = 0;
++            boolean cmdLethalAfter = false;
++            for (final Player o : ai.getOpponents()) {
++                if (o.hasLost()) continue;
++                final java.util.Set<Card> gone = hits.getOrDefault(o, java.util.Collections.emptySet());
++                double before = 0, after = 0;
++                for (final Card att : o.getCreaturesInPlay()) {
++                    if (!ComputerUtilCombat.canAttackNextTurn(att, ai)) continue;
++                    final int d = ComputerUtilCombat.damageIfUnblocked(att, ai, null, false);
++                    before += d;
++                    if (!gone.contains(att)) {
++                        after += d;
++                        if (att.isCommander() && ai.getCommanderDamage(att) + d >= 21) cmdLethalAfter = true;
++                    }
++                }
++                if (before > worstBefore) { worstBefore = before; killer = o; killerAfter = after; }
++                maxAfter = Math.max(maxAfter, after);
++            }
++            if (killer == null || worstBefore <= 0) return false;
++            return killerAfter <= worstBefore / 2 || (maxAfter < ai.getLife() && !cmdLethalAfter);
++        }
++
+         static double loss(final Player ai, final Player p, final java.util.Collection<Card> cards, final SpellAbility sa) {
+             final boolean bounce = sa != null && kind(sa) == ApiType.ChangeZoneAll && "Hand".equals(sa.getParam("Destination"));
+             final boolean gy = sa != null && kind(sa) == ApiType.ChangeZoneAll && "Graveyard".equals(sa.getParam("Origin"));
+@@ -785,7 +836,7 @@ public class ComputerUtilCard {
+             // nearly a wipe (the user, 2026-10-23: Rule of Law + an overloaded Cyclonic Rift, "That's a disgusting wipe")
+             final double back = bounce && TurnPlan.spellLimited(p) ? 0.85 : 0.4;
+             for (final Card c : cards) {
+-                v += gy ? (c.isCreature() ? 15 : 8) : bounce && !c.isToken() ? back * value(ai, c) : value(ai, c);
++                v += gy ? (c.isCreature() ? 15 : 8) : bounce && !c.isToken() && !FALLS_OFF.contains(c) ? back * value(ai, c) : value(ai, c);
+             }
+             return v;
+         }
+@@ -803,6 +854,11 @@ public class ComputerUtilCard {
+         /** The table's verdict on losses (by player): cast, wait for main 2, or refuse; also the margin, for mode choice. */
+         public static AiAbilityDecision decide(final Player ai, final SpellAbility sa, final java.util.Map<Player, Double> loss,
+                 final double[] marginOut, final boolean quiet) {
++            return decide(ai, sa, loss, marginOut, quiet, false);
++        }
++
++        public static AiAbilityDecision decide(final Player ai, final SpellAbility sa, final java.util.Map<Player, Double> loss,
++                final double[] marginOut, final boolean quiet, final boolean defuses) {
+             final Game game = ai.getGame();
+             final double self = loss.getOrDefault(ai, 0.0);
+             double maxOpp = 0, minOpp = Double.MAX_VALUE, net = 0, remainOpp = 0;
+@@ -833,6 +889,12 @@ public class ComputerUtilCard {
+                     && ComputerUtilCombat.lifeInSeriousDanger(ai, game.getCombat()) && maxOpp > 0) {
+                 verdict = "danger";
+                 d = new AiAbilityDecision(100, AiPlayDecision.WillPlay);
++            } else if (defuses) {
++                // patch 114: about to die (commander damage too) to a board this wipe takes apart: the table's tally doesn't
++                // matter (pilot_20261028: 24 wipes refused as "not enough" within two turns of dying to the board they hit)
++                verdict = "danger: it defuses the next combat";
++                d = new AiAbilityDecision(100, AiPlayDecision.WillPlay);
++                if (marginOut != null) marginOut[0] = Math.max(marginOut[0], 3 * BIG);
+             } else if (self >= maxOpp) {
+                 verdict = "refuse: it loses as much as anyone";
+                 d = new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+@@ -890,7 +952,7 @@ public class ComputerUtilCard {
+                 loss.put(e.getKey(), loss(ai, e.getKey(), e.getValue(), sa));
+             }
+             final double[] m = new double[1];
+-            return decide(ai, sa, loss, m, true).willingToPlay() ? m[0] : -1;
++            return decide(ai, sa, loss, m, true, defuses(ai, hits)).willingToPlay() ? m[0] : -1;
+         }
+ 
+         /** One wipe ability, judged. */
+@@ -903,7 +965,7 @@ public class ComputerUtilCard {
+             if (APPROVED.containsKey(sa)) {
+                 return new AiAbilityDecision(100, AiPlayDecision.WillPlay);   // a mode of a modal wipe, judged with its set
+             }
+-            return decide(ai, sa, loss, null, false);
++            return decide(ai, sa, loss, null, false, defuses(ai, hits));
+         }
+ 
+         /** Modes a modal wipe chose as a set (chooseModes): each is fine on its own check. */

@@ -1,0 +1,15 @@
+# title: The seat at 1 life with no blockers, the opponent's Llanowar Elves set to kill it next combat, Wrath of God in hand: it casts Wrath (a sorcery never gets the declare-blockers danger check) (the table's tally reads "not enough", but the wipe takes the attack that kills it; patch 114; pilot_20261028: 24 wipes refused within two turns of dying to the board they hit)
+# card: Wrath of God
+# turns: 1
+# expect: cast Wrath of God
+# expect: #FP-WIPE .*"verdict": "danger: it defuses the next combat"
+p0life=1
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains
+p0hand=Wrath of God
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest;Plains;Llanowar Elves
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

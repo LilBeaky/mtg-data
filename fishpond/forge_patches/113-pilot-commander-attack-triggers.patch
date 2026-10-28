@@ -1,0 +1,66 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiAttackController.java b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+index 0d50ba0..6f142c1 100644
+--- a/forge-ai/src/main/java/forge/ai/AiAttackController.java
++++ b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+@@ -916,7 +916,13 @@ public class AiAttackController {
+             return;
+         }
+         for (final Card att : ai.getCreaturesInPlay()) {
+-            if (!"TRUE".equals(att.getSVar("HasAttackEffect")) || !hasAttackTrigger(att) || !attackTriggerWorks(att)) {
++            // fishpond patch 113: the seat's commander qualifies by its trigger alone (Yusri's script has no HasAttackEffect), and
++            // its trigger is worth the risk (the user, 2026-10-28: "decks like Yusri need to be attacking because they rely on the
++            // trigger ... in Yusri or Klauth's case, that attack trigger is very valuable"; pilot_20261028: Yusri stayed home on
++            // 78 of 212 turns it could attack): it stays home only when it is needed as a blocker and the seat is in danger, and
++            // with no opponent safe to attack it attacks anyway, into the preferred defender or the fewest blockers that kill it
++            final boolean cmdTrigger = att.isCommander() && ai.equals(att.getController()) && AiController.commanderRulesOn();
++            if (!(cmdTrigger || "TRUE".equals(att.getSVar("HasAttackEffect"))) || !hasAttackTrigger(att) || !attackTriggerWorks(att)) {
+                 continue;
+             }
+             final boolean in = combat.isAttacking(att);
+@@ -925,7 +931,10 @@ public class AiAttackController {
+                 if (d == null || !canKillInBlock(att, d, combat)) {
+                     continue;
+                 }
+-            } else if (!CombatUtil.canAttack(att) || !notNeededAsBlockers(combat.getAttackers(), new ArrayList<>(List.of(att))).contains(att)) {
++            } else if (!CombatUtil.canAttack(att)) {
++                continue;
++            } else if (!notNeededAsBlockers(combat.getAttackers(), new ArrayList<>(List.of(att))).contains(att)
++                    && (!cmdTrigger || ComputerUtil.aiLifeInDanger(ai, true, 0))) {
+                 continue;
+             }
+             Player safe = null;
+@@ -939,7 +948,18 @@ public class AiAttackController {
+                 }
+             }
+             if (safe == null) {
+-                continue;
++                if (!cmdTrigger || in) {
++                    continue;   // a commander already attacking someone keeps its attack
++                }
++                int fewest = Integer.MAX_VALUE;
++                for (final Player o : ai.getOpponents()) {
++                    if (o.hasLost() || !CombatUtil.canAttack(att, o) || CombatUtil.getAttackCost(ai.getGame(), att, o) != null) continue;
++                    final int k = killersInBlock(att, o, combat) - (o == pref ? 1 : 0);
++                    if (k < fewest) { fewest = k; safe = o; }
++                }
++                if (safe == null) {
++                    continue;
++                }
+             }
+             if (in) {
+                 combat.removeFromCombat(att);
+@@ -990,6 +1010,14 @@ public class AiAttackController {
+         return false;
+     }
+ 
++    private int killersInBlock(final Card att, final Player defender, final Combat combat) {
++        int n = 0;
++        for (final Card b : defender.getCreaturesInPlay()) {
++            if (b.isUntapped() && CombatUtil.canBlock(att, b) && ComputerUtilCombat.canDestroyAttacker(ai, att, b, combat, false)) n++;
++        }
++        return n;
++    }
++
+     private static boolean hasAttackTrigger(final Card c) {
+         for (final forge.game.trigger.Trigger t : c.getTriggers()) {
+             if (t.getMode() == forge.game.trigger.TriggerType.Attacks && !t.isStatic()

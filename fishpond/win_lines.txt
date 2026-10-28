@@ -1,6 +1,8 @@
 # Win lines per commander, for the win-line audit (`python -m fishpond lines RUN_DIR`; harness/LineTracker.java).
 # Reviewed with the user 2026-10-14; spec fixes from the 2026-10-15 miss review (Xyris's Memory and Magus of the Wheel, Step
-# Through hard-cast as well as cycled, Araumi's Wurmcoil Engine and Kairi); 2026-10-16: the "7+ mana: cast something big" lines need a 6+ spell in hand. One line per row:
+# Through hard-cast as well as cycled, Araumi's Wurmcoil Engine and Kairi); 2026-10-16: the "7+ mana: cast something big" lines need a 6+ spell in hand. 2026-10-28: attack and
+# tap lines need the commander ready (not summoning sick), an encore needs the mana for the bomb, Heliod's lifegain combos a seat
+# that can gain life (pilot_20261028 counted Erebos's lock and 4-mana turns against 6-mana bombs as misses). One line per row:
 #   commander | kind | label | needs | did
 # kind: closer (pieces that should end the game), engine (a state the deck wants to reach and use), plan (a fair deck's plan).
 # Checked at the start of the seat's first main phase every turn; "did" counts if the seat does it before its next turn. A turn
@@ -12,14 +14,16 @@
 #   castable:A/B   in hand or the command zone and castable now (for lines whose play is casting it: one already out doesn't count)
 #   bf:A/B  hand:A/B  gy:A/B   in that zone
 #   cmd   a commander of the seat is on the battlefield     cmd_attached>=N   cards attached to it
+#   cmd_ready   that commander is untapped and can attack or tap (not summoning sick)     gains_life   the seat can gain life (no Erebos lock)
+#   gy_affordable:A/B   in the graveyard, with the seat's mana at its mana value or more (an encore)     gy>=N   cards in the graveyard
 #   creatures>=N  life>=N  lands>=N  mana>=N  library<=N  hand>=N  gy_creatures>=N  gy_lands>=N  artifacts>=N
 #   hand_cmc>=N   a permanent card of that mana value in hand     hand_spell_cmc>=N   any nonland card of that mana value in hand     big_other>=N   another creature (not the commander) with power >= N
 # did (any of, ';'-separated):
 #   cast:A/B[>=N]   spells cast (N times; default 1)       act:A/B[>=N]   abilities activated (stack abilities: not mana)
 #   play:A/B   land played    attack:cmd   attacked with a commander    cast_cmc>=N   a spell of that mana value    win   won the game
 
-Heliod, Sun-Crowned | closer | Heliod + Walking Ballista | bf:Heliod, Sun-Crowned; ready:Walking Ballista | act:Walking Ballista>=4
-Heliod, Sun-Crowned | closer | Heliod + Triskelion | bf:Heliod, Sun-Crowned; ready:Triskelion | act:Triskelion>=4
+Heliod, Sun-Crowned | closer | Heliod + Walking Ballista | bf:Heliod, Sun-Crowned; gains_life; ready:Walking Ballista | act:Walking Ballista>=4
+Heliod, Sun-Crowned | closer | Heliod + Triskelion | bf:Heliod, Sun-Crowned; gains_life; ready:Triskelion | act:Triskelion>=4
 Heliod, Sun-Crowned | closer | Felidar Sovereign at 40+ life | castable:Felidar Sovereign; life>=40 | cast:Felidar Sovereign
 Heliod, Sun-Crowned | closer | Test of Endurance at 50+ life | castable:Test of Endurance; life>=50 | cast:Test of Endurance
 
@@ -31,8 +35,8 @@ Yusri, Fortune's Flame | closer | Win now: Oracle with a tiny library | castable
 Yusri, Fortune's Flame | closer | Win now: Lab Man or Jace with an empty library | ready:Laboratory Maniac/Jace, Wielder of Mysteries; library<=0 | win
 Yusri, Fortune's Flame | closer | Enter the Infinite | castable:Enter the Infinite | cast:Enter the Infinite
 Yusri, Fortune's Flame | closer | Zndrsplt + Frenetic Efreet with Lab Man or Jace | bf:Zndrsplt, Eye of Wisdom; ready:Frenetic Efreet; bf:Laboratory Maniac/Jace, Wielder of Mysteries | act:Frenetic Efreet>=5
-Yusri, Fortune's Flame | engine | Yusri attacks (free-cast flips) | cmd | attack:cmd
-Yusri, Fortune's Flame | engine | Yusri attacks with Krark's Thumb | cmd; bf:Krark's Thumb | attack:cmd
+Yusri, Fortune's Flame | engine | Yusri attacks (free-cast flips) | cmd_ready | attack:cmd
+Yusri, Fortune's Flame | engine | Yusri attacks with Krark's Thumb | cmd_ready; bf:Krark's Thumb | attack:cmd
 Yusri, Fortune's Flame | engine | Show and Tell a big threat | castable:Show and Tell; hand_cmc>=7 | cast:Show and Tell
 
 Chulane, Teller of Tales | closer | Primal Surge | castable:Primal Surge | cast:Primal Surge
@@ -57,16 +61,16 @@ Xyris, the Writhing Storm | engine | Wheel with Xyris or Locust God out | bf:Xyr
 
 Araumi of the Dead Tide | closer | Mortal Combat with 20 creatures in the graveyard | castable:Mortal Combat; gy_creatures>=20 | cast:Mortal Combat
 Araumi of the Dead Tide | engine | Xiahou Dun returns Mortal Combat | bf:Xiahou Dun, the One-Eyed; gy:Mortal Combat | act:Xiahou Dun, the One-Eyed
-Araumi of the Dead Tide | engine | Encore a bomb | cmd; gy:Gray Merchant of Asphodel/Gyruda, Doom of Depths/Junji, the Midnight Sky/Archon of Cruelty/Wurmcoil Engine/Kairi, the Swirling Sky | act:Gray Merchant of Asphodel/Gyruda, Doom of Depths/Junji, the Midnight Sky/Archon of Cruelty/Wurmcoil Engine/Kairi, the Swirling Sky
+Araumi of the Dead Tide | engine | Encore a bomb | cmd_ready; gy>=4; gy_affordable:Gray Merchant of Asphodel/Gyruda, Doom of Depths/Junji, the Midnight Sky/Archon of Cruelty/Wurmcoil Engine/Kairi, the Swirling Sky | act:Gray Merchant of Asphodel/Gyruda, Doom of Depths/Junji, the Midnight Sky/Archon of Cruelty/Wurmcoil Engine/Kairi, the Swirling Sky
 
 Jarad, Golgari Lich Lord | plan | Jarad eats something big | cmd; big_other>=6 | act:Jarad, Golgari Lich Lord
 
 Zhulodok, Void Gorger | plan | Zhulodok out with 7+ mana: cast something big | cmd; mana>=7; hand_spell_cmc>=6 | cast_cmc>=6
 
-Klauth, Unrivaled Ancient | plan | Klauth attacks | cmd | attack:cmd
+Klauth, Unrivaled Ancient | plan | Klauth attacks | cmd_ready | attack:cmd
 Klauth, Unrivaled Ancient | plan | Klauth out with 7+ mana: cast something big | cmd; mana>=7; hand_spell_cmc>=6 | cast_cmc>=6
 
-Wilson, Refined Grizzly | plan | Suited-up Wilson attacks | cmd; cmd_attached>=1 | attack:cmd
+Wilson, Refined Grizzly | plan | Suited-up Wilson attacks | cmd_ready; cmd_attached>=1 | attack:cmd
 
 Ragost, Deft Gastronaut | plan | Ragost with fodder activates | cmd; artifacts>=2 | act:Ragost, Deft Gastronaut
 Ragost, Deft Gastronaut | closer | Test of Endurance at 50+ life | castable:Test of Endurance; life>=50 | cast:Test of Endurance

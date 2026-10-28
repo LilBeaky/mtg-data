@@ -1,0 +1,18 @@
+# title: Wilson's deck, three lands, Wilson and Flaming Fist in the command zone, Strong Back in hand: it casts Wilson, not Flaming Fist (a commander buff with no commander out) or Strong Back (patch 112: the commander ahead of the turn's other plays; pilot_20261028: Fist went down before Wilson in 46 of 125 Wilson games)
+# card: Wilson, Refined Grizzly
+# deck: Ians_Wilson_Auras
+# turns: 1
+# expect: cast Wilson, Refined Grizzly
+# forbid: cast Flaming Fist
+# forbid: cast Strong Back
+p0life=40
+p1life=40
+turn=5
+activeplayer=p0
+activephase=MAIN1
+p0command=Wilson, Refined Grizzly|IsCommander;Flaming Fist|IsCommander
+p0battlefield=Forest;Plains;Forest
+p0hand=Strong Back
+p0library=Forest;Plains;Forest;Plains;Forest;Plains;Forest;Plains;Forest;Plains
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

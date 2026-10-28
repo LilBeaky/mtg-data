@@ -1,0 +1,14 @@
+# title: Guard for wipe_defuses_lethal: the same board at 40 life (no danger): Wrath of God stays in hand (patch 114)
+# card: Wrath of God
+# turns: 1
+# forbid: cast Wrath of God
+p0life=40
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains
+p0hand=Wrath of God
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest;Plains;Llanowar Elves
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

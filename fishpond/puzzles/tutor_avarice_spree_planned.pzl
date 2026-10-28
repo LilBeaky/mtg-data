@@ -1,0 +1,16 @@
+# title: Erebos's deck, Erebos, God of the Dead out (it draws for {1}{B} and 2 life), five Swamps, Insatiable Avarice in hand: it's cast with its search mode (Spree: {B} plus {2}). The plan saw a 1-mana spell worth 85 and Forge's mode check held the search for main 2, by when Erebos's draws had spent the mana (patch 115; pilot_20261028: held 3+ turns with mana idle in 15 of 20 games)
+# deck: Ians_Erebos_Apostles
+# card: Insatiable Avarice
+# turns: 1
+# expect: Ai\(1\)-P1 cast Insatiable Avarice
+# expect: Resolve Stack: Insatiable Avarice .*Search your library
+p0life=30
+p1life=20
+turn=3
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Swamp;Swamp;Swamp;Swamp;Swamp;Erebos, God of the Dead
+p0hand=Insatiable Avarice;Swamp
+p0library=Swamp;Swamp;Brainspoil;Swamp;Swamp;Razaketh, the Foulblooded;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest;Forest;Mountain;Grizzly Bears
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

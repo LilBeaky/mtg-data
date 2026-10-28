@@ -160,6 +160,32 @@ Pilot failures, biggest first (the line audit and the turn plan's own logs; exam
    (Ragost's Descent into Avernus 3); loops stopped as stalled or at the goal 2.6/100 (Heliod's Ballista 18, mostly the Erebos lock;
    Sprout Swarm 22). Logging noise: `#FP-DIG` prints at every priority (2,458 "none" lines).
 
+**Worked 2026-10-28, afternoon (the user's calls on the overnight items):**
+1. "This we have to fix, especially for decks like Yusri": patch 112, the commander in the command zone is worth +1000 in the
+   turn plan unless the seat's life is in danger ("I don't want to say commander first needs to be a law ... we can try that"),
+   and a commander buff counts only a commander on the battlefield (Flaming Fist).
+2. "Try to work this out too": patch 114, a wipe that defuses the next combat when the seat's life is in danger, and auras that
+   fall off a wiped or bounced creature counted as removed ("The auras aren't lost for cyc rift, they go back to hand, but if
+   they'd fall off and go to grave, consider them removed by the effect").
+3. "Decks like Yusri need to be attacking because they rely on the trigger": patch 113, a pilot seat's commander is an
+   attack-trigger attacker; it stays home only when it's a needed blocker and the seat is in danger ("the trigger should be part
+   of the risk analysis").
+4. "Is this a mana issue? See why they're not resolving": Niv's 75 never-resolved games: 32 never reached the mana (dead before
+   6), 15 removed before its next main phase (Swords, Assassin's Trophy, Reality Shift: Niv was cast 99 times and removed 42), 11
+   cast and then the seat died or the game ended, 9 affordable in a plan and not cast (the pilot: patch 112), 7 off-color (WWBB
+   short a color). So mostly not mana: early deaths and removal; the pilot share is fixed. Zhulodok: 17 removed, 13 died early;
+   Xyris: 14 affordable and not cast (patch 112).
+5. "Shouldn't be happening that often": most of it was the line audit. Araumi's encore line counted turns with 4 mana against
+   5-8 mana bombs (turn 21 of T07 g0: Araumi granted encore to Archaeomancer, the one creature it could pay for); Heliod's combos
+   counted Erebos's lifegain lock; Yusri's and Klauth's attack lines counted the summoning-sick turn. `win_lines.txt` now has
+   `cmd_ready`, `gains_life`, `gy_affordable:` and `gy>=N`. Remaining real misses to watch: Niv's Citadel (6 of 16), Zur's
+   Approach (8 of 31).
+6. "See if you're able to fix the tutors, and maybe just put an override not to hold up cards it won't cast": patch 115. In a
+   vacuum Insatiable Avarice, Personal Tutor and Wishclaw Talisman all cast; in games Avarice was the bug (Spree, above).
+   Personal Tutor in Zur waits for main 2 by design (patch 89: Zur's attack search shuffles first). Cards Forge never casts go
+   first on a discard, count as blanks in a hand and are bottomed first (read as "don't let them hold up mana, plans or hand
+   slots"; the plan already left them out).
+
 ## Plan as of 2026-10-12 (the user's order)
 
 | # | Item | Status |

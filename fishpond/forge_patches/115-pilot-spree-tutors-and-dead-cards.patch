@@ -1,0 +1,218 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index e87e139..b684542 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -2045,6 +2045,13 @@ public class AiController {
+         return false;
+     }
+ 
++    // ---- fishpond patch 115: a card Forge's AI never casts or activates (AI:RemoveDeck:All with no fishpond override: Perpetual
++    // Timepiece, Lim-Dul's Vault) is a blank in a pilot seat's hand: it goes first on a discard, before an extra land or a
++    // card the plan would cast (the user, 2026-10-28: "put an override not to hold up cards it won't cast"). ----
++    public static boolean neverCasts(final Card c) {
++        return c != null && !c.isLand() && ComputerUtilCard.isCardRemAIDeck(c);
++    }
++
+     public CardCollection getCardsToDiscard(final int numDiscard, final String[] uTypes, final SpellAbility sa) {
+         return getCardsToDiscard(numDiscard, uTypes, sa, CardCollection.EMPTY);
+     }
+@@ -2162,7 +2169,7 @@ public class AiController {
+         if (discardsLeft > 0 && forge.ai.ability.DrawAi.pilotSeat(player)) {
+             final CardCollection keep = new CardCollection();
+             for (final Card c : validCards) {
+-                if (keepFromDiscard(c)) {
++                if (keepFromDiscard(c) && !neverCasts(c)) {
+                     keep.add(c);
+                 }
+             }
+@@ -2185,9 +2192,12 @@ public class AiController {
+                 final CardCollection lands = CardLists.filter(validCards, CardPredicates.LANDS);
+                 final int inPlay = CardLists.count(player.getCardsIn(ZoneType.Battlefield), CardPredicates.LANDS_PRODUCING_MANA);
+                 Card pick = null;
+-                if (!lands.isEmpty() && (lands.size() > 3 || (lands.size() > 2 && inPlay > 0) || (lands.size() > 1 && inPlay > 2) || inPlay > 5)) {
++                for (final Card c : validCards) {
++                    if (neverCasts(c)) { pick = c; break; }   // patch 115: a card the AI never casts goes first
++                }
++                if (pick == null && !lands.isEmpty() && (lands.size() > 3 || (lands.size() > 2 && inPlay > 0) || (lands.size() > 1 && inPlay > 2) || inPlay > 5)) {
+                     pick = lands.get(0);
+-                } else {
++                } else if (pick == null) {
+                     double low = Double.MAX_VALUE;
+                     for (final Card c : validCards) {
+                         if (c.isLand() && validCards.size() > lands.size()) continue;
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 86f8cf2..bc92873 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -825,7 +825,8 @@ public final class TurnPlan {
+ 
+     /** sa searches its controller's library and puts the card back on top (Mystical Tutor, Personal Tutor, Long-Term Plans). */
+     static boolean topTutor(final SpellAbility sa) {
+-        final SpellAbility x = search(sa);
++        SpellAbility x = search(sa);
++        if (x == null) x = spreeSearch(sa);   // patch 115
+         return x != null && sa.isSpell() && "Library".equals(x.getParam("Destination"));
+     }
+ 
+@@ -883,7 +884,46 @@ public final class TurnPlan {
+         return null;
+     }
+ 
+-    static boolean isSearch(final SpellAbility x) {
++    // ---- fishpond patch 115: a Spree tutor (Insatiable Avarice: {B}, +{2} "search for a card, put it on top", +{B}{B} "draw
++    // three, lose 3"). The plan saw the spell's base {B}, valued it as any 1-drop (85) with no pick, and Forge's charm logic
++    // vets each mode as a stand-alone spell: its top-of-library search waits for main 2, by when the mana had gone
++    // (pilot_20261028: held 3+ turns with mana idle in 15 of 20 games). The tutor mode is planned as a tutor at the base cost
++    // plus the mode's, and a planned one is cast with that mode. ----
++    /** The library search among sa's Spree modes, or null. */
++    public static SpellAbility spreeSearch(final SpellAbility sa) {
++        if (sa == null || sa.getApi() != ApiType.Charm || sa.getHostCard() == null
++                || !sa.getHostCard().hasKeyword(forge.game.keyword.Keyword.SPREE)) {
++            return null;
++        }
++        try {
++            for (final SpellAbility sub : forge.game.ability.effects.CharmEffect.makePossibleOptions(sa)) {
++                if (isSearch(sub)) return sub;
++            }
++        } catch (final RuntimeException e) { /* no modes */ }
++        return null;
++    }
++
++    /** The extra mana a Spree mode adds to the spell's cost. */
++    static int modeCost(final SpellAbility sub) {
++        if (sub == null || !sub.hasParam("ModeCost")) return 0;
++        try {
++            final forge.game.cost.Cost c = new forge.game.cost.Cost(sub.getParam("ModeCost"), false);
++            return c.getTotalMana() == null ? 0 : c.getTotalMana().getCMC();
++        } catch (final RuntimeException e) {
++            return 0;
++        }
++    }
++
++    /** sa is a Spree spell whose tutor mode the seat's turn plan has in it: it's cast with that mode. */
++    public static boolean spreeTutorPlanned(final Player ai, final SpellAbility sa) {
++        if (!TUTOR_VALUE || !active(ai) || spreeSearch(sa) == null || !(ai.getController() instanceof PlayerControllerAi pc)) {
++            return false;
++        }
++        final Plan p = plan(pc.getAi(), ai);
++        return p != null && p.rank.containsKey(sa.getHostCard().getId());
++    }
++
++    public static boolean isSearch(final SpellAbility x) {
+         if (x.getApi() != ApiType.ChangeZone || !x.getParamOrDefault("Origin", "").contains("Library") || x.hasParam("Defined")
+                 || !x.hasParam("ChangeType")) {
+             return false;
+@@ -920,10 +960,14 @@ public final class TurnPlan {
+         }
+         final boolean xCost = s.sa.getPayCosts() != null && s.sa.getPayCosts().hasXInAnyCostPart();
+         SpellAbility x = search(s.sa);
++        int spree = 0;   // patch 115: a Spree tutor costs its tutor mode too
++        if (x == null && (x = spreeSearch(s.sa)) != null) spree = modeCost(x);
++        final int sc = s.cost + spree;
++        final Step asIs = spree == 0 ? s : new Step(s.card, s.sa, sc, s.effCost + spree, s.tier, s.value);
+         final boolean etb = x == null && s.sa.isSpell();
+         if (etb) x = etbSearch(s.card);
+         if (x == null) {
+-            return s;
++            return asIs;
+         }
+         try {
+             x.setActivatingPlayer(ai);
+@@ -945,7 +989,7 @@ public final class TurnPlan {
+                 if (l.getCMC() <= max && (eq < 0 || l.getCMC() == eq)) valid.add(l);
+             }
+             if (valid.isEmpty()) {
+-                return xCost ? null : s;
++                return xCost ? null : asIs;
+             }
+             final ZoneType dz = field ? ZoneType.Battlefield : top ? ZoneType.Library : ZoneType.Hand;
+             final java.util.function.BiFunction<Player, Object[], List<Card>> rk = TUTOR_RANK;
+@@ -956,7 +1000,7 @@ public final class TurnPlan {
+                         new forge.game.card.CardCollection(valid), ai, ai);
+             }
+             if (pick == null) {
+-                return s;
++                return asIs;
+             }
+             final Card waitingTop = knownTop(ai);
+             if (waitingTop != null && pick.getId() == waitingTop.getId()) {
+@@ -982,18 +1026,18 @@ public final class TurnPlan {
+                 IN_TUTOR.set(false);
+             }
+             int cost;
+-            if (field) cost = xCost ? s.cost + pick.getCMC() : s.cost;
+-            else if (top) cost = s.cost;
+-            else cost = s.cost + pc;
++            if (field) cost = xCost ? sc + pick.getCMC() : sc;
++            else if (top) cost = sc;
++            else cost = sc + pc;
+             // patch 101: a tutor spell's pick to hand that fits next turn's mana (the tutor now, the pick then) is planned as a top tutor's is,
+             // less the turn it waits
+-            final boolean nextTurn = s.sa.isSpell() && !field && !top && cost > room && s.cost <= room && pc <= budget + 1;
+-            if (!nextTurn && (field ? cost > room : top ? s.cost + pc > budget + 1 : cost > room)) {
+-                return xCost ? null : s;   // the pair doesn't fit: the tutor as it was valued before
++            final boolean nextTurn = s.sa.isSpell() && !field && !top && cost > room && sc <= room && pc <= budget + 1;
++            if (!nextTurn && (field ? cost > room : top ? sc + pc > budget + 1 : cost > room)) {
++                return xCost ? null : asIs;   // the pair doesn't fit: the tutor as it was valued before
+             }
+             if (nextTurn) {
+                 pv -= CARD_HELD;
+-                cost = s.cost;
++                cost = sc;
+             }
+             // patch 101: a tutor spell's key-card pick to hand or the top (typecycling and transmute have their flat bonus; the user, 2026-10-24, on Step Through: "it doesn't seem like we
+             // get Step Through in the first few turns almost ever. It's a big deal when you can")
+@@ -1021,7 +1065,7 @@ public final class TurnPlan {
+             t.pick = pick.getName();
+             return t;
+         } catch (final RuntimeException e) {
+-            return xCost ? null : s;
++            return xCost ? null : asIs;
+         }
+     }
+ 
+@@ -1293,7 +1337,7 @@ public final class TurnPlan {
+                 // patch 89: a top-of-library tutor waits for main 2 (Zur's attack search shuffles first), unless a draw follows it;
+                 // patch 103: only when that search can happen this turn (zuropp_20261024 B3b g0: with Zur in the command zone,
+                 // Long-Term Plans kept 3 of 4 mana and the black source out of main 1 for turns, and was discarded uncast)
+-                if (laterCost == 0) { laterCost = payCost(ai, sa); laterPips.addAll(pips(ai, sa)); }
++                if (laterCost == 0) { laterCost = payCost(ai, sa) + modeCost(spreeSearch(sa)); laterPips.addAll(pips(ai, sa)); }
+                 continue;
+             }
+             Step s = step(aic, ai, c, sa);
+diff --git a/forge-ai/src/main/java/forge/ai/ability/CharmAi.java b/forge-ai/src/main/java/forge/ai/ability/CharmAi.java
+index 2fc84fd..b0f911d 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/CharmAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/CharmAi.java
+@@ -57,6 +57,10 @@ public class CharmAi extends SpellAbilityAi {
+                 return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+             }
+             chosenList = best;
++        } else if (spreeTutor(ai, sa, choices) != null) {
++            // fishpond patch 115: the turn plan has this Spree spell as a tutor (Insatiable Avarice): cast with its search mode,
++            // which Forge's mode check held for main 2 as a stand-alone top-of-library tutor
++            chosenList = Lists.newArrayList(spreeTutor(ai, sa, choices));
+         } else {
+             // only randomize if not all possible together
+             if (num < choices.size()) {
+@@ -111,6 +115,20 @@ public class CharmAi extends SpellAbilityAi {
+         return super.checkApiLogic(ai, sa);
+     }
+ 
++    /** fishpond patch 115: the search mode of a Spree spell the seat's turn plan has in it, when the seat can pay for it. */
++    private AbilitySub spreeTutor(final Player ai, final SpellAbility sa, final List<AbilitySub> choices) {
++        if (!DrawAi.pilotSeat(ai) || !TurnPlan.spreeTutorPlanned(ai, sa)) {
++            return null;
++        }
++        for (final AbilitySub sub : choices) {
++            if (TurnPlan.isSearch(sub)) {
++                sub.setActivatingPlayer(ai);
++                return canPayForAdditionalMode(sa, Lists.newArrayList(), sub, ai) ? sub : null;
++            }
++        }
++        return null;
++    }
++
+     private static boolean allWipes(List<AbilitySub> choices) {
+         if (choices.isEmpty()) {
+             return false;

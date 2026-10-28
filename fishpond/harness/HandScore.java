@@ -186,6 +186,7 @@ final class HandScore {
         int tappedLands = 0;
         for (Info x : cards) if (x.tapped()) tappedLands++;
         for (Info x : cards) {
+            if (x.role().equals("dead")) { det.add(x.name() + ":never cast"); continue; }
             boolean rampNow = x.ramp() > 0 && x.cmc() <= Math.max(1, Math.min(3, lands));
             if (x.land() || (rampNow && x.reduces().isEmpty())) {
                 det.add(x.name() + ":" + (x.land() ? "land" : "ramp " + round(x.ramp())));
@@ -324,6 +325,9 @@ final class HandScore {
             else role = forced;
         }
         if (land && tags.contains("tutor") && realTutor(c)) role = "tutor";   // Urza's Saga
+        // patch 115: a card Forge's AI never casts (AI:RemoveDeck:All, no fishpond override) is a blank: no role, no ramp, and the
+        // first to go to the bottom (the user, 2026-10-28: "put an override not to hold up cards it won't cast")
+        if (!land && forge.ai.ComputerUtilCard.isCardRemAIDeck(c)) { role = "dead"; ramp = 0; }
         return new Info(c.getName(), land, ramp, reduces, colors, letters(ColorSet.fromManaCost(c.getManaCost())), c.getCMC(), role, ci != null && ci.gc,
                 land && alwaysTapped(c));
     }

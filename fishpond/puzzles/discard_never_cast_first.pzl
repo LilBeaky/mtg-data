@@ -1,0 +1,14 @@
+# title: guard: Jarad's deck, no mana, eight cards in hand at cleanup, one of them Perpetual Timepiece (AI:RemoveDeck:All: Forge's AI never casts it): the Timepiece is the discard (patch 115; the user, 2026-10-28: "put an override not to hold up cards it won't cast")
+# deck: Gaiges_Jarad_Graveyard
+# card: Perpetual Timepiece
+# turns: 1
+# expect: Discard: Ai\(1\)-P1 discards Perpetual Timepiece
+p0life=30
+p1life=20
+turn=3
+activeplayer=p0
+activephase=MAIN2
+p0hand=Perpetual Timepiece;Ghalta, Primal Hunger;Living Death;Lord of Extinction;Colossal Grave-Reaver;Rishkar's Expertise;Golgari Grave-Troll;Izoni, Thousand-Eyed
+p0library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p1battlefield=Forest;Forest;Mountain
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

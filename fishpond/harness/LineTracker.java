@@ -181,6 +181,8 @@ public class LineTracker {
             return false;
         }
         if (n.equals("cmd")) return cmdOut(p) != null;
+        if (n.equals("cmd_ready")) { Card c = cmdOut(p); return c != null && !c.isTapped() && !c.hasSickness(); }   // it can attack or tap now
+        if (n.equals("gains_life")) return p.canGainLife();   // no "can't gain life" lock (Erebos, God of the Dead; Sulfuric Vortex)
         String[] kv = n.split(">=|<=");
         String key = kv[0].trim();
         int v = Integer.parseInt(kv[1].trim());
@@ -198,6 +200,10 @@ public class LineTracker {
             case "bf": return named(p, ZoneType.Battlefield, name) != null;
             case "hand": return named(p, ZoneType.Hand, name) != null;
             case "gy": return named(p, ZoneType.Graveyard, name) != null;
+            case "gy_affordable": {                             // in the graveyard, and the seat's mana covers its mana value (an encore)
+                Card c = named(p, ZoneType.Graveyard, name);
+                return c != null && ForgeRunner.Watcher.usableMana(p) >= c.getCMC();
+            }
             case "castable": {                                  // in hand or the command zone and castable now (not already out)
                 for (ZoneType z : new ZoneType[] {ZoneType.Hand, ZoneType.Command}) {
                     Card c = named(p, z, name);
@@ -236,6 +242,7 @@ public class LineTracker {
             case "hand": return p.getCardsIn(ZoneType.Hand).size();
             case "artifacts": return (int) p.getCardsIn(ZoneType.Battlefield).stream().filter(Card::isArtifact).count();
             case "gy_creatures": return (int) p.getCardsIn(ZoneType.Graveyard).stream().filter(Card::isCreature).count();
+            case "gy": return p.getCardsIn(ZoneType.Graveyard).size();
             case "gy_lands": return (int) p.getCardsIn(ZoneType.Graveyard).stream().filter(Card::isLand).count();
             case "cmd_attached": { Card c = cmdOut(p); return c == null ? 0 : c.getAttachedCards().size(); }
             case "hand_cmc": return p.getCardsIn(ZoneType.Hand).stream().filter(Card::isPermanent).mapToInt(Card::getCMC).max().orElse(0);

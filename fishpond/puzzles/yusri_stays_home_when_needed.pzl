@@ -1,0 +1,15 @@
+# title: Guard for yusri_attacks_into_a_blocker: the seat at 4 life, the opponent with Serra Angel and two Grizzly Bears: Yusri is needed as a blocker and the seat is in danger, so it stays home (patch 113)
+# card: Yusri, Fortune's Flame
+# deck: Ians_Yusri_Omni
+# turns: 1
+# forbid: assigned Yusri, Fortune's Flame \(\d+\) to attack
+p0life=4
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Yusri, Fortune's Flame|IsCommander;Island;Island;Mountain;Mountain
+p0hand=Opt
+p0library=Island;Mountain;Island;Mountain;Island;Mountain;Island;Mountain;Island;Mountain;Island;Mountain
+p1battlefield=Serra Angel;Grizzly Bears;Grizzly Bears;Plains;Plains;Plains;Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

@@ -1,0 +1,38 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 8792675..86f8cf2 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -1641,6 +1641,7 @@ public final class TurnPlan {
+     static final double EARLY_RAMP = 300;           // fishpond patch 74: a mana rock or dork while the seat makes under 5 mana
+     static final int EARLY_RAMP_UNDER = 5;
+     static final double TRANSMUTE = 150;
++    static final double COMMANDER_PLAN = Double.parseDouble(System.getProperty("fishpond.commanderPlan", "1000"));   // patch 112
+     static final double KEY_PICK = 250;          // fishpond patch 101: a tutor's key-card pick to hand or the top
+     static final double DRAW_LIFE = 5;   // fishpond patch 76: a life point lost to a draw punisher (a card in hand is 80)   // fishpond patch 73: a transmute is a tutor (Gamble, Long-Term Plans plan on their own value)
+ 
+@@ -1672,8 +1673,9 @@ public final class TurnPlan {
+             return 0;
+         }
+         int power = 0;
+-        for (final Card k : ai.getCommanders()) {
+-            if (k.isCreature() && k != c) power = Math.max(power, k.getNetPower());
++        for (final Card k : ai.getCommanders()) {   // patch 112: only a commander on the battlefield (Flaming Fist went down
++            // ahead of Wilson in 46 of 125 Wilson games, pilot_20261028, valued at Wilson's power while he sat in the command zone)
++            if (k.isCreature() && k != c && k.isInZone(ZoneType.Battlefield)) power = Math.max(power, k.getNetPower());
+         }
+         return power <= 0 ? 0 : 150 + 100 * power;
+     }
+@@ -1842,6 +1844,13 @@ public final class TurnPlan {
+         }
+         if (c.isCommander() && c.isInZone(ZoneType.Command)) {
+             v += 150;
++            // fishpond patch 112: a creature commander comes down ahead of the turn's other plays (the user, 2026-10-28: "I don't
++            // want to say commander first needs to be a law, but a lot of these decks do rely on them"; pilot_20261028: an
++            // affordable commander sat out 38 of every 100 seat-games' turns, Strong Back 995 over Wilson 351). Closers and
++            // combos (5000) still go first, and none of it while the seat faces lethal (patch 24's exception).
++            if (c.isCreature() && AiController.commanderRulesOn() && !ComputerUtil.aiLifeInDanger(ai, true, 0)) {
++                v += COMMANDER_PLAN;
++            }
+         }
+         v += commanderDoubler(ai, c);
+         final java.util.function.ToDoubleBiFunction<Player, Card> sv = SETUP_VALUE;

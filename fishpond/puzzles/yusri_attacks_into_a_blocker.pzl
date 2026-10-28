@@ -1,0 +1,15 @@
+# title: Yusri on the battlefield (not summoning sick), the opponent's untapped Serra Angel can block and kill it, the seat at 30 life: Yusri attacks anyway, its trigger is the deck's engine (patch 113; pilot_20261028: Yusri stayed home on 78 of 212 turns it could attack)
+# card: Yusri, Fortune's Flame
+# deck: Ians_Yusri_Omni
+# turns: 1
+# expect: assigned Yusri, Fortune's Flame \(\d+\) to attack
+p0life=30
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Yusri, Fortune's Flame|IsCommander;Island;Island;Mountain;Mountain
+p0hand=Lightning Bolt;Opt
+p0library=Island;Mountain;Island;Mountain;Island;Mountain;Island;Mountain;Island;Mountain;Island;Mountain
+p1battlefield=Serra Angel;Plains;Plains;Plains;Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
