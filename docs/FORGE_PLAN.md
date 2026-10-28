@@ -187,6 +187,24 @@ Pilot failures, biggest first (the line audit and the turn plan's own logs; exam
    first on a discard, count as blanks in a hand and are bottomed first (read as "don't let them hold up mana, plans or hand
    slots"; the plan already left them out).
 
+**Re-run on 01-116 (2026-10-28, `pilot_20261028c`):** the round-robin's 20 pods at 18 games each on pass 2's seed (20261029),
+360 games against `pilot_20261028b`'s 360 (same pods and seeds; games diverge with the patches): 356 natural, 2 at the
+30-minute cap, 2 turn caps, 0 AI timeouts, 0 lookahead fallbacks. Per 100 seat-games, after vs before:
+- commander affordable and left out of the turn plan 19.0 vs 39.0 (patch 112); commander never resolved 18.1 vs 20.1
+- engines available and not played 1.5 vs 3.9 and closers 2.2 vs 2.4 (part of it the tightened line audit); decked itself
+  0.8 vs 1.2; killed itself 0.5 vs 0.9; removal held then killed by its target's owner 0.8 vs 1.4
+- wipes: a "danger: it defuses the next combat" cast 97 times in the first 14 pods (10 before); in eliminated seats' last turns
+  87 danger casts (14 before); refusing a wipe the seat could pay for just before dying stayed rare (25 of 936 eliminated seats,
+  23 of 928 before: Pest Control, Calamity of the Titans, Divine Reckoning, Culling Ritual; never Cyclonic Rift). The coarse
+  "refused within 2 turns of dying" count (4.5 vs 4.7) counts unaffordable refusals, mostly Rift's
+- wins: Klauth 33/90 (25/89; first cast median own turn 5, was 6; cast by turn 5 won 20 of 44), Chulane 25/89 (16/90), Jarad
+  13/88 (10/90), Ragost 13/88 (10/89); Niv 25/90 (33/90), Lumra 11/89 (18/87), Witherbloom 13/89 (19/89), Zur 19/88 (23/89) lost
+  ground to faster commanders; Yusri 21/88 (20/89) on patch 113, with Yusri dying in blocks 12 times to 3 in the first six pods
+  (patch 117 is the user's rule for that)
+- not moved: castable cards held 3+ turns 43.7 vs 41.5; missed land drops on turns 1-4 7.0% vs 6.9%; loops stopped 3.5 vs 3.0
+The four-deck pod the user asked for (Yusri, Klauth, Zur, Wilson; `pod_ykzw_20261028`, 01-117, 4 games, one win each) found
+patch 118's bug: Klauth's failed cast left it in the stack zone for the rest of game 0.
+
 ## Plan as of 2026-10-12 (the user's order)
 
 | # | Item | Status |

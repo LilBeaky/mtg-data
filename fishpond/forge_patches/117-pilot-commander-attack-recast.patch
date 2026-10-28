@@ -1,0 +1,83 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiAttackController.java b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+index 6f142c1..e19979f 100644
+--- a/forge-ai/src/main/java/forge/ai/AiAttackController.java
++++ b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+@@ -948,7 +948,19 @@ public class AiAttackController {
+                 }
+             }
+             if (safe == null) {
+-                if (!cmdTrigger || in) {
++                if (!cmdTrigger) {
++                    continue;
++                }
++                // fishpond patch 117: into a creature that kills it only when the seat could recast it next turn, tax included
++                // (the user, 2026-10-28, agreeing: pilot_20261028c had Yusri attack into Lumra's blocks and die 12 times to 3);
++                // a commander Forge already sent in keeps its attack while it is part of a lethal swing at that player
++                if (!recastNextTurn(att)) {
++                    if (in && !lethalAt(combat, defendingPlayer(combat.getDefenderByAttacker(att)))) {
++                        combat.removeFromCombat(att);
++                    }
++                    continue;
++                }
++                if (in) {
+                     continue;   // a commander already attacking someone keeps its attack
+                 }
+                 int fewest = Integer.MAX_VALUE;
+@@ -997,6 +1009,21 @@ public class AiAttackController {
+         return false;
+     }
+ 
++    /** fishpond patch 117: the seat's mana next turn (every source untapped, a land drop if it holds a land) covers recasting
++     *  this commander from the command zone with one more tax. */
++    private boolean recastNextTurn(final Card cmd) {
++        final int cost = cmd.getCMC() + 2 * (ai.getCommanderCast(cmd));
++        return TurnPlan.nextTurnMana(ai) >= cost;
++    }
++
++    /** fishpond patch 117: the attackers at p could kill it unblocked. */
++    private static boolean lethalAt(final Combat combat, final Player p) {
++        if (p == null) return false;
++        int dmg = 0;
++        for (final Card a : combat.getAttackersOf(p)) dmg += ComputerUtilCombat.damageIfUnblocked(a, p, combat, false);
++        return dmg >= p.getLife();
++    }
++
+     private static Player defendingPlayer(final GameEntity def) {
+         return def instanceof Player ? (Player) def : def instanceof Card ? ((Card) def).getController() : null;
+     }
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 5d48624..160faaf 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -547,6 +547,31 @@ public final class TurnPlan {
+         return free ? total : p.getManaPool().totalMana();
+     }
+ 
++    /** fishpond patch 117: the mana p's sources make next turn, tapped or not now (the best unrestricted ability of each), plus
++     *  a land drop when p holds a land. */
++    public static int nextTurnMana(final Player p) {
++        int total = 0;
++        for (final Card src : p.getCardsIn(ZoneType.Battlefield)) {
++            int best = 0;
++            for (final SpellAbility ma : src.getManaAbilities()) {
++                try {
++                    ma.setActivatingPlayer(p);
++                    final forge.game.spellability.AbilityManaPart mp = ma.getManaPart();
++                    if (mp == null || !mp.getManaRestrictions().isEmpty()) continue;
++                    final int cost = ma.getPayCosts().getCostMana() != null ? ma.getPayCosts().getCostMana().convertAmount() : 0;
++                    final String prod = ma.getParamOrDefault("Produced", "");
++                    final int kinds = prod.startsWith("Combo") || prod.isEmpty() ? 1 : prod.split(" ").length;
++                    best = Math.max(best, kinds * forge.game.ability.AbilityUtils.calculateAmount(src, ma.getParamOrDefault("Amount", "1"), ma) - cost);
++                } catch (final RuntimeException e) { /* skip */ }
++            }
++            total += Math.max(0, best);
++        }
++        for (final Card c : p.getCardsIn(ZoneType.Hand)) {
++            if (c.isLand()) { total++; break; }
++        }
++        return total;
++    }
++
+     /** Extra mana a source makes when tapped, from "whenever ... is tapped for mana, add" triggers (Utopia Sprawl: 1). */
+     static int tapExtra(final Card src, final List<forge.game.trigger.Trigger> extra) {
+         int n = 0;

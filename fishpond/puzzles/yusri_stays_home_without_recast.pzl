@@ -1,0 +1,16 @@
+# title: Guard for yusri_attacks_into_a_blocker: Yusri cast twice (a recast costs 3 + 4 tax), four lands and no land in hand, Serra Angel can block and kill it: Yusri stays home (patch 117; the user, 2026-10-28, agreeing to attack into a killer only when the seat could recast it next turn; pilot_20261028c: Yusri died 12 times to 3, attacking into Lumra's blocks)
+# card: Yusri, Fortune's Flame
+# deck: Ians_Yusri_Omni
+# turns: 1
+# jvm: -Dfishpond.puzzleCommanderCasts=2
+# forbid: assigned .*Yusri, Fortune's Flame \(\d+\).* to attack
+p0life=30
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Yusri, Fortune's Flame|IsCommander;Island;Island;Mountain;Mountain
+p0hand=Lightning Bolt;Opt
+p0library=Island;Mountain;Island;Mountain;Island;Mountain;Island;Mountain;Island;Mountain;Island;Mountain
+p1battlefield=Serra Angel;Plains;Plains;Plains;Plains;Plains
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

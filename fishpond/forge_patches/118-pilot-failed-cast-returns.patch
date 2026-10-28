@@ -1,0 +1,81 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index b684542..76f3fba 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1041,6 +1041,9 @@ public class AiController {
+     }
+ 
+     public AiPlayDecision canPlaySa(SpellAbility sa) {
++        if (sa.isSpell() && TurnPlan.castFailedThisPhase(player, sa.getHostCard())) {
++            return AiPlayDecision.CantAfford;   // fishpond patch 118: its payment failed this phase
++        }
+         if (sa.getHostCard() != null && loopStopped(sa)) {
+             return AiPlayDecision.AnotherTime;   // fishpond patch 15: the loop already ran this turn
+         }
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtil.java b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+index 08c1cda..ff85884 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtil.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtil.java
+@@ -139,6 +139,24 @@ public class ComputerUtil {
+             for (SpellAbility csa : c.getSpellAbilities()) {
+                 csa.setSkip(true);
+             }
++        } else if (hz != null && (hz.is(ZoneType.Hand) || hz.is(ZoneType.Command) || hz.is(ZoneType.Graveyard))
++                && sa.getHostCard() != null && sa.getHostCard().isInZone(ZoneType.Stack)
++                && !onStackItem(game, sa.getHostCard())) {
++            // fishpond patch 118: a spell cast from hand or the command zone whose payment failed stayed in the stack zone, on no
++            // stack item, castable from nowhere (pod_ykzw_20261028 game 0: Klauth's cast failed on own turn 7, "Didn't find what
++            // to pay for {1}", and Klauth never left the stack zone; the seat played on without its commander for four turns).
++            // It goes back to the zone it was cast from, as the stock FIXME above asks (hand, command zone or graveyard; a card
++            // cast from exile keeps the stock behavior, since a new exiled object can lose the permission to cast it).
++            final Card back = game.getAction().moveTo(hz.getZoneType(), sa.getHostCard(), null, null);
++            TurnPlan.failedCast(ai, back);   // not retried this phase (a skip flag on the new card object never cleared)
++        }
++        return false;
++    }
++
++    /** fishpond patch 118: c is the source of an item on the stack. */
++    private static boolean onStackItem(final Game game, final Card c) {
++        for (final forge.game.spellability.SpellAbilityStackInstance si : game.getStack()) {
++            if (si.getSourceCard() != null && si.getSourceCard().equals(c)) return true;
+         }
+         return false;
+     }
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 160faaf..fd14691 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -138,6 +138,24 @@ public final class TurnPlan {
+         return (Set<Integer>) d[1];
+     }
+ 
++    // ---- fishpond patch 118: a cast whose payment failed (its card back in the zone it came from) isn't tried again this phase ----
++    static final Map<Player, Object[]> FAILED = Collections.synchronizedMap(new WeakHashMap<>());
++
++    public static void failedCast(final Player ai, final Card c) {
++        if (ai == null || c == null) return;
++        final String pk = phaseKey(ai);
++        Object[] d = FAILED.get(ai);
++        if (d == null || !pk.equals(d[0])) { d = new Object[] {pk, new HashSet<Integer>()}; FAILED.put(ai, d); }
++        @SuppressWarnings("unchecked") final Set<Integer> ids = (Set<Integer>) d[1];
++        ids.add(c.getId());
++        CACHE.remove(ai);
++    }
++
++    public static boolean castFailedThisPhase(final Player ai, final Card c) {
++        final Object[] d = ai == null || c == null ? null : FAILED.get(ai);
++        return d != null && phaseKey(ai).equals(d[0]) && ((Set<?>) d[1]).contains(c.getId());
++    }
++
+     /** Forge's own logic passed on a planned step: drop it for this phase (the plan is rebuilt without it). */
+     public static void decline(final Player ai, final SpellAbility sa) {
+         if (!active(ai) || sa == null || sa.getHostCard() == null) {
+@@ -1332,7 +1350,7 @@ public final class TurnPlan {
+         int laterCost = 0;   // patch 89: a top tutor waiting for main 2 keeps its mana and colors
+         final List<Integer> laterPips = new ArrayList<>();
+         for (final Card c : pool) {
+-            if (c.isLand() || declined.contains(c.getId())) {
++            if (c.isLand() || declined.contains(c.getId()) || castFailedThisPhase(ai, c)) {
+                 continue;
+             }
+             final SpellAbility tm = transmuteOf(ai, c);   // patch 73: a transmute card is planned as its tutor
