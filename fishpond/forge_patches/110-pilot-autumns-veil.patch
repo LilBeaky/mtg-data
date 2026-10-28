@@ -1,0 +1,35 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ability/EffectAi.java b/forge-ai/src/main/java/forge/ai/ability/EffectAi.java
+index 652db96..c18bef4 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/EffectAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/EffectAi.java
+@@ -230,6 +230,30 @@ public class EffectAi extends SpellAbilityAi {
+                     }
+                 }
+                 randomReturn = true;
++            } else if (logic.equals("AutumnsVeil")) {
++                // fishpond patch 110: Autumn's Veil answers what its text covers, in response: an opponent's blue or black
++                // counterspell aimed at the seat's spell, or an opponent's blue or black spell aimed at a creature it controls
++                // (Veil of Summer's logic covers any counter and the player too; AI-flagged, Lumra held it all game)
++                if (game.getStack().isEmpty()) {
++                    return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
++                }
++                final SpellAbility top = game.getStack().peekAbility();
++                final Card src = top.getHostCard();
++                if (!top.isSpell() || !top.usesTargeting() || !top.getActivatingPlayer().isOpponentOf(ai)
++                        || src == null || !(src.isBlue() || src.isBlack())) {
++                    return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
++                }
++                boolean covered = false;
++                for (SpellAbility x = top; x != null && !covered; x = x.getSubAbility()) {
++                    if (x.getApi() == ApiType.Counter) {
++                        final SpellAbility tgtSpell = x.getTargets().getFirstTargetedSpell();
++                        covered = tgtSpell != null && tgtSpell.getActivatingPlayer().equals(ai);
++                    }
++                    for (final Card c : x.getTargets().getTargetCards()) {
++                        if (c.isCreature() && c.getController().equals(ai)) covered = true;
++                    }
++                }
++                return covered ? new AiAbilityDecision(100, AiPlayDecision.WillPlay) : new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+             } else if (logic.equals("ChainVeil")) {
+                 if (!phase.isPlayerTurn(ai) || !phase.getPhase().equals(PhaseType.MAIN2) || ai.getPlaneswalkersInPlay().isEmpty()) {
+                     return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);

@@ -1,8 +1,7 @@
-# title: Scheming Symmetry: the AI casts it
+# title: Scheming Symmetry: the AI casts it, targeting itself and its opponent (patch 111: the second of its two target players; un-flagged by override)
 # card: Scheming Symmetry
-# known_gap: yes
 # turns: 2
-# expect: cast Scheming Symmetry
+# expect: cast Scheming Symmetry targeting
 p0life=40
 p1life=40
 turn=4

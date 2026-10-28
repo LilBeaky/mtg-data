@@ -93,6 +93,47 @@ public final class PilotPolicy {
         return n;
     }
 
+    /** Demonic Consultation's tutor play (Forge patch 109, ChooseCardNameAi.DIG_PICK): the one missing piece of a known win combo
+     *  whose other pieces are all on the seat's battlefield, still in its library, and castable this turn on the mana left after
+     *  the spell; null when there is none (the six-card gamble is taken only to win). */
+    String digPick(Player me, SpellAbility sa) {
+        Set<String> field = new HashSet<>();
+        for (Card x : me.getCardsIn(ZoneType.Battlefield)) field.add(x.getName());
+        Map<String, Card> lib = new HashMap<>();
+        for (Card x : me.getCardsIn(ZoneType.Library)) lib.putIfAbsent(x.getName(), x);
+        int extra = sa.getHostCard() == null ? 0 : sa.getHostCard().getCMC();
+        for (Combo cb : in.combos) {
+            if (!cb.win || cb.cards.size() < 2) continue;
+            String missing = null;
+            boolean ok = true;
+            for (String x : cb.cards) {
+                if (field.contains(x)) continue;
+                if (missing != null || !lib.containsKey(x)) { ok = false; break; }
+                missing = x;
+            }
+            if (!ok || missing == null) continue;
+            Card c = lib.get(missing);
+            SpellAbility cast = c.getFirstSpellAbility();
+            if (c.isLand() || cast == null) continue;
+            boolean pays;
+            try { pays = ComputerUtilMana.canPayManaCost(cast, me, extra, false); }
+            catch (RuntimeException e) { pays = ComputerUtilMana.getAvailableManaEstimate(me, false) >= extra + c.getCMC(); }
+            if (pays) return missing;
+        }
+        return null;
+    }
+
+    /** A payoff of a mechanic the deck is built around (strength 0.5+, as castPriority0 reads it): it turns the engine on. */
+    boolean isEnginePayoff(String name) {
+        CardIntel ci = in.cards.get(name);
+        if (ci == null) return false;
+        for (String m : ci.payoff) {
+            Mech mech = in.mechs.get(m);
+            if (mech != null && mech.s >= 0.5) return true;
+        }
+        return false;
+    }
+
     /** Ramp: a nonland permanent that makes mana or reduces costs, a spell that puts a land onto the battlefield, or a card
      *  the deck intel tags as ramp. */
     boolean isRamp(Card c) {

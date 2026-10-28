@@ -1,8 +1,7 @@
-# title: Demonic Consultation: the AI casts it and doesn't exile its library away
+# title: Demonic Consultation with nothing to win or complete (a Craw Wurm in a 25-card library): the AI doesn't gamble six cards on it (patch 109: cast only to win, for a first Approach, or for a known win combo's last piece; un-flagged by override)
 # card: Demonic Consultation
-# known_gap: yes
 # turns: 2
-# expect: cast Demonic Consultation
+# forbid: cast Demonic Consultation
 # forbid: (has lost|loses the game)
 p0life=40
 p1life=40

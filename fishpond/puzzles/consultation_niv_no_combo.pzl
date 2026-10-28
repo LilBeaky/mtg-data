@@ -1,0 +1,16 @@
+# title: Guard for consultation_niv_combo_piece: Niv-Mizzet still in the command zone (no combo to complete), six lands, Demonic Consultation in hand and Sheoldred, the Apocalypse (Niv + Sheoldred is a known win combo) in a 30-card library below the top six: Consultation stays in hand (the six-card gamble is taken only to win; patch 109)
+# card: Demonic Consultation
+# deck: Coles_Niv_Combo
+# turns: 1
+# forbid: cast Demonic Consultation
+p0life=40
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0command=Niv-Mizzet, Ghost Counsel|IsCommander
+p0battlefield=Plains;Plains;Swamp;Swamp;Swamp;Plains
+p0hand=Demonic Consultation
+p0library=Swamp;Plains;Island;Plains;Swamp;Swamp;Plains;Island;Plains;Swamp;Swamp;Plains;Island;Plains;Swamp;Sheoldred, the Apocalypse;Plains;Island;Plains;Swamp;Swamp;Plains;Island;Plains;Swamp;Swamp;Plains;Island;Plains;Swamp
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

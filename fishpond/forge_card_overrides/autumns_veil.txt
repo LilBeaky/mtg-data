@@ -1,0 +1,9 @@
+# fishpond override (Forge 2.0.15 script, un-flagged, with AILogic$ AutumnsVeil; Forge patch 110): cast in response to an
+# opponent's blue or black counterspell aimed at the seat's spell, or an opponent's blue or black spell aimed at its creature.
+Name:Autumn's Veil
+ManaCost:G
+Types:Instant
+A:SP$ Effect | AILogic$ AutumnsVeil | ReplacementEffects$ AntiMagic | StaticAbilities$ STCantBeTarget | SpellDescription$ Spells you control can't be countered by blue or black spells this turn, and creatures you control can't be the targets of blue or black spells this turn.
+SVar:AntiMagic:Event$ Counter | ValidSA$ Spell.YouCtrl | ValidCause$ Spell.Blue,Spell.Black | Layer$ CantHappen | Description$ Spells you control can't be countered by blue or black spells this turn.
+SVar:STCantBeTarget:Mode$ CantTarget | ValidTarget$ Creature.YouCtrl | ValidSource$ Card.Blue,Card.Black | ValidSA$ Spell | Description$ Creatures you control can't be the targets of blue or black spells this turn.
+Oracle:Spells you control can't be countered by blue or black spells this turn, and creatures you control can't be the targets of blue or black spells this turn.

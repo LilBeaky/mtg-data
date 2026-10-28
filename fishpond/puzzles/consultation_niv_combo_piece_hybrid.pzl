@@ -1,0 +1,17 @@
+# title: Under hybrid lookahead: Niv's deck: Niv-Mizzet on the battlefield, six lands, Demonic Consultation in hand and Sheoldred, the Apocalypse (Niv + Sheoldred is a known win combo) in a 30-card library below the top six: the AI names Sheoldred, gets it and casts it (patch 109's combo play, PilotPolicy.digPick)
+# card: Demonic Consultation
+# deck: Coles_Niv_Combo
+# turns: 1
+# sim: hybrid
+# expect: #FP-DIG .*"play": "combo".*"name": "Sheoldred, the Apocalypse"
+# expect: cast Sheoldred, the Apocalypse
+p0life=40
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Niv-Mizzet, Ghost Counsel|IsCommander;Plains;Plains;Swamp;Swamp;Swamp;Plains
+p0hand=Demonic Consultation
+p0library=Swamp;Plains;Island;Plains;Swamp;Swamp;Plains;Island;Plains;Swamp;Swamp;Plains;Island;Plains;Swamp;Sheoldred, the Apocalypse;Plains;Island;Plains;Swamp;Swamp;Plains;Island;Plains;Swamp;Swamp;Plains;Island;Plains;Swamp
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

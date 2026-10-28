@@ -1,0 +1,16 @@
+# title: Approach of the Second Sun and Demonic Consultation in hand, seven Plains and a Swamp: the AI casts Approach (it goes seventh from the top), then Consultation naming Approach (the six above it are exiled, Approach comes back to hand), and the second Approach wins next turn (patch 109; the Spellbook's Approach + Consultation line)
+# card: Demonic Consultation
+# turns: 3
+# expect: #FP-DIG .*"play": "second".*"name": "Approach of the Second Sun"
+# expect: Ai\(1\)-P1 has won
+# order: cast Approach of the Second Sun << cast Demonic Consultation
+p0life=40
+p1life=40
+turn=5
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Swamp
+p0hand=Approach of the Second Sun;Demonic Consultation
+p0library=Plains;Swamp;Plains;Island;Plains;Swamp;Plains;Island;Plains;Swamp;Plains;Island;Plains;Swamp;Plains;Island;Plains;Swamp;Plains;Island
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

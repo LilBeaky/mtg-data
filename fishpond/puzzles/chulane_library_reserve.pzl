@@ -1,0 +1,14 @@
+# title: Chulane out, a 4-card library and three one-drop creatures in hand, no empty-library win anywhere: it casts none of them (each draws through Chulane; the one-spell floor let it cast two and walk the library to 2, and engine turns like that decked Chulane in 6 of 20 seats, trends_20261027; patch 107 keeps a 5-card reserve)
+# card: Chulane, Teller of Tales
+# turns: 1
+# forbid: Ai\(1\)-P1 cast (Llanowar Elves|Elvish Mystic|Fyndhorn Elves)
+p0life=40
+p1life=40
+turn=5
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Chulane, Teller of Tales;Forest;Forest;Forest;Island;Plains;Forest
+p0hand=Llanowar Elves;Elvish Mystic;Fyndhorn Elves
+p0library=Forest;Island;Plains;Forest
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

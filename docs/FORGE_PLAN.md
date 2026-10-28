@@ -19,7 +19,7 @@ Working doc for Claude: what is left to build in Fishpond and in what order. Usa
 - **Claude's background tasks die at 2 hours.** Split batches into resumable chunks under that (`run --resume` finishes a cut-off pod), or hand the user the command for long studies (the user's preference as runs grow).
 - **Seeds replay exactly.** One game replays alone from one line of a run's `logs/plan_*.tsv` with ForgeRunner (the command line is in `runner.execute`); the game log is printed only when the game ends. Profile with `-XX:StartFlightRecording=...,settings=profile` and dump mid-turn with `jcmd <pid> JFR.dump`; add `-XX:FlightRecorderOptions:stackdepth=2048` and read it with `jfr print --stack-depth 2048` (the defaults, 64 and 5 frames, hide which caller is slow). Time an A/B as a pair run side by side: load alone changes a big game's time 1.5-2x, and past about 6 busy JVMs a 90 s decision can cross the 120 s AI limit and change the game. Since patch 16 games diverge from pre-16 runs on the same seed: compare distributions, not paired games, across that boundary.
 - **Writing a patch:** `~/forge-cache/forge-src-2.0.15` is CRLF and doesn't match the tag; fetch the files with `forge.FORGE_SRC_URL` into a scratch git repo, apply 01..NN, edit, `git diff` > the next patch; procedure and table in FORGE_ISSUES "Patches". To see a debug println, call `fishpond.puzzles.run_one(path)` and grep its lines.
-- **Before pushing:** `python -m fishpond puzzles` (166: 158 pass, 8 known gaps; 01-44) and `python tests/smoke.py`. Stage only your own files, fetch/rebase, never force. Write findings into this doc as soon as they're known.
+- **Before pushing:** `python -m fishpond puzzles` (351: 346 pass, 5 known gaps; patches 01-111) and `python tests/smoke.py`. Stage only your own files, fetch/rebase, never force. Write findings into this doc as soon as they're known.
 - `--sim hybrid` prints hundreds of "AI failed to play" lines a game (lookahead test-casts unaffordable spells): noise, not a stuck card.
 - **Why did the AI not cast X?** Replay the game (`replay.py`-style: one plan line, ForgeRunner) with a debug copy of one class first on the classpath: copy the file from the scratch source tree (or `forge-src-2.0.15` if no patch touches it), add a println, `javac -cp <patched classes>;<forge jar>` into a folder, prepend that folder to `-cp`. Nothing in the repo changes. `AiController.canPlayAndPayFor` printing its `AiPlayDecision` per spell and `OnePlaySafetyChecker.isAcceptable` printing scores found the Wilson aura stall in one replay (2026-10-07).
 
@@ -105,6 +105,14 @@ the round before the end in 63% of decided games, as calibrated 2026-10-16). Fix
 two study lanes building the card-override folder at once (the second deleted the first's finished folder as its JVM started:
 T01's four games never ran, `forge.run_home`), and `run` marked a run complete with no games, so a study skipped that
 pod as finished (`cmd_run`).
+
+**Worked 2026-10-28 (the user's calls on items 1-7):** 1 built (patch 107, a 5-card library reserve for the turn); 2 built as
+proposed, on the free mulligan only (HandScore: `free`, `curve2` in `#FP-MULL`; on the way, HandScore's per-seat maps were keyed
+by Player, which a worker reuses from game to game, so a seat whose list changed between games kept the first game's bar: now
+keyed by game and seat); 3 left to item 2, watched in the next run; 4 built (patch 108 and `ThreatModel.planPiece`; puzzles can
+name seat 2's deck with `# deck2:`); dead cards: Demonic Consultation and Spoils of the Vault (patch 109, the user: "take your
+time on Consultation"), Autumn's Veil (110), Scheming Symmetry (111). Overnight run on 01-111: `pilot_20261028` (the round-robin,
+7 games a pod, seed 20261028), findings below when it's read.
 
 ## Plan as of 2026-10-12 (the user's order)
 

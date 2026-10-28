@@ -1,0 +1,17 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+index db694af..d9f7e53 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCard.java
+@@ -1756,6 +1756,12 @@ public class ComputerUtilCard {
+         if (AiController.cardThreatOf(ai, c) >= AiController.THREAT_REMOVE_NOW) {
+             return true;
+         }
++        // fishpond patch 108: a noncreature over the floor is removed now. Forge's timing below rates one by tempo alone (0.1 x its
++        // cost over the removal's), so Disenchant never went at Krark's Thumb even once the threat model rated the Thumb over the
++        // floor (puzzle removal_floor_sees_key_card); creatures keep Forge's combat timing
++        if (!c.isCreature() && REMOVAL_FLOOR > 0 && forge.ai.ability.DrawAi.pilotSeat(ai)) {
++            return true;
++        }
+ 
+         //Check for cards that profit from spells - for example Prowess or Threshold
+         if (phaseType == PhaseType.MAIN1 && ComputerUtil.castSpellInMain1(ai, sa)) {

@@ -1,0 +1,16 @@
+# title: The opponent casts Doom Blade at the AI's Serra Angel; the AI has Autumn's Veil and a Forest open: it casts the Veil in response and the Angel survives (patch 110; AI-flagged, Lumra held it all game)
+# card: Autumn's Veil
+# turns: 1
+# expect: cast Autumn's Veil
+# forbid: Serra Angel .*(Graveyard|put into)
+p0life=40
+p1life=40
+turn=6
+activeplayer=p1
+activephase=MAIN1
+p0battlefield=Serra Angel;Forest;Plains;Plains
+p0hand=Autumn's Veil
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Swamp;Swamp;Swamp;Swamp
+p1hand=Doom Blade
+p1library=Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp

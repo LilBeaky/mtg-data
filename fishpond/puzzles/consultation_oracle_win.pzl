@@ -1,0 +1,18 @@
+# title: Thassa's Oracle and Demonic Consultation in hand, four lands (UU + B and one more), 20 cards in the library: the AI casts Consultation naming a card the library doesn't hold (the whole library is exiled), then Oracle, and wins (Forge patch 109; Consultation was AI-flagged and never cast)
+# card: Demonic Consultation
+# turns: 1
+# expect: cast Demonic Consultation
+# expect: #FP-DIG .*"play": "win"
+# expect: cast Thassa's Oracle
+# expect: Ai\(1\)-P1 has won
+# order: cast Demonic Consultation << cast Thassa's Oracle
+p0life=40
+p1life=40
+turn=5
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Swamp;Swamp
+p0hand=Thassa's Oracle;Demonic Consultation
+p0library=Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest
+p1battlefield=Forest;Forest;Forest
+p1library=Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest

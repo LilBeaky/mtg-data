@@ -1,0 +1,44 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 645a032..e87e139 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -4325,6 +4325,21 @@ public class AiController {
+     // turns both off.
+     public static volatile java.util.function.ToDoubleBiFunction<Player, Card> CARD_THREAT;
+     public static volatile java.util.function.ToDoubleBiFunction<Player, SpellAbility> SPELL_THREAT;
++    // fishpond patch 111: a player's threat (how close to winning), for choices that hand an opponent something
++    public static volatile java.util.function.ToDoubleFunction<Player> PLAYER_THREAT;
++
++    /** The opponent of ai least close to winning (the threat model's score; life when there is none), or null. */
++    public static Player leastThreateningOpponent(final Player ai, final java.util.function.Predicate<Player> ok) {
++        final java.util.function.ToDoubleFunction<Player> f = PLAYER_THREAT;
++        Player best = null;
++        double low = Double.MAX_VALUE;
++        for (final Player o : ai.getOpponents()) {
++            if (o.hasLost() || !ok.test(o)) continue;
++            final double v = f != null ? f.applyAsDouble(o) : o.getLife();
++            if (v < low) { low = v; best = o; }
++        }
++        return best;
++    }
+     static final boolean THREAT_PLAY = !"false".equals(System.getProperty("fishpond.threatPlay"));
+     public static final double THREAT_COUNTER_AT = Double.parseDouble(System.getProperty("fishpond.threatCounterAt", "50"));
+     public static final double THREAT_SAVE_BELOW = Double.parseDouble(System.getProperty("fishpond.threatSaveBelow", "20"));
+diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+index dcb3148..b5279eb 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+@@ -375,6 +375,13 @@ public class ChangeZoneAi extends SpellAbilityAi {
+                 sa.getTargets().add(opponent);
+             } else if (!isCurse && sa.canTarget(ai)) {
+                 sa.getTargets().add(ai);
++                // fishpond patch 111: "choose two target players; each searches their library" (Scheming Symmetry, AI-flagged:
++                // Forge chose the seat alone, one target short): the second is the opponent least close to winning, who gets
++                // the same tutor the seat does
++                if (DrawAi.pilotSeat(ai) && tgt.getMinTargets(source, sa) >= 2) {
++                    final Player gift = AiController.leastThreateningOpponent(ai, sa::canTarget);
++                    if (gift != null) sa.getTargets().add(gift);
++                }
+             }
+             if (!sa.isTargetNumberValid()) {
+                 return new AiAbilityDecision(0, AiPlayDecision.TargetingFailed);

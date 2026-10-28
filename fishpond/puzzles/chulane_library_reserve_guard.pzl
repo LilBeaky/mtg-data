@@ -1,0 +1,16 @@
+# title: Guard for chulane_library_reserve: Chulane out, a 30-card library and three one-drop creatures in hand: it casts all three (patch 107's reserve only bites near the bottom)
+# card: Chulane, Teller of Tales
+# turns: 1
+# expect: Ai\(1\)-P1 cast Llanowar Elves
+# expect: Ai\(1\)-P1 cast Elvish Mystic
+# expect: Ai\(1\)-P1 cast Fyndhorn Elves
+p0life=40
+p1life=40
+turn=5
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Chulane, Teller of Tales;Forest;Forest;Forest;Island;Plains;Forest
+p0hand=Llanowar Elves;Elvish Mystic;Fyndhorn Elves
+p0library=Forest;Island;Plains;Forest;Island;Plains;Forest;Island;Plains;Forest;Island;Plains;Forest;Island;Plains;Forest;Island;Plains;Forest;Island;Plains;Forest;Island;Plains;Forest;Island;Plains;Forest;Island;Plains
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

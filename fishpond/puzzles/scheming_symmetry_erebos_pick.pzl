@@ -1,0 +1,16 @@
+# title: Erebos's deck, Erebos out, Scheming Symmetry in hand and Razaketh, the Foulblooded ('# key:') in the library: it casts Symmetry and its own search puts Razaketh on top (the pilot policy's pick; patch 111)
+# card: Scheming Symmetry
+# deck: Ians_Erebos_Apostles
+# turns: 1
+# expect: cast Scheming Symmetry targeting
+# expect: #FP-POLICY .*"src": "Scheming Symmetry".*"pick": "Razaketh, the Foulblooded"
+p0life=40
+p1life=40
+turn=7
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Erebos, God of the Dead|IsCommander;Swamp;Swamp;Swamp;Swamp
+p0hand=Scheming Symmetry
+p0library=Swamp;Swamp;Swamp;Swamp;Razaketh, the Foulblooded;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp;Swamp
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Grizzly Bears;Forest;Forest;Forest;Forest

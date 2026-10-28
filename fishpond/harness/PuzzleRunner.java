@@ -2,9 +2,9 @@
 // for a few turns, and prints the game log. fishpond/puzzles.py checks the log against the puzzle's expect/forbid lines.
 // Used to test the AI on one mechanic at a time (docs/FORGE_PLAN.md, "Pilot policy", Part 2).
 //
-// usage: java -cp <jar>:<dir> PuzzleRunner STATE_FILE TURNS SEED [SIM [DCK]]   (cwd = the Forge install; SIM = off (default) or
-//   hybrid: seat 1's lookahead, as in a run; DCK: seat 1's deck file, whose <DCK>.policy.json gives seat 1 that deck's pilot
-//   policy: its key cards, combos and tutor picks, as in a run)
+// usage: java -cp <jar>:<dir> PuzzleRunner STATE_FILE TURNS SEED [SIM [DCK [DCK2]]]   (cwd = the Forge install; SIM = off (default)
+//   or hybrid: seat 1's lookahead, as in a run; DCK: seat 1's deck file, whose <DCK>.policy.json gives seat 1 that deck's pilot
+//   policy: its key cards, combos and tutor picks, as in a run; "-" for none; DCK2: the same for seat 2, '# deck2:')
 // STATE_FILE: GameState lines (p0... = seat 1, the player under test; p1... = seat 2), e.g. p0battlefield=Astral Slide;Plains
 
 import java.io.File;
@@ -38,12 +38,16 @@ public class PuzzleRunner {
         FModel.initialize(null, null);
         MyRandom.setRandom(new Random(seed));
         ThreatModel.installHooks();   // patch 57 (no deck intel in puzzles unless a '# deck:' line names seat 1's deck)
-        PilotPolicy policy = null;
-        if (args.length > 4) {
+        PilotPolicy policy = null, policy2 = null;   // seat 2's from a '# deck2:' line (an opponent's key cards and engines)
+        if (args.length > 4 && !args[4].equals("-")) {
             File dck = new File(args[4]);
             policy = PilotPolicy.load(dck.getParent(), dck.getName());
-            ForgeRunner.installPolicyHooks();
         }
+        if (args.length > 5) {
+            File dck = new File(args[5]);
+            policy2 = PilotPolicy.load(dck.getParent(), dck.getName());
+        }
+        if (args.length > 4) ForgeRunner.installPolicyHooks();
 
         GameRules rules = new GameRules(GameType.Constructed);
         rules.setGamesPerMatch(1);
@@ -59,7 +63,7 @@ public class PuzzleRunner {
             Deck d = new Deck("Puzzle" + (i + 1));
             d.getMain().add("Wastes", 40);
             RegisteredPlayer rp = new RegisteredPlayer(d);
-            ForgeRunner.SafeLobbyPlayerAi lp = new ForgeRunner.SafeLobbyPlayerAi("Ai(" + (i + 1) + ")-P" + (i + 1), i == 0 && hybrid ? EnumSet.of(forge.ai.AIOption.USE_HYBRID_SIMULATION) : EnumSet.noneOf(forge.ai.AIOption.class), fb, i == 0 ? policy : null);
+            ForgeRunner.SafeLobbyPlayerAi lp = new ForgeRunner.SafeLobbyPlayerAi("Ai(" + (i + 1) + ")-P" + (i + 1), i == 0 && hybrid ? EnumSet.of(forge.ai.AIOption.USE_HYBRID_SIMULATION) : EnumSet.noneOf(forge.ai.AIOption.class), fb, i == 0 ? policy : i == 1 ? policy2 : null);
             rp.setPlayer(lp);
             players.add(rp);
         }

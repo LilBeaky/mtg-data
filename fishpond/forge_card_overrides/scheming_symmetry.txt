@@ -1,0 +1,7 @@
+# fishpond override (Forge 2.0.15 script, un-flagged; Forge patch 111): the seat targets itself and the opponent least close to
+# winning (Forge's tutor logic chose the seat alone, one target short of the two the spell needs, so it never cast).
+Name:Scheming Symmetry
+ManaCost:B
+Types:Sorcery
+A:SP$ ChangeZone | DefinedPlayer$ Targeted | ValidTgts$ Player | TargetMin$ 2 | TargetMax$ 2 | Origin$ Library | Destination$ Library | LibraryPosition$ 0 | ChangeType$ Card | ChangeNum$ 1 | StackDescription$ SpellDescription | SpellDescription$ Choose two target players. Each of them searches their library for a card, then shuffles and puts that card on top.
+Oracle:Choose two target players. Each of them searches their library for a card, then shuffles and puts that card on top.

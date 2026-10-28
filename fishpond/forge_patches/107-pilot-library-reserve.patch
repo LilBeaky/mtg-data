@@ -1,0 +1,33 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 3b07648..645a032 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1716,6 +1716,8 @@ public class AiController {
+     // own "whenever you cast a creature spell, draw a card" decked it (pod G4, 2026-10-07; lookahead was paused on a
+     // prepared card, so no one-move check caught it). Count what casting this spell makes its caster draw: the spell's own
+     // draws, the caster's cast triggers that match it, and a permanent spell's draw-on-entering triggers.
++    static final int LIBRARY_RESERVE = Integer.getInteger("fishpond.libraryReserve", 5);
++
+     static int drawsFromCasting(final Player ai, final SpellAbility sa, final boolean beforeResolving) {
+         final Card card = sa.getHostCard();
+         int n = 0;
+@@ -1892,7 +1894,18 @@ public class AiController {
+             // since conditional "may draw" engines make the count low
+             final boolean winCard = forge.ai.ability.DrawAi.emptyLibraryWinCard(card);
+             final int draws = drawsFromCasting(player, sa, winCard);
+-            final int floor = winCard ? 0 : 1 + (draws + 1) / 2;
++            // fishpond patch 107: the turn as a whole keeps a reserve. Each Chulane creature passed the one-spell floor (about 2
++            // cards), so a 13-16 cast turn walked the library to 1-2 and the next draw step decked it (trends_20261027: 6 of 20
++            // Chulane seats); draws outside casts (Esper Sentinel, opponents' turns) aren't counted at all. A spell that draws
++            // keeps LIBRARY_RESERVE cards (patch 18's Surge reserve) unless an empty-library win card waits in hand.
++            boolean winInHand = false;
++            for (final Card c : player.getCardsIn(ZoneType.Hand)) {
++                if (c != card && forge.ai.ability.DrawAi.emptyLibraryWinCard(c)) {
++                    winInHand = true;
++                    break;
++                }
++            }
++            final int floor = winCard ? 0 : Math.max(1 + (draws + 1) / 2, winInHand ? 0 : LIBRARY_RESERVE);
+             if (draws > 0 && lib - draws < floor) {
+                 return AiPlayDecision.CurseEffects;   // fishpond patch 20: casting it would deck the caster
+             }

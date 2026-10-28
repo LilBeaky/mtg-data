@@ -104,6 +104,11 @@ public class ForgeRunner {
         };
         try { Class.forName("forge.ai.TurnPlan").getField("TUTOR_RANK").set(null, tutorRank); }
         catch (ReflectiveOperationException e) { out.println("#FP-WARN no tutor-rank hook in this Forge build (patch 85)"); }
+        // fishpond patch 109: Demonic Consultation's tutor play names the missing piece of a known win combo (PilotPolicy.digPick)
+        java.util.function.BiFunction<Player, forge.game.spellability.SpellAbility, String> digPick =
+                (p, sa) -> p.getController() instanceof SafeControllerAi sc && sc.policy != null ? sc.policy.digPick(p, sa) : null;
+        try { Class.forName("forge.ai.ability.ChooseCardNameAi").getField("DIG_PICK").set(null, digPick); }
+        catch (ReflectiveOperationException e) { out.println("#FP-WARN no dig-for-name hook in this Forge build (patch 109)"); }
     }
 
     public static void main(String[] args) throws Exception {

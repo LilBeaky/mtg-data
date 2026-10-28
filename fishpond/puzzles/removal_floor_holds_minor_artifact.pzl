@@ -1,0 +1,14 @@
+# title: Guard for removal_floor_sees_*: the opponent's only noncreature is a Mind Stone (no plan role, no creature it pumps); the AI holds Disenchant on turn 9 and keeps it (patch 108 removes a noncreature now only when it clears the floor)
+# card: Disenchant
+# turns: 2
+# forbid: Disenchant targeting
+p0life=40
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains
+p0hand=Disenchant
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest;Forest;Mind Stone
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

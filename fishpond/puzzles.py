@@ -13,6 +13,7 @@ regex does.
   # forbid: REGEX       (repeatable)
   # jvm: -Dname=value   (optional: system properties for this puzzle, e.g. a small -Dfishpond.loopMax)
   # card: NAME          (the card or mechanic under test, for the summary)
+  # deck: NAME          (optional: seat 1 plays with decks/NAME.txt's pilot policy; '# deck2:' gives seat 2 one)
   p0life=20
   p0battlefield=Astral Slide;Plains;Plains;Plains
   ...
@@ -62,8 +63,10 @@ def run_one(path, quiet=True):
     cmd = ["java", "-Xmx1500m", "-XX:-OmitStackTraceInFastThrow", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8", *meta.get("jvm", "").split(),
            "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "PuzzleRunner", os.path.abspath(sf),
            str(meta["turns"]), str(meta["seed"]), meta["sim"]]
-    if meta.get("deck"):   # '# deck: NAME': seat 1 plays with that deck's pilot policy (key cards, combos, tutor picks)
-        cmd.append(_policy_dck(meta["deck"]))
+    if meta.get("deck") or meta.get("deck2"):   # '# deck: NAME': seat 1 plays with that deck's pilot policy (key cards, combos,
+        cmd.append(_policy_dck(meta["deck"]) if meta.get("deck") else "-")   # tutor picks); '# deck2: NAME' gives seat 2 one
+    if meta.get("deck2"):
+        cmd.append(_policy_dck(meta["deck2"]))
     try:
         r = subprocess.run(cmd, cwd=forge.run_home(quiet=quiet), capture_output=True, text=True, timeout=400)
         out = r.stdout

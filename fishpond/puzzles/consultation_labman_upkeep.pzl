@@ -1,0 +1,15 @@
+# title: Laboratory Maniac on the battlefield, Demonic Consultation in hand, the seat's upkeep: it casts Consultation naming a card the library doesn't hold, and the draw step wins (patch 109)
+# card: Demonic Consultation
+# turns: 1
+# expect: #FP-DIG .*"play": "win"
+# expect: Ai\(1\)-P1 has won
+p0life=40
+p1life=40
+turn=5
+activeplayer=p0
+activephase=UPKEEP
+p0battlefield=Laboratory Maniac;Swamp;Island;Island
+p0hand=Demonic Consultation
+p0library=Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest
+p1battlefield=Forest;Forest;Forest
+p1library=Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest

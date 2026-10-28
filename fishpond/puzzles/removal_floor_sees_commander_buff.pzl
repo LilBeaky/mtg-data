@@ -1,0 +1,15 @@
+# title: The opponent's Wilson (5/5 with counters) has Flaming Fist out (its commander gains double strike when it attacks); the AI holds Disenchant on turn 9: it destroys Flaming Fist (a static that pumps a creature clearing the creature floor counts with that creature; trends_20261027: Fist was held against on 30 turns)
+# card: Disenchant
+# deck2: Ians_Wilson_Auras
+# turns: 2
+# expect: Disenchant targeting .*Flaming Fist
+p0life=40
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains
+p0hand=Disenchant
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Forest;Forest;Plains;Plains;Wilson, Refined Grizzly|IsCommander|Counters:P1P1=3;Flaming Fist|IsCommander
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

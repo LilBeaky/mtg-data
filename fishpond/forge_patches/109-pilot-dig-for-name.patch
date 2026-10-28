@@ -1,0 +1,160 @@
+diff --git a/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java b/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
+index 35243c2..ff8c5fb 100644
+--- a/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
++++ b/forge-ai/src/main/java/forge/ai/PlayerControllerAi.java
+@@ -1571,7 +1571,9 @@ public class PlayerControllerAi extends PlayerController {
+             }
+ 
+             String name = "";
+-            if (logic.equals("MostProminentInComputerDeck")) {
++            if (logic.equals("DigForName")) {   // fishpond patch 109: Demonic Consultation, Spoils of the Vault
++                name = forge.ai.ability.ChooseCardNameAi.digForName(player, sa, false);
++            } else if (logic.equals("MostProminentInComputerDeck")) {
+                 name = ComputerUtilCard.getMostProminentCardName(aiLibrary);
+             } else if (logic.equals("MostProminentInHumanDeck")) {
+                 name = ComputerUtilCard.getMostProminentCardName(oppLibrary);
+diff --git a/forge-ai/src/main/java/forge/ai/ability/ChooseCardNameAi.java b/forge-ai/src/main/java/forge/ai/ability/ChooseCardNameAi.java
+index ea46931..640e4c7 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/ChooseCardNameAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/ChooseCardNameAi.java
+@@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
+ import forge.StaticData;
+ import forge.ai.*;
+ import forge.card.*;
++import forge.game.ability.AbilityUtils;
+ import forge.game.card.*;
+ import forge.game.player.Player;
+ import forge.game.spellability.SpellAbility;
+@@ -27,6 +28,10 @@ public class ChooseCardNameAi extends SpellAbilityAi {
+             }
+ 
+             String logic = sa.getParam("AILogic");
++            if (logic.equals("DigForName")) {   // fishpond patch 109
++                return digForName(ai, sa, true) != null ? new AiAbilityDecision(100, AiPlayDecision.WillPlay)
++                        : new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
++            }
+             if (logic.equals("CursedScroll")) {
+                 if (SpecialCardAi.CursedScroll.consider(ai, sa)) {
+                     return new AiAbilityDecision(100, AiPlayDecision.WillPlay);
+@@ -124,4 +129,121 @@ public class ChooseCardNameAi extends SpellAbilityAi {
+ 
+         return ComputerUtilCard.getBestAI(cards).getName();
+     }
++
++    // ---- fishpond patch 109: "choose a card name, then reveal until you reveal it" (Demonic Consultation, Spoils of the Vault;
++    // the user, 2026-10-28: "a card that'll require an amount of care and attention to combos"). The rules: a name the library
++    // doesn't hold exiles the whole library (the empty-library win with Thassa's Oracle, Laboratory Maniac or Jace); Consultation
++    // first exiles the top six, so a named card among them goes too and then so does the rest of the library; a name further
++    // down goes to hand and everything above it is exiled (Spoils: a life each). Cast only for one of three plays:
++    //   win     an empty-library win comes right after: an Oracle-style card in hand castable on the mana left (main phase), the
++    //           Oracle's own enter trigger waiting on the stack, or a Lab Man-style replacement out with the seat's draw step
++    //           next (its upkeep, or the end step before its turn). Names a card the library doesn't hold.
++    //   second  a first Approach of the Second Sun waits below the cards the spell exiles first: name it, it comes to hand.
++    //   combo   the seat's pilot policy names the one missing piece of a known win combo it can cast this turn (DIG_PICK), and
++    //           the library is big enough that the six-card gamble rarely costs the whole library (DIG_MIN_LIBRARY).
++    // Spoils' life loss counts the worst case (the whole library) against the life budget. Each decision prints #FP-DIG. ----
++    public static volatile java.util.function.BiFunction<Player, SpellAbility, String> DIG_PICK;
++    static final int DIG_MIN_LIBRARY = Integer.getInteger("fishpond.digMinLibrary", 25);
++    static final java.util.Map<Integer, String> DIG_CHOSEN = java.util.Collections.synchronizedMap(new java.util.HashMap<>());
++
++    /** The name to choose, or null when the spell shouldn't be cast now. casting: the cast decision (logged), else resolution. */
++    public static String digForName(final Player ai, final SpellAbility sa, final boolean casting) {
++        if (!DrawAi.pilotSeat(ai)) {
++            return null;
++        }
++        final Card host = sa.getHostCard();
++        final forge.game.Game game = ai.getGame();
++        final forge.game.phase.PhaseHandler ph = game.getPhaseHandler();
++        final CardCollectionView lib = ai.getCardsIn(ZoneType.Library);
++        int exiledFirst = 0;
++        boolean losesLife = false;
++        for (SpellAbility x = sa; x != null; x = x.getSubAbility()) {
++            if (x.getApi() == forge.game.ability.ApiType.Dig && "Exile".equals(x.getParam("DestinationZone"))) {
++                exiledFirst += AbilityUtils.calculateAmount(host, x.getParamOrDefault("DigNum", "1"), x);
++            }
++            if (x.getApi() == forge.game.ability.ApiType.LoseLife) losesLife = true;
++        }
++        String play = null, name = null;
++        // win: an empty-library win right after
++        boolean winNext = false;
++        if (!game.getStack().isEmpty() && game.getStack().peekAbility().isTrigger()
++                && game.getStack().peekAbility().getActivatingPlayer() == ai
++                && hasEnterWin(game.getStack().peekAbility().getHostCard())
++                && game.getStack().peekAbility().getHostCard().isInZone(ZoneType.Battlefield)) {
++            winNext = true;   // the Oracle's trigger is waiting: empty the library under it
++        }
++        if (!winNext && ComputerUtil.winsOnEmptyLibraryDraw(ai)
++                && (ph.isPlayerTurn(ai) && ph.is(forge.game.phase.PhaseType.UPKEEP)
++                    || ph.is(forge.game.phase.PhaseType.END_OF_TURN) && ph.getNextTurn() == ai)) {
++            winNext = true;   // Lab Man out, the draw step next
++        }
++        if (!winNext && ph.isPlayerTurn(ai) && ph.getPhase().isMain() && (game.getStack().isEmpty() || !casting)) {
++            for (final Card c : ai.getCardsIn(ZoneType.Hand)) {
++                if (c == host || !c.isPermanent() || !hasEnterWin(c)) continue;
++                final SpellAbility cast = c.getFirstSpellAbility();
++                if (cast != null && ComputerUtilMana.canPayManaCost(cast, ai, host.getCMC(), false)) {
++                    winNext = true;   // an Oracle castable on what's left
++                    break;
++                }
++            }
++        }
++        if (winNext && (!losesLife || !ComputerUtil.aiLifeInDanger(ai, true, lib.size()))) {
++            play = "win";
++            name = nameNotIn(ai, host, lib);
++        }
++        // second: a first Approach waiting below the exiled cards
++        if (play == null) {
++            final int at = forge.ai.TurnPlan.approachWaiting(ai);
++            if (at >= exiledFirst && lib.size() - at - 1 >= 1 && (!losesLife || !ComputerUtil.aiLifeInDanger(ai, true, at))) {
++                play = "second";
++                name = lib.get(at).getName();
++            }
++        }
++        // combo: the missing piece of a known win combo, castable this turn
++        if (play == null && ph.isPlayerTurn(ai) && ph.getPhase().isMain() && lib.size() >= DIG_MIN_LIBRARY && DIG_PICK != null
++                && (!losesLife || !ComputerUtil.aiLifeInDanger(ai, true, lib.size()))) {
++            final String pick = DIG_PICK.apply(ai, sa);
++            if (pick != null) {
++                for (final Card c : lib) {
++                    if (c.getName().equals(pick)) {
++                        play = "combo";
++                        name = pick;
++                        break;
++                    }
++                }
++            }
++        }
++        if (casting && TurnPlan.real(game)) {
++            System.out.println("#FP-DIG {\"t\": " + ph.getTurn() + ", \"seat\": \"" + ai.getName() + "\", \"card\": \"" + host.getName()
++                    + "\", \"phase\": \"" + ph.getPhase() + "\", \"library\": " + lib.size() + ", \"play\": \"" + (play == null ? "none" : play)
++                    + "\", \"name\": \"" + (name == null ? "" : name.replace("\"", "")) + "\"}");
++        }
++        if (name != null) DIG_CHOSEN.put(host.getId(), name);
++        else if (!casting) name = DIG_CHOSEN.get(host.getId());   // the board changed since the cast: keep the cast's plan
++        if (name == null && !casting && !lib.isEmpty()) {
++            name = ComputerUtilCard.getBestAI(lib).getName();   // resolving without a plan (a copy): never a name that exiles it all
++        }
++        return name;
++    }
++
++    private static boolean hasEnterWin(final Card c) {
++        for (final forge.game.trigger.Trigger t : c.getTriggers()) {
++            if (t.getMode() != forge.game.trigger.TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))) continue;
++            for (SpellAbility a = t.ensureAbility(); a != null; a = a.getSubAbility()) {
++                if (a.getApi() == forge.game.ability.ApiType.WinsGame) return true;
++            }
++        }
++        return false;
++    }
++
++    /** A real card name the library doesn't hold: the spell's own, else a card of the seat's elsewhere. */
++    private static String nameNotIn(final Player ai, final Card host, final CardCollectionView lib) {
++        final java.util.Set<String> inLib = new java.util.HashSet<>();
++        for (final Card c : lib) inLib.add(c.getName());
++        if (!inLib.contains(host.getName())) return host.getName();
++        for (final ZoneType z : new ZoneType[] {ZoneType.Battlefield, ZoneType.Graveyard, ZoneType.Hand, ZoneType.Exile}) {
++            for (final Card c : ai.getCardsIn(z)) if (!inLib.contains(c.getName())) return c.getName();
++        }
++        return "Morphling";
++    }
+ }

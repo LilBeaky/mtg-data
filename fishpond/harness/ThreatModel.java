@@ -548,7 +548,35 @@ public final class ThreatModel {
             if (PilotPolicy.locksCommanders(viewer)) v += 20;
             else v -= commanderPenalty(c, o, necessary);
         }
+        if (!c.isCreature() && planPiece(c, o, pol)) v = Math.max(v, PLAN_PIECE);
         return v;
+    }
+
+    /** A noncreature the removal floor should see (trends_20261027: every noncreature but combo pieces, big mana and must-answers
+     *  rated under it; Flaming Fist on Wilson was held against on 30 turns, Krark's Thumb 17, Astral Drift and Escape Protocol 10):
+     *  an aura or equipment on its controller's creature that clears the creature floor itself (it is part of that creature's
+     *  clock), or the controller's '# key:' card or an engine payoff its deck is built around. It rates PLAN_PIECE, just over
+     *  the noncreature floor at its highest (THREAT_SAVE_BELOW x 1.25 x 1.2) and under must-answer (THREAT_REMOVE_NOW). */
+    static final double PLAN_PIECE = 30;
+
+    static boolean planPiece(Card c, Player o, PilotPolicy pol) {
+        if (c.getAttachedTo() instanceof Card host && host.isCreature() && host.getController() == o && clearsFloor(host)) return true;
+        // a static that pumps its controller's creatures (Flaming Fist's double strike for Wilson; anthems) counts with the
+        // creature it pumps
+        for (forge.game.staticability.StaticAbility st : c.getStaticAbilities()) {
+            if (!st.checkMode(forge.game.staticability.StaticAbilityMode.Continuous) || !st.hasParam("Affected")
+                    || !(st.hasParam("AddPower") || st.hasParam("AddKeyword") || st.hasParam("AddTrigger"))) continue;
+            String[] aff = st.getParam("Affected").split(",");
+            for (Card x : o.getCreaturesInPlay())
+                if (x.isValid(aff, o, c, null) && clearsFloor(x)) return true;
+        }
+        return pol != null && (pol.in.keys.contains(c.getName()) || pol.isEnginePayoff(c.getName()));
+    }
+
+    static final double REMOVAL_FLOOR = Double.parseDouble(System.getProperty("fishpond.removalFloor", "160"));   // patch 90's
+
+    static boolean clearsFloor(Card creature) {
+        return forge.ai.ComputerUtilCard.evaluateCreature(creature) >= REMOVAL_FLOOR;
     }
 
     /** A creature's combat damage a turn toward killing viewer: double strike counted twice, and a commander's scaled by how
@@ -992,6 +1020,12 @@ public final class ThreatModel {
             forge.ai.AiController.class.getField("SPELL_THREAT").set(null, st);
         } catch (ReflectiveOperationException e) {
             ForgeRunner.out.println("#FP-WARN no threat hooks in this Forge build (patch 57)");
+        }
+        java.util.function.ToDoubleFunction<Player> pt = ThreatModel::threatNow;   // patch 111: whom a symmetric tutor helps
+        try {
+            forge.ai.AiController.class.getField("PLAYER_THREAT").set(null, pt);
+        } catch (ReflectiveOperationException e) {
+            ForgeRunner.out.println("#FP-WARN no player-threat hook in this Forge build (patch 111)");
         }
         java.util.function.BiFunction<Player, SpellAbility, Boolean> rf = Refill::judge;   // patch 78: refills by projected draw
         try {

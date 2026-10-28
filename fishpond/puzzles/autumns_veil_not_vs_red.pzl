@@ -1,0 +1,15 @@
+# title: Guard for autumns_veil_vs_black_removal: the opponent casts Flame Slash (red) at the Serra Angel; Autumn's Veil can't stop red, so it stays in hand (patch 110)
+# card: Autumn's Veil
+# turns: 1
+# forbid: cast Autumn's Veil
+p0life=40
+p1life=40
+turn=6
+activeplayer=p1
+activephase=MAIN1
+p0battlefield=Serra Angel;Forest;Plains;Plains
+p0hand=Autumn's Veil
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Mountain;Mountain;Mountain;Mountain
+p1hand=Flame Slash
+p1library=Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain;Mountain

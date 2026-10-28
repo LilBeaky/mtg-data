@@ -1,0 +1,15 @@
+# title: The opponent plays Yusri's list and has Krark's Thumb (its '# key:' card) out; the AI holds Disenchant on turn 9: it destroys the Thumb (a deck's key cards and engine payoffs sit above the noncreature removal floor; trends_20261027: Krark's Thumb was held against on 17 turns)
+# card: Disenchant
+# deck2: Ians_Yusri_Omni
+# turns: 2
+# expect: Disenchant targeting .*Krark's Thumb
+p0life=40
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains
+p0hand=Disenchant
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Mountain;Mountain;Island;Island;Krark's Thumb
+p1library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island

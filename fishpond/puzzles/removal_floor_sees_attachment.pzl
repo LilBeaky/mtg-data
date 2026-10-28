@@ -1,0 +1,14 @@
+# title: The opponent's Serra Angel wears Battle Mastery (double strike); the AI holds Disenchant on turn 9: it destroys Battle Mastery (an aura on a creature that clears the creature floor counts as that creature; trends_20261027: every noncreature but combo pieces and big mana rated under the removal floor, Flaming Fist on Wilson held against on 30 turns)
+# card: Disenchant
+# turns: 2
+# expect: Disenchant targeting .*Battle Mastery
+p0life=40
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Plains;Plains;Plains;Plains
+p0hand=Disenchant
+p0library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains
+p1battlefield=Plains;Plains;Plains;Plains;Plains;Serra Angel|Id:101;Battle Mastery|AttachedTo:101
+p1library=Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains;Plains

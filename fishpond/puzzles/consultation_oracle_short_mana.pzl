@@ -1,0 +1,14 @@
+# title: Guard for consultation_oracle_win: Oracle and Consultation in hand with only an Island and a Swamp (Consultation castable, the Oracle's UU not): Consultation stays in hand (exiling the library without the Oracle to follow decks the seat; patch 109)
+# card: Demonic Consultation
+# turns: 1
+# forbid: cast Demonic Consultation
+p0life=40
+p1life=40
+turn=5
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Swamp
+p0hand=Thassa's Oracle;Demonic Consultation
+p0library=Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest
+p1battlefield=Forest;Forest;Forest
+p1library=Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest;Swamp;Island;Plains;Forest

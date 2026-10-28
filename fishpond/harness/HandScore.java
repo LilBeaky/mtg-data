@@ -44,8 +44,10 @@ final class HandScore {
 
     record Result(boolean gate, double score, int lands, double ramp, String missing, double mana, List<String> detail) { }
 
-    static final Map<Player, Map<String, Info>> INFO = Collections.synchronizedMap(new WeakHashMap<>());
-    static final Map<Player, Double> BAR = Collections.synchronizedMap(new WeakHashMap<>());
+    // per game, then seat: a worker's Player objects carry over from game to game, so a map keyed by Player alone kept the first
+    // game's bar and card roles for a seat whose list changed (a --variant build, a sampled gauntlet)
+    static final Map<forge.game.Game, Map<Integer, Map<String, Info>>> INFO = Collections.synchronizedMap(new WeakHashMap<>());
+    static final Map<forge.game.Game, Map<Integer, Double>> BAR = Collections.synchronizedMap(new WeakHashMap<>());
 
     // ---------------------------------------------------------------- the hook (Forge patch 68)
     /** Mulligan? null when the score is off or the seat has no policy (Forge's patch-26 rule decides). */
@@ -61,16 +63,43 @@ final class HandScore {
         int size = kept.size();
         Result r = score(ai, pol, kept);
         double bar = bar(ai, pol) * Math.min(1.0, size / 7.0);
-        boolean mull = size > 4 && !(r.gate() && r.score() >= bar);
+        // the free mulligan (multiplayer's first one: 7, 7, 6...) sends back a 2-land seven unless it has 2+ mana of ramp or a curve
+        // it casts on two lands (the user, 2026-10-28; trends_20261027: 2-land keeps were 31% of keeps and missed 76% of the
+        // turn 1-4 land drops, 19% of theirs against 4% for 3-landers, ramp or not)
+        int nth = DECISIONS.computeIfAbsent(ai.getGame(), k -> new HashMap<>()).merge(ai.getId(), 1, Integer::sum);
+        boolean free = nth == 1 && size == 7 && ai.getGame().getPlayers().size() > 2;
+        int curve = twoLandCurve(ai, pol, kept);
+        boolean thin = free && r.gate() && r.lands() == 2 && r.ramp() < 2 && curve < TWO_LAND_CURVE;
+        boolean mull = size > 4 && (!(r.gate() && r.score() >= bar) || thin);
         String why = size <= 4 ? "4 or fewer cards: always keep" : !r.gate() ? (r.lands() < 2 ? "under 2 lands" : "6+ lands")
-                : mull ? "score under the bar" : "score met the bar";
+                : thin ? "free mulligan: 2 lands, under 2 ramp, no 2-land curve" : mull ? "score under the bar" : "score met the bar";
         StringBuilder b = new StringBuilder("#FP-MULL {\"player\": \"").append(ai.getName()).append("\", \"cards\": ").append(size)
                 .append(", \"lands\": ").append(r.lands()).append(", \"ramp\": ").append(round(r.ramp())).append(", \"missing\": \"").append(r.missing())
                 .append("\", \"mana\": ").append(round(r.mana())).append(", \"score\": ").append(round(r.score())).append(", \"bar\": ").append(round(bar))
-                .append(", \"bottomed\": ").append(cardsToReturn).append(", \"mulligan\": ").append(mull).append(", \"why\": \"").append(why).append("\", \"hand\": [");
+                .append(", \"bottomed\": ").append(cardsToReturn).append(", \"free\": ").append(free).append(", \"curve2\": ").append(curve).append(", \"mulligan\": ").append(mull).append(", \"why\": \"").append(why).append("\", \"hand\": [");
         for (int i = 0; i < r.detail().size(); i++) b.append(i > 0 ? ", " : "").append(ForgeRunner.js(r.detail().get(i)));
         System.out.println(b.append("]}"));
         return mull;
+    }
+
+    static final Map<forge.game.Game, Map<Integer, Integer>> DECISIONS = Collections.synchronizedMap(new WeakHashMap<>());
+    static final int TWO_LAND_CURVE = 3;
+
+    /** Spells of mana value 2 or less the hand's own lands can pay for: a curve a 2-land hand plays out on its lands. */
+    static int twoLandCurve(Player ai, PilotPolicy pol, List<Card> hand) {
+        String ident = letters(ai.getCommanderColorID());
+        Set<Character> cols = new HashSet<>();
+        List<Info> cards = new ArrayList<>();
+        for (Card c : hand) cards.add(info(ai, pol, c));
+        for (Info x : cards) if (x.land()) for (char ch : x.colors().toCharArray()) cols.add(ch);
+        int n = 0;
+        for (Info x : cards) {
+            if (x.land() || x.cmc() > 2) continue;
+            boolean ok = true;
+            for (char ch : x.pips().toCharArray()) if (!cols.contains(ch)) ok = false;
+            if (ok) n++;
+        }
+        return n;
     }
 
     /** The London mulligan's bottom cards: one at a time, the card whose loss leaves the best hand. */
@@ -103,7 +132,8 @@ final class HandScore {
     /** What an average 4-card hand of this deck scores (7 drawn, the best 4 kept): a 7 keeps at this. Worked out once per player
      *  from its own cards with a fixed seed (the deck's list), so the game's own random numbers aren't touched. */
     static double bar(Player ai, PilotPolicy pol) {
-        Double v = BAR.get(ai);
+        Map<Integer, Double> bars = BAR.computeIfAbsent(ai.getGame(), k -> new HashMap<>());
+        Double v = bars.get(ai.getId());
         if (v != null) return v;
         List<Card> deck = new ArrayList<>(ai.getCardsIn(ZoneType.Library));
         deck.addAll(ai.getCardsIn(ZoneType.Hand));
@@ -119,7 +149,7 @@ final class HandScore {
             sum += score(ai, pol, h).score();
         }
         v = sum / n;
-        BAR.put(ai, v);
+        bars.put(ai.getId(), v);
         return v;
     }
 
@@ -247,7 +277,7 @@ final class HandScore {
     }
 
     static Info info(Player ai, PilotPolicy pol, Card c) {
-        Map<String, Info> m = INFO.computeIfAbsent(ai, k -> new HashMap<>());
+        Map<String, Info> m = INFO.computeIfAbsent(ai.getGame(), k -> new HashMap<>()).computeIfAbsent(ai.getId(), k -> new HashMap<>());
         Info x = m.get(c.getName());
         if (x == null) { x = classify(ai, pol, c); m.put(c.getName(), x); }
         return x;
