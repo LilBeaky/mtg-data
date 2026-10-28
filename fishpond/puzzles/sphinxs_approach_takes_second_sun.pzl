@@ -1,0 +1,17 @@
+# title: Sphinx's Approach with four more in the graveyard and both Consecrated Sphinx and Sphinx of the Second Sun in the library: the deck's first key card (Second Sun) is the one put onto the battlefield (patch 107)
+# card: Sphinx's Approach
+# deck: Claudes_Baral_Control
+# turns: 1
+# expect: #FP-PUZZLE end Ai\(1\)-P1 .*battlefield \[.*Sphinx of the Second Sun
+# forbid: #FP-PUZZLE end Ai\(1\)-P1 .*battlefield \[.*Consecrated Sphinx
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island
+p0hand=Sphinx's Approach
+p0graveyard=Sphinx's Approach;Sphinx's Approach;Sphinx's Approach;Sphinx's Approach
+p0library=Island;Consecrated Sphinx;Island;Sphinx of the Second Sun;Island;Sphinx of the Final Word;Island;Island;Island;Island
+p1battlefield=Island;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

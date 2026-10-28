@@ -1,6 +1,7 @@
 # name: Claudes Baral Control
 # bracket: 3
 # plan: Mono-blue counterspells. Baral loots off every counter and is the deck's cost reducer; protect him rather than backing him up. 25 Sphinx's Approach for card flow; every fifth Approach tutors a Sphinx, with Sphinx of the Second Sun first (extra untap = counter mana twice). Thin curve; the only non-Sphinx top end is big mana.
+# priority: Sphinx of the Second Sun; Consecrated Sphinx
 # key: Sphinx of the Second Sun; Consecrated Sphinx; Sphinx of the Final Word; Unesh, Criosphinx Sovereign
 Commander
 1 Baral, Chief of Compliance
