@@ -114,6 +114,52 @@ name seat 2's deck with `# deck2:`); dead cards: Demonic Consultation and Spoils
 time on Consultation"), Autumn's Veil (110), Scheming Symmetry (111). Overnight run on 01-111: `pilot_20261028` (the round-robin,
 7 games a pod, seed 20261028), findings below when it's read.
 
+### Pilot failures overnight (2026-10-28, `pilot_20261028` + `pilot_20261028b`)
+
+The user, going to bed: "run a much longer sim ... review the data and report trends in pilot failure. We'll talk more about
+what we can do with that data afterwards." Build 01-111 (0d72431), the round-robin twice (7 games a pod on seed 20261028, 18 on
+20261029): **500 games, 2,000 seat-games**, 497 natural, 2 at the 30-minute cap, 1 turn cap, 0 AI timeouts, 0 lookahead
+fallbacks. Every number below counts all four seats, per 100 seat-games, against `trends_20261027` (01-106, 80 games) where it
+compares. The scratch pass (`pilot.py`) is not in the repo yet. Nothing below is fixed: the user decides what to do with it.
+
+What last night's patches did: self-decking 2.8 -> 1.2 (Chulane 30 -> 6 per 100 of its seats; Chulane won 27/125 decided, 1/19
+before); missed land drops on turns 1-4 7.7% -> 6.8%, but the 350 seats that sent a 2-land seven back on the free mulligan won
+18.3%, no better than 2-land keeps did before (18.7%; the 2-land sevens kept now, with ramp or a curve, 20.4%), and hands of 5 or
+fewer rose 1.6 -> 3.4 (21 of the 350 ended there); Demonic Consultation cast 10 times, 8 games won, one decked (the six-card
+gamble exiled the library), one lost to damage; Scheming Symmetry 22
+casts; Autumn's Veil 2.
+
+Pilot failures, biggest first (the line audit and the turn plan's own logs; examples replay by pod and game):
+1. **The commander waits while affordable** (765 = 38/100; Wilson 106 per 100 of its seats, Xyris 86, Yusri 66, Jarad 56,
+   Omnath 43, Zur 39). A main-1 plan whose budget covered the commander left it out and no plan that turn cast it; what it cast
+   instead: engines 97 of 200 in the first pass, ramp 58, bodies 46. Patch 24's "commander as soon as affordable" lost to the turn
+   plan's values (Wilson 351 against Strong Back 995 and Flaming Fist 635). Worst case: **Flaming Fist cast with Wilson in the
+   command zone** 74 times in 46 of Wilson's 125 games: the commander buff is valued with no commander to buff.
+2. **Wipes refused just before the seat dies to a board they would have hit** (92 refusals within 2 turns of death = 4.6/100;
+   24 where the wipe hit the killer's board: Yusri's and Zur's Cyclonic Rift 8, Heliod's Fumigate 3, Araumi's Singularity Rupture
+   3, Witherbloom's Culling Ritual 3). Two roots in patches 60-61: the "danger" override exists only in the declare-blockers step
+   (`lifeInSeriousDanger`), so a sorcery wipe never has one and the threat model's clock isn't asked; and a mass bounce counts every
+   lost card at 0.4 of its value, though auras on a bounced creature go to the graveyard for good (Rift on a suited-up Wilson read
+   36-118, "not enough", three turns running, then commander damage).
+3. **Attack-trigger commanders stay home**: Yusri on the battlefield past its first turn didn't attack on 78 of 212 turns (37%),
+   and blocked instead (T20 g1); patch 24 lets such a commander attack into blockers but doesn't push it. Yusri's engine lines
+   missed 28 times (22 per 100 of its seats; the line audit also counts the summoning-sick turn, a spec flaw to fix).
+4. **Commanders that never resolve** (20.4/100, flat): Niv 60% of its games (in 14 of 21 such games in the first pass the seat
+   reached 6 mana; Niv was off-color, WWBB, rather than skipped: a mana base question), Zhulodok 38%, Lumra 37%, Witherbloom 35%,
+   Klauth 30%, Xyris 28%, mostly early deaths.
+5. **Engines and closers left unplayed:** Araumi's "encore a bomb" available in 66 games, played in 40 (cause not read);
+   Heliod + Ballista/Triskelion 19 misses, 9 of 13 Ballista misses Erebos's lifegain lock (the audit should know locks); Zur's
+   Approach 8; Niv's Citadel 6.
+6. **Castable sorcery-speed cards held with mana up** (turns 1-8 ending with 2+ mana and one castable: 47/100, baseline 40; held
+   3+ turns with mana idle 39/100): mostly cards with no AI or no good moment: Perpetual Timepiece (Jarad 27, flagged), Shadowborn
+   Apostle (Erebos 21: one at a time instead of building to six), Insatiable Avarice (Erebos 15), Diplomatic Immunity (Yusri 15),
+   Regrowth and Soul's Majesty (Omnath), Wander in Death (Zur 12), Toxic Deluge and Black Sun's Zenith (Witherbloom). Some are
+   right to hold; Apostles and the spree/modal spells look like AI gaps.
+7. Smaller: counters kept, then the seat killed by that spell's caster within 3 turns 1.6/100 (Zur 19; most kept answers were
+   correctly not spent on Sol Ring and dorks); removal held, then killed by the target's owner 1.2/100; self-kills 0.8/100
+   (Ragost's Descent into Avernus 3); loops stopped as stalled or at the goal 2.6/100 (Heliod's Ballista 18, mostly the Erebos lock;
+   Sprout Swarm 22). Logging noise: `#FP-DIG` prints at every priority (2,458 "none" lines).
+
 ## Plan as of 2026-10-12 (the user's order)
 
 | # | Item | Status |
