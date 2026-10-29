@@ -33,6 +33,15 @@ def _short(card):
     return re.sub(r" \(\d+\)", "", card).strip()
 
 
+def _grouped(cards):
+    """Forge's "A (12), B (40) and C (41)" as names, repeats counted: "Pest Token ×3, Saproling Token ×64" (a token swarm's
+    attack listed every token). Split on the card ids, so a name with a comma (Witherbloom, the Balancer) stays whole."""
+    names = re.findall(r"(.+?) \(\d+\)(?:, | and |$)", cards) or [_short(cards)]
+    counts = {}
+    for n in names: counts[n] = counts.get(n, 0) + 1
+    return ", ".join(n + (f" ×{k}" if k > 1 else "") for n, k in counts.items())
+
+
 # ---------------------------------------------------------------------------------------------------------------- parsing
 def _games_in(log):
     """(Forge log lines, plans, seq, boards, wipes, moves, threat, end record) per game in one worker log."""
@@ -82,13 +91,11 @@ def _parse(lines):
         elif ln.startswith("Add To Stack: "):
             m = re.match(r"Add To Stack: (Ai\(\d\)-\S+) (cast|activated) (.+?)(?: targeting \[(.*)\])?$", ln)
             if m:
-                tgt = _short(m.group(4)) if m.group(4) else ""
+                tgt = _grouped(m.group(4)) if m.group(4) else ""
                 ev[_seat(m.group(1))].append([m.group(2), _short(m.group(3)), tgt])
         elif ln.startswith("Combat: ") and " to attack " in ln:
             m = re.match(r"Combat: (Ai\(\d\)-\S+) assigned (.+) to attack (.+)\.$", ln)
-            if m:
-                who = [_short(x) for x in re.split(r", | and ", m.group(2))]
-                ev[_seat(m.group(1))].append(["attack", ", ".join(who), SEAT.sub(lambda k: k.group(2), m.group(3))])
+            if m: ev[_seat(m.group(1))].append(["attack", _grouped(m.group(2)), SEAT.sub(lambda k: k.group(2), m.group(3))])
         elif ln.startswith("Combat: ") and " to block " in ln:
             m = re.match(r"Combat: (Ai\(\d\)-\S+) assigned (.+) to block (.+)\.$", ln)
             if m: ev[_seat(m.group(1))].append(["block", _short(m.group(2)), _short(m.group(3))])
