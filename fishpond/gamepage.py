@@ -35,8 +35,8 @@ def _short(card):
 
 # ---------------------------------------------------------------------------------------------------------------- parsing
 def _games_in(log):
-    """(Forge log lines, plans, seq, boards, wipes, moves, end record) per game in one worker log."""
-    lines, plans, seqs, boards, wipes, moves = [], {}, {}, {}, [], []
+    """(Forge log lines, plans, seq, boards, wipes, moves, threat, end record) per game in one worker log."""
+    lines, plans, seqs, boards, wipes, moves, threat = [], {}, {}, {}, [], [], {}
     for raw in open(log, encoding="utf-8", errors="replace"):
         line = raw.rstrip("\n")
         try:
@@ -51,9 +51,13 @@ def _games_in(log):
                 wipes.append(json.loads(line[9:]))
             elif line.startswith("#FP-MOVE "):
                 moves.append(json.loads(line[9:]))
+            elif line.startswith("#FP-THREAT "):
+                x = json.loads(line[11:]); threat.setdefault(x["t"], x["seats"])
+            elif line.startswith("#FP-LINE ") and '"kind": "reach"' in line:
+                x = json.loads(line[9:]); threat.setdefault("cmd", {})[int(x["seat"])] = x.get("commander")
             elif line.startswith("#FP-END "):
-                yield lines, plans, seqs, boards, wipes, moves, json.loads(line[8:])
-                lines, plans, seqs, boards, wipes, moves = [], {}, {}, {}, [], []
+                yield lines, plans, seqs, boards, wipes, moves, threat, json.loads(line[8:])
+                lines, plans, seqs, boards, wipes, moves, threat = [], {}, {}, {}, [], [], {}
             elif not line.startswith("#"):
                 lines.append(line)
         except ValueError:
@@ -100,16 +104,20 @@ def _parse(lines):
     return names, turns
 
 
-def _commanders(boards, turns, names):
-    """seat -> commander names (the board's list; else the first cast whose name starts with the seat's short name)."""
+def _commanders(boards, turns, names, audit=None):
+    """seat -> commander names: the board's list; else the line audit's commander (#FP-LINE reach); else the first cast whose
+    name starts with the seat's short name."""
     out = {}
     for b in boards.values():
         for k, v in b.items():
             if v.get("cmd") and int(k) not in out: out[int(k)] = [c["n"] for c in v["cmd"]]
+    for k, c in (audit or {}).items():
+        if k not in out and c: out[k] = [x.strip() for x in c.split(" + ")]
+    norm = lambda x: re.sub(r"[^a-z0-9]", "", x.lower())
     for tr in turns:
         for s, evs in tr["ev"].items():
             for e in evs:
-                if s not in out and e[0] == "cast" and e[1].startswith(names.get(s, "~")): out[s] = [e[1]]
+                if s not in out and e[0] == "cast" and norm(e[1]).startswith(norm(names.get(s, "~"))): out[s] = [e[1]]
     return out
 
 
@@ -145,10 +153,10 @@ def _attach_moves(turns, moves, names):
             elif by is not None: tr["ev"][by].append(["found", src + (" (trigger)" if trig else ""), "", res])
 
 
-def game_record(lines, plans, seqs, boards, wipes, moves, end, pod=""):
+def game_record(lines, plans, seqs, boards, wipes, moves, threat, end, pod=""):
     names, turns = _parse(lines)
     _attach_moves(turns, moves, names)
-    cmds = _commanders(boards, turns, names)
+    cmds = _commanders(boards, turns, names, threat.get("cmd") or {})
     wipe_cards = {w["card"] for w in wipes}
     seats = sorted(names)
     order = list(dict.fromkeys(tr["seat"] for tr in turns)) + [s for s in seats if s not in {tr["seat"] for tr in turns}]
@@ -215,6 +223,8 @@ def game_record(lines, plans, seqs, boards, wipes, moves, end, pod=""):
         row["hand"] = None if not q else q.get("hand")
         b = boards.get(tr["t"])
         row["board"] = b.get(str(a)) if b else None   # the active seat's board at the end of its turn
+        th = (threat.get(tr["t"]) or {}).get(str(a))  # the threat log at its main 1: life, commander out, mana (runs before #FP-BOARD)
+        row["start"] = dict(life=th.get("life"), cmd=th.get("cmd"), mana=th.get("mana")) if th else None
         row["life"] = tr.get("life", {})
         rows.append(row)
     # eliminations: the first board that shows the seat out, else its last turn
@@ -260,9 +270,12 @@ def load_run(run_dir):
 
 # ---------------------------------------------------------------------------------------------------------------- colors
 # light / dark pairs per color, two shades each so two decks of one color stay apart
-HUES = {"W": [("#a8801a", "#e2c46a"), ("#8d7a52", "#cdb98d")], "U": [("#2f5fa8", "#7ea6ee"), ("#1f7f95", "#62c3d6")],
-        "B": [("#5d4a8a", "#a993e0"), ("#6e5562", "#c39bb0")], "R": [("#c2412d", "#f07a63"), ("#b8601a", "#ec9b56")],
-        "G": [("#3c7d3a", "#7cc076"), ("#617d1f", "#a8c766")], "C": [("#6f6a64", "#b3ada6"), ("#7d6c55", "#c2ad8e")]}
+HUES = {"W": [("#a8801a", "#e2c46a"), ("#8d7a52", "#cdb98d"), ("#9a6b2f", "#d8a86a")],
+        "U": [("#2f5fa8", "#7ea6ee"), ("#1f7f95", "#62c3d6"), ("#4b4fb0", "#9a9df0")],
+        "B": [("#5d4a8a", "#a993e0"), ("#6e5562", "#c39bb0"), ("#4a5560", "#9fb0bf")],
+        "R": [("#c2412d", "#f07a63"), ("#b8601a", "#ec9b56"), ("#a83a5c", "#ec86a8")],
+        "G": [("#3c7d3a", "#7cc076"), ("#617d1f", "#a8c766"), ("#2a7a62", "#6cc5a6")],
+        "C": [("#6f6a64", "#b3ada6"), ("#7d6c55", "#c2ad8e"), ("#5f6b75", "#a7b4bf")]}
 
 
 def deck_pips(run_dirs):
@@ -344,6 +357,13 @@ def build(games, title, note, run_dirs=()):
             .replace("__DECKDARK_THEME__", dark(':root[data-theme="dark"]')).replace("__DATA__", payload))
 
 
+def document(page):
+    """A page as a complete HTML document (for a file opened from disk; the artifact host wraps its own page)."""
+    return ('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+            '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n'
+            + page + '\n</body>\n</html>\n')
+
+
 def title_for(games, meta=None):
     names = list(dict.fromkeys(n for g in games for _, n in sorted(g["names"].items())))
     return ", ".join(names[:4]) + (f" and {len(names) - 4} more" if len(names) > 4 else "") if names else "Fishpond games"
@@ -367,20 +387,155 @@ def write(run_dir, out=None, title=None, note=None, quiet=True):
     try: meta = json.load(open(os.path.join(run_dir, "meta.json"), encoding="utf-8"))
     except (OSError, ValueError): pass
     out = out or os.path.join(run_dir, "games.html")
-    open(out, "w", encoding="utf-8").write(build(games, title or title_for(games, meta), note or note_for(games, meta, run_dir), [run_dir]))
+    open(out, "w", encoding="utf-8").write(document(build(games, title or title_for(games, meta), note or note_for(games, meta, run_dir), [run_dir])))
     if not quiet: print(f"fishpond: game page -> {out} ({len(games)} games)")
     return out
 
 
+# ---------------------------------------------------------------------------------------------------------------- study index
+def _deck_turns(entries):
+    """By own turn, over (game, seat) entries: the stats the deck view shows (as the game page's script computes them)."""
+    def med(a):
+        a = sorted(x for x in a if x is not None)
+        if not a: return None
+        m = len(a) // 2
+        return a[m] if len(a) % 2 else (a[m - 1] + a[m]) / 2
+    T = {}
+    for g, s in entries:
+        for r in g["rows"]:
+            if r["seat"] != s: continue
+            t = T.setdefault(r["own"], dict(n=0, mana=[], unused=[], cmd=0, known=0, cr=[], pw=[], atk=0, dmg=0, life=[], cast=defaultdict(int)))
+            t["n"] += 1
+            if r.get("plan"): t["mana"].append(r["plan"]["budget"])
+            elif r.get("start") and r["start"].get("mana") is not None: t["mana"].append(r["start"]["mana"])
+            if r.get("unused") is not None: t["unused"].append(r["unused"])
+            b = r.get("board")
+            if b:
+                t["known"] += 1; t["cmd"] += any(c.get("zone") == "Battlefield" for c in b.get("cmd") or [])
+                cr = b.get("creatures") or []
+                t["cr"].append(sum(c.get("x", 1) for c in cr)); t["pw"].append(sum(max(0, c["p"]) * c.get("x", 1) for c in cr))
+                t["life"].append(b.get("life"))
+            elif r.get("start"):
+                t["known"] += 1; t["cmd"] += bool(r["start"].get("cmd")); t["life"].append(r["start"].get("life"))
+            if any(it[0] == "attack" for it in r["items"]): t["atk"] += 1
+            t["dmg"] += sum(r["dmg"].values())
+            for it in r["items"]:
+                if it[0] == "cast": t["cast"][it[1].split(" → ")[0]] += 1
+    out = []
+    for k in sorted(T):
+        t = T[k]
+        out.append(dict(turn=k, n=t["n"], mana=med(t["mana"]), unused=med(t["unused"]), cmd=t["cmd"], known=t["known"],
+                        cr=med(t["cr"]), pw=med(t["pw"]), atk=t["atk"], dmg=round(t["dmg"] / t["n"], 1), life=med(t["life"]),
+                        cast=sorted(t["cast"].items(), key=lambda x: -x[1])[:3]))
+    return out
+
+
+def _cards_in(g):
+    """Every card a game's seats cast or activated, and what their tutors and cheats moved (for the study's game finder)."""
+    seen = {}
+    for r in g["rows"]:
+        for lst in [r["items"]] + list(r["off"].values()):
+            for it in lst:
+                if it[0] in ("cast", "activated", "found"):
+                    seen[it[1].split(" → ")[0].replace(" (trigger)", "")] = 1
+                    if len(it) > 2: seen[it[2]] = 1
+    return " | ".join(seen)
+
+
+def _by_seat(entries):
+    """How many of these (game, seat) entries had the deck 1st, 2nd, 3rd and 4th in turn order."""
+    out = [0, 0, 0, 0]
+    for g, s, _ in entries:
+        order = g.get("order") or []
+        if s in order and order.index(s) < 4: out[order.index(s)] += 1
+    return out
+
+
+def study_index(study_dir, quiet=True, pod_pages=True):
+    """Write STUDY_DIR/index.html: every deck across every pod (a deck view pooled over the study), the pods (decks, wins, a
+    link to each pod's game page) and a game finder over the whole study; each pod's games.html too unless pod_pages is
+    False. Returns the path, or None when no pod has a finished game."""
+    pods = []
+    for pod in sorted(glob.glob(os.path.join(study_dir, "*/"))):
+        pod = os.path.normpath(pod)
+        if not os.path.isdir(os.path.join(pod, "logs")): continue
+        games = load_run(pod)
+        if not games: continue
+        if pod_pages:
+            try:
+                meta = json.load(open(os.path.join(pod, "meta.json"), encoding="utf-8"))
+            except (OSError, ValueError):
+                meta = None
+            open(os.path.join(pod, "games.html"), "w", encoding="utf-8").write(
+                document(build(games, title_for(games, meta), note_for(games, meta, pod), [pod])))
+        pods.append((pod, games))
+    if not pods: return None
+    decks, by_deck, finder, pod_rows = {}, defaultdict(list), [], []
+    for pod, games in pods:
+        rel = os.path.basename(pod)
+        wins = defaultdict(int)
+        names = list(dict.fromkeys(n for g in games for _, n in sorted(g["names"].items())))
+        for g in games:
+            for s, n in g["names"].items():
+                decks.setdefault(n, g["commanders"].get(s) or [n])
+                by_deck[n].append((g, s, rel))
+            if g["winner"] is not None: wins[g["names"][g["winner"]]] += 1
+            finder.append(dict(pod=rel, game=g["game"] + 1, turns=g["turns"], winner=g["names"].get(g["winner"]) if g["winner"] is not None else None,
+                               how=g["how"], decks=[g["names"][s] for s in g.get("order") or sorted(g["names"])],
+                               text=" | ".join(m["text"] for m in g["moments"]), cards=_cards_in(g)))
+        pod_rows.append(dict(pod=rel, decks=names, games=len(games), wins={n: wins.get(n, 0) for n in names},
+                             nowin=sum(1 for g in games if g["winner"] is None)))
+    colors = deck_colors(decks, deck_pips([p for p, _ in pods]))
+    deck_rows = {}
+    for n, lst in by_deck.items():
+        st = [g["stats"][s] for g, s, _ in lst]
+        cast = [x["cmd_first"] for x in st if x["cmd_first"] is not None]
+        games_list = []
+        for g, s, rel in lst:
+            x = g["stats"][s]
+            order = g.get("order") or []
+            games_list.append(dict(pod=rel, game=g["game"] + 1, result="won" if g["winner"] == s else ("out at #" + str(g["out_at"][s]) if s in g["out_at"] else "lost"),
+                                   won=g["winner"] == s, seat=(order.index(s) + 1) if s in order else None, turns=g["turns"],
+                                   cmd=x["cmd_first"], cmd_any=x["cmd_casts"], removed=x["cmd_left"], attacks=x["attacks"], dealt=x["dealt"],
+                                   moments=[f"#{m['t']} {m['text']}" for m in g["moments"] if m["seat"] == s][:6]))
+        deck_rows[n] = dict(games=len(lst), wins=sum(1 for g, s, _ in lst if g["winner"] == s), cast=cast,
+                            never=sum(1 for x in st if x["cmd_first"] is None and not x["cmd_casts"]),
+                            removed=sum(x["cmd_left"] for x in st), attacks=sum(x["attacks"] for x in st), dealt=sum(x["dealt"] for x in st),
+                            dealt_med=sorted(x["dealt"] for x in st)[len(st) // 2] if st else 0,
+                            seats=_by_seat(lst), seat_wins=_by_seat([x for x in lst if x[0]["winner"] == x[1]]),
+                            turns=_deck_turns([(g, s) for g, s, _ in lst]), list=games_list)
+    order = sorted(deck_rows, key=lambda n: (-deck_rows[n]["wins"] / max(1, deck_rows[n]["games"]), n))
+    try:
+        meta = json.load(open(os.path.join(pods[0][0], "meta.json"), encoding="utf-8"))
+    except (OSError, ValueError):
+        meta = {}
+    n_games = sum(len(g) for _, g in pods)
+    note = (f"{len(pods)} pods · {n_games} games" + (f" · {meta['sim']} lookahead" if meta.get("sim") else "")
+            + (f" · Forge patches 01-{meta['patches']:03d}" if isinstance(meta.get("patches"), int) else ""))
+    title = os.path.basename(os.path.normpath(study_dir))
+    css_decks = "\n".join(f'[data-deck="{html.escape(n)}"] {{ --c: {c["light"]} }}' for n, c in colors.items())
+    def dark(scope):
+        return "\n".join(f'{scope} [data-deck="{html.escape(n)}"] {{ --c: {c["dark"]} }}' for n, c in colors.items())
+    payload = json.dumps(dict(decks=deck_rows, order=order, colors=colors, pods=pod_rows, games=finder),
+                         separators=(",", ":")).replace("</", "<\\/")
+    css = PAGE[PAGE.index("<style>"):PAGE.index("</style>") + 8]
+    page = (INDEX.replace("__CSS__", css).replace("__TITLE__", html.escape(title)).replace("__NOTE__", html.escape(note))
+            .replace("__DECKCSS__", css_decks).replace("__DECKDARK_MEDIA__", dark(':root:not([data-theme="light"])'))
+            .replace("__DECKDARK_THEME__", dark(':root[data-theme="dark"]')).replace("__DATA__", payload))
+    out = os.path.join(study_dir, "index.html")
+    open(out, "w", encoding="utf-8").write(document(page))
+    if not quiet: print(f"fishpond: study index -> {out} ({len(pods)} pods, {n_games} games)")
+    return out
+
+
 def cmd(args):
-    """`fishpond page RUN_DIR...`: a run directory gets its page; a study directory gets one page per pod."""
+    """`fishpond page RUN_DIR...`: a run directory gets its page; a study directory gets one page per pod and its index."""
     for d in args.runs:
         d = os.path.normpath(d)
         if os.path.isdir(os.path.join(d, "logs")):
             write(d, out=args.out, title=args.title, quiet=False)
         else:
-            for pod in sorted(glob.glob(os.path.join(d, "*/"))):
-                if os.path.isdir(os.path.join(pod, "logs")): write(os.path.normpath(pod), quiet=False)
+            study_index(d, quiet=False)
 
 
 PAGE = r"""<title>__TITLE__</title>
@@ -414,7 +569,7 @@ __DECKCSS__
 __DECKDARK_THEME__
 * { box-sizing: border-box }
 [hidden] { display: none !important }
-body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--body); }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--body); margin: 0 }
 .wrap { max-width: 1440px; margin: 0 auto; padding-block: 28px 56px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   display: grid; gap: 22px; }
@@ -532,7 +687,21 @@ const fmt1 = v => v == null ? "–" : (Math.round(v * 10) / 10).toString();
 const pct = (k, n) => n ? Math.round(100 * k / n) + "%" : "–";
 const BIG = DATA.games.length > 12;      // past a dozen games the tabs become a game list
 const state = {view: "game", game: 0, deck: null, page: 0, filter: "", winner: ""};
-const save = () => { try { localStorage.setItem("fp-view", JSON.stringify({view: state.view, game: state.game, deck: state.deck})); } catch (e) {} };
+const slug = n => String(n).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const save = () => {
+  try { localStorage.setItem("fp-view", JSON.stringify({view: state.view, game: state.game, deck: state.deck})); } catch (e) {}
+  // a link to this view: #game-N (the game's number) or #deck-NAME (the study index links here)
+  const h = state.view === "deck" ? "#deck-" + slug(state.deck) : "#game-" + ((DATA.games[state.game] || {}).game + 1);
+  try { if (location.hash !== h) history.replaceState(null, "", h); } catch (e) {}
+};
+function fromHash() {
+  const h = (location.hash || "").slice(1);
+  let m = h.match(/^game-(\d+)$/);
+  if (m) { const i = DATA.games.findIndex(g => g.game + 1 === Number(m[1])); if (i >= 0) { state.view = "game"; state.game = i; return true; } }
+  m = h.match(/^deck-([a-z0-9-]+)$/);
+  if (m) { const n = Object.keys(DATA.agg).find(k => slug(k) === m[1]); if (n) { state.view = "deck"; state.deck = n; return true; } }
+  return false;
+}
 
 function aggView() {
   document.getElementById("agg").innerHTML = DATA.order.filter(n => DATA.agg[n]).map(n => {
@@ -636,7 +805,7 @@ function gameView(i) {
       let h = `<div class="cell" ${dd(name)}>`;
       if (o) {
         const b = o.board;
-        const cmdOut = b ? (b.cmd || []).some(c => c.zone === "Battlefield") : null;
+        const cmdOut = b ? (b.cmd || []).some(c => c.zone === "Battlefield") : (o.start && o.start.cmd != null ? !!o.start.cmd : null);
         h += `<div class="top"><span class="t">Turn ${n} <span class="note">· #${o.t}</span></span>${cmdOut == null ? "" : `<span class="cmd-chip ${cmdOut ? "on" : ""}">${cmdOut ? "Cmdr out" : "Cmdr not out"}</span>`}</div>`;
         if (o.plan || o.unused != null) h += `<div class="mana">${o.plan ? o.plan.budget + " mana" : ""}${o.unused != null ? " · " + o.unused + " unused" : ""}</div>`;
         h += o.items.length ? items(o.items) : `<div class="note">No plays</div>`;
@@ -644,7 +813,7 @@ function gameView(i) {
         if (dealt) h += `<div class="note">Combat damage: ${esc(dealt)}</div>`;
         if (o.plan && o.plan.left.length) h += `<div class="note">Plan left out: ${esc(o.plan.left.join(", "))}</div>`;
         h += boardHtml(b);
-        const life = b ? b.life : o.life[s];
+        const life = b ? b.life : (o.life[s] != null ? o.life[s] : (o.start ? o.start.life : null));
         if (life != null) h += `<div class="life"><span>${life} life</span><span class="bar"><i style="width:${Math.max(0, Math.min(100, life / 40 * 100))}%"></i></span></div>`;
       } else if (g.out_at[s] != null) {
         h += `<div class="dead">Out of the game</div>`;
@@ -668,13 +837,16 @@ function deckView(n) {
       if (r.seat !== s) continue;
       const T = turns[r.own] ||= {n: 0, mana: [], unused: [], cmd: 0, cmdKnown: 0, cr: [], pw: [], atk: 0, dmg: 0, life: [], cast: {}};
       T.n++;
-      if (r.plan) T.mana.push(r.plan.budget);
+      if (r.plan) T.mana.push(r.plan.budget); else if (r.start && r.start.mana != null) T.mana.push(r.start.mana);
       if (r.unused != null) T.unused.push(r.unused);
       if (r.board) {
         T.cmdKnown++; if ((r.board.cmd || []).some(c => c.zone === "Battlefield")) T.cmd++;
         const cr = r.board.creatures || [];
         T.cr.push(cr.reduce((x, c) => x + (c.x || 1), 0)); T.pw.push(cr.reduce((x, c) => x + Math.max(0, c.p) * (c.x || 1), 0));
         T.life.push(r.board.life);
+      } else if (r.start) {   // a run from before the end-of-turn boards: the threat log at main 1
+        T.cmdKnown++; if (r.start.cmd) T.cmd++;
+        if (r.start.life != null) T.life.push(r.start.life);
       }
       if (r.items.some(it => it[0] === "attack")) T.atk++;
       T.dmg += Object.values(r.dmg).reduce((x, v) => x + v, 0);
@@ -715,11 +887,146 @@ function render() {
 }
 
 (function init() {
-  try {
-    const v = JSON.parse(localStorage.getItem("fp-view") || "null");
-    if (v) { state.view = v.view; state.deck = v.deck; if (v.game >= 0 && v.game < DATA.games.length) state.game = v.game; }
-  } catch (e) {}
+  if (!fromHash()) {
+    try {
+      const v = JSON.parse(localStorage.getItem("fp-view") || "null");
+      if (v) { state.view = v.view; state.deck = v.deck; if (v.game >= 0 && v.game < DATA.games.length) state.game = v.game; }
+    } catch (e) {}
+  }
+  window.addEventListener("hashchange", () => { if (fromHash()) render(); });
   render();
+})();
+</script>
+"""
+
+
+INDEX = r"""<title>__TITLE__</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+__CSS__
+<style>
+/* The study index: decks across every pod (pick one for its pooled deck view), the pods, and a game finder over the study.
+   Each pod's game page is games.html in its folder; links open a game there (#game-N). */
+.decks.study { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) }
+.deck .winbar { height: 4px; background: var(--chip); border-radius: 2px; overflow: hidden }
+.deck .winbar i { display: block; height: 100%; background: var(--c) }
+section.block { display: grid; gap: 10px }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 99px; background: var(--chip); color: var(--c); font: 600 .78rem/1.4 var(--body); white-space: nowrap }
+.chips { display: flex; flex-wrap: wrap; gap: 4px }
+a { color: var(--accent) }
+table.lst { min-width: 760px }
+table.lst td, table.lst th { font-size: .86rem }
+.seatgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-width: 560px }
+.seatgrid div { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-size: .85rem }
+.seatgrid b { display: block; font: 600 1.1rem/1.1 var(--display) }
+</style>
+<div class="wrap">
+  <header>
+    <div class="label">Fishpond · study</div>
+    <h1>__TITLE__</h1>
+    <p class="sub">__NOTE__. Decks are ordered by win rate; pick one to see it across every pod. Each pod's games open in that pod's game page.</p>
+  </header>
+  <section class="block" aria-label="Decks"><div class="label">Decks</div><div class="decks study" id="decks"></div></section>
+  <section class="block" id="deckview" hidden></section>
+  <section class="block" aria-label="Pods"><div class="label">Pods</div><div class="grid" id="pods"></div></section>
+  <section class="block" aria-label="Find games"><div class="label">Find games</div>
+    <div class="filters"><input id="fq" type="search" placeholder="A card, a deck, &quot;wipe&quot;, &quot;Show and Tell&quot;" aria-label="Search games">
+      <select id="fw" aria-label="Winner"><option value="">Any winner</option></select><span class="note" id="fn"></span></div>
+    <div class="grid" id="games"></div><div class="pager" id="gp"></div></section>
+</div>
+<script>
+const DATA = __DATA__;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const dd = n => `data-deck="${esc(n)}"`;
+const pips = n => { const c = DATA.colors[n]; return c ? `<span class="pips" aria-label="color identity ${c.identity}">${c.identity.split("").map(x => `<i class="pip ${x}"></i>`).join("")}</span>` : ""; };
+const chip = n => `<span class="chip" ${dd(n)}>${esc(n)} ${pips(n)}</span>`;
+const fmt1 = v => v == null ? "–" : (Math.round(v * 10) / 10).toString();
+const pct = (k, n) => n ? Math.round(100 * k / n) + "%" : "–";
+const median = a => { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+const slug = n => String(n).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const link = (pod, game) => `${encodeURI(pod)}/games.html#game-${game}`;
+const podId = p => String(p).split("_")[0];
+const state = {deck: null, q: "", w: "", page: 0, dpage: 0};
+
+function decksView() {
+  document.getElementById("decks").innerHTML = DATA.order.map(n => {
+    const a = DATA.decks[n], on = state.deck === n;
+    return `<button class="deck deckbtn" ${dd(n)} aria-pressed="${on}" data-open="${esc(n)}"><h3>${esc(n)} ${pips(n)}<span class="go">${on ? "Showing" : "Deck view"}</span></h3>
+      <div class="winbar"><i style="width:${Math.round(100 * a.wins / Math.max(1, a.games))}%"></i></div><div class="kv">
+      <span>Won</span><span class="num">${a.wins} of ${a.games} (${pct(a.wins, a.games)})</span>
+      <span>Cmdr cast</span><span class="num">${a.cast.length ? "T" + fmt1(median(a.cast)) : "–"}${a.never ? ` · never ${a.never}` : ""}</span>
+      <span>Cmdr removed</span><span class="num">${a.removed}</span>
+      <span>Dmg a game</span><span class="num" title="median combat damage to players per game">${a.dealt_med}</span></div></button>`;
+  }).join("");
+  document.querySelectorAll(".deckbtn").forEach(b => b.addEventListener("click", () => { state.deck = state.deck === b.dataset.open ? null : b.dataset.open; state.dpage = 0; render(); }));
+}
+
+function deckView() {
+  const el = document.getElementById("deckview");
+  el.hidden = !state.deck;
+  if (!state.deck) return;
+  const n = state.deck, a = DATA.decks[n];
+  const seat = a.seats.some(x => x) ? `<div class="seatgrid">${a.seats.map((k, i) => `<div>${i + 1}${["st", "nd", "rd", "th"][i]} in turn order<b class="num">${a.seat_wins[i]} of ${k}</b><span class="note">won</span></div>`).join("")}</div>` : "";
+  const rows = a.turns.map(t => `<tr><td class="rnd">T${t.turn}</td><td class="num">${t.n}</td><td class="num">${fmt1(t.mana)}</td><td class="num">${fmt1(t.unused)}</td>
+    <td class="num">${pct(t.cmd, t.known)}</td><td class="num">${fmt1(t.cr)}</td><td class="num">${fmt1(t.pw)}</td><td class="num">${pct(t.atk, t.n)}</td>
+    <td class="num">${fmt1(t.dmg)}</td><td class="num">${fmt1(t.life)}</td><td>${t.cast.map(([c, k]) => esc(c) + (k > 1 ? ` ×${k}` : "")).join(", ") || "–"}</td></tr>`).join("");
+  const per = 30, pages = Math.max(1, Math.ceil(a.list.length / per));
+  state.dpage = Math.min(state.dpage, pages - 1);
+  const games = a.list.slice(state.dpage * per, state.dpage * per + per).map(x => `<tr ${dd(n)}><td><a href="${link(x.pod, x.game)}" title="${esc(x.pod)}">${esc(podId(x.pod))} · game ${x.game}</a></td>
+    <td><span class="pill ${x.won ? "win" : "loss"}">${esc(x.result)}</span></td><td class="num">${x.seat ?? "–"}</td><td class="num">${x.turns}</td>
+    <td class="num">${x.cmd != null ? "T" + x.cmd : (x.cmd_any ? "off-turn" : "never")}</td><td class="num">${x.removed}</td><td class="num">${x.attacks} · ${x.dealt}</td>
+    <td class="mms">${x.moments.map(m => `<span class="mm">${esc(m)}</span>`).join("")}</td></tr>`).join("");
+  el.innerHTML = `<h2 ${dd(n)} style="color:var(--c)">${esc(n)} ${pips(n)} across ${a.games} games</h2>
+    <div class="result"><span class="pill">won ${a.wins} of ${a.games} (${pct(a.wins, a.games)})</span><span class="pill">commander first cast: ${a.cast.length ? "median own turn " + fmt1(median(a.cast)) : "never"}${a.never ? `, never in ${a.never}` : ""}</span>
+      <span class="pill">commander removed or died ${a.removed}×</span><span class="pill">median combat damage a game ${a.dealt_med}</span><button class="linkbtn" id="dv-close">Close</button></div>
+    ${seat}
+    <p class="note">By its own turn, over every game: in how many games it got that turn, then medians (mana, creatures, power, life) or shares (commander out, attacked); combat damage is the average per game; most cast counts that turn's spells. Older runs have no end-of-turn boards: life and commander come from the start of the turn, and creatures and power are blank.</p>
+    <div class="grid"><table class="dv"><thead><tr><th class="rnd">Turn</th><th>Games</th><th>Mana</th><th>Unused</th><th>Cmdr out</th><th>Creatures</th><th>Power</th><th>Attacked</th><th>Combat dmg</th><th>Life</th><th class="wide">Most cast</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="grid"><table class="dv"><thead><tr><th>Game</th><th>Result</th><th>Turn order</th><th>Turns</th><th>Cmdr cast</th><th>Removed</th><th>Attacks · dmg</th><th class="wide2">Its key moments</th></tr></thead><tbody>${games}</tbody></table></div>
+    ${pages > 1 ? `<div class="pager"><button id="dp-prev" ${state.dpage ? "" : "disabled"}>Previous</button><span class="note">Games ${state.dpage * per + 1}-${Math.min(a.list.length, state.dpage * per + per)} of ${a.list.length}</span><button id="dp-next" ${state.dpage < pages - 1 ? "" : "disabled"}>Next</button></div>` : ""}`;
+  document.getElementById("dv-close").addEventListener("click", () => { state.deck = null; render(); });
+  const pv = document.getElementById("dp-prev"), nx = document.getElementById("dp-next");
+  if (pv) pv.addEventListener("click", () => { state.dpage--; deckView(); });
+  if (nx) nx.addEventListener("click", () => { state.dpage++; deckView(); });
+}
+
+function podsView() {
+  document.getElementById("pods").innerHTML = `<table class="lst"><thead><tr><th>Pod</th><th>Decks (wins)</th><th>Games</th><th>No winner</th></tr></thead><tbody>${DATA.pods.map(p =>
+    `<tr><td><a href="${encodeURI(p.pod)}/games.html">${esc(p.pod)}</a></td><td><div class="chips">${p.decks.map(n => `<span class="chip" ${dd(n)}>${esc(n)} ${pips(n)} <span class="num">${p.wins[n]}</span></span>`).join("")}</div></td>
+    <td class="num">${p.games}</td><td class="num">${p.nowin}</td></tr>`).join("")}</tbody></table>`;
+}
+
+function gamesView() {
+  const q = state.q.toLowerCase();
+  const hits = DATA.games.filter(g => (!state.w || (state.w === "-" ? !g.winner : g.winner === state.w))
+    && (!q || g.text.toLowerCase().includes(q) || g.cards.toLowerCase().includes(q) || g.decks.some(d => d.toLowerCase().includes(q)) || g.pod.toLowerCase().includes(q)));
+  const per = 30, pages = Math.max(1, Math.ceil(hits.length / per));
+  state.page = Math.min(state.page, pages - 1);
+  document.getElementById("fn").textContent = `${hits.length} of ${DATA.games.length} games`;
+  document.getElementById("games").innerHTML = `<table class="lst"><thead><tr><th>Game</th><th>Winner</th><th>How</th><th>Turns</th><th>Turn order</th></tr></thead><tbody>${hits.slice(state.page * per, state.page * per + per).map(g =>
+    `<tr><td><a href="${link(g.pod, g.game)}" title="${esc(g.pod)}">${esc(podId(g.pod))} · game ${g.game}</a></td><td>${g.winner ? chip(g.winner) : `<span class="note">none</span>`}</td><td class="note">${esc(g.how || "")}</td>
+    <td class="num">${g.turns}</td><td><div class="chips">${g.decks.map(chip).join("")}</div></td></tr>`).join("")}</tbody></table>`;
+  document.getElementById("gp").innerHTML = pages > 1 ? `<button id="gp-prev" ${state.page ? "" : "disabled"}>Previous</button><span class="note">Page ${state.page + 1} of ${pages}</span><button id="gp-next" ${state.page < pages - 1 ? "" : "disabled"}>Next</button>` : "";
+  const pv = document.getElementById("gp-prev"), nx = document.getElementById("gp-next");
+  if (pv) pv.addEventListener("click", () => { state.page--; gamesView(); });
+  if (nx) nx.addEventListener("click", () => { state.page++; gamesView(); });
+}
+
+function render() {
+  decksView(); deckView();
+  try { history.replaceState(null, "", state.deck ? "#deck-" + slug(state.deck) : location.pathname + location.search); } catch (e) {}
+}
+
+(function init() {
+  const m = (location.hash || "").match(/^#deck-([a-z0-9-]+)$/);
+  if (m) state.deck = DATA.order.find(n => slug(n) === m[1]) || null;
+  const w = document.getElementById("fw");
+  w.innerHTML += DATA.order.map(n => `<option value="${esc(n)}">${esc(n)} won</option>`).join("") + `<option value="-">No winner</option>`;
+  w.addEventListener("change", () => { state.w = w.value; state.page = 0; gamesView(); });
+  const fq = document.getElementById("fq");
+  fq.addEventListener("input", () => { state.q = fq.value; state.page = 0; gamesView(); });
+  podsView(); gamesView(); render();
 })();
 </script>
 """

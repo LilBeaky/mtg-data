@@ -189,6 +189,12 @@ with _tf2.TemporaryDirectory() as _d2:
     _col = _gp.deck_colors({"Klauth": ["Klauth, Unrivaled Ancient"], "Zur": ["Zur the Enchanter"]})
     check("game page: deck colors from color identity", (_col["Klauth"]["identity"], _col["Zur"]["identity"]), ("RG", "WUB"))
     check("game page: the page is written", os.path.basename(_gp.write(_d2) or ""), "games.html")
+    _st = os.path.join(_d2, "study"); os.makedirs(_st)
+    os.rename(os.path.join(_d2, "logs"), os.path.join(_st, "T01_pod", "logs") if os.makedirs(os.path.join(_st, "T01_pod")) is None else None)
+    _ix = _gp.study_index(_st)
+    _ixd = _js.loads(open(_ix, encoding="utf-8").read().split("const DATA = ")[1].split(";\nconst esc")[0].replace("<\\/", "</"))
+    check("study index: decks pooled over pods, the pod's page written", (sorted(_ixd["decks"]), _ixd["decks"]["Klauth"]["wins"],
+          _ixd["pods"][0]["pod"], os.path.exists(os.path.join(_st, "T01_pod", "games.html"))), (["Klauth", "Zur"], 1, "T01_pod", True))
 
 for f in fails: print("FAIL", f)
 print(f"units: {'all ' if not fails else ''}{count - len(fails)} of {count} passed" if fails else f"units: all {count} passed")

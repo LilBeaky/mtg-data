@@ -95,6 +95,11 @@ def run_study(args):
     if left:
         print(f"fishpond study: {left} pod(s) not finished; rerun the line above to continue")
     report(out)
+    try:   # the study index (fishpond/gamepage.py): decks across every pod, the pods, a game finder; each pod has its games.html
+        from . import gamepage
+        gamepage.study_index(out, quiet=False, pod_pages=False)
+    except Exception as e:
+        print(f"fishpond study: index page not written ({type(e).__name__}: {e})")
 
 
 def load(out):

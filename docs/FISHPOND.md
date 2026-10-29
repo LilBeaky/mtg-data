@@ -88,6 +88,19 @@ It is read from the worker logs (`fishpond/gamepage.py`): Forge's game log, the 
 Older runs get the page without the board lines; `fishpond replay POD GAME` reruns an old game with them (the replay checks
 that it matches the original game line for line).
 
+### The study index
+
+A study writes `index.html` in its folder at the end (`fishpond page STUDY_DIR` writes it, and every pod's `games.html`, for
+an older study): the user, 2026-10-29, on 1000-game runs: "I'll take your lead on the index page". On top, every deck in the
+study ordered by win rate; each opens its deck view pooled over every pod (its record by seat in turn order, the by-own-turn
+table, then every game it played, 30 to a page, each linking into its pod's page at that game). Then the pods (their decks and
+wins, a link to each pod's game page) and a game finder over the whole study: search by any card cast or activated, what a
+tutor or Show and Tell moved, a deck or a key moment; filter by winner; each game opens in its pod's page. Each pod's page
+stays small (about 35 KB a game) and the index carries only summaries (about 3 KB a game), so a 1000-game study is one index
+of a few MB and its pod pages. Links into a game page: `POD/games.html#game-N` (a game) and `#deck-NAME` (a deck view). A
+study from before the end-of-turn boards gets life, mana and the commander from the threat log at each main 1, and no creature
+or power columns.
+
 ## Reading the report
 
 **Header.** Lookahead mode (with pauses and crash replays), game time, win rate with a 95% interval, mulligans (the first is free in multiplayer; Forge's own keep logic), losses, unfinished games and why; **wins by route** (combat, noncombat, commander damage, poison, alternate win: CARD); **losses by reason** with the killing seat (decked, life, poison, commander damage, an opponent's alternate win); for decking losses, the last spell the user's deck cast; game length in the user's turns for wins and losses; turn order (1st to 4th) with the win rate in each; pilot tags; the dummy check.
