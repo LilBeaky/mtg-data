@@ -15,6 +15,7 @@
                                                     (--report DIR: the report alone; PODS lines 'ID|HERO|OPP1|OPP2|OPP3')
   python3 -m fishpond held RUN_DIR [RUN_DIR...]    dead-card meter per deck across runs: castable cards held 3+ turns running
   python3 -m fishpond lines RUN_DIR [RUN_DIR...]   win-line audit: each deck's lines (fishpond/win_lines.txt) available vs played
+  python3 -m fishpond page RUN_DIR [RUN_DIR...]    the game page (every run writes it: RUN_DIR/games.html); a study dir: one per pod
   python3 -m fishpond flags [--smoke] [--unflag]   cards Forge's AI won't cast (AI:RemoveDeck:All) across the repo's decks, with
                                                     their status; --smoke writes+runs a smoke puzzle for each untested one,
                                                     --unflag writes an override (fishpond/forge_card_overrides/) for each that passes
@@ -212,7 +213,7 @@ def cmd_run(args):
               file=sys.stderr)
     meta = {"deck": _rel(args.deck) if os.path.exists(args.deck) else args.deck, "commander": hero.label,
             "cards": hero.size, "trials": args.trials, "seed": args.seed, "turns": args.turns, "engine": engine, "cap": args.cap,
-            "timeout": args.timeout, "forge": forge.FORGE_VERSION, "jobs": jobs, "wall": 0, "clock": args.clock, "hero_ai": args.ai,
+            "timeout": args.timeout, "forge": forge.FORGE_VERSION, "patches": len(forge.patch_files()), "jobs": jobs, "wall": 0, "clock": args.clock, "hero_ai": args.ai,
             "opp_ai": opp_ai, "sim": args.sim if engine == "harness" else "off", "opp_sim": args.opp_sim if engine == "harness" else "off",
             "track": hero.meta.get("track", []), "extra_track": args.track, "key": _keys(hero),
             "variants": args.variant, "opp": _opp_specs(args), "fixed_pod": args.fixed_pod, "run_dir": _rel(run_dir),
@@ -233,6 +234,7 @@ def cmd_run(args):
     meta.update(wall=wall, complete=engine != "harness" or done >= args.trials * len(builds))
     runner.save(run_dir, meta, records)
     _report(meta, records, builds, args.json, run_dir)
+    _page(run_dir, args.quiet or args.json)
 
 def _pods_from_meta(meta, idx):
     fixed, pool = dk.seat_plan(meta.get("opp") or [])
@@ -272,6 +274,7 @@ def cmd_resume(args):
                 jobs=jobs)
     runner.save(run_dir, meta, records)
     _report(meta, records, builds, args.json, run_dir)
+    _page(run_dir, args.quiet or args.json)
 
 def _rel(p):
     r = os.path.relpath(os.path.abspath(p), dk.REPO)
@@ -286,6 +289,19 @@ def _keys(hero):
         c, _ = mtg.find(v)
         out.append(c["name"] if c else v)
     return out
+
+def _page(run_dir, quiet):
+    """The game page (fishpond/gamepage.py), the run's standard output: RUN_DIR/games.html. Never fails the run."""
+    from . import gamepage
+    try:
+        p = gamepage.write(run_dir)
+        if p and not quiet: print(f"fishpond: game page: {_rel(p)}")
+    except Exception as e:   # a page problem must not cost a finished run
+        print(f"fishpond: game page not written ({type(e).__name__}: {e})", file=sys.stderr)
+
+def cmd_page(args):
+    from . import gamepage
+    gamepage.cmd(args)
 
 def _report(meta, records, builds, as_json, run_dir):
     by = [(label, [r for r in records if r["build"] == label], deck) for label, deck in builds]
@@ -421,8 +437,9 @@ def main(argv=None):
     h = sub.add_parser("sequencing"); h.add_argument("runs", nargs="+")
     rp = sub.add_parser("replay"); rp.add_argument("pod", help="a pod directory of a run (has logs/ and decks/)"); rp.add_argument("game", type=int)
     rp.add_argument("--out"); rp.add_argument("--classes", help="a patched-Forge class dir to replay on instead of the current build")
+    pg = sub.add_parser("page"); pg.add_argument("runs", nargs="+"); pg.add_argument("--out"); pg.add_argument("--title")
     w = sub.add_parser("show"); w.add_argument("run"); w.add_argument("game", type=int); w.add_argument("--build")
     w.add_argument("--log", action="store_true"); w.add_argument("--phases", action="store_true")
     args = ap.parse_args(argv)
     if not args.cmd: ap.print_help(); return
-    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "lines": cmd_lines, "study": cmd_study, "replay": cmd_replay, "sequencing": cmd_sequencing}[args.cmd](args)
+    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "lines": cmd_lines, "study": cmd_study, "replay": cmd_replay, "sequencing": cmd_sequencing, "page": cmd_page}[args.cmd](args)

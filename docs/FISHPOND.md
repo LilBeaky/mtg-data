@@ -16,6 +16,7 @@ python3 -m fishpond report RUN_DIR [--reparse] [--turns N] [--json]
 python3 -m fishpond show RUN_DIR GAME [--build LABEL] [--log] [--phases]
 python3 -m fishpond held RUN_DIR [RUN_DIR...]          # dead-card meter per deck across runs
 python3 -m fishpond lines RUN_DIR [RUN_DIR...]         # win-line audit: each deck's lines available vs played
+python3 -m fishpond page RUN_DIR [RUN_DIR...]          # the game page (every run writes RUN_DIR/games.html); a study dir: one per pod
 python3 -m fishpond study PODS --out DIR [--games 5] [--seed S] [--lanes 2] [--jobs 5] [--max-minutes M]   # a pod study, resumable
 python3 -m fishpond study --report DIR                 # its per-deck report
 ```
@@ -61,6 +62,24 @@ Each game record says which mode every seat actually ran (checked on the live co
 - **cli**: Forge's stock `sim` mode, no javac needed. Games are chained 5 per JVM (one can't be replayed alone; a game cut by the wall clock changes the rest of its chunk), the other seats play on to the clock after the user's deck dies, and the development table has fewer columns (land drops instead of lands; no mana, hand or graveyard).
 - Speed: a game costs 30 s to 2 min of one CPU (about 15 s of JVM startup per worker on top). Turns with huge trigger stacks (a Primal Surge turn resolves 100+) are the slow part, and real opponents are slower than dummies. Huge boards (token swarms) used to make Forge's attack and block planning take up to half an hour a turn; patch 11 plans big combats in bounded pieces (docs/FORGE_ISSUES.md #7), so a timeout there is now a bug to report. Measured on 4 CPUs with 4 workers and no lookahead: about 4 Chulane vacuum games a minute. Hybrid lookahead (the default) costs about 2 to 3 times the CPU on a busy deck like Chulane (median game 77 s -> 152 s on the same seeds) and about 15% on Zur. The chat sandbox (1 CPU, ~4 GB) runs one worker: budget about 2 to 3 minutes a game with lookahead, so 20 games is about an hour; say so before starting a big one. `--jobs` defaults to what CPUs and memory allow (about 1.7 GB per JVM; 3.4 GB with `full`). `full` lookahead is far slower and its cost is unbounded: Forge's search has no time or node limit, and every position it tries is a full copy of the 4-player game, so a decision costs roughly (candidate plays)^3 copies. On the Niv pod the other seats' turns stayed about a second, while the user's turns took 20 s to 6 min on small boards and over 45 min on a busy one (games took 5 min, 15 min, and more than an hour). The per-game limit (`--timeout`) defaults to 2 h with `full` instead of 30 min. Since patch 06, a decision stops searching deeper after 1000 positions (`-Dfishpond.simMaxNodes`; docs/FORGE_ISSUES.md #5), so a big decision costs minutes, not hours; the report says how many of your searches it cut and what it cut. Budget roughly 2 to 15 min a game with `full`.
 - Forge's AI gives up on a decision after 5 s by default, which makes results depend on machine load. The harness raises that limit (120 s; `-Dfishpond.aiTimeout` on the JVM) and the report warns when any decision still timed out. The cli engine can't change it, so busy machines get load-dependent cli results.
+
+## The game page
+
+Every run writes `games.html` next to `report.txt` (so every pod of a study has one): all four seats, turn by turn, in one page
+to open in a browser (the user, 2026-10-29: "I'd actually like to make it the standard output format"). On top, each deck across
+the run's games (wins, the own turns its commander was first cast, commander removals, attacks, combat damage). Then a tab per
+game: the result, each deck's summary, and the game's key moments in order (commanders cast and recast, commanders removed and
+by what, wipes cast, turns of 15+ combat damage, eliminations, the win). Then one row per round (each deck's own turn N; #N counts
+turns across the table) and a column per deck: the main-phase plan's mana and what went unused, the plays (lands, spells,
+abilities with their targets, attacks), combat damage dealt, what the turn plan left out, the board at the end of that turn
+(creatures with power/toughness and what's attached, tokens grouped, other permanents, lands, hand, library, commander damage
+taken) and life; plays made on other decks' turns (blocks, instants, removal) sit under the deck that made them. Each deck's
+color comes from its colors: the identity color with the most mana symbols across its list.
+
+It is read from the worker logs (`fishpond/gamepage.py`): Forge's game log, the turn plan (`#FP-PLAN`), the sequencing meter
+(`#FP-SEQ`), the wipe judge (`#FP-WIPE`) and, from 2026-10-29, the harness's end-of-turn board for every seat (`#FP-BOARD`).
+Older runs get the page without the board lines; `fishpond replay POD GAME` reruns an old game with them (the replay checks
+that it matches the original game line for line).
 
 ## Reading the report
 
@@ -112,7 +131,7 @@ On a 1-CPU sandbox, plan reads in chunks: start with 10 games, report, then add 
 
 ## Runs and game records
 
-A run is saved in `data/fishpond/<time>-<deck>/` (gitignored): `meta.json`, `games.jsonl` (one record per game), `report.txt`, `decks/` (the `.dck` files Forge read), `logs/`. `report --reparse` re-runs the log parser over the saved logs after a parser fix. `python -m fishpond replay POD GAME` replays one game of a study exactly (same build, seed and switches) and says where it first differs from the record, for checking a fix against the game that showed the bug. Harness snapshots at the user's main phase also list the hand's card names (`hand_names`, for audits). A game record holds: `result` (win, loss, draw = unfinished), `route`, `loss` (`why`, `route`, `by` seat, `src` card, `t`, `last_cast`), `end_t`, `hero_turns`, `order`, `kept`, `deaths` (per opponent: `seat`, `t`, `why`, `route`, `by`, `src`), `turns` (per user turn: lands played, casts, triggers, activations, attackers, damage, combat damage, life, opponents dead), `first_cast`, `first_in`, `casts`, commander casts, `tags`, `pod`, `seed`, and on the harness `snaps` and `stop`.
+A run is saved in `data/fishpond/<time>-<deck>/` (gitignored): `meta.json`, `games.jsonl` (one record per game), `report.txt`, `games.html` (the game page), `decks/` (the `.dck` files Forge read), `logs/`. `report --reparse` re-runs the log parser over the saved logs after a parser fix. `python -m fishpond replay POD GAME` replays one game of a study exactly (same build, seed and switches) and says where it first differs from the record, for checking a fix against the game that showed the bug. Harness snapshots at the user's main phase also list the hand's card names (`hand_names`, for audits). A game record holds: `result` (win, loss, draw = unfinished), `route`, `loss` (`why`, `route`, `by` seat, `src` card, `t`, `last_cast`), `end_t`, `hero_turns`, `order`, `kept`, `deaths` (per opponent: `seat`, `t`, `why`, `route`, `by`, `src`), `turns` (per user turn: lands played, casts, triggers, activations, attackers, damage, combat damage, life, opponents dead), `first_cast`, `first_in`, `casts`, commander casts, `tags`, `pod`, `seed`, and on the harness `snaps` and `stop`.
 
 Turns are the user's turns: an event belongs to turn T if it happens during the user's T-th turn or in the opponents' turns before it. Damage is credited to the seat whose list holds the source card (by card id when several do); in a vacuum pod that is exact.
 

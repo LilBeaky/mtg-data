@@ -465,6 +465,7 @@ public class ForgeRunner {
         w.flushAllHeld();
         for (String s : w.held) out.println("#FP-HELD " + s);
         for (String s : w.seq) out.println("#FP-SEQ " + s);           // sequencing meter, one per seat and own turn
+        for (String s : w.boards) out.println("#FP-BOARD " + s);      // every seat's board at the end of each turn (the game page)
         for (String s : w.setup) out.println("#FP-SETUP " + s);       // setup cards per deck (SetupModel), made at the first turn
         for (PilotPolicy pol : policies) for (String s : pol.log) out.println("#FP-POLICY " + s);
         for (var p : game.getRegisteredPlayers())   // the seat's repeatable engines, declared and found (PilotPolicy.loops)
@@ -595,6 +596,80 @@ public class ForgeRunner {
                 e.getKey().getAi().setUseSimulation(any ? null : e.getValue().option);
         }
         final List<String> snaps = new ArrayList<>();
+        final List<String> boards = new ArrayList<>();
+
+        /** Every seat's board at the end of the current turn, for the game page (fishpond/gamepage.py): life, cards in hand,
+         *  library and graveyard, lands, creatures (name, power/toughness, tapped, what's attached; tokens grouped), other
+         *  permanents, each commander's zone and casts, and the commander damage the seat has taken. Read only: nothing here
+         *  changes the game or draws a random number. */
+        void board() {
+            StringBuilder sb = new StringBuilder("{\"t\": " + globalTurns + ", \"seats\": {");
+            boolean firstSeat = true;
+            for (Player p : g.getRegisteredPlayers()) {
+                if (!firstSeat) sb.append(", ");
+                firstSeat = false;
+                sb.append(js(ThreatModel.seat(p))).append(": {\"life\": ").append(p.getLife())
+                  .append(", \"out\": ").append(p.hasLost())
+                  .append(", \"hand\": ").append(p.getCardsIn(ZoneType.Hand).size())
+                  .append(", \"lib\": ").append(p.getCardsIn(ZoneType.Library).size())
+                  .append(", \"gy\": ").append(p.getCardsIn(ZoneType.Graveyard).size())
+                  .append(", \"poison\": ").append(p.getPoisonCounters());
+                int lands = 0;
+                Map<String, int[]> tokens = new LinkedHashMap<>();
+                List<String> creatures = new ArrayList<>(), others = new ArrayList<>();
+                for (Card c : p.getCardsIn(ZoneType.Battlefield)) {
+                    if (c.isLand() && !c.isCreature()) { lands++; continue; }
+                    if (c.isCreature()) {
+                        String name = c.isFaceDown() ? "Face-down creature" : c.getName();
+                        if (c.isToken() && c.getAttachedCards().isEmpty()) {
+                            int[] k = tokens.computeIfAbsent(name + "|" + c.getNetPower() + "|" + c.getNetToughness(), x -> new int[2]);
+                            k[0]++;
+                            if (c.isTapped()) k[1]++;
+                            continue;
+                        }
+                        StringBuilder cb = new StringBuilder("{\"n\": " + js(name) + ", \"p\": " + c.getNetPower() + ", \"t\": " + c.getNetToughness());
+                        if (c.isTapped()) cb.append(", \"tap\": true");
+                        if (c.isToken()) cb.append(", \"tok\": true");
+                        if (c.isCommander()) cb.append(", \"cmd\": true");
+                        if (!c.getAttachedCards().isEmpty()) {
+                            List<String> at = new ArrayList<>();
+                            for (Card a : c.getAttachedCards()) at.add(js(a.getName()));
+                            cb.append(", \"att\": [").append(String.join(", ", at)).append("]");
+                        }
+                        creatures.add(cb.append("}").toString());
+                    } else if (!c.isAttachedToEntity() || c.isEquipment() && !c.isEquipping()) {
+                        String name = c.isFaceDown() ? "Face-down permanent" : c.getName();
+                        others.add(js(name + (c.isPlaneswalker() ? " (" + c.getCurrentLoyalty() + ")" : "")));
+                    }
+                }
+                for (Map.Entry<String, int[]> e : tokens.entrySet()) {
+                    String[] k = e.getKey().split("\\|");
+                    creatures.add("{\"n\": " + js(k[0]) + ", \"p\": " + k[1] + ", \"t\": " + k[2] + ", \"tok\": true, \"x\": " + e.getValue()[0]
+                            + (e.getValue()[1] > 0 ? ", \"tapped\": " + e.getValue()[1] : "") + "}");
+                }
+                sb.append(", \"lands\": ").append(lands).append(", \"creatures\": [").append(String.join(", ", creatures))
+                  .append("], \"other\": [").append(String.join(", ", others)).append("]");
+                List<String> cmds = new ArrayList<>();
+                for (Card c : p.getCommanders()) {
+                    // the commander list keeps an older object of the card (Forge makes a new one on each zone change): find where
+                    // the card is now by name, in the zones a commander goes to
+                    String zone = "?";
+                    for (ZoneType z : new ZoneType[] {ZoneType.Battlefield, ZoneType.Command, ZoneType.Stack, ZoneType.Graveyard, ZoneType.Exile, ZoneType.Hand, ZoneType.Library}) {
+                        boolean here = false;
+                        for (Card x : z == ZoneType.Stack ? g.getCardsIn(ZoneType.Stack) : p.getCardsIn(z))
+                            if (x.getName().equals(c.getName()) && x.getOwner() == p) { here = true; break; }
+                        if (here) { zone = z.name(); break; }
+                    }
+                    cmds.add("{\"n\": " + js(c.getName()) + ", \"zone\": " + js(zone) + ", \"casts\": " + p.getCommanderCast(c) + "}");
+                }
+                sb.append(", \"cmd\": [").append(String.join(", ", cmds)).append("]");
+                List<String> dmg = new ArrayList<>();
+                for (Map.Entry<Card, Integer> e : p.getCommanderDamage())
+                    if (e.getValue() > 0) dmg.add(js(e.getKey().getName()) + ": " + e.getValue());
+                sb.append(", \"cmd_dmg\": {").append(String.join(", ", dmg)).append("}}");
+            }
+            boards.add(sb.append("}}").toString());
+        }
         LineTracker lines;                              // win-line audit, null when off
         ThreatModel threat;                             // threat assessment log (phase 1), null when off
         final long t0 = System.currentTimeMillis();
@@ -759,7 +834,10 @@ public class ForgeRunner {
                     if (lines != null) lines.check(turnOf, seatTurns.getOrDefault(turnOf, 0));
                     if (threat != null) { try { threat.check(globalTurns, turnOf); } catch (RuntimeException ex) { /* logging only */ } }
                 }
-                else if (e.phase() == PhaseType.CLEANUP) { seqEnd(turnOf); heldEnd(turnOf); }
+                else if (e.phase() == PhaseType.CLEANUP) {
+                    seqEnd(turnOf); heldEnd(turnOf);
+                    try { board(); } catch (RuntimeException ex) { /* logging only */ }
+                }
             }
             if (stop == null && !hero.hasLost()) {
                 lastHand = new ArrayList<>();

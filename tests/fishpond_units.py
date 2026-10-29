@@ -145,6 +145,44 @@ check("reach: lines reached, commander out, turns", (_r["games"], _r["reached"],
       (3, 1, 1, [8], [4, 5], 1, [9, 6, 7]))
 check("reach records stay out of the line tally", sorted(k[1] for k in _t), ["closer"])
 
+# ---- the game page (fishpond/gamepage.py): a two-seat game in a worker log, as the harness writes it
+from fishpond import gamepage as _gp  # noqa: E402
+import tempfile as _tf2
+with _tf2.TemporaryDirectory() as _d2:
+    os.makedirs(os.path.join(_d2, "logs"))
+    _brd = lambda t, k1, k2: "#FP-BOARD " + _js.dumps({"t": t, "seats": {
+        "1": {"life": 40, "out": False, "hand": 6, "lib": 90, "gy": 0, "poison": 0, "lands": t, "creatures": k1, "other": [],
+              "cmd": [{"n": "Klauth, Unrivaled Ancient", "zone": "Battlefield" if k1 else "Command", "casts": 1 if k1 else 0}], "cmd_dmg": {}},
+        "2": {"life": 40 - 7 * (t >= 3), "out": False, "hand": 7, "lib": 90, "gy": 1 * (t >= 2), "poison": 0, "lands": t, "creatures": k2,
+              "other": [], "cmd": [{"n": "Zur the Enchanter", "zone": "Command", "casts": 1 * (t >= 2)}], "cmd_dmg": {}}}})
+    _kl = [{"n": "Klauth, Unrivaled Ancient", "p": 7, "t": 7, "cmd": True}]
+    open(os.path.join(_d2, "logs", "worker_s1_0.log"), "w", encoding="utf-8").write(chr(10).join([
+        '#FP-PLAN {"t": 1, "seat": "Ai(1)-Klauth", "phase": "MAIN1", "budget": 1, "restricted": 0, "reserve": 0, "steps": [], "left_out": [{"card": "Klauth, Unrivaled Ancient", "cost": 7, "value": 1486}]}',
+        _brd(1, [], []), _brd(2, [], [{"n": "Zur the Enchanter", "p": 1, "t": 4, "cmd": True}]), _brd(3, _kl, []),
+        '#FP-WIPE {"t": 2, "seat": "Ai(2)-Zur", "card": "Cyclonic Rift", "self": 0, "opp": {}, "keeps": false, "verdict": "refuse: not enough"}',
+        "Turn: Turn 1 (Ai(1)-Klauth)", "Land: Ai(1)-Klauth played Forest (5)",
+        "Turn: Turn 2 (Ai(2)-Zur)", "Add To Stack: Ai(2)-Zur cast Zur the Enchanter",
+        "Add To Stack: Ai(1)-Klauth cast Beast Within targeting [Zur the Enchanter (60)]",
+        "Zone Change: Zur the Enchanter (60) was put into Graveyard from Battlefield.",
+        "Turn: Turn 3 (Ai(1)-Klauth)", "Add To Stack: Ai(1)-Klauth cast Klauth, Unrivaled Ancient",
+        "Combat: Ai(1)-Klauth assigned Klauth, Unrivaled Ancient (7) to attack Ai(2)-Zur.",
+        "Damage: Klauth, Unrivaled Ancient (7) deals 7 combat damage to Ai(2)-Zur.", "Life: Life: Ai(2)-Zur 40 > 33",
+        "Game Outcome: Ai(2)-Zur has lost because life total reached 0",
+        '#FP-END ' + _js.dumps({"id": 0, "seed": 7, "stop": "natural", "global_turns": 3, "players": {
+            "1": {"name": "Ai(1)-Klauth", "outcome": "has won because all opponents have lost", "life": 40},
+            "2": {"name": "Ai(2)-Zur", "outcome": "has lost because life total reached 0", "life": 0}}})]) + chr(10))
+    _gs = _gp.load_run(_d2)
+    _g = _gs[0]
+    check("game page: seats, winner, commander first cast on own turn 2", (_g["names"], _g["winner"], _g["stats"][1]["cmd_first"], _g["stats"][2]["cmd_first"]),
+          ({1: "Klauth", 2: "Zur"}, 1, 2, 1))
+    check("game page: removal names its card and caster", [m["text"] for m in _g["moments"] if m["kind"] == "removed"],
+          ["Zur the Enchanter dies to Beast Within (Klauth)"])
+    check("game page: a turn's plan, combat damage and end-of-turn board", (_g["rows"][0]["plan"]["budget"], _g["rows"][2]["dmg"], _g["rows"][2]["board"]["1"]["creatures"][0]["p"]),
+          (1, {2: 7}, 7))
+    _col = _gp.deck_colors({"Klauth": ["Klauth, Unrivaled Ancient"], "Zur": ["Zur the Enchanter"]})
+    check("game page: deck colors from color identity", (_col["Klauth"]["identity"], _col["Zur"]["identity"]), ("RG", "WUB"))
+    check("game page: the page is written", os.path.basename(_gp.write(_d2) or ""), "games.html")
+
 for f in fails: print("FAIL", f)
 print(f"units: {'all ' if not fails else ''}{count - len(fails)} of {count} passed" if fails else f"units: all {count} passed")
 sys.exit(1 if fails else 0)
