@@ -874,10 +874,11 @@ public class ForgeRunner {
                     || f == ZoneType.Graveyard && (t == ZoneType.Hand || t == ZoneType.Battlefield);
             if (!want) return;
             SpellAbility sa = g.getStack().peekAbility();
-            boolean moving = false;
+            boolean moving = false;   // a part of it moves cards from that zone (not a draw: Valakut Awakening bottoms, then draws)
             for (SpellAbility x = sa; x != null && !moving; x = x.getSubAbility()) {
                 ApiType a = x.getApi();
-                moving = a == ApiType.ChangeZone || a == ApiType.ChangeZoneAll || a == ApiType.Dig || a == ApiType.DigUntil;
+                if (a == ApiType.ChangeZone || a == ApiType.ChangeZoneAll) moving = x.getParamOrDefault("Origin", "").contains(f.name());
+                else if (a == ApiType.Dig || a == ApiType.DigUntil) moving = f == ZoneType.Library;
             }
             if (!moving) return;
             Card c = g.findById(e.card().getId());

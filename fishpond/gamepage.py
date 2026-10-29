@@ -129,12 +129,13 @@ def _attach_moves(turns, moves, names):
         groups = defaultdict(list)
         for m in ms: groups[(int(m["by"]) if str(m["by"]).isdigit() else None, m["src"], m.get("trigger", False))].append(m)
         for (by, src, trig), lst in groups.items():
-            parts = []
+            parts = {}
             for m in lst:
-                txt = MOVED.get((m["from"], m["to"]), "{c}").format(c=m["card"])
+                txt = MOVED.get((m["from"], m["to"]), "{c}").format(c=m["card"] or "a face-down card")
                 owner = int(m["seat"]) if str(m["seat"]).isdigit() else None
-                parts.append((names.get(owner, "?") + ": " if owner != by else "") + txt)
-            res = "; ".join(parts)
+                key = (names.get(owner, "?") + ": " if owner != by else "") + txt
+                parts[key] = parts.get(key, 0) + 1
+            res = "; ".join(k + (f" ×{n}" if n > 1 else "") for k, n in parts.items())
             evs = tr["ev"].get(by) if by is not None else None
             hit = None
             if evs and not trig:
