@@ -1,0 +1,685 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java b/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java
+index 2b4bb83..766ed62 100644
+--- a/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java
++++ b/forge-ai/src/main/java/forge/ai/ComputerUtilCombat.java
+@@ -778,7 +778,6 @@ public class ComputerUtilCombat {
+     private static final ThreadLocal<CombatPlan> PLAN = new ThreadLocal<>();
+ 
+     public static void beginCombatPlan() {
+-        forge.game.card.CardState.beginReadScope();   // fishpond patch 41: card trait lists built once per plan
+         if (!PLAN_CACHE) {
+             return;
+         }
+@@ -791,7 +790,6 @@ public class ComputerUtilCombat {
+     }
+ 
+     public static void endCombatPlan() {
+-        forge.game.card.CardState.endReadScope();   // fishpond patch 41
+         final CombatPlan p = PLAN.get();
+         if (p != null && --p.depth <= 0) {
+             PLAN.remove();
+diff --git a/forge-game/src/main/java/forge/game/Game.java b/forge-game/src/main/java/forge/game/Game.java
+index e6fdff4..6993da1 100644
+--- a/forge-game/src/main/java/forge/game/Game.java
++++ b/forge-game/src/main/java/forge/game/Game.java
+@@ -343,6 +343,7 @@ public class Game {
+             Player pl = factory.createIngamePlayer(this, id == null ? plId++ : id);
+             allPlayers.add(pl);
+             ingamePlayers.add(pl);
++            bumpZoneVersion();   // fishpond patch 121
+             playerCache.put(pl);
+             if (startingLife != -1) {
+                 pl.setStartingLife(startingLife);
+@@ -627,9 +628,9 @@ public class Game {
+         return cards;
+     }
+ 
+-    // fishpond patch 41: inside a combat plan (CardState.readToken) the cards of the static-ability zones, which every
+-    // static-ability helper walks, are listed once per board. The board epoch moves on any zone change (Zone) and
+-    // around every static-ability pass (GameAction.checkStaticAbilities); CardState's trait memo reads it too.
++    // fishpond patch 41: the board epoch moves on any zone change (Zone) and around every static-ability pass
++    // (GameAction.checkStaticAbilities); patch 44's attack-check memo keys on it. (Patch 41's per-plan memos that read it
++    // are replaced by patch 121's caches.)
+     private final java.util.concurrent.atomic.AtomicLong boardEpoch = new java.util.concurrent.atomic.AtomicLong();
+ 
+     public long getBoardEpoch() {
+@@ -640,33 +641,40 @@ public class Game {
+         boardEpoch.incrementAndGet();
+     }
+ 
+-    private static final class ZonesMemo {
+-        final Object token;
+-        final long epoch;
+-        final CardCollectionView cards;
++    // fishpond patch 121 (from Manabrew's Forge fork, witchesofthehill/forge e49e28047ccc, baa4d0173221): every
++    // static-ability helper asks for the cards of the static-ability zones on every check, and listing them was a fresh
++    // collection of the whole board each time (41% of CPU on a wide board once the per-card caches below were in). The
++    // zone version moves on every zone change (Zone), phasing (the battlefield list leaves phased-out cards out) and a
++    // player joining or leaving (the list walks the players in the game), and the last list is reused while it stands.
++    // This replaces patch 41's list, which was kept once per combat plan only.
++    private static final boolean STATIC_SOURCE_CACHE = !"false".equals(System.getProperty("fishpond.traitCaches"));
++    private int zoneVersion;
++    private CardCollectionView staticSourceCards;
++    private int staticSourceCardsVersion = -1;
+ 
+-        ZonesMemo(final Object token, final long epoch, final CardCollectionView cards) {
+-            this.token = token;
+-            this.epoch = epoch;
+-            this.cards = cards;
+-        }
++    public void bumpZoneVersion() {
++        zoneVersion++;
+     }
+ 
+-    private ZonesMemo staticZonesMemo;
++    // patch 121: the lead cards first (an LKI copy stands in for its card), then the static-source cards, without building
++    // a collection per call; a lead card's real copy is skipped, as adding both to one CardCollection did
++    public Iterable<Card> getStaticSourceCards(final Card... lead) {
++        final List<Card> first = Arrays.asList(lead);
++        return com.google.common.collect.Iterables.concat(first,
++                com.google.common.collect.Iterables.filter(getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES), c -> !first.contains(c)));
++    }
+ 
+     public CardCollectionView getCardsIn(final Iterable<ZoneType> zones) {
+-        final Object token = zones == ZoneType.STATIC_ABILITIES_SOURCE_ZONES ? forge.game.card.CardState.readToken() : null;
+-        if (token == null) {
++        if (zones != ZoneType.STATIC_ABILITIES_SOURCE_ZONES || !STATIC_SOURCE_CACHE) {
+             return getCardsIn0(zones);
+         }
+-        final long epoch = boardEpoch.get();
+-        final ZonesMemo m = staticZonesMemo;
+-        if (m != null && m.token == token && m.epoch == epoch) {
+-            return m.cards;
++        if (staticSourceCards != null && staticSourceCardsVersion == zoneVersion) {
++            return staticSourceCards;
+         }
+-        final CardCollectionView cards = getCardsIn0(zones);
+-        staticZonesMemo = new ZonesMemo(token, epoch, cards);
+-        return cards;
++        final int version = zoneVersion;
++        staticSourceCards = getCardsIn0(zones);
++        staticSourceCardsVersion = version;
++        return staticSourceCards;
+     }
+ 
+     private CardCollectionView getCardsIn0(final Iterable<ZoneType> zones) {
+@@ -1051,6 +1059,7 @@ public class Game {
+         getStack().removeInstancesControlledBy(p);
+ 
+         ingamePlayers.remove(p);
++        bumpZoneVersion();   // fishpond patch 121
+         lostPlayers.add(p);
+ 
+         // free any mindslaves
+diff --git a/forge-game/src/main/java/forge/game/GameActionUtil.java b/forge-game/src/main/java/forge/game/GameActionUtil.java
+index d993b4e..2411340 100644
+--- a/forge-game/src/main/java/forge/game/GameActionUtil.java
++++ b/forge-game/src/main/java/forge/game/GameActionUtil.java
+@@ -437,9 +437,7 @@ public final class GameActionUtil {
+             game.getAction().checkStaticAbilities(false, Sets.newHashSet(source), preList);
+         }
+ 
+-        final CardCollection costSources = new CardCollection(source);
+-        costSources.addAll(game.getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES));
+-        for (final Card ca : costSources) {
++        for (final Card ca : game.getStaticSourceCards(source)) {
+             for (final StaticAbility stAb : ca.getStaticAbilities()) {
+                 if (!stAb.checkConditions(StaticAbilityMode.OptionalCost)) {
+                     continue;
+diff --git a/forge-game/src/main/java/forge/game/ability/effects/LosePerpetualEffect.java b/forge-game/src/main/java/forge/game/ability/effects/LosePerpetualEffect.java
+index be05078..17c39ad 100644
+--- a/forge-game/src/main/java/forge/game/ability/effects/LosePerpetualEffect.java
++++ b/forge-game/src/main/java/forge/game/ability/effects/LosePerpetualEffect.java
+@@ -25,7 +25,7 @@ public class LosePerpetualEffect extends SpellAbilityEffect {
+                 }
+             }
+             if (toRemove != (long) 0) {
+-                host.getChangedCardTraits().remove(toRemove, (long) 0);
++                host.removeChangedCardTraits(toRemove, 0);
+                 host.removePerpetual(toRemove);
+             }       
+         }
+diff --git a/forge-game/src/main/java/forge/game/card/Card.java b/forge-game/src/main/java/forge/game/card/Card.java
+index 7c6c6c9..2628127 100644
+--- a/forge-game/src/main/java/forge/game/card/Card.java
++++ b/forge-game/src/main/java/forge/game/card/Card.java
+@@ -139,6 +139,8 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+ 
+     // x=timestamp y=StaticAbility id
+     private final Table<Long, Long, CardTraitChanges> changedCardTraitsByText = TreeBasedTable.create(); // Layer 3 by Text Change
++    // Bumped by everything that feeds CardState.getStaticAbilities, which caches on it.
++    private int traitsVersion;
+     private final Table<Long, Long, ICardTraitChanges> changedCardTraits = TreeBasedTable.create(); // Layer 6
+ 
+     // stores the card traits created by static abilities
+@@ -1939,7 +1941,13 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     }
+ 
+     @Override
++    public void setCounters(final CounterType counterType, final Integer num) {
++        traitsVersion++;
++        super.setCounters(counterType, num);
++    }
++
+     public final void setCounters(final Multiset<CounterType> allCounters) {
++        traitsVersion++;
+         boolean changed = counters.contains(CounterEnumType.MANABOND) || counters.elementSet().stream().anyMatch(CounterType::isKeywordCounter);
+         counters = allCounters;
+         view.updateCounters(this);
+@@ -1959,6 +1967,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     @Override
+     public final void clearCounters() {
+         if (counters.isEmpty()) { return; }
++        traitsVersion++;
+         boolean changed = counters.contains(CounterEnumType.MANABOND) || counters.elementSet().stream().anyMatch(CounterType::isKeywordCounter);
+ 
+         counters.clear();
+@@ -3413,6 +3422,13 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+         return currentState.hasSpellAbility(id);
+     }
+ 
++    public final int getTraitsVersion() {
++        return traitsVersion;
++    }
++    public final void bumpTraitsVersion() {
++        traitsVersion++;
++    }
++
+     public boolean hasRemoveIntrinsic() {
+         if (changedCardTypes.isEmpty()) {
+             return false;
+@@ -4142,6 +4158,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     }
+ 
+     public final void updateTypeCache() {
++        traitsVersion++;
+         this.getCurrentState().updateTypes();
+     }
+ 
+@@ -4880,6 +4897,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+         return changedCardTraitsByText;
+     }
+     public final void setChangedCardTraitsByText(Table<Long, Long, CardTraitChanges> changes) {
++        traitsVersion++;
+         changedCardTraitsByText.clear();
+         for (Table.Cell<Long, Long, CardTraitChanges> e : changes.cellSet()) {
+             changedCardTraitsByText.put(e.getRowKey(), e.getColumnKey(), e.getValue().copy(this, true));
+@@ -4887,6 +4905,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     }
+     public final void addChangedCardTraitsByText(Collection<SpellAbility> spells,
+             Collection<Trigger> trigger, Collection<ReplacementEffect> replacements, Collection<StaticAbility> statics, long timestamp, long staticId) {
++        traitsVersion++;
+         changedCardTraitsByText.put(timestamp, staticId, new CardTraitChanges(
+             spells, trigger, replacements, statics, e -> true
+         ));
+@@ -4911,6 +4930,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+         return addChangedCardTraits(result, timestamp, staticId, updateView);
+     }
+     public final ICardTraitChanges addChangedCardTraits(ICardTraitChanges changes, long timestamp, long staticId, boolean updateView) {
++        traitsVersion++;
+         changedCardTraits.put(timestamp, staticId, changes);
+         if (updateView) {
+             updateAbilityTextForView();
+@@ -4919,9 +4939,11 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     }
+ 
+     public final boolean removeChangedCardTraits(long timestamp, long staticId) {
++        traitsVersion++;
+         return changedCardTraits.remove(timestamp, staticId) != null;
+     }
+     public final boolean removeChangedCardTraitsByText(long timestamp, long staticId) {
++        traitsVersion++;
+         return changedCardTraitsByText.remove(timestamp, staticId) != null;
+     }
+ 
+@@ -4941,6 +4963,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     }
+ 
+     public final void setChangedCardTraits(Table<Long, Long, ICardTraitChanges> changes) {
++        traitsVersion++;
+         changedCardTraits.clear();
+         for (Table.Cell<Long, Long, ICardTraitChanges> e : changes.cellSet()) {
+             changedCardTraits.put(e.getRowKey(), e.getColumnKey(), e.getValue().copy(this, true));
+@@ -4948,6 +4971,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     }
+ 
+     public boolean clearChangedCardTraits() {
++        traitsVersion++;
+         boolean changed = false;
+         if (!changedCardTraitsByText.isEmpty()) {
+             changed = true;
+@@ -5179,6 +5203,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+         updateKeywordsCache(getCurrentState());
+     }
+     public final void updateKeywordsCache(final CardState state) {
++        traitsVersion++;
+         KeywordCollection keywords = new KeywordCollection();
+ 
+         // Layer 1
+@@ -5594,6 +5619,9 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+         return phasedOut;
+     }
+     public final void setPhasedOut(final Player phasedOut0) {
++        if (game != null) {
++            game.bumpZoneVersion();   // fishpond patch 121: the battlefield list leaves phased-out cards out
++        }
+         if (phasedOut == phasedOut0) { return; }
+         phasedOut = phasedOut0;
+         view.updatePhasedOut(this);
+diff --git a/forge-game/src/main/java/forge/game/card/CardState.java b/forge-game/src/main/java/forge/game/card/CardState.java
+index 217e92b..e529f2e 100644
+--- a/forge-game/src/main/java/forge/game/card/CardState.java
++++ b/forge-game/src/main/java/forge/game/card/CardState.java
+@@ -685,7 +685,15 @@ public class CardState implements GameObject, IHasSVars, ITranslatable {
+         return abilities.add(a);
+     }
+ 
++    // fishpond patch 121: the triggers, cached the same way (below)
++    private FCollection<Trigger> cachedTriggers;
++    private int cachedTriggersVersion = -1;
++
+     public final FCollectionView<Trigger> getTriggers() {
++        final int version = card.getTraitsVersion();
++        if (TRAIT_CACHES && cachedTriggers != null && cachedTriggersVersion == version) {
++            return cachedTriggers;
++        }
+         FCollection<Trigger> result = new FCollection<>(triggers);
+         if (getStateName().equals(CardStateName.Original)) {
+             if (getCard().hasState(CardStateName.LeftSplit))
+@@ -694,6 +702,8 @@ public class CardState implements GameObject, IHasSVars, ITranslatable {
+                 result.addAll(getCard().getState(CardStateName.RightSplit).triggers);
+         }
+         card.updateTriggers(result, this);
++        cachedTriggers = result;
++        cachedTriggersVersion = version;
+         return result;
+     }
+ 
+@@ -711,126 +721,32 @@ public class CardState implements GameObject, IHasSVars, ITranslatable {
+     }
+ 
+     public final boolean addTrigger(final Trigger t) {
++        card.bumpTraitsVersion();
+         return triggers.add(t);
+     }
+ 
+-    // ---- fishpond patch 41: while a combat is being planned (patch 22's beginCombatPlan/endCombatPlan in
+-    // ComputerUtilCombat) the block planner asks, for every attacker/blocker pair, dozens of static-ability helpers
+-    // (StaticAbilityCombatDamageToughness, AssignNoCombatDamage, CantBlockBy...); each walks every card in the
+-    // static-ability zones and rebuilds that card's static-ability list, and ReplacementHandler rebuilds every card's
+-    // replacement effects: half of a big-board game's time (JFR, varied_20261012_p35 V06 game 1). The board doesn't
+-    // change during a plan, so inside one each card state's two lists, and Game's list of the static-ability zones'
+-    // cards, are built once. Only cards in the game's zones are remembered (the AI's pumped and LKI copies change
+-    // after they are made), and a game's memo starts over whenever one of its zones changes or a static-ability pass
+-    // runs on it (Game.boardChanged; GameAction.checkStaticAbilities: some AI helpers run one to try a card on the
+-    // battlefield). The count is per game: lookahead copies and an eval thread left running after an AI timeout
+-    // change their own games, not this one.
+-    // -Dfishpond.traitMemo=false builds everything every time.
+-    private static final boolean TRAIT_MEMO = !"false".equals(System.getProperty("fishpond.traitMemo"));
+-
+-    private static final class ReadScope {
+-        int depth;
+-        Object token;                                                   // one per outermost plan
+-        final Map<forge.game.Game, LiveCards> live = new java.util.HashMap<>();
+-    }
+-
+-    private static final class LiveCards {                              // a game's cards at one board epoch
+-        final long epoch;
+-        final Set<Card> cards = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+-
+-        LiveCards(final long epoch) {
+-            this.epoch = epoch;
+-        }
+-    }
+-
+-    private static final ThreadLocal<ReadScope> READ_SCOPE = ThreadLocal.withInitial(ReadScope::new);
+-
+-    private static final class TraitMemo {
+-        final Object token;
+-        final long epoch;
+-        final Object value;
+-
+-        TraitMemo(final Object token, final long epoch, final Object value) {
+-            this.token = token;
+-            this.epoch = epoch;
+-            this.value = value;
+-        }
+-    }
+-
+-    private TraitMemo staticMemo, replacementMemo, replacementMemoNoRules;
+-
+-    public static void beginReadScope() {
+-        if (TRAIT_MEMO) {
+-            final ReadScope s = READ_SCOPE.get();
+-            if (s.depth++ == 0) {
+-                s.token = new Object();
+-            }
+-        }
+-    }
+-
+-    public static void endReadScope() {
+-        if (TRAIT_MEMO) {
+-            final ReadScope s = READ_SCOPE.get();
+-            if (s.depth > 0 && --s.depth == 0) {
+-                s.token = null;
+-                s.live.clear();
+-            }
+-        }
+-    }
+-
+-    /** The current plan's token, or null outside a plan. */
+-    public static Object readToken() {
+-        return TRAIT_MEMO ? READ_SCOPE.get().token : null;
+-    }
+-
+-    private boolean inGame(final long epoch) {
+-        final forge.game.Game g = card == null ? null : card.getGame();
+-        if (g == null) {
+-            return false;
+-        }
+-        final ReadScope s = READ_SCOPE.get();
+-        LiveCards live = s.live.get(g);
+-        if (live == null || live.epoch != epoch) {
+-            final LiveCards found = new LiveCards(epoch);
+-            g.forEachCardInGame(c -> {
+-                found.cards.add(c);
+-                return true;
+-            });
+-            s.live.put(g, found);
+-            live = found;
+-        }
+-        return live.cards.contains(card);
+-    }
+-
+-    @SuppressWarnings("unchecked")
+-    private static <T> T memoHit(final TraitMemo m, final Object token, final long epoch) {
+-        return token != null && m != null && m.token == token && m.epoch == epoch ? (T) m.value : null;
+-    }
+-
+-    private TraitMemo memoFor(final Object token, final long epoch, final Object value) {
+-        return token != null && inGame(epoch) ? new TraitMemo(token, epoch, value) : null;
+-    }
+-
+-    private long epoch(final Object token) {
+-        return token == null || card == null || card.getGame() == null ? 0 : card.getGame().getBoardEpoch();
+-    }
++    // fishpond patch 121 (from Manabrew's Forge fork, witchesofthehill/forge dead08d87ac5, 0f467d3a316d, b82be77cf686):
++    // the static-ability helpers ask every card for this on every check, and building it was a fifth of the engine's CPU on
++    // wide boards. It depends only on the card's traits (Card.getTraitsVersion: bumped by every change to the state's
++    // abilities, the changed-traits tables, the keyword and type caches, counters), so it is rebuilt only when that moves.
++    // This replaces patch 41's memo, which built the list once per combat plan only. -Dfishpond.traitCaches=false builds
++    // every list (these, the triggers and Game's static-source list) on every ask, to compare.
++    static final boolean TRAIT_CACHES = !"false".equals(System.getProperty("fishpond.traitCaches"));
++    private FCollection<StaticAbility> cachedStaticAbilities;
++    private int cachedStaticAbilitiesVersion = -1;
+ 
+     public final FCollectionView<StaticAbility> getStaticAbilities() {
+-        final Object token = readToken();
+-        final long epoch = epoch(token);
+-        final FCollectionView<StaticAbility> hit = memoHit(staticMemo, token, epoch);
+-        if (hit != null) {
+-            return hit;
+-        }
+-        final FCollectionView<StaticAbility> result = getStaticAbilities0();
+-        final TraitMemo m = memoFor(token, epoch, result);
+-        if (m != null) {
+-            staticMemo = m;
++        final int version = card.getTraitsVersion();
++        if (TRAIT_CACHES && cachedStaticAbilities != null && cachedStaticAbilitiesVersion == version) {
++            return cachedStaticAbilities;
+         }
++        final FCollection<StaticAbility> result = getStaticAbilities0();
++        cachedStaticAbilities = result;
++        cachedStaticAbilitiesVersion = version;
+         return result;
+     }
+ 
+-    private FCollectionView<StaticAbility> getStaticAbilities0() {
++    private FCollection<StaticAbility> getStaticAbilities0() {
+         FCollection<StaticAbility> result = new FCollection<>(staticAbilities);
+         if (getStateName().equals(CardStateName.Original)) {
+             if (getCard().hasState(CardStateName.LeftSplit))
+@@ -842,35 +758,43 @@ public class CardState implements GameObject, IHasSVars, ITranslatable {
+         return result;
+     }
+     public final boolean addStaticAbility(StaticAbility stab) {
++        card.bumpTraitsVersion();
+         return staticAbilities.add(stab);
+     }
+     public final boolean removeStaticAbility(StaticAbility stab) {
++        card.bumpTraitsVersion();
+         return staticAbilities.remove(stab);
+     }
+ 
+     public FCollectionView<ReplacementEffect> getReplacementEffects() {
+         return getReplacementEffects(true);
+     }
++    // fishpond patch 121: the same for the replacement effects ReplacementHandler asks every card for on every event, one
++    // slot per rulesHost value (the global rules below also read the type, whose cache bumps the version).
++    private FCollection<ReplacementEffect> cachedReplacementEffects, cachedReplacementEffectsNoRules;
++    private int cachedReplacementEffectsVersion = -1, cachedReplacementEffectsNoRulesVersion = -1;
++
+     public FCollectionView<ReplacementEffect> getReplacementEffects(boolean rulesHost) {
+-        final Object token = readToken();   // fishpond patch 41
+-        final long epoch = epoch(token);
+-        final FCollectionView<ReplacementEffect> hit = memoHit(rulesHost ? replacementMemo : replacementMemoNoRules, token, epoch);
+-        if (hit != null) {
+-            return hit;
+-        }
+-        final FCollectionView<ReplacementEffect> result = getReplacementEffects0(rulesHost);
+-        final TraitMemo m = memoFor(token, epoch, result);
+-        if (m != null) {
+-            if (rulesHost) {
+-                replacementMemo = m;
+-            } else {
+-                replacementMemoNoRules = m;
++        final int version = card.getTraitsVersion();
++        if (rulesHost) {
++            if (TRAIT_CACHES && cachedReplacementEffects != null && cachedReplacementEffectsVersion == version) {
++                return cachedReplacementEffects;
+             }
++        } else if (TRAIT_CACHES && cachedReplacementEffectsNoRules != null && cachedReplacementEffectsNoRulesVersion == version) {
++            return cachedReplacementEffectsNoRules;
++        }
++        final FCollection<ReplacementEffect> result = getReplacementEffects0(rulesHost);
++        if (rulesHost) {
++            cachedReplacementEffects = result;
++            cachedReplacementEffectsVersion = version;
++        } else {
++            cachedReplacementEffectsNoRules = result;
++            cachedReplacementEffectsNoRulesVersion = version;
+         }
+         return result;
+     }
+ 
+-    private FCollectionView<ReplacementEffect> getReplacementEffects0(boolean rulesHost) {
++    private FCollection<ReplacementEffect> getReplacementEffects0(boolean rulesHost) {
+         FCollection<ReplacementEffect> result = new FCollection<>(replacementEffects);
+         // add Split to Original
+         if (getStateName().equals(CardStateName.Original)) {
+@@ -903,6 +827,7 @@ public class CardState implements GameObject, IHasSVars, ITranslatable {
+         return result;
+     }
+     public boolean addReplacementEffect(final ReplacementEffect replacementEffect) {
++        card.bumpTraitsVersion();
+         return replacementEffects.add(replacementEffect);
+     }
+ 
+@@ -992,6 +917,7 @@ public class CardState implements GameObject, IHasSVars, ITranslatable {
+         copyFrom(source, lki, null);
+     }
+     public final void copyFrom(final CardState source, final boolean lki, final CardTraitBase ctb) {
++        card.bumpTraitsVersion();
+         // Makes a "deeper" copy of a CardState object
+         setName(source.getName());
+         setType(source.type);
+@@ -1061,6 +987,7 @@ public class CardState implements GameObject, IHasSVars, ITranslatable {
+             }
+         }
+ 
++        card.bumpTraitsVersion();
+         staticAbilities.clear();
+         for (StaticAbility sa : source.staticAbilities) {
+             if (sa.isIntrinsic()) {
+@@ -1098,9 +1025,11 @@ public class CardState implements GameObject, IHasSVars, ITranslatable {
+                 this.landManaAbilities.put(e.getKey(), e.getValue().copy(card, true));
+             }
+         }
++        card.bumpTraitsVersion();
+     }
+ 
+     public final void addAbilitiesFrom(final CardState source, final boolean lki) {
++        card.bumpTraitsVersion();
+         for (SpellAbility sa : source.abilities) {
+             if (sa.isIntrinsic() && sa.getApi() != ApiType.PermanentCreature && sa.getApi() != ApiType.PermanentNoncreature) {
+                 abilities.add(sa.copy(card, lki));
+@@ -1123,11 +1052,13 @@ public class CardState implements GameObject, IHasSVars, ITranslatable {
+             }
+         }
+ 
++        card.bumpTraitsVersion();
+         for (StaticAbility sa : source.staticAbilities) {
+             if (sa.isIntrinsic()) {
+                 staticAbilities.add(sa.copy(card, lki));
+             }
+         }
++        card.bumpTraitsVersion();
+     }
+ 
+     public CardState copy(final Card host, CardStateName name, final boolean lki) {
+diff --git a/forge-game/src/main/java/forge/game/keyword/KeywordInstance.java b/forge-game/src/main/java/forge/game/keyword/KeywordInstance.java
+index 9f2b486..fd4805c 100644
+--- a/forge-game/src/main/java/forge/game/keyword/KeywordInstance.java
++++ b/forge-game/src/main/java/forge/game/keyword/KeywordInstance.java
+@@ -76,6 +76,7 @@ public abstract class KeywordInstance<T extends KeywordInstance<?>> implements K
+      * @see forge.game.keyword.KeywordInterface#createTraits(forge.game.card.Card, boolean, boolean)
+      */
+     public final void createTraits(final Card host, final boolean intrinsic, final boolean clear) {
++        host.bumpTraitsVersion();
+         this.hostCard = host;
+         this.intrinsic = intrinsic;
+         if (clear) {
+diff --git a/forge-game/src/main/java/forge/game/staticability/StaticAbilityAlternativeCost.java b/forge-game/src/main/java/forge/game/staticability/StaticAbilityAlternativeCost.java
+index add35b7..c518588 100644
+--- a/forge-game/src/main/java/forge/game/staticability/StaticAbilityAlternativeCost.java
++++ b/forge-game/src/main/java/forge/game/staticability/StaticAbilityAlternativeCost.java
+@@ -7,7 +7,6 @@ import com.google.common.collect.Lists;
+ 
+ import forge.card.mana.ManaCostParser;
+ import forge.game.card.Card;
+-import forge.game.card.CardCollection;
+ import forge.game.cost.Cost;
+ import forge.game.player.Player;
+ import forge.game.spellability.OptionalCost;
+@@ -18,10 +17,8 @@ public class StaticAbilityAlternativeCost {
+ 
+     public static List<SpellAbility> alternativeCosts(final SpellAbility sa, final Card source, final Player pl) {
+         List<SpellAbility> result = Lists.newArrayList();
+-        // add source first in case it's LKI (alternate host)
+-        CardCollection list = new CardCollection(source);
+-        list.addAll(source.getGame().getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES));
+-        for (final Card ca : list) {
++        // source first in case it's LKI (alternate host)
++        for (final Card ca : source.getGame().getStaticSourceCards(source)) {
+             for (final StaticAbility stAb : ca.getStaticAbilities()) {
+                 if (!stAb.checkMode(StaticAbilityMode.AlternativeCost)) {
+                     continue;
+diff --git a/forge-game/src/main/java/forge/game/staticability/StaticAbilityCantAttackBlock.java b/forge-game/src/main/java/forge/game/staticability/StaticAbilityCantAttackBlock.java
+index f0554b1..f64f9c3 100644
+--- a/forge-game/src/main/java/forge/game/staticability/StaticAbilityCantAttackBlock.java
++++ b/forge-game/src/main/java/forge/game/staticability/StaticAbilityCantAttackBlock.java
+@@ -24,7 +24,6 @@ import forge.game.Game;
+ import forge.game.GameEntity;
+ import forge.game.ability.AbilityUtils;
+ import forge.game.card.Card;
+-import forge.game.card.CardCollection;
+ import forge.game.cost.Cost;
+ import forge.game.keyword.Keyword;
+ import forge.game.player.Player;
+@@ -156,9 +155,7 @@ public class StaticAbilityCantAttackBlock {
+             return true;
+         }
+ 
+-        CardCollection list = new CardCollection(blocker);
+-        list.addAll(blocker.getGame().getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES));
+-        for (final Card ca : list) {
++        for (final Card ca : blocker.getGame().getStaticSourceCards(blocker)) {
+             for (final StaticAbility stAb : ca.getStaticAbilities()) {
+                 if (!stAb.checkConditions(StaticAbilityMode.CantBlock)) {
+                     continue;
+@@ -205,12 +202,9 @@ public class StaticAbilityCantAttackBlock {
+     }
+ 
+     public static boolean cantBlockBy(final Card attacker, final Card blocker) {
+-        // add attacker and blocker first in case of LKI
+-        CardCollection list = new CardCollection(attacker);
+-        if (blocker != null) {
+-            list.add(blocker);
+-        }
+-        list.addAll(attacker.getGame().getCardsIn(ZoneType.STATIC_ABILITIES_SOURCE_ZONES));
++        // attacker and blocker first in case of LKI
++        final Iterable<Card> list = blocker == null ? attacker.getGame().getStaticSourceCards(attacker)
++                : attacker.getGame().getStaticSourceCards(attacker, blocker);
+         for (final Card ca : list) {
+             for (final StaticAbility stAb : ca.getStaticAbilities()) {
+                 if (!stAb.checkConditions(StaticAbilityMode.CantBlockBy)) {
+diff --git a/forge-game/src/main/java/forge/game/zone/Zone.java b/forge-game/src/main/java/forge/game/zone/Zone.java
+index b5239f6..674d9d0 100644
+--- a/forge-game/src/main/java/forge/game/zone/Zone.java
++++ b/forge-game/src/main/java/forge/game/zone/Zone.java
+@@ -62,6 +62,7 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
+ 
+     protected void sort() {
+         game.boardChanged();   // fishpond patch 41: a zone changed, so CardState's memo starts over
++        game.bumpZoneVersion();   // fishpond patch 121: and Game's static-source list
+         cardList.sort(COMPARATOR);
+     }
+ 
+@@ -83,6 +84,7 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
+ 
+     public final void reorder(final Card c, final int index) {
+         game.boardChanged();   // fishpond patch 41
++        game.bumpZoneVersion();   // fishpond patch 121
+         cardList.remove(c);
+         cardList.add(index, c);
+     }
+@@ -141,6 +143,7 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
+ 
+         c.setZone(this);
+         game.boardChanged();   // fishpond patch 41
++        game.bumpZoneVersion();   // fishpond patch 121
+ 
+         if ((zoneType == ZoneType.Battlefield || !c.isToken() || c.getCurrentStateName() == CardStateName.PreparedSpell) || (zoneType == ZoneType.Stack && c.getCopiedPermanent() != null)) {
+             if (index == null) {
+@@ -165,6 +168,7 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
+     public void remove(final Card c) {
+         if (cardList.remove(c)) {
+             game.boardChanged();   // fishpond patch 41
++            game.bumpZoneVersion();   // fishpond patch 121
+             onChanged();
+             game.fireEvent(new GameEventZone(zoneType, getPlayer(), EventValueChangeType.Removed, c));
+         }
+@@ -172,6 +176,7 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
+ 
+     public final void setCards(final Iterable<Card> cards) {
+         game.boardChanged();   // fishpond patch 41
++        game.bumpZoneVersion();   // fishpond patch 121
+         cardList.clear();
+         for (Card c : cards) {
+             c.setZone(this);
+@@ -184,6 +189,7 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
+     public final void removeAllCards(boolean forcedWithoutEvents) {
+         if (forcedWithoutEvents) {
+             game.boardChanged();   // fishpond patch 41
++            game.bumpZoneVersion();   // fishpond patch 121
+             cardList.clear();
+         } else {
+             for (Card c : cardList) {
+@@ -265,6 +271,7 @@ public class Zone implements java.io.Serializable, Iterable<Card> {
+     }
+ 
+     public void shuffle() {
++        game.bumpZoneVersion();   // fishpond patch 121: order counts
+         Collections.shuffle(cardList, MyRandom.getRandom());
+         onChanged();
+     }

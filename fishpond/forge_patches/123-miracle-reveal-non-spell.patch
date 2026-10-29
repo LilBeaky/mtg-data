@@ -1,0 +1,15 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ability/RevealAi.java b/forge-ai/src/main/java/forge/ai/ability/RevealAi.java
+index 988cb00..05d4b9d 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/RevealAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/RevealAi.java
+@@ -88,7 +88,9 @@ public class RevealAi extends RevealAiBase {
+                 return new AiAbilityDecision(0, AiPlayDecision.CantPlayAi);
+             }
+             for (SpellAbility s : c.getAllPossibleAbilities(ai, false)) {
+-                if (!s.isBasicSpell()) {
++                // fishpond patch 123 (Manabrew, witchesofthehill/forge ef0924e1eb16; upstream has the same guard since): a land or
++                // other non-Spell basic ability of the revealed card threw ClassCastException on the game thread
++                if (!s.isBasicSpell() || !(s instanceof Spell)) {
+                     continue;
+                 }
+                 Spell spell = (Spell) s.copy(ai);

@@ -1,0 +1,71 @@
+diff --git a/forge-game/src/main/java/forge/game/card/Card.java b/forge-game/src/main/java/forge/game/card/Card.java
+index 2628127..901474c 100644
+--- a/forge-game/src/main/java/forge/game/card/Card.java
++++ b/forge-game/src/main/java/forge/game/card/Card.java
+@@ -7482,18 +7482,20 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+             }
+         }
+ 
+-        final Collection<SpellAbility> toRemove = Lists.newArrayListWithCapacity(abilities.size());
++        // fishpond patch 122 (Manabrew, witchesofthehill/forge cc83820ebee6): removeAll on two ArrayLists is quadratic,
++        // and with removeUnplayable most entries go, so keep the survivors in one pass instead.
++        final List<SpellAbility> playable = Lists.newArrayListWithCapacity(abilities.size());
+         for (final SpellAbility sa : abilities) {
+             sa.setActivatingPlayer(player);
+             // fix things like retrace
+             // check only if SA can't be cast normally
+             if (!sa.canPlay(true) && (removeUnplayable || !sa.isPossible())) {
+-                toRemove.add(sa);
++                continue;
+             }
++            playable.add(sa);
+         }
+-        abilities.removeAll(toRemove);
+ 
+-        return abilities;
++        return playable;
+     }
+ 
+     public static Card fromPaperCard(IPaperCard pc, Player owner) {
+diff --git a/forge-game/src/main/java/forge/game/card/CardProperty.java b/forge-game/src/main/java/forge/game/card/CardProperty.java
+index 2d88aba..cfbc782 100644
+--- a/forge-game/src/main/java/forge/game/card/CardProperty.java
++++ b/forge-game/src/main/java/forge/game/card/CardProperty.java
+@@ -4,6 +4,7 @@ import com.google.common.collect.Iterables;
+ import com.google.common.collect.Lists;
+ import forge.StaticData;
+ import forge.card.CardDb;
++import forge.card.CardType;
+ import forge.card.ColorSet;
+ import forge.card.MagicColor;
+ import forge.card.mana.ManaCost;
+@@ -55,7 +56,17 @@ public class CardProperty {
+             }
+         }
+ 
+-        if (property.equals("noName")) {
++        // fishpond patch 122 (from Manabrew's Forge fork, witchesofthehill/forge 13163cebb443, 9404459bef01): a bare core
++        // type or supertype only ends at the type check at the bottom (CardStateProperty), so answer it before the chain
++        if (CardType.isACardType(property) || CardType.isASupertype(property)) {
++            return card.getCurrentState().getTypeWithChanges().hasStringType(property);
++        }
++
++        if (property.equals("IsCommander")) {   // patch 122: asked for every card by commander statics; tested before the chain
++            if (!card.isCommander()) {
++                return false;
++            }
++        } else if (property.equals("noName")) {
+             if (!card.hasNoName()) {
+                 return false;
+             }
+@@ -1966,10 +1977,6 @@ public class CardProperty {
+             if (!card.isInZone(realZone)) {
+                 return false;
+             }
+-        } else if (property.equals("IsCommander")) {
+-            if (!card.isCommander()) {
+-                return false;
+-            }
+         } else if (property.startsWith("NotedFor")) {
+             final String key = property.substring("NotedFor".length());
+             for (String note : sourceController.getNotesForName(key)) {
