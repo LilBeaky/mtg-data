@@ -1,0 +1,45 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 76f3fba..52417ad 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -2713,7 +2713,7 @@ public class AiController {
+     // them with Oracle in hand and a one-card library (V09 g2). -Dfishpond.comboLines=false turns all of it off.
+     private static final boolean COMBO_LINES = !"false".equals(System.getProperty("fishpond.comboLines"));
+     private static final Map<Player, java.lang.ref.WeakReference<Card>> COMBO_FOCUS = Collections.synchronizedMap(new WeakHashMap<>());   // patch 67
+-    private static final Map<Player, int[]> COMBO_STEPS = Collections.synchronizedMap(new WeakHashMap<>());   // {turn, steps}
++    private static final Map<Player, int[]> COMBO_STEPS = Collections.synchronizedMap(new WeakHashMap<>());   // {turn, steps, game id}
+     private static final int COMBO_STEP_CAP = 300;
+ 
+     /** The card a running combo wants its engine's counters on (CountersPutAi), or null. */
+@@ -2728,10 +2728,11 @@ public class AiController {
+             return null;
+         }
+         final int turn = game.getPhaseHandler().getTurn();
+-        final int[] steps = COMBO_STEPS.computeIfAbsent(player, k -> new int[] {turn, 0});
+-        if (steps[0] != turn) {
++        final int[] steps = COMBO_STEPS.computeIfAbsent(player, k -> new int[] {turn, 0, game.getId()});
++        if (steps[0] != turn || steps[2] != game.getId()) {   // fishpond patch 120: a new turn, or a new game in this JVM
+             steps[0] = turn;
+             steps[1] = 0;
++            steps[2] = game.getId();
+         }
+         if (steps[1] >= COMBO_STEP_CAP) {
+             return null;
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index fd14691..3a96502 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -700,6 +700,13 @@ public final class TurnPlan {
+         if (c == null) {
+             return null;
+         }
++        if (c.getGame() != p.getGame()) {
++            // fishpond patch 120: an entry from an earlier game in this JVM. Forge's players and cards compare by id and ids
++            // restart each game, so the stale card matched a new game's card with the same id (a batch of puzzles: Scheming
++            // Symmetry's tutored card made Solve the Equation's search wait in the next game; a worker's games alike)
++            TOP.remove(p);
++            return null;
++        }
+         final int i = knownTopIndex(p, c);
+         if (i < 0 || i > 2) {
+             if (PLACED.remove(c.getId()) || !inLibrary(p, c)) TOP.remove(p);   // shuffled away, drawn, or gone
