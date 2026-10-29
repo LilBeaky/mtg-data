@@ -159,9 +159,13 @@ with _tf2.TemporaryDirectory() as _d2:
     open(os.path.join(_d2, "logs", "worker_s1_0.log"), "w", encoding="utf-8").write(chr(10).join([
         '#FP-PLAN {"t": 1, "seat": "Ai(1)-Klauth", "phase": "MAIN1", "budget": 1, "restricted": 0, "reserve": 0, "steps": [], "left_out": [{"card": "Klauth, Unrivaled Ancient", "cost": 7, "value": 1486}]}',
         _brd(1, [], []), _brd(2, [], [{"n": "Zur the Enchanter", "p": 1, "t": 4, "cmd": True}]), _brd(3, _kl, []),
+        '#FP-MOVE {"t": 2, "seat": "2", "by": "2", "src": "Step Through", "trigger": false, "card": "Archaeomancer", "from": "Library", "to": "Hand"}',
+        '#FP-MOVE {"t": 2, "seat": "2", "by": "2", "src": "Show and Tell", "trigger": false, "card": "Omniscience", "from": "Hand", "to": "Battlefield"}',
+        '#FP-MOVE {"t": 2, "seat": "1", "by": "2", "src": "Show and Tell", "trigger": false, "card": "Ghalta, Primal Hunger", "from": "Hand", "to": "Battlefield"}',
         '#FP-WIPE {"t": 2, "seat": "Ai(2)-Zur", "card": "Cyclonic Rift", "self": 0, "opp": {}, "keeps": false, "verdict": "refuse: not enough"}',
         "Turn: Turn 1 (Ai(1)-Klauth)", "Land: Ai(1)-Klauth played Forest (5)",
-        "Turn: Turn 2 (Ai(2)-Zur)", "Add To Stack: Ai(2)-Zur cast Zur the Enchanter",
+        "Turn: Turn 2 (Ai(2)-Zur)", "Add To Stack: Ai(2)-Zur cast Zur the Enchanter", "Add To Stack: Ai(2)-Zur activated Step Through",
+        "Add To Stack: Ai(2)-Zur cast Show and Tell",
         "Add To Stack: Ai(1)-Klauth cast Beast Within targeting [Zur the Enchanter (60)]",
         "Zone Change: Zur the Enchanter (60) was put into Graveyard from Battlefield.",
         "Turn: Turn 3 (Ai(1)-Klauth)", "Add To Stack: Ai(1)-Klauth cast Klauth, Unrivaled Ancient",
@@ -177,8 +181,11 @@ with _tf2.TemporaryDirectory() as _d2:
           ({1: "Klauth", 2: "Zur"}, 1, 2, 1))
     check("game page: removal names its card and caster", [m["text"] for m in _g["moments"] if m["kind"] == "removed"],
           ["Zur the Enchanter dies to Beast Within (Klauth)"])
-    check("game page: a turn's plan, combat damage and end-of-turn board", (_g["rows"][0]["plan"]["budget"], _g["rows"][2]["dmg"], _g["rows"][2]["board"]["1"]["creatures"][0]["p"]),
+    check("game page: a turn's plan, combat damage and end-of-turn board", (_g["rows"][0]["plan"]["budget"], _g["rows"][2]["dmg"], _g["rows"][2]["board"]["creatures"][0]["p"]),
           (1, {2: 7}, 7))
+    check("game page: what a tutor found and what Show and Tell put out, on the play that did it", [it[2] for it in _g["rows"][1]["items"] if len(it) > 2],
+          ["found Archaeomancer", "Omniscience onto the battlefield; Klauth: Ghalta, Primal Hunger onto the battlefield"])
+    check("game page: seats in turn order", _g["order"], [1, 2])
     _col = _gp.deck_colors({"Klauth": ["Klauth, Unrivaled Ancient"], "Zur": ["Zur the Enchanter"]})
     check("game page: deck colors from color identity", (_col["Klauth"]["identity"], _col["Zur"]["identity"]), ("RG", "WUB"))
     check("game page: the page is written", os.path.basename(_gp.write(_d2) or ""), "games.html")

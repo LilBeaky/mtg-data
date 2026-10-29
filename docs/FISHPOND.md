@@ -68,16 +68,23 @@ Each game record says which mode every seat actually ran (checked on the live co
 Every run writes `games.html` next to `report.txt` (so every pod of a study has one): all four seats, turn by turn, in one page
 to open in a browser (the user, 2026-10-29: "I'd actually like to make it the standard output format"). On top, each deck across
 the run's games (wins, the own turns its commander was first cast, commander removals, attacks, combat damage). Then a tab per
-game: the result, each deck's summary, and the game's key moments in order (commanders cast and recast, commanders removed and
+game (past 12 games, a game list to search by card, deck or moment and filter by winner, 24 to a page): the result, each deck's
+summary, and the game's key moments in order (commanders cast and recast, commanders removed and
 by what, wipes cast, turns of 15+ combat damage, eliminations, the win). Then one row per round (each deck's own turn N; #N counts
-turns across the table) and a column per deck: the main-phase plan's mana and what went unused, the plays (lands, spells,
-abilities with their targets, attacks), combat damage dealt, what the turn plan left out, the board at the end of that turn
+turns across the table) and a column per deck, in that game's turn order: the main-phase plan's mana and what went unused, the plays (lands, spells,
+abilities with their targets, attacks; under a tutor what it found, under Show and Tell or a reanimation what each player put
+onto the battlefield), combat damage dealt, what the turn plan left out, the board at the end of that turn
 (creatures with power/toughness and what's attached, tokens grouped, other permanents, lands, hand, library, commander damage
 taken) and life; plays made on other decks' turns (blocks, instants, removal) sit under the deck that made them. Each deck's
-color comes from its colors: the identity color with the most mana symbols across its list.
+color comes from its colors: the identity color with the most mana symbols across its list. Each deck's box at the top opens its
+deck view (the user, 2026-10-29): that deck across every game of the run, by its own turn (in how many games it got the turn,
+median mana and unused mana, how often its commander was out, median creatures, power and life, how often it attacked, average
+combat damage, its most-cast spells that turn), then game by game (result, turn order, commander cast turn, removals, attacks,
+its key moments, a link to the game).
 
 It is read from the worker logs (`fishpond/gamepage.py`): Forge's game log, the turn plan (`#FP-PLAN`), the sequencing meter
-(`#FP-SEQ`), the wipe judge (`#FP-WIPE`) and, from 2026-10-29, the harness's end-of-turn board for every seat (`#FP-BOARD`).
+(`#FP-SEQ`), the wipe judge (`#FP-WIPE`) and, from 2026-10-29, the harness's end-of-turn board for every seat (`#FP-BOARD`) and the cards a resolving spell or ability moved for any seat
+(`#FP-MOVE`: a search or dig to hand or the battlefield, hand to the battlefield, graveyard to hand or the battlefield).
 Older runs get the page without the board lines; `fishpond replay POD GAME` reruns an old game with them (the replay checks
 that it matches the original game line for line).
 

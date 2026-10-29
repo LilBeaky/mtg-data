@@ -465,7 +465,8 @@ public class ForgeRunner {
         w.flushAllHeld();
         for (String s : w.held) out.println("#FP-HELD " + s);
         for (String s : w.seq) out.println("#FP-SEQ " + s);           // sequencing meter, one per seat and own turn
-        for (String s : w.boards) out.println("#FP-BOARD " + s);      // every seat's board at the end of each turn (the game page)
+        for (String s : w.boards) out.println("#FP-BOARD " + s);
+        for (String s : w.moves) out.println("#FP-MOVE " + s);        // cards a resolving spell or ability moved (the game page)      // every seat's board at the end of each turn (the game page)
         for (String s : w.setup) out.println("#FP-SETUP " + s);       // setup cards per deck (SetupModel), made at the first turn
         for (PilotPolicy pol : policies) for (String s : pol.log) out.println("#FP-POLICY " + s);
         for (var p : game.getRegisteredPlayers())   // the seat's repeatable engines, declared and found (PilotPolicy.loops)
@@ -850,6 +851,7 @@ public class ForgeRunner {
         }
 
         @Subscribe public void onZone(GameEventCardChangeZone e) {
+            try { move(e); } catch (RuntimeException ex) { /* logging only */ }
             if (e.from() == null || e.to() == null || e.from().player() == null || !e.from().player().equals(hero.getView())) return;
             ZoneType f = e.from().zoneType(), t = e.to().zoneType();
             if (f == ZoneType.Library && (t == ZoneType.Hand || t == ZoneType.Battlefield)) tutor(e, t);
@@ -858,6 +860,37 @@ public class ForgeRunner {
         }
 
         /** A card left the hero's library for hand or play while a library search or dig resolved (draws don't count). */
+        final List<String> moves = new ArrayList<>();
+
+        /** #FP-MOVE, every seat (the game page): a card a resolving spell or ability moves from the library to hand or the
+         *  battlefield (a search or a dig: tutors, typecycling, Zur's attack trigger), from hand to the battlefield (Show and
+         *  Tell, Sneak Attack) or from the graveyard to hand or the battlefield (reanimation, regrowth). Draws and casts aren't
+         *  moves of this kind. Read only. */
+        void move(GameEventCardChangeZone e) {
+            if (e.from() == null || e.to() == null || stop != null || !g.getStack().isResolving()) return;
+            ZoneType f = e.from().zoneType(), t = e.to().zoneType();
+            boolean want = f == ZoneType.Library && (t == ZoneType.Hand || t == ZoneType.Battlefield)
+                    || f == ZoneType.Hand && t == ZoneType.Battlefield
+                    || f == ZoneType.Graveyard && (t == ZoneType.Hand || t == ZoneType.Battlefield);
+            if (!want) return;
+            SpellAbility sa = g.getStack().peekAbility();
+            boolean moving = false;
+            for (SpellAbility x = sa; x != null && !moving; x = x.getSubAbility()) {
+                ApiType a = x.getApi();
+                moving = a == ApiType.ChangeZone || a == ApiType.ChangeZoneAll || a == ApiType.Dig || a == ApiType.DigUntil;
+            }
+            if (!moving) return;
+            Card c = g.findById(e.card().getId());
+            Card src = sa.getHostCard();
+            Player owner = c != null ? c.getOwner() : null;
+            Player by = sa.getActivatingPlayer();
+            moves.add("{\"t\": " + globalTurns + ", \"seat\": " + js(owner == null ? "?" : ThreatModel.seat(owner))
+                    + ", \"by\": " + js(by == null ? "?" : ThreatModel.seat(by))
+                    + ", \"src\": " + js(src == null ? "?" : src.getName()) + ", \"trigger\": " + sa.isTrigger()
+                    + ", \"card\": " + js(c != null ? c.getName() : e.card().getCurrentState().getName())
+                    + ", \"from\": \"" + f.name() + "\", \"to\": \"" + t.name() + "\"}");
+        }
+
         void tutor(GameEventCardChangeZone e, ZoneType to) {
             SpellAbility sa = g.getStack().isResolving() ? g.getStack().peekAbility() : null;
             String kind = null;
