@@ -1,0 +1,57 @@
+# name: Claudes Baral Control
+# bracket: 3
+# plan: Mono-blue counterspells. Baral loots off every counter and is the deck's cost reducer; protect him rather than backing him up. 25 Sphinx's Approach for card flow; every fifth Approach tutors a Sphinx, with Sphinx of the Second Sun first (extra untap = counter mana twice). Thin curve; the only non-Sphinx top end is big mana.
+# priority: Sphinx of the Second Sun; Consecrated Sphinx
+# key: Sphinx of the Second Sun; Consecrated Sphinx; Sphinx of the Final Word; Unesh, Criosphinx Sovereign
+Commander
+1 Baral, Chief of Compliance
+
+Deck
+25 Sphinx's Approach #approach
+1 Sphinx of the Second Sun #sphinx
+1 Consecrated Sphinx #sphinx
+1 Sphinx of the Final Word #sphinx
+1 Unesh, Criosphinx Sovereign #sphinx
+1 Dream Eater #sphinx
+1 Enigma Thief #sphinx
+1 Sphinx of Forgotten Lore #sphinx
+1 Mana Drain #counter
+1 Counterspell #counter
+1 Fierce Guardianship #counter
+1 Force of Negation #counter
+1 Mana Sculpt #counter
+1 Wizard's Retort #counter
+1 Bane's Contingency #counter #protection
+1 Refute #counter
+1 Sinister Sabotage #counter
+1 Disallow #counter
+1 Saw It Coming #counter
+1 Forbid #counter
+1 Swan Song #protection
+1 Mithril Coat #protection
+1 Swiftfoot Boots #protection
+1 Dive Down #protection
+1 Slip Out the Back #protection
+1 Snap #protection
+1 Spellskite #protection
+1 Cyclonic Rift #removal
+1 Into the Roil #removal
+1 Pongify #removal
+1 Rapid Hybridization #removal
+1 Sol Ring #ramp
+1 Arcane Signet #ramp
+1 High Tide #ramp
+1 Extraplanar Lens #ramp
+1 Caged Sun #ramp
+1 Frantic Search #ramp #draw
+1 Thought Scour #draw
+1 Thirst for Knowledge #draw
+1 Sapphire Medallion #reducer
+1 Haughty Djinn #reducer
+1 Otawara, Soaring City #land
+1 Castle Vantress #land
+1 Mystic Sanctuary #land
+1 Reliquary Tower #land
+1 Lonely Sandbar #land
+1 Remote Isle #land
+28 Snow-Covered Island #land

@@ -1,0 +1,15 @@
+# title: Sphinx's Approach with four more in the graveyard: the AI exiles the five and puts a Sphinx onto the battlefield (Forge's AI never took the option: Claudes Baral Control, 20261028 vacuum run, 14-21 Approaches a game and the exile zone never past 2)
+# card: Sphinx's Approach
+# turns: 1
+# expect: #FP-PUZZLE end Ai\(1\)-P1 .*battlefield \[.*Sphinx of the Second Sun
+p0life=40
+p1life=40
+turn=1
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Island;Island;Island
+p0hand=Sphinx's Approach
+p0graveyard=Sphinx's Approach;Sphinx's Approach;Sphinx's Approach;Sphinx's Approach
+p0library=Island;Island;Island;Sphinx of the Second Sun;Island;Island;Island;Island;Island;Island
+p1battlefield=Island;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

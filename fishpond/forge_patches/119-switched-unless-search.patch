@@ -1,0 +1,20 @@
+diff --git a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+index dcb3148..46cd7aa 100644
+--- a/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
++++ b/forge-ai/src/main/java/forge/ai/ability/ChangeZoneAi.java
+@@ -2297,6 +2297,15 @@ public class ChangeZoneAi extends SpellAbilityAi {
+             lifeLoss = lifeCost.getAbilityAmount(sa);
+         }
+ 
++        // fishpond patch 119 (numbered 107 when written, renumbered after the pilot patches 107-118): a switched "unless" (UnlessSwitched: pay the cost to make the effect happen) on a hidden-zone search
++        // its own controller pays for moves no Defined card, so the loop below fell back to Defined Self and judged the spell itself:
++        // Sphinx's Approach (exile it and four more from the graveyard to put a Sphinx onto the battlefield) is an instant, not a
++        // creature, and the AI declined every time (Claudes Baral Control, 20261028: 14-21 Approaches a game, never a Sphinx).
++        if (sa.hasParam("UnlessSwitched") && !sa.hasParam("Defined") && sa.hasParam("ChangeType")
++                && payer.equals(sa.getActivatingPlayer())) {
++            return super.willPayUnlessCost(payer, sa, cost, alreadyPaid, payers);
++        }
++
+         for (Card c : AbilityUtils.getDefinedCards(host, sa.getParam("Defined"), sa)) {
+             if (c.isToken()) {
+                 return false;
