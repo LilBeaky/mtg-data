@@ -8,13 +8,15 @@
                                                     and/or add N more games to it; results accumulate in the same run
   python3 -m fishpond report RUN_DIR [--reparse]   reprint a saved run's report (--reparse: parse its logs again)
   python3 -m fishpond show RUN_DIR GAME [--log]    one game's parsed record (and its Forge log) for hand audits
-  python3 -m fishpond puzzles [NAME...] [-v]       AI behaviour tests: board states in fishpond/puzzles/ (pass/fail)
+  python3 -m fishpond puzzles [NAME...] [-v]       AI behaviour tests: board states in fishpond/puzzles/ (pass/fail; batched,
+                                                   --jobs N JVMs at once, --single for one JVM a puzzle)
   python3 -m fishpond compare RUN_A RUN_B          two saved runs side by side (A/B on the same seed and pod: FISHPOND_PILOT=off vs on)
   python3 -m fishpond study PODS --out DIR [--games N] [--seed S] [--lanes L] [--jobs J] [--max-minutes M]
                                                     many pods in parallel lanes, resumable, one per-deck report
                                                     (--report DIR: the report alone; PODS lines 'ID|HERO|OPP1|OPP2|OPP3')
   python3 -m fishpond held RUN_DIR [RUN_DIR...]    dead-card meter per deck across runs: castable cards held 3+ turns running
   python3 -m fishpond lines RUN_DIR [RUN_DIR...]   win-line audit: each deck's lines (fishpond/win_lines.txt) available vs played
+  python3 -m fishpond check [--full] [--dry-run]    the checks a change needs before a push (by the files changed)
   python3 -m fishpond page RUN_DIR [RUN_DIR...]    the game page (every run writes it: RUN_DIR/games.html); a study dir: one per pod
   python3 -m fishpond flags [--smoke] [--unflag]   cards Forge's AI won't cast (AI:RemoveDeck:All) across the repo's decks, with
                                                     their status; --smoke writes+runs a smoke puzzle for each untested one,
@@ -98,7 +100,7 @@ def cmd_deck(args):
 
 def cmd_puzzles(args):
     from . import puzzles
-    if not puzzles.run_all(args.names, args.verbose): sys.exit(1)
+    if not puzzles.run_all(args.names, args.verbose, jobs=args.jobs, single=args.single): sys.exit(1)
 
 def cmd_compare(args):
     from . import compare
@@ -299,6 +301,10 @@ def _page(run_dir, quiet):
     except Exception as e:   # a page problem must not cost a finished run
         print(f"fishpond: game page not written ({type(e).__name__}: {e})", file=sys.stderr)
 
+def cmd_check(args):
+    from . import check
+    check.cmd(args)
+
 def cmd_page(args):
     from . import gamepage
     gamepage.cmd(args)
@@ -426,6 +432,8 @@ def main(argv=None):
     p = sub.add_parser("report"); p.add_argument("run"); p.add_argument("--turns", type=int, default=0); p.add_argument("--json", action="store_true")
     p.add_argument("--reparse", action="store_true", help="re-run the log parser over the saved logs first")
     z = sub.add_parser("puzzles"); z.add_argument("names", nargs="*"); z.add_argument("-v", "--verbose", action="store_true")
+    z.add_argument("--jobs", type=int, default=3, help="JVMs at once (each runs a batch of puzzles)")
+    z.add_argument("--single", action="store_true", help="one JVM a puzzle (slower; the old way)")
     c = sub.add_parser("compare"); c.add_argument("a"); c.add_argument("b")
     g = sub.add_parser("flags"); g.add_argument("--smoke", action="store_true"); g.add_argument("--unflag", action="store_true")
     st = sub.add_parser("study"); st.add_argument("pods", nargs="?"); st.add_argument("--out"); st.add_argument("--report")
@@ -437,9 +445,11 @@ def main(argv=None):
     h = sub.add_parser("sequencing"); h.add_argument("runs", nargs="+")
     rp = sub.add_parser("replay"); rp.add_argument("pod", help="a pod directory of a run (has logs/ and decks/)"); rp.add_argument("game", type=int)
     rp.add_argument("--out"); rp.add_argument("--classes", help="a patched-Forge class dir to replay on instead of the current build")
+    ck = sub.add_parser("check"); ck.add_argument("--full", action="store_true"); ck.add_argument("--dry-run", action="store_true")
+    ck.add_argument("--since"); ck.add_argument("--jobs", type=int, default=3)
     pg = sub.add_parser("page"); pg.add_argument("runs", nargs="+"); pg.add_argument("--out"); pg.add_argument("--title")
     w = sub.add_parser("show"); w.add_argument("run"); w.add_argument("game", type=int); w.add_argument("--build")
     w.add_argument("--log", action="store_true"); w.add_argument("--phases", action="store_true")
     args = ap.parse_args(argv)
     if not args.cmd: ap.print_help(); return
-    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "lines": cmd_lines, "study": cmd_study, "replay": cmd_replay, "sequencing": cmd_sequencing, "page": cmd_page}[args.cmd](args)
+    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "lines": cmd_lines, "study": cmd_study, "replay": cmd_replay, "sequencing": cmd_sequencing, "page": cmd_page, "check": cmd_check}[args.cmd](args)

@@ -53,28 +53,8 @@ def _policy_dck(name):
             policy.write_for(dk.load(src), fp)
     return os.path.abspath(fp)
 
-def run_one(path, quiet=True):
-    """(passed, meta, log lines, failures) for one puzzle."""
-    meta, state = load(path)
-    classes = runner.harness_classes(quiet)
-    patched = forge.patched_classes(quiet=quiet)
-    sf = path + ".state.tmp"
-    open(sf, "w", encoding="utf-8").write("\n".join(state) + "\n")
-    cmd = ["java", "-Xmx1500m", "-XX:-OmitStackTraceInFastThrow", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8", *meta.get("jvm", "").split(),
-           "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "PuzzleRunner", os.path.abspath(sf),
-           str(meta["turns"]), str(meta["seed"]), meta["sim"]]
-    if meta.get("deck") or meta.get("deck2"):   # '# deck: NAME': seat 1 plays with that deck's pilot policy (key cards, combos,
-        cmd.append(_policy_dck(meta["deck"]) if meta.get("deck") else "-")   # tutor picks); '# deck2: NAME' gives seat 2 one
-    if meta.get("deck2"):
-        cmd.append(_policy_dck(meta["deck2"]))
-    try:
-        r = subprocess.run(cmd, cwd=forge.run_home(quiet=quiet), capture_output=True, text=True, timeout=400)
-        out = r.stdout
-    except subprocess.TimeoutExpired as e:
-        out = (e.stdout or b"").decode("utf-8", "replace") if isinstance(e.stdout, bytes) else (e.stdout or "")
-    finally:
-        os.remove(sf)
-    lines = out.splitlines()
+def evaluate(meta, lines):
+    """(passed, failures) for a puzzle's game log."""
     fails = []
     for rx in meta["expect"]:
         if not any(re.search(rx, l) for l in lines): fails.append(f"expected, not seen: {rx}")
@@ -87,26 +67,130 @@ def run_one(path, quiet=True):
         if ia is None: fails.append(f"order: not seen: {a}")
         elif ib is not None and ib < ia: fails.append(f"order: {b} came before {a}")
     if any(l.startswith("#FP-PUZZLE error") for l in lines): fails.append(next(l for l in lines if l.startswith("#FP-PUZZLE error")))
-    return not fails, meta, lines, fails
+    return not fails, fails
 
-def run_all(names=None, verbose=False):
+def _java(meta, quiet=True):
+    classes = runner.harness_classes(quiet)
+    patched = forge.patched_classes(quiet=quiet)
+    return ["java", "-Xmx1500m", "-XX:-OmitStackTraceInFastThrow", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8", *meta.get("jvm", "").split(),
+            "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "PuzzleRunner"]
+
+def _decks(meta):
+    """The deck arguments: seat 1's policy .dck (or "-") and seat 2's, as PuzzleRunner reads them."""
+    d1 = _policy_dck(meta["deck"]) if meta.get("deck") else "-"
+    d2 = _policy_dck(meta["deck2"]) if meta.get("deck2") else "-"
+    return d1, d2
+
+def run_one(path, quiet=True):
+    """(passed, meta, log lines, failures) for one puzzle in its own JVM."""
+    meta, state = load(path)
+    sf = path + ".state.tmp"
+    open(sf, "w", encoding="utf-8").write("\n".join(state) + "\n")
+    cmd = _java(meta, quiet) + [os.path.abspath(sf), str(meta["turns"]), str(meta["seed"]), meta["sim"]]
+    d1, d2 = _decks(meta)
+    if d1 != "-" or d2 != "-": cmd.append(d1)   # '# deck: NAME': seat 1 plays with that deck's pilot policy (key cards,
+    if d2 != "-": cmd.append(d2)                   # combos, tutor picks); '# deck2: NAME' gives seat 2 one
+    try:
+        r = subprocess.run(cmd, cwd=forge.run_home(quiet=quiet), capture_output=True, text=True, timeout=400)
+        out = r.stdout
+    except subprocess.TimeoutExpired as e:
+        out = (e.stdout or b"").decode("utf-8", "replace") if isinstance(e.stdout, bytes) else (e.stdout or "")
+    finally:
+        os.remove(sf)
+    lines = out.splitlines()
+    passed, fails = evaluate(meta, lines)
+    return passed, meta, lines, fails
+
+BATCH = 20   # puzzles a JVM
+
+def run_batch(paths, workers=3, quiet=True, on_result=None):
+    """Run puzzles a few JVMs at a time, many puzzles a JVM (PuzzleRunner --batch: Forge loads once a JVM, not once a puzzle).
+    A JVM holds puzzles with the same '# jvm:' switches and the same policy hooks (a deck or none), so each plays as it would
+    alone. Returns {path: (passed, meta, lines, failures)}; on_result(path, result) is called as each finishes."""
+    import concurrent.futures, tempfile
+    forge.ensure(quiet=True); runner.harness_classes(quiet); forge.patched_classes(quiet=quiet)
+    items = []
+    for p in paths:
+        meta, state = load(p)
+        d1, d2 = _decks(meta)
+        items.append((p, meta, state, d1, d2))
+    groups = {}
+    for it in items:
+        groups.setdefault((it[1].get("jvm", ""), it[3] != "-" or it[4] != "-"), []).append(it)
+    chunks = [g[i:i + BATCH] for g in groups.values() for i in range(0, len(g), BATCH)]
+    results = {}
+    tmp = tempfile.mkdtemp(prefix="fp-puzzles-")
+
+    def one(k, chunk):
+        man = os.path.join(tmp, f"batch{k}.tsv")
+        with open(man, "w", encoding="utf-8") as fh:
+            for p, meta, state, d1, d2 in chunk:
+                sf = os.path.join(tmp, os.path.basename(p) + ".state")
+                open(sf, "w", encoding="utf-8").write("\n".join(state) + "\n")
+                fh.write("\t".join([os.path.basename(p), sf, str(meta["turns"]), str(meta["seed"]), meta["sim"], d1, d2]) + "\n")
+        try:
+            r = subprocess.run(_java(chunk[0][1], quiet) + ["--batch", man], cwd=forge.run_home(quiet=True), capture_output=True,
+                               text=True, timeout=300 * len(chunk) + 120)
+            out = r.stdout
+        except subprocess.TimeoutExpired as e:
+            out = (e.stdout or b"").decode("utf-8", "replace") if isinstance(e.stdout, bytes) else (e.stdout or "")
+        cur, buf = None, {}
+        for l in out.splitlines():
+            if l.startswith("#FP-PUZZLE begin "): cur = l[17:].strip(); buf[cur] = []; continue
+            if l.startswith("#FP-PUZZLE done "): cur = None; continue
+            if cur is not None: buf[cur].append(l)
+        done = []
+        for p, meta, state, d1, d2 in chunk:
+            name = os.path.basename(p)
+            if name in buf:
+                passed, fails = evaluate(meta, buf[name])
+                done.append((p, (passed, meta, buf[name], fails)))
+            else:   # the batch died before this one: run it alone
+                done.append((p, run_one(p, quiet)))
+        return done
+
+    with concurrent.futures.ThreadPoolExecutor(max(1, workers)) as ex:
+        for fut in concurrent.futures.as_completed([ex.submit(one, k, c) for k, c in enumerate(chunks)]):
+            for p, res in fut.result():
+                results[p] = res
+                if on_result: on_result(p, res)
+    import shutil
+    shutil.rmtree(tmp, ignore_errors=True)
+    return results
+
+def select(names=None):
     files = sorted(glob.glob(os.path.join(PUZZLE_DIR, "*.pzl")))
     if names: files = [f for f in files if any(n.lower() in os.path.basename(f).lower() for n in names)]
+    return files
+
+def run_all(names=None, verbose=False, jobs=3, single=False, files=None):
+    """Run the puzzles (all, those whose file name contains one of NAMES, or FILES), print each result and a summary;
+    True when every one passed (known gaps aside). Batched by default (run_batch); single=True gives each its own JVM."""
+    files = files if files is not None else select(names)
     forge.ensure(quiet=True)
-    ok = gaps = 0
-    for f in files:
-        passed, meta, lines, fails = run_one(f)
+    tally = {"ok": 0, "gaps": 0}
+    lock = threading.Lock()
+
+    def show(f, res):
+        passed, meta, lines, fails = res
         gap = str(meta.get("known_gap", "")).lower() in ("yes", "true", "1")
-        if gap and not passed:
-            gaps += 1
-            print(f"GAP   {os.path.basename(f)}: {meta['title']}")
-            continue
-        ok += passed
-        print(f"{'PASS' if passed else 'FAIL'}  {os.path.basename(f)}: {meta['title']}" + ("  (marked known_gap but passes now: unmark it)" if gap and passed else ""))
-        for x in fails: print(f"      {x}")
-        if verbose or not passed:
-            for l in lines:
-                if re.match(r"(Turn|Phase|Add To Stack|Resolve Stack|Damage|Life|Land|Combat|Zone|Discard|#FP-PUZZLE)", l.strip()): print("        | " + l.strip()[:160])
+        with lock:
+            if gap and not passed:
+                tally["gaps"] += 1
+                print(f"GAP   {os.path.basename(f)}: {meta['title']}", flush=True)
+                return
+            tally["ok"] += passed
+            print(f"{'PASS' if passed else 'FAIL'}  {os.path.basename(f)}: {meta['title']}" + ("  (marked known_gap but passes now: unmark it)" if gap and passed else ""), flush=True)
+            for x in fails: print(f"      {x}")
+            if verbose or not passed:
+                for l in lines:
+                    if re.match(r"(Turn|Phase|Add To Stack|Resolve Stack|Damage|Life|Land|Combat|Zone|Discard|#FP-PUZZLE)", l.strip()): print("        | " + l.strip()[:160])
+
+    if single:
+        for f in files: show(f, run_one(f))
+    else:
+        run_batch(files, workers=jobs, on_result=show)
+    ok, gaps = tally["ok"], tally["gaps"]
     print(f"puzzles: {ok}/{len(files) - gaps} passed" + (f", {gaps} known gap(s)" if gaps else ""))
     return ok == len(files) - gaps
 

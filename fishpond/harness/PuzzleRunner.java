@@ -6,6 +6,10 @@
 //   or hybrid: seat 1's lookahead, as in a run; DCK: seat 1's deck file, whose <DCK>.policy.json gives seat 1 that deck's pilot
 //   policy: its key cards, combos and tutor picks, as in a run; "-" for none; DCK2: the same for seat 2, '# deck2:')
 // STATE_FILE: GameState lines (p0... = seat 1, the player under test; p1... = seat 2), e.g. p0battlefield=Astral Slide;Plains
+//        java ... PuzzleRunner --batch MANIFEST   one JVM for many puzzles (fishpond/puzzles.py): each MANIFEST line is
+//   NAME<TAB>STATE_FILE<TAB>TURNS<TAB>SEED<TAB>SIM<TAB>DCK<TAB>DCK2 ("-" for none); each puzzle's output sits between
+//   "#FP-PUZZLE begin NAME" and "#FP-PUZZLE done NAME". Forge's card database loads once instead of once a puzzle (about 15 s
+//   of each puzzle's 22). A batch holds puzzles with the same JVM switches and the same policy hooks (a deck or none).
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -29,15 +33,38 @@ public class PuzzleRunner {
     static final class State extends GameState { void applyHere(Game g) { applyGameOnThread(g); } }
 
     public static void main(String[] args) throws Exception {
+        ForgeRunner.out = new java.io.PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.out), true, "UTF-8");
+        GuiBase.setInterface(new GuiDesktop());
+        FModel.initialize(null, null);
+        ThreatModel.installHooks();   // patch 57 (no deck intel in puzzles unless a '# deck:' line names seat 1's deck)
+        if (args[0].equals("--batch")) {
+            boolean hooks = false;
+            for (String m : Files.readAllLines(new File(args[1]).toPath(), StandardCharsets.UTF_8)) {
+                if (m.isBlank()) continue;
+                String[] f = m.split("\t");
+                List<String> a = new ArrayList<>(List.of(f[1], f[2], f[3], f[4]));
+                if (!f[5].equals("-") || !f[6].equals("-")) a.add(f[5]);
+                if (!f[6].equals("-")) a.add(f[6]);
+                if (a.size() > 4 && !hooks) { ForgeRunner.installPolicyHooks(); hooks = true; }
+                System.out.println("#FP-PUZZLE begin " + f[0]);
+                try { runOne(a.toArray(new String[0])); }
+                catch (Exception e) { System.out.println("#FP-PUZZLE error " + e); }
+                System.out.println("#FP-PUZZLE done " + f[0]);
+                System.out.flush();
+            }
+            System.exit(0);
+        }
+        if (args.length > 4) ForgeRunner.installPolicyHooks();
+        runOne(args);
+        System.exit(0);
+    }
+
+    static void runOne(String[] args) throws Exception {
         List<String> lines = Files.readAllLines(new File(args[0]).toPath(), StandardCharsets.UTF_8);
         int turns = Integer.parseInt(args[1]);
         long seed = Long.parseLong(args[2]);
         boolean hybrid = args.length > 3 && args[3].equals("hybrid");
-        ForgeRunner.out = new java.io.PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.out), true, "UTF-8");
-        GuiBase.setInterface(new GuiDesktop());
-        FModel.initialize(null, null);
         MyRandom.setRandom(new Random(seed));
-        ThreatModel.installHooks();   // patch 57 (no deck intel in puzzles unless a '# deck:' line names seat 1's deck)
         PilotPolicy policy = null, policy2 = null;   // seat 2's from a '# deck2:' line (an opponent's key cards and engines)
         if (args.length > 4 && !args[4].equals("-")) {
             File dck = new File(args[4]);
@@ -47,7 +74,6 @@ public class PuzzleRunner {
             File dck = new File(args[5]);
             policy2 = PilotPolicy.load(dck.getParent(), dck.getName());
         }
-        if (args.length > 4) ForgeRunner.installPolicyHooks();
 
         GameRules rules = new GameRules(GameType.Constructed);
         rules.setGamesPerMatch(1);
@@ -113,6 +139,5 @@ public class PuzzleRunner {
         for (var p : game.getRegisteredPlayers())
             System.out.println("#FP-PUZZLE end " + p.getName() + " life " + p.getLife() + " hand " + p.getCardsIn(forge.game.zone.ZoneType.Hand).size()
                     + " battlefield " + p.getCardsIn(forge.game.zone.ZoneType.Battlefield).stream().map(c -> c.getName()).toList());
-        System.exit(0);
     }
 }

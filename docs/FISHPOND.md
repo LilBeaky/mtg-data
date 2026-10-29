@@ -63,6 +63,21 @@ Each game record says which mode every seat actually ran (checked on the live co
 - Speed: a game costs 30 s to 2 min of one CPU (about 15 s of JVM startup per worker on top). Turns with huge trigger stacks (a Primal Surge turn resolves 100+) are the slow part, and real opponents are slower than dummies. Huge boards (token swarms) used to make Forge's attack and block planning take up to half an hour a turn; patch 11 plans big combats in bounded pieces (docs/FORGE_ISSUES.md #7), so a timeout there is now a bug to report. Measured on 4 CPUs with 4 workers and no lookahead: about 4 Chulane vacuum games a minute. Hybrid lookahead (the default) costs about 2 to 3 times the CPU on a busy deck like Chulane (median game 77 s -> 152 s on the same seeds) and about 15% on Zur. The chat sandbox (1 CPU, ~4 GB) runs one worker: budget about 2 to 3 minutes a game with lookahead, so 20 games is about an hour; say so before starting a big one. `--jobs` defaults to what CPUs and memory allow (about 1.7 GB per JVM; 3.4 GB with `full`). `full` lookahead is far slower and its cost is unbounded: Forge's search has no time or node limit, and every position it tries is a full copy of the 4-player game, so a decision costs roughly (candidate plays)^3 copies. On the Niv pod the other seats' turns stayed about a second, while the user's turns took 20 s to 6 min on small boards and over 45 min on a busy one (games took 5 min, 15 min, and more than an hour). The per-game limit (`--timeout`) defaults to 2 h with `full` instead of 30 min. Since patch 06, a decision stops searching deeper after 1000 positions (`-Dfishpond.simMaxNodes`; docs/FORGE_ISSUES.md #5), so a big decision costs minutes, not hours; the report says how many of your searches it cut and what it cut. Budget roughly 2 to 15 min a game with `full`.
 - Forge's AI gives up on a decision after 5 s by default, which makes results depend on machine load. The harness raises that limit (120 s; `-Dfishpond.aiTimeout` on the JVM) and the report warns when any decision still timed out. The cli engine can't change it, so busy machines get load-dependent cli results.
 
+## Before a push: `fishpond check`
+
+`python3 -m fishpond check` runs the checks a change needs, picked from the files this branch changed since its last push (the
+user, 2026-10-29: "if you're waiting 30 minutes to run a couple hundred irrelevant puzzles, we should probably not do that"):
+docs run nothing; page, report and analysis code runs the fishpond units and a live 2-game run (it writes the game page); a
+card override runs the puzzles that name that card, a deck list the puzzles that play it, a puzzle itself; Forge patches,
+harness Java, the pilot policy and the build and run code run every puzzle; anything outside fishpond (scripts, goldfish,
+tests, data) runs the repo's smoke test. `--dry-run` prints the plan, `--full` runs everything, `--since REF` compares with
+REF. A merge of main isn't counted (the automated data refresh was checked where it was made). The rule: `fishpond check`
+before every push, and the full puzzle suite (`fishpond puzzles`, or `fishpond check --full`) before a long study.
+
+The puzzle suite runs batched: a JVM loads Forge once and plays 20 puzzles (`PuzzleRunner --batch`) instead of loading it
+once a puzzle; a batch holds puzzles with the same `# jvm:` switches and the same pilot-policy hooks, so each plays as it
+would alone. `--single` gives each puzzle its own JVM.
+
 ## The game page
 
 Every run writes `games.html` next to `report.txt` (so every pod of a study has one): all four seats, turn by turn, in one page
