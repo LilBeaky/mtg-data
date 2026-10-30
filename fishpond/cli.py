@@ -16,6 +16,10 @@
                                                     (--report DIR: the report alone; PODS lines 'ID|HERO|OPP1|OPP2|OPP3')
   python3 -m fishpond held RUN_DIR [RUN_DIR...]    dead-card meter per deck across runs: castable cards held 3+ turns running
   python3 -m fishpond lines RUN_DIR [RUN_DIR...]   win-line audit: each deck's lines (fishpond/win_lines.txt) available vs played
+  python3 -m fishpond pilot RUN_DIR... [--vs OLD_DIR...]   pilot failures per 100 seat-games, every seat, with games to replay
+                                                    (--vs: the same table for an older run beside it; --json)
+  python3 -m fishpond sequencing RUN_DIR...        per deck against the user's yardstick: win turn, commander turn, early mana
+  python3 -m fishpond replay POD_DIR GAME          replay one game with its worker's exact switches; says whether it matches
   python3 -m fishpond check [--full] [--dry-run]    the checks a change needs before a push (by the files changed)
   python3 -m fishpond page RUN_DIR [RUN_DIR...]    the game page (every run writes it: RUN_DIR/games.html); a study dir: one per pod
   python3 -m fishpond flags [--smoke] [--unflag]   cards Forge's AI won't cast (AI:RemoveDeck:All) across the repo's decks, with
@@ -123,6 +127,10 @@ def cmd_replay(args):
     out = args.out or os.path.join(args.pod, f"replay_{args.game}.log")
     same, diff, end = runner.replay(args.pod, args.game, out, patched=args.classes)
     print(f"fishpond: replay of game {args.game} -> {out}: " + ("identical to the original" if same else f"differs at\n  original: {diff[0]}\n  replay:   {diff[1]}"))
+
+def cmd_pilot(args):
+    from . import pilot
+    pilot.cmd(args)
 
 def cmd_sequencing(args):
     from . import sequencing
@@ -443,6 +451,8 @@ def main(argv=None):
     h = sub.add_parser("held"); h.add_argument("runs", nargs="+")
     h = sub.add_parser("lines"); h.add_argument("runs", nargs="+")
     h = sub.add_parser("sequencing"); h.add_argument("runs", nargs="+")
+    pl = sub.add_parser("pilot"); pl.add_argument("runs", nargs="+"); pl.add_argument("--vs", nargs="+")
+    pl.add_argument("--examples", type=int, default=3); pl.add_argument("--json", action="store_true")
     rp = sub.add_parser("replay"); rp.add_argument("pod", help="a pod directory of a run (has logs/ and decks/)"); rp.add_argument("game", type=int)
     rp.add_argument("--out"); rp.add_argument("--classes", help="a patched-Forge class dir to replay on instead of the current build")
     ck = sub.add_parser("check"); ck.add_argument("--full", action="store_true"); ck.add_argument("--dry-run", action="store_true")
@@ -452,4 +462,4 @@ def main(argv=None):
     w.add_argument("--log", action="store_true"); w.add_argument("--phases", action="store_true")
     args = ap.parse_args(argv)
     if not args.cmd: ap.print_help(); return
-    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "lines": cmd_lines, "study": cmd_study, "replay": cmd_replay, "sequencing": cmd_sequencing, "page": cmd_page, "check": cmd_check}[args.cmd](args)
+    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "lines": cmd_lines, "study": cmd_study, "replay": cmd_replay, "sequencing": cmd_sequencing, "pilot": cmd_pilot, "page": cmd_page, "check": cmd_check}[args.cmd](args)

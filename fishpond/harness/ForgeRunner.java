@@ -761,12 +761,43 @@ public class ForgeRunner {
         }
 
         /** Its mana cost could still be paid now (timing aside): at cleanup, the seat left that much mana unused. */
+        /** Its cost could be paid now, timing aside (it's asked at cleanup), and the player hasn't used up a spell limit: under
+         *  Rule of Law a held card isn't "unspent" mana once the turn's one spell is cast. The payment check runs first and
+         *  for every card as before: canPayManaCost isn't free of side effects, and skipping it changed later play on the
+         *  same seed (2026-10-30), so the limit is applied after it. */
         static boolean payableNow(Card c, Player p) {
+            boolean payable = false;
             for (SpellAbility sp : c.getSpells()) {
                 try {
                     sp.setActivatingPlayer(p);
-                    if (ComputerUtilMana.canPayManaCost(sp, p, xExtra(sp), false)) return true;
+                    if (ComputerUtilMana.canPayManaCost(sp, p, xExtra(sp), false)) { payable = true; break; }
                 } catch (Throwable t) { /* counts as not payable */ }
+            }
+            return payable && !spellLimitReached(p);
+        }
+
+        /** Cards whose static limits every spell a player casts each turn (Forge 2.0.15's card pool: CantBeCast, ValidCard$ Card,
+         *  a NumLimitEachTurn) -> whom it limits: "each" player, its controller ("you") or the controller's opponents.
+         *  Typed limits (Deafening Silence, Ethersworn Canonist) and a cursed player's (Curse of Exhaustion) aren't here. */
+        static final Map<String, Object[]> SPELL_LIMITS = new HashMap<>();
+        static {
+            for (String n : new String[] {"Rule of Law", "Archon of Emeria", "Eidolon of Rhetoric", "Arcane Laboratory", "High Noon",
+                    "Mine, Mine, Mine!"}) SPELL_LIMITS.put(n, new Object[] {"each", 1});
+            for (String n : new String[] {"Colfenor's Plans", "Moderation", "Yawgmoth's Agenda"}) SPELL_LIMITS.put(n, new Object[] {"you", 1});
+            SPELL_LIMITS.put("Fires of Invention", new Object[] {"you", 2});
+            SPELL_LIMITS.put("I Bask in Your Silent Awe", new Object[] {"opponents", 1});
+        }
+
+        /** p has cast as many spells this turn as a spell limit on the battlefield allows. By card name: names and zones only,
+         *  so the meter adds no calls into the rules engine (a skipped one changed later play on the seed). */
+        static boolean spellLimitReached(Player p) {
+            int cast = p.getSpellsCastThisTurn();
+            if (cast == 0) return false;
+            for (Card src : p.getGame().getCardsIn(ZoneType.Battlefield)) {
+                Object[] lim = SPELL_LIMITS.get(src.getName());
+                if (lim == null || cast < (Integer) lim[1]) continue;
+                boolean mine = src.getController() == p;
+                if ("each".equals(lim[0]) || ("you".equals(lim[0]) == mine)) return true;
             }
             return false;
         }

@@ -45,6 +45,9 @@ item is done, move its numbers into the commit and FORGE_ISSUES and delete it he
   return to their zone), 119 (Sphinx's Approach pays its exile-five), 120 (per-game state: the tutored top card and combo step
   count leaked from game to game inside a worker JVM, so every multi-game study before it could be touched), 121-123 (Manabrew
   ports: -24% game time on six same-seed replays, identical play).
+- **Measurement fix (2026-10-30):** held cards under a spell limit (Zur's Rule of Law) no longer read as idle mana in the
+  dead-card meter or `#FP-SEQ` (10 of 12 streaks in one sample game were false). Idle counts from earlier runs, including
+  `pilot_20261028c`'s "castable cards held 3+ turns", run high in any pod with Zur; compare them with care.
 - **Next:** the baseline on 01-123 (the user runs it; the round-robin, `fishpond/pods/roundrobin16.txt`), read with `fishpond
   pilot --vs pilot_20261028c`. It also answers whether decisions still cross the 120 s AI limit (open question below).
 - **Direction (the user, 2026-10-30):** most decks play reasonably now; pilot tuning winds down and the focus moves to tools the
@@ -86,7 +89,8 @@ From `pilot_20261028c` and the miss reviews; each is a candidate only if the 01-
   LKI passes, a small approximation. Profile a big board on 01-123 first; port it only if dependency ordering is still hot, then
   check it on same-seed replays like 121. Not ported on purpose: its token-flood draw caps, per-game AiCache, AI eval deadlines
   and combat budgets (they change play), concurrency patches.
-- **Harness gaps** (FORGE_ISSUES "Harness safety net"):
+- **Harness gaps** (FORGE_ISSUES "Harness safety net"; there too, 2026-10-30: the meters' `canPayManaCost` calls at cleanup
+  have side effects the games depend on, so a meter change must replay identically before it's pushed):
   - an exception wrapped in the AI's timeout `FutureTask` (`ExecutionException`) used to get past `SafeControllerAi` (#9);
     `fromSim` walks causes now: confirm on #9's seed (7320765962232) that it's closed;
   - a crash inside the AI's own eval task in `AiController.chooseSpellAbilityToPlayFromList` is caught by `AiController` and the

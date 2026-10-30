@@ -6,7 +6,8 @@ was held that turn. A run of consecutive held turns of one card is a streak (#FP
 counts streaks of 3+ turns: for most cards, a pilot that sat on a castable card that long missed a play. Instants and
 flash cards are shown apart, since holding up an answer can be right. A streak with "unspent" turns (the card's cost
 could still be paid at cleanup: the mana went unused rather than to other plays; runs from 2026-10-12 evening on) is the
-clearest pilot miss, counted apart as "idle".
+clearest pilot miss, counted apart as "idle". From 2026-10-30 a seat that has used up a spell limit (Rule of Law) has no idle
+turns: its mana couldn't have cast the card.
 
   python -m fishpond held RUN_DIR [RUN_DIR...]    per deck across runs (a folder of runs is searched for games.jsonl)
 """

@@ -196,6 +196,56 @@ with _tf2.TemporaryDirectory() as _d2:
     check("study index: decks pooled over pods, the pod's page written", (sorted(_ixd["decks"]), _ixd["decks"]["Klauth"]["wins"],
           _ixd["pods"][0]["pod"], os.path.exists(os.path.join(_st, "T01_pod", "games.html"))), (["Klauth", "Zur"], 1, "T01_pod", True))
 
+# ---- pilot failures (fishpond pilot): one synthetic 4-seat game; seat 1 wins
+from fishpond import pilot as _pl  # noqa: E402
+with _tf2.TemporaryDirectory() as _d3:
+    _run = os.path.join(_d3, "T01_pod"); os.makedirs(os.path.join(_run, "logs"))
+    open(os.path.join(_run, "meta.json"), "w").write(_js.dumps({"commander": "Klauth, Unrivaled Ancient"}))
+    _cmds = {1: "Klauth, Unrivaled Ancient", 2: "Zur the Enchanter", 3: "Niv-Mizzet, Parun", 4: "Yusri, Fortune's Flame"}
+    _nm = {1: "Ai(1)-Klauth", 2: "Ai(2)-Zur", 3: "Ai(3)-NivMizzet", 4: "Ai(4)-Yusri"}
+    _order = [1, 2, 3, 4, 1, 2, 3, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4, 1, 4]       # Zur decks on its turn 6, Niv dies on turn 9
+    _log = []
+    for _t, _s in enumerate(_order, 1):
+        _log.append(f"Turn: Turn {_t} ({_nm[_s]})")
+        if _t == 9: _log.append("Life: Life: Ai(3)-NivMizzet 5 > -2")
+        if _t == 20: _log.append("Life: Life: Ai(4)-Yusri 1 > 0")
+    _brd1 = lambda t, casts: "#FP-BOARD " + _js.dumps({"t": t, "seats": {"1": {"out": False, "cmd": [{"n": _cmds[1], "zone": "Command", "casts": casts}]}}})
+    _log = [
+        # first cast affordable and left out on turn 1 (counted: no board line before it, the commander first out on own turn 4)
+        '#FP-PLAN {"t": 1, "seat": "Ai(1)-Klauth", "phase": "MAIN1", "budget": 7, "steps": [], "left_out": [{"card": "Klauth, Unrivaled Ancient", "cost": 7, "value": 1486}]}',
+        # turn 5: affordable but already cast once: a recast, not counted
+        _brd1(4, 1), _brd1(5, 1),
+        '#FP-PLAN {"t": 5, "seat": "Ai(1)-Klauth", "phase": "MAIN1", "budget": 9, "steps": [], "left_out": [{"card": "Klauth, Unrivaled Ancient", "cost": 9, "value": 400}]}',
+        # Niv holds removal against Klauth's board on turn 3, keeps a counter on turn 8, refuses a wipe on turn 7: dies on turn 9
+        '#FP-REMOVAL {"t": 3, "seat": "Ai(3)-NivMizzet", "card": "Swords to Plowshares", "target": "Llanowar Elves", "owner": "Ai(1)-Klauth", "verdict": "hold"}',
+        '#FP-WIPE {"t": 7, "seat": "Ai(3)-NivMizzet", "card": "Farewell", "self": 50, "opp": {"Ai(1)-Klauth": 300}, "verdict": "refuse: not enough"}',
+        '#FP-COUNTER {"turn": 8, "seat": "Ai(3)-NivMizzet", "counter": "Counterspell", "spell": "Hellkite Tyrant", "caster": "Ai(1)-Klauth", "verdict": "save"}',
+        # Yusri keeps a counter against Klauth, then kills itself: not "counter kept" (the killer isn't the caster)
+        '#FP-COUNTER {"turn": 4, "seat": "Ai(4)-Yusri", "counter": "Swan Song", "spell": "Klauth, Unrivaled Ancient", "caster": "Ai(1)-Klauth", "verdict": "save"}',
+        '#FP-MULL {"player": "Ai(3)-NivMizzet", "cards": 7, "lands": 2, "mulligan": false}',
+        '#FP-MULL {"player": "Ai(4)-Yusri", "cards": 7, "lands": 1, "mulligan": true}',
+        '#FP-MULL {"player": "Ai(4)-Yusri", "cards": 5, "lands": 2, "mulligan": false}',
+    ] + _log + ['#FP-END {"id": 0, "stop": "natural"}', "Game Result: Game 0 ended in 1000 ms. Ai(1)-Klauth has won!"]
+    open(os.path.join(_run, "logs", "worker_s1_0.log"), "w", encoding="utf-8").write(chr(10).join(_log) + chr(10))
+    _reach = lambda s, first, turns: {"seat": str(s), "commander": _cmds[s], "kind": "reach", "line": "reach", "avail": [], "did": [], "won": s == 1,
+                                      "cmd_first": first, "turns": turns}
+    _rec = {"game": 0, "log_id": 0, "winner": 1, "loss": None, "pod": [{"seat": s, "deck": _cmds[s], "kind": "opponent"} for s in (2, 3, 4)],
+            "deaths": [{"seat": 2, "why": "decked", "by": None}, {"seat": 3, "why": "life", "by": 1}, {"seat": 4, "why": "life", "by": 4}],
+            "lines": [_reach(1, 4, 10), _reach(2, 1, 2), _reach(3, -1, 2), _reach(4, -1, 7),
+                      {"seat": "1", "commander": _cmds[1], "kind": "closer", "line": "Hellkite swing", "avail": [6], "did": [], "won": True}],
+            "held": [{"seat": "3", "card": "Rhystic Study", "from": 1, "turns": 3, "unspent": 1, "instant": False}],
+            "seq": [{"seat": "2", "turn": 1, "mana": 1, "land": True}, {"seat": "2", "turn": 2, "mana": 2, "land": False}],
+            "loops": [{"event": "stop", "player": "Ai(1)-Klauth", "turn": 9, "play": "Walking Ballista", "iterations": 30, "reason": "stalled"}]}
+    open(os.path.join(_run, "games.jsonl"), "w").write(_js.dumps(_rec) + chr(10))
+    _pa = _pl.tally([_d3])["(all)"]
+    check("pilot: failures counted", {k: v for k, v in _pa["ev"].items() if v},
+          {"cmd_waits": 1, "cmd_never": 2, "closer_miss": 1, "decked": 1, "self_kill": 1, "removal_held": 1, "counter_kept": 1,
+           "wipe_refused": 1, "held_3": 1, "loops_short": 1})
+    check("pilot: the wipe would have hit the killer; held streaks; seats", (_pa["n"]["wipe_hit"], _pa["n"]["held_all"], _pa["seats"]), (1, 1, 4))
+    check("pilot: rates (no land T1-4, 5-card keep, 2-land seven)", [_pl.rate(_pa, n, s) for n, _, s in _pl.RATES], [50.0, 50.0, 50.0])
+    check("pilot: an example names pod, game, seat and turn", _pa["ex"]["cmd_waits"], ["T01_pod g0 s1 t1 (own 1)"])
+    check("pilot: report prints", _pl.report(_pl.tally([_d3]), _pl.tally([_d3]))[0].startswith("pilot failures, every seat: 4 seat-games"), True)
+
 for f in fails: print("FAIL", f)
 print(f"units: {'all ' if not fails else ''}{count - len(fails)} of {count} passed" if fails else f"units: all {count} passed")
 sys.exit(1 if fails else 0)
