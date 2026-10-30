@@ -1,6 +1,10 @@
 # Landbase tempo plan
 
-Status: **steps 1 and 2 covered by `scripts/manasim.py`, differently from this plan** (2026-10-08).
+Status (2026-10-30): **steps 1 and 2 covered by `scripts/manasim.py`, differently from this plan**
+(2026-10-08); **step 3's logging exists**: Fishpond's sequencing meter (`#FP-SEQ`, every seat and own turn since 2026-10-17)
+records usable mana at main 1, the mana left, and whether a land was played, and `fishpond pilot` prints each deck's usable
+mana by own turn 1-6. Left: compare those numbers with manasim.py's for the same list (and add "a tapped land was played" to
+`#FP-SEQ` if the gap needs it); "mana lost per game", "costly tapped turns" and the unrecognized-land list in landbase.py.
 Written 2026-10-04.
 
 manasim.py (built for ramp, not tempo) plays lands turn by turn with tapped lands, mulligans and

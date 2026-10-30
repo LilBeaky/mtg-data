@@ -1,6 +1,8 @@
 # docs/
 
-Index of the docs, what each is for, and whether it's live. Keep it current when a doc is added, frozen or finished.
+Index of the docs, what each is for, and whether it's live. Keep it current when a doc is added, frozen or finished. Working
+docs hold the current state and the rules still in force; history belongs in git (each condensed doc names the commit that
+holds its full log).
 
 ## Read first
 
@@ -19,12 +21,32 @@ Index of the docs, what each is for, and whether it's live. Keep it current when
 | `EXPLORER.md` | `explorer.py`: one card's EDHREC context. |
 | `GOLDFISH.md` | `goldfish.py` (frozen legacy, still working and in smoke). |
 
-## Active plans (in priority order)
+## Active plan
 
-1. **`FORGE_PLAN.md`** — Fishpond's working plan. Standing rules, how to work on the Windows box, where things stand, and the "Priority list" (memo on lookahead copies, life budget, commander timing, commander combat safety, sacrifice-cost drains, finishers, harness hardening, ...), then the backlog. Finished work lives in git history and `FORGE_ISSUES.md`.
-2. **`LANDBASE_TEMPO_PLAN.md`** — tapped lands turn by turn in `landbase.py`, validated with Fishpond logging. Steps 1-2 covered by `manasim.py` (see its status line); step 3 open.
-3. **`TUTOR_PLAN.md`** — tutor math: commander tutoring in the odds, tutor worth, played access (mana and turns) via manasim.py, a card-pool tutor index for the explorer and "best tutor to add", audit 4b. Phases 0-4 done (goldfish tutoring fixes; key cards inferred alongside yours; played access and tutor worth; card-pool tutor index, findable by, tutors to add; audit 4b table and 4c tutors section).
-4. **`FIDELITY_PLAN.md`** — how much of each deck the simulation tools play (ramp, card draw, tutors vs Scryfall's role tags), every report's fidelity line, `scripts/fidelity.py`, and how to raise it. Started.
+**`FORGE_PLAN.md`** — Fishpond's working plan: standing rules, how to work on the Windows box, where things stand, open pilot
+failures, open engine and harness work, the pilot's design rules, and the backlog (user tools first: `--variant`, the report,
+gauntlet growth).
+
+## Design references (live; condensed from findings logs 2026-10-30)
+
+| Doc | What it holds |
+|---|---|
+| `THREAT_FINDINGS.md` | The threat model: what it scores, its calibration, the user's rules for counters, removal, holds, wipes and attacks. |
+| `SEQUENCING.md` | The turn plan: how a pilot seat orders its turn, setup value, the user's calls, lessons for measuring it. |
+| `DECK_YARDSTICK.md` | The user's read on their decks (rank, win turn, commander target); `fishpond sequencing` measures against it. |
+
+## Paused or partly done
+
+| Doc | State |
+|---|---|
+| `LANDBASE_TEMPO_PLAN.md` | Steps 1-2 covered by `manasim.py`; step 3's logging exists (`#FP-SEQ`); the comparison and a few landbase.py metrics are left. |
+| `FIDELITY_PLAN.md` | Paused since 2026-10-10: how much of each deck the goldfish-based tools play; `scripts/fidelity.py` and the fidelity lines are live. |
+
+## Finished (reference)
+
+| Doc | What it was |
+|---|---|
+| `TUTOR_PLAN.md` | Tutor math in tutors.py, manasim.py and the audit (phases 0-4 done 2026-10-08). |
 
 ## Frozen (2026-10-01; simulation moved to Forge)
 

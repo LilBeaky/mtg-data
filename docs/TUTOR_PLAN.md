@@ -1,6 +1,10 @@
 # Tutor plan
 
-Status: **phases 0-4 done** (2026-10-08). Written 2026-10-08.
+Status: **finished** (phases 0-4 done 2026-10-08; closed 2026-10-30). Kept as the reference for what `tutors.py`,
+`tutor_index.py`, manasim.py's tutor mode and audit 4b-4c compute and why. Left, not scheduled: partial dependencies (the
+drop-one worth covers the question better); a priorities block at the top of the audit; mining the explorer's EDHREC co-played
+lists for packages. In Fishpond, tutoring is the pilot's tutor policy (`docs/FORGE_PLAN.md` "Pilot policy"), not this plan.
+Written 2026-10-08.
 
 ## Goal
 

@@ -15,10 +15,12 @@ players' decks in the pods (Heliod, Niv-Mizzet, Xyris, Lumra, Omnath, Witherbloo
 | 7 | Araumi | Grindy: Self-Traumatize early, toolbox from the graveyard | 7-8 | - | (slows games down) |
 | 8 | Ragost | Bracket 2, light field data | - | - | Artifact-focused wipes, light stax |
 
-## The sim against it (2026-10-17)
+## The sim against it (snapshot, 2026-10-17, patches 01-63)
 
-Win rate and the winner's own turn number at the win; commander first cast, own turn (today's runs: `study100_20261017_p58e`,
-`study100_20261017_p61`, `wilson_20261017_p63_V04/V07/V10`).
+`python -m fishpond sequencing RUN...` prints this table for any run (`fishpond/yardstick.json` holds the ranks and targets).
+The snapshot below predates the turn plan (patch 64) and every pilot fix since; refresh it from the next round-robin baseline
+before quoting it. Win rate and the winner's own turn number at the win; commander first cast, own turn (runs:
+`study100_20261017_p58e`, `study100_20261017_p61`, `wilson_20261017_p63_V04/V07/V10`).
 
 | Deck | p56 (150 games) | Today | Win turn, median (fastest) | Commander, median own turn | By turn 4 |
 |---|---|---|---|---|---|

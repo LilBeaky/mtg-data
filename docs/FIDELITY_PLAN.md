@@ -1,7 +1,10 @@
 # Fidelity plan
 
-Status: **started** (written 2026-10-08). Goal: make the simulation tools' numbers as usable as we
-reasonably can, and make every number say how far to trust it.
+Status: **paused since 2026-10-10** (written 2026-10-08). Goal: make the simulation tools' numbers as usable as we
+reasonably can, and make every number say how far to trust it. The fidelity lines and `scripts/fidelity.py` are live; the fix
+list below hasn't moved since the 2026-10-10 log entry (2026-10-30, 17 decks with Claudes Baral Control: ramp 161/205 79%, card
+draw 121/152 80%, tutors 169/180 94%; the 16 earlier decks unchanged). Deck questions now go to Fishpond first (every card
+scripted); resume this only when a goldfish-based number (manasim.py, landbase.py, tutors.py) is the one being relied on.
 
 ## Why
 
