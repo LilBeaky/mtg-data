@@ -51,7 +51,7 @@ item is done, move its numbers into the commit and FORGE_ISSUES and delete it he
 - **Next:** the baseline on 01-123 (the user runs it; the round-robin, `fishpond/pods/roundrobin16.txt`), read with `fishpond
   pilot --vs pilot_20261028c`. It also answers whether decisions still cross the 120 s AI limit (open question below).
 - **Direction (the user, 2026-10-30):** most decks play reasonably now; pilot tuning winds down and the focus moves to tools the
-  user runs through the simulator, starting with `--variant` (Backlog). Pilot fixes from here are for failures the baseline
+  user runs through the simulator, starting with the swap-list tester (Backlog). Pilot fixes from here are for failures the baseline
   measures, not new tuning.
 - **Reference runs** (`data/fishpond/` on the Windows box, gitignored): `trends_20261027` (the round-robin, 01-106, 80 games),
   `pilot_20261028` + `pilot_20261028b` (01-111, 500 games), `pilot_20261028c` (01-116, 360 games), `bracket1000_20261021` (its
@@ -112,9 +112,27 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
 
 ## Backlog (not scheduled; tools for the user first)
 
-- **`--variant` at scale** (next focus, 2026-10-30): the code path works but has never answered a real swap question. Make "swap X
-  for Y in my deck: does it play better?" a one-command answer: same seeds and pods, paired games, the difference with an
-  interval, and what changed (casts, tutor picks, lines played, how games were won and lost).
+- **Swap-list tester** (next focus, after the 01-123 baseline; the user's design, 2026-10-30). Not one card against one card:
+  "test combinations of swaps from this cut list and this add list over ~1500 games and give me the data". The user reworks
+  more than tinkers: lists of 5-20 cuts and 5-20 adds, no card-to-card pairing, a build is the list minus k cuts plus k adds
+  (100 cards). "Works best" is the user's call per question, so the output is every metric, sortable, not one score.
+  - **Funnel:** (1) goldfish screen: Fishpond against 3 dummies (real rules; not goldfish.py), each game a random mix with each
+    flex card in about half the games, so every card's effect on every metric is estimated over all games (a factorial design;
+    an even split of 1500 games over 100+ combinations would leave each one ±12 points of noise); (2) the user picks 2-4 builds,
+    and anything that drags in the goldfish stops there; (3) those builds and the current list against a blend of real pods,
+    large samples each: win rate with interval, win routes, deaths, `fishpond pilot` per build.
+  - **Guards:** interaction (removal, counters, wipes: Scryfall role tags) can't be judged against dummies: tagged and kept out
+    of the goldfish verdict, judged at stage 3. Reworks change plans, and random half-mixes play hybrids nobody would build: a
+    rework's core is locked in (only the flex slots vary), and the old list and the full rework always run as their own builds.
+  - **Metrics (per build, and per card in vs out):** goldfish kill turn, commander turn, key cards' first seen and cast turns;
+    mulligans and keep size, missed land drops, usable mana by turn, color misses, flood and screw; cards drawn and cast per turn,
+    lines reached and played, tutor finds; each card's cast rate, turns held while castable, idle mana, never cast. Per-card
+    goldfish win-rate effects are near noise even at 1500 games: the per-card signal is speed, mana and dead-card metrics; win
+    rate compares whole builds at stage 3.
+  - **Output:** an HTML page like the study index, builds and cards sortable by any metric, with intervals.
+  - **Open (the user's calls):** whether the land count may drift when the lists are unbalanced in lands; how locked cards are
+    marked (a `# lock:` list header or a flag). The existing `--variant` (named builds on the same seeds and pods) is the
+    stage-3 path; it has never answered a real question yet.
 - **Report:** a headline block (win rate and interval, how it wins and loses, pilot errors beside it with game and turn); combined
   vacuum + gauntlet report; stranded and cycled columns; mana analysis (flood/screw, color-screw); interaction stats (what removal
   and counters hit).

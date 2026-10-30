@@ -24,7 +24,7 @@ holds its full log).
 ## Active plan
 
 **`FORGE_PLAN.md`** — Fishpond's working plan: standing rules, how to work on the Windows box, where things stand, open pilot
-failures, open engine and harness work, the pilot's design rules, and the backlog (user tools first: `--variant`, the report,
+failures, open engine and harness work, the pilot's design rules, and the backlog (user tools first: the swap-list tester, the report,
 gauntlet growth).
 
 ## Design references (live; condensed from findings logs 2026-10-30)
