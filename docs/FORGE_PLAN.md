@@ -14,7 +14,8 @@ item is done, move its numbers into the commit and FORGE_ISSUES and delete it he
 - **Pilot logic is symmetric and general.** Every pilot rule applies to every pilot seat, never the hero alone; prefer policy-level rules over per-card fixes, with explicit opt-outs; ask about exceptions instead of guessing. `--pilot-seats you` is an A/B switch only.
 - **Fix Forge bugs at the root.** A search fallback, replay or pause is a bug to fix with a patch and an evidence seed in FORGE_ISSUES, not a count to live with. `--sim full` must work.
 - **Pilot-error losses are shown beside the headline win rate,** never excluded, with the game and turn of each (so it can be replayed by seed).
-- **Upstream:** nothing goes to Card-Forge/forge without the user's go-ahead on the exact diff (they submit under their account; disclose that Claude helped).
+- **Upstream:** nothing goes to Card-Forge/forge without the user's go-ahead on the exact diff (they submit under their account; disclose that Claude helped). Not on the backlog (the user, 2026-10-30): if it happens,
+  it's one substantial batch once the work settles, not a stream of contributions.
 - **New decks get a trial first (2026-10-30).** A deck new to the lineup plays a small group of pods to see how it plays before it joins the gauntlet or a round-robin. Claudes Baral Control stays out of the lineup for now.
 
 ## How to work here (Windows box)
@@ -63,15 +64,16 @@ From `pilot_20261028c` and the miss reviews; each is a candidate only if the 01-
 - **Castable cards held 3+ turns with mana idle** (43.7 per 100 seat-games, flat). Mostly cards Forge has no good moment for:
   Perpetual Timepiece (flagged; needs logic for its exile-and-shuffle ability), Shadowborn Apostle (Erebos casts one at a time
   instead of building to six), Diplomatic Immunity, Regrowth and Soul's Majesty (Omnath), Wander in Death (Zur), Toxic Deluge and
-  Black Sun's Zenith (Witherbloom). Some holds are right; Apostles and the modal spells look like AI gaps.
+  Black Sun's Zenith (Witherbloom). Some holds are right; Apostles and the modal spells look like AI gaps. The user (2026-10-30):
+  chase out every dead card eventually; not started (start from the baseline's `fishpond pilot` and `held` lists).
 - **Missed land drops on turns 1-4** (7%, flat after the free-mulligan rule): the seats that sent a 2-land seven back won no more
-  often than 2-land keeps did. Likely deck construction (land counts), which is the user's call.
+  often than 2-land keeps did. Monitor (the user, 2026-10-30): could be no land in hand, or luck, as much as land counts.
 - **Loops stopped as stalled or at the goal** (3.5): Sprout Swarm and Walking Ballista mostly.
 - **Lines with real misses:** Niv's Citadel (6 of 16 available), Zur's Approach (8 of 31).
 - **Removal against noncreature engines** (Flaming Fist, Krark's Thumb, Lightning Greaves, Astral Drift held against all game):
   measured cost weak (the target's controller won 29% vs a 25% base rate). The removal floor is the user's design; the idea if it
   grows: judge an attachment by its host's value against the creature floor, and give engines a fixed place above the
-  noncreature floor.
+  noncreature floor. Monitor (the user, 2026-10-30).
 - **The free hold in decks not built to counter** (Wilson's Mana Tithe, Heliod's Rebuff the Wicked): 5 clear misses in 80 games.
   If it grows, a 5+ counter-role gate in `ThreatModel.freeHold` leaves Zur and Yusri as they are.
 - **Logging noise:** `#FP-DIG` prints at every priority (2,458 "none" lines in 500 games); print only real digs.
@@ -83,7 +85,8 @@ From `pilot_20261028c` and the miss reviews; each is a candidate only if the 01-
   `choosePreferredDefenderPlayer`. A timed-out decision is a pass, and whether it times out depends on machine load. Options, all
   changing play: (a) tighter patch-11 caps for predicted combats only (`maxBlockPairs` 400, `maxReleaseSteps` 12 today), the real
   block declaration left exact; (b) no gang blocks in predictions past a board size; (c) on a timeout, remake the decision without
-  lookahead instead of passing; (d) leave it. The user (2026-10-30): see how many remain on 01-123, then decide.
+  lookahead instead of passing; (d) leave it; (e) raise the AI limit and let the sim take what it needs. The user (2026-10-30):
+  leans to (e), decided on the 01-123 baseline's count.
 - **Held back from Manabrew's fork:** d7334e07b374, caching the CR 613 dependency order between static-ability passes (65% of
   `checkStaticAbilities` on its wide boards). It keys on every Tracker view change and reuses the real pass's order for the AI's
   LKI passes, a small approximation. Profile a big board on 01-123 first; port it only if dependency ordering is still hot, then
@@ -130,9 +133,11 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
     goldfish win-rate effects are near noise even at 1500 games: the per-card signal is speed, mana and dead-card metrics; win
     rate compares whole builds at stage 3.
   - **Output:** an HTML page like the study index, builds and cards sortable by any metric, with intervals.
-  - **Open (the user's calls):** whether the land count may drift when the lists are unbalanced in lands; how locked cards are
-    marked (a `# lock:` list header or a flag). The existing `--variant` (named builds on the same seeds and pods) is the
-    stage-3 path; it has never answered a real question yet.
+  - **Land count stays fixed** (the user, 2026-10-30): a build swaps lands for lands; mana bases are the next tool's job.
+  - **Open:** how locked cards are marked (a `# lock:` list header or a flag). The existing `--variant` (named builds on the
+    same seeds and pods) is the stage-3 path; it has never answered a real question yet.
+- **Mana-base optimizer** (after the swap-list tester; the user, 2026-10-30): the same process over the land section, a
+  separate tool, using what the other tools measure (landbase.py, manasim.py, the swap tester's mana metrics).
 - **Report:** a headline block (win rate and interval, how it wins and loses, pilot errors beside it with game and turn); combined
   vacuum + gauntlet report; stranded and cycled columns; mana analysis (flood/screw, color-screw); interaction stats (what removal
   and counters hit).
@@ -144,7 +149,6 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
 - **Remaining AI-flagged cards:** known gap Biorhythm (puzzle marked `known_gap`); untested flagged cards (`fishpond flags
   --smoke`); Araumi's other flags (Dakmor Salvage, Lim-Dûl's Vault, Toxic Deluge).
 - **Landbase tempo validation logging:** `docs/LANDBASE_TEMPO_PLAN.md` step 3.
-- **Upstream the patches** to Card-Forge/forge (needs the user's go-ahead; `gh` isn't installed on the Windows box).
 
 ## Watch list (seen once, not filed)
 
@@ -157,6 +161,7 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
 
 ## Open questions for the user
 
-- **Big-board decisions over 120 s:** options (a)-(d) above, decided after the 01-123 baseline counts AI timeouts.
+- **Big-board decisions over 120 s:** options (a)-(e) above (the user leans to raising the limit), decided after the 01-123
+  baseline counts AI timeouts.
 - **Gauntlet beyond 16 decks:** when new decks pass their trial, a round-robin of more than 16 needs a different pod design (or
   two 16-deck lineups). Which decks are in is the user's call.
