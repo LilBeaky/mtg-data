@@ -84,7 +84,7 @@ would alone. `--single` gives each puzzle its own JVM.
 ## The game page
 
 Every run writes `games.html` next to `report.txt` (so every pod of a study has one): all four seats, turn by turn, in one page
-to open in a browser (the user, 2026-10-29: "I'd actually like to make it the standard output format"). On top, each deck across
+to open in a browser (the user, 2026-10-29: "I'd actually like to make it the standard output format"). Send it to the user with every run's report, a study's `index.html` likewise; the text report is the summary beside it. On top, each deck across
 the run's games (wins, the own turns its commander was first cast, commander removals, attacks, combat damage). Then a tab per
 game (past 12 games, a game list to search by card, deck or moment and filter by winner, 24 to a page): the result, each deck's
 summary, and the game's key moments in order (commanders cast and recast, commanders removed and
