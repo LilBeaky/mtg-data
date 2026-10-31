@@ -1,0 +1,21 @@
+# title: Consecrated Sphinx and Sphinx of the Second Sun out against three opponents, a 10-card library, Sphinx's Approach in hand (no search possible): the AI doesn't cast it (the round ahead draws about 8: two draw steps and 2 for each opponent's draw; patch 107's flat 5-card reserve let it draw to 8, and the round decked it)
+# card: Consecrated Sphinx
+# deck: Claudes_Baral_Control
+# turns: 1
+# forbid: Ai\(1\)-P1 cast Sphinx's Approach
+p0life=40
+p1life=40
+p2life=40
+p3life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Baral, Chief of Compliance;Consecrated Sphinx;Sphinx of the Second Sun;Island;Island;Island;Island;Island;Island
+p0hand=Sphinx's Approach;Snow-Covered Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p2battlefield=Forest;Forest
+p2library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p3battlefield=Forest;Forest
+p3library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,16 @@
+# title: Unesh out, four Sphinx's Approach in the graveyard, a 10-card library with a Sphinx in it: the AI doesn't cast the Approach in hand (it draws 2, finds the Sphinx, and Unesh reveals 4 more: 7 cards, counted as 2 before patch 124, leaving 3; baral_jace50 2026-10-30: 15 of 50 games decked)
+# card: Unesh, Criosphinx Sovereign
+# deck: Claudes_Baral_Control
+# turns: 1
+# forbid: Ai\(1\)-P1 cast Sphinx's Approach
+p0life=40
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Baral, Chief of Compliance;Unesh, Criosphinx Sovereign;Island;Island;Island;Island;Island;Island
+p0hand=Sphinx's Approach;Snow-Covered Island
+p0graveyard=Sphinx's Approach;Sphinx's Approach;Sphinx's Approach;Sphinx's Approach
+p0library=Island;Island;Island;Sphinx of the Final Word;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

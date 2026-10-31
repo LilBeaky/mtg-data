@@ -1,0 +1,15 @@
+# title: Jace, Wielder of Mysteries in hand but not castable (3 Islands), a 6-card library, Sphinx's Approach in hand: the Approach isn't cast (a held Jace doesn't win from an empty library; patch 107 excused any empty-library win card in hand, and baral_jace50 g14 drew out holding Jace; patch 124 excuses only cards that win as they enter, Thassa's Oracle)
+# card: Jace, Wielder of Mysteries
+# deck: Claudes_Baral_Control
+# turns: 1
+# forbid: Ai\(1\)-P1 cast Sphinx's Approach
+p0life=40
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Baral, Chief of Compliance;Island;Island;Island
+p0hand=Sphinx's Approach;Jace, Wielder of Mysteries
+p0library=Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

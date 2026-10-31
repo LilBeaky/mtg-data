@@ -32,7 +32,7 @@ item is done, move its numbers into the commit and FORGE_ISSUES and delete it he
 
 ## Where things stand (2026-10-30)
 
-- **Build:** Forge 2.0.15 + patches 01-123 (crash fixes, speed, and the pilot), 93 card overrides, 361 puzzles. The pilot, at every
+- **Build:** Forge 2.0.15 + patches 01-124 (crash fixes, speed, and the pilot), 93 card overrides, 367 puzzles. The pilot, at every
   pilot seat: the tutor policy (`policy.py`, `PilotPolicy.java`), the turn plan (patch 64 on, with the commander in the plan,
   patch 112), the threat model (counters, removal, wipes and holding mana, `ThreatModel.java`), mulligans by hand score, loop
   shortcuts and jumps, library reserves. Each patch's why and evidence is its FORGE_ISSUES row.
@@ -45,7 +45,8 @@ item is done, move its numbers into the commit and FORGE_ISSUES and delete it he
 - **Since, not yet measured at scale:** 117 (attack-trigger commander attacks only with an affordable recast), 118 (failed casts
   return to their zone), 119 (Sphinx's Approach pays its exile-five), 120 (per-game state: the tutored top card and combo step
   count leaked from game to game inside a worker JVM, so every multi-game study before it could be touched), 121-123 (Manabrew
-  ports: -24% game time on six same-seed replays, identical play).
+  ports: -24% game time on six same-seed replays, identical play), 124 (the decking guard counts reveals, searched-in
+  entries and the round ahead, and runs on the turn plan's forced casts: Baral decked in 15 of 50).
 - **Measurement fix (2026-10-30):** held cards under a spell limit (Zur's Rule of Law) no longer read as idle mana in the
   dead-card meter or `#FP-SEQ` (10 of 12 streaks in one sample game were false). Idle counts from earlier runs, including
   `pilot_20261028c`'s "castable cards held 3+ turns", run high in any pod with Zur; compare them with care.
