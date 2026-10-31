@@ -1,0 +1,15 @@
+# title: A 12-card library, four mana, Jace, Wielder of Mysteries and Haughty Djinn in hand: the AI casts Jace (patch 125: an empty-library win near the library's end is a closer; the plan valued Jace at 118-136 against Haughty Djinn's 339 and held it in 39 of 150 games, baral_p124)
+# card: Jace, Wielder of Mysteries
+# deck: Claudes_Baral_Control
+# turns: 1
+# expect: Ai\(1\)-P1 cast Jace, Wielder of Mysteries
+p0life=40
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Baral, Chief of Compliance;Island;Island;Island;Island
+p0hand=Jace, Wielder of Mysteries;Haughty Djinn
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,15 @@
+# title: Guard for baral_jace_closer_near_end: a 40-card library: Jace is no closer yet, and the four mana go to Haughty Djinn as before
+# card: Jace, Wielder of Mysteries
+# deck: Claudes_Baral_Control
+# turns: 1
+# expect: Ai\(1\)-P1 cast Haughty Djinn
+p0life=40
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Baral, Chief of Compliance;Island;Island;Island;Island
+p0hand=Jace, Wielder of Mysteries;Haughty Djinn
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

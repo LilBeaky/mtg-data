@@ -1,0 +1,36 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 3a96502..95060d8 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -1847,6 +1847,21 @@ public final class TurnPlan {
+         return false;
+     }
+ 
++    // ---- fishpond patch 125: a permanent that wins on an empty-library draw (Jace, Wielder of Mysteries; Laboratory Maniac) is
++    // a closer once the library is near its end: 15 cards, or three rounds of the seat's own draws (AiController.roundDraws:
++    // Consecrated Sphinx, extra draw steps) when that is more. The plan valued Jace as a planeswalker (118-136, Swiftfoot Boots
++    // 110) and left it out turn after turn: baral_p124's first 150 games held it 2+ turns with mana unused in 39 games, 8 of the
++    // 13 decking losses among them. A card that wins as it enters (Thassa's Oracle) is patch 10's; one already out needs none.
++    static final boolean LIBRARY_WIN_NEAR = !"false".equals(System.getProperty("fishpond.libraryWinNear"));
++
++    static boolean emptyLibraryWinNear(final Player ai, final Card c, final SpellAbility sa) {
++        if (!LIBRARY_WIN_NEAR || !sa.isSpell() || !c.isPermanent() || c.isInZone(ZoneType.Battlefield) || ai.cantWin()
++                || !forge.ai.ability.DrawAi.emptyLibraryWinCard(c) || AiController.winsOnEntering(c)
++                || ComputerUtil.winsOnEmptyLibraryDraw(ai)) return false;
++        final int lib = ai.getCardsIn(ZoneType.Library).size();
++        return lib <= Math.max(15, 3 * AiController.roundDraws(ai));
++    }
++
+     static Step step(final AiController aic, final Player ai, final Card c, final SpellAbility sa) {
+         // the commander's tax is added at cast time, not in its printed cost; patch 79: the plan pays what it costs now
+         final int printed = manaCost(sa) + (c.isCommander() && c.isInZone(ZoneType.Command) ? 2 * ai.getCommanderCast(c) : 0);
+@@ -1856,7 +1871,8 @@ public final class TurnPlan {
+         // a closer the old order put first (a win now, a cheat into something big, a wheel with payoffs) is planned whenever
+         // it fits; a library cheat (Primal Surge) is worth the permanents it would put onto the battlefield
+         final double surge = libraryCheat(ai, sa);
+-        final boolean closer = aic.closerNow(sa) || surge > 0 || upkeepWinNear(ai, c, sa) || approachWins(ai, c, sa);
++        final boolean closer = aic.closerNow(sa) || surge > 0 || upkeepWinNear(ai, c, sa) || approachWins(ai, c, sa)
++                || emptyLibraryWinNear(ai, c, sa);
+         // patch 100: a first Approach with the dig to it on the battlefield (Necrodominance) wins next turn
+         if (!closer && sa.isSpell() && selfPlacingWin(c) && !approachArmed(ai) && lifeDraw(ai) && ai.getLife() >= 9) v += CLOSER / 2;
+         if (closer) v += CLOSER + surge;
