@@ -1,0 +1,257 @@
+# commander: Lumra, Bellow of the Woods
+# variant: optimized
+# url: https://edhrec.com/commanders/lumra-bellow-of-the-woods/optimized
+# decks: 498
+# fetched: 2026-11-01
+Lotus Cobra|89|74
+Zuran Orb|89|82
+Crop Rotation|89|71
+Sylvan Safekeeper|87|77
+Sol Ring|86|15
+Spelunking|86|80
+Lotus Field|84|79
+Springheart Nantuko|82|74
+Command Beacon|82|74
+Shifting Woodland|82|68
+Icetill Explorer|81|70|440
+Six|80|74
+Tireless Provisioner|79|62
+Aftermath Analyst|77|71
+Yavimaya, Cradle of Growth|77|53
+Horizon Explorer|76|71|444
+Ashaya, Soul of the Wild|76|61
+Amulet of Vigor|74|71
+Tiller Engine|74|72
+Exploration|72|55
+Urza's Cave|71|65
+Mirrorpool|70|68
+Vesuva|70|67
+Boseiju, Who Endures|68|41
+Field of the Dead|67|64
+Sunscorched Desert|67|66
+Nissa, Resurgent Animist|67|62
+Archdruid's Charm|66|42
+Elvish Reclaimer|66|61
+Fabled Passage|65|51
+Famished Worldsire|63|60|443
+Crystal Vein|63|60
+Burgeoning|62|55
+Nature's Rhythm|62|54|482
+Strip Mine|61|55
+Scapeshift|61|55
+Delighted Halfling|61|46
+Green Sun's Zenith|61|45
+Castle Garenbrig|60|33
+Echoing Deeps|60|58
+Havenwood Battleground|60|57
+Blossoming Tortoise|59|57
+Finale of Devastation|58|42
+Endurance|58|53
+Windswept Heath|58|48
+Emergence Zone|57|52
+Sylvan Library|57|40
+Ghost Quarter|57|52
+Hickory Woodlot|57|54
+Urza's Saga|56|51
+Food Chain|55|52
+Wooded Foothills|54|45
+Chord of Calling|52|41
+Misty Rainforest|52|43
+Wasteland|52|48
+Eldritch Evolution|50|45
+Crumbling Vestige|50|49
+Arid Archway|50|46
+Verdant Catacombs|50|40
+Cavern of Souls|49|40
+Talon Gates of Madara|48|44
+Ancient Tomb|48|40
+Lazotep Quarry|46|44
+Geier Reach Sanitarium|46|44
+Dryad Arbor|45|35
+Horizon of Progress|45|42
+Azusa, Lost but Seeking|43|27
+Sowing Mycospawn|43|40
+Sanctum of Eternity|42|41
+Natural Order|42|30
+Beast Within|41|-16
+Scute Swarm|41|25
+Invasion of Ikoria|40|34
+Elvish Spirit Guide|39|33
+Greater Good|39|26
+Worldly Tutor|39|20
+Tezzeret, Cruel Captain|38|37|447
+Timeless Witness|38|34
+Eden, Seat of the Sanctum|38|36|460
+Prismatic Vista|38|31
+Deserted Temple|38|34
+Harrow|38|19
+Birds of Paradise|37|14
+Gemstone Caverns|35|31
+Pit of Offerings|34|33
+Buried Ruin|34|32
+Mana Vault|34|30
+Lotus Petal|34|29
+High Market|33|31
+Disciple of Freyalise|33|14
+Realms Uncharted|33|31
+Rootpath Purifier|33|31
+Heroic Intervention|31|-16
+Rogue's Passage|31|-6
+Formidable Speaker|31|24|402
+Song of the Dryads|31|21
+Conduit Pylons|31|29
+Eternal Witness|30|5
+Force of Vigor|30|19
+Gaea's Cradle|30|18
+The Mycosynth Gardens|30|28
+Exploration Broodship|29|24|444
+Summoner's Pact|28|23
+Collector Ouphe|27|23
+Entish Restoration|26|9
+Allosaurus Shepherd|26|17
+Ba Sing Se|26|18|388
+Emerald Medallion|26|-18
+Vexing Bauble|26|24
+Evolving Wilds|25|9
+Llanowar Elves|25|-30
+Mossborn Hydra|24|11
+Oracle of Mul Daya|24|10
+Eldrazi Confluence|23|23
+Avenger of Zendikar|23|8
+Nature's Lore|23|-15
+Nykthos, Shrine to Nyx|23|-3
+Veil of Summer|23|13
+Altar of Dementia|23|21
+Life from the Loam|23|19
+Pia, Aether Ascetic|22|18|99
+City of Traitors|22|20
+Rampaging Baloths|22|5
+Terramorphic Expanse|22|8
+Badgermole Cub|22|13|391
+Garruk's Uprising|21|-19
+Ancient Greenwarden|21|11
+Mox Diamond|21|19
+Thespian's Stage|21|18
+Titania, Protector of Argoth|21|17
+Glacial Chasm|20|18
+Mouth of Ronom|20|19
+Craterhoof Behemoth|19|-3
+Planar Engineering|18|10|276
+Cultivator Colossus|18|9
+Expedition Map|18|15
+Three Visits|18|-12
+Ramunap Excavator|17|8
+Sylvan Scrying|17|13
+Constant Mists|17|13
+Loot, Exuberant Explorer|17|7
+Riveteers Overlook|17|11
+Cultivate|17|-34
+Elvish Mystic|17|-29
+Roiling Regrowth|17|9
+Blast Zone|17|15
+Rishkar's Expertise|17|-13
+Cabaretti Courtyard|16|10
+Carpet of Flowers|16|13
+Arcane Signet|16|-12
+Rampant Growth|16|-26
+Springbloom Druid|16|9
+Explore|16|-6
+Malevolent Rumble|16|14
+Tranquil Thicket|16|6
+Crucible of Worlds|15|9
+The One Ring|15|10
+Insidious Fungus|15|11
+Return of the Wildspeaker|15|-21
+Brokers Hideout|15|9
+Conduit of Worlds|15|6
+Lion's Eye Diamond|15|14
+Myriad Landscape|15|-9
+Elemental Teachings|15|13|389
+Marwyn, the Preserver|15|12|96
+Root Maze|14|13
+Trinisphere|14|13
+Hexhaven Invigorator|14|4|107
+Nature's Claim|14|-6
+Boseiju, Who Shelters All|14|13
+Arboreal Grazer|13|10
+Reliquary Tower|13|-18
+Evendo, Waking Haven|13|-2|442
+Greensleeves, Maro-Sorcerer|13|9
+War Room|13|-6
+Traveling Chocobo|13|6|466
+Ash Barrens|13|11
+Frenzied Baloth|13|3|444
+Kodama's Reach|13|-24
+Mosswort Bridge|13|-16
+Mole Man, Moloid Master|13|9|214
+Titania, Nature's Force|12|7
+Dryad's Revival|12|11
+Guildless Commons|12|9
+Life's Legacy|12|7
+Noxious Revival|12|7
+Petrified Field|12|11
+Tireless Tracker|12|2
+Bala Ged Recovery|12|-2
+Temple of the False God|12|2
+Archaeological Dig|11|11
+Bridgeworks Battle|11|-2
+Hermit Druid|11|11
+Last March of the Ents|11|-1
+Tifa Lockhart|11|8|466
+Bristly Bill, Spine Sower|11|2
+Reclamation Sage|11|-8
+Splendid Reclamation|11|7
+Brawn|11|8
+Fyndhorn Elves|11|-21
+The Great Henge|11|-13
+Sapling Nursery|11|4|352
+Concordant Crossroads|10|-2
+Dosan the Falling Leaf|10|9
+Nissa, Who Shakes the World|10|-6
+Ominous Cemetery|10|10
+Sakura-Tribe Elder|10|-12
+Roiling Canopy|10|-4|99
+Kenrith's Transformation|10|-10
+Maze of Ith|10|7
+Grim Monolith|9.8|9
+Dark Depths|9.6|7
+Fanatic of Rhonas|9.6|-10
+Will of the Sultai|9.5|7|483
+Lightning Greaves|9.4|-15
+The Tabernacle at Pendrell Vale|9.4|9
+Season of Gathering|9.2|3
+Chrome Mox|8.6|6
+Tamiyo's Safekeeping|8.4|-12
+Command Tower|8.0|1
+Defense of the Heart|8.0|3
+Demolition Field|8.0|3
+Swiftfoot Boots|8.0|-24
+Manabond|7.8|7
+Carnivorous Cultivator|7.8|6|103
+Regrowth|7.6|1
+Tempt with Discovery|7.6|5
+Collective Resistance|7.4|-7
+Lotus Vale|7.4|7
+Walk-In Closet // Forgotten Cellar|7.4|5
+Hall of Echoes|7.3|5|96
+Argoth, Sanctum of Nature|7.2|3
+Momentous Fall|7.2|0
+Through the Forest Gate|7.2|2|167
+Blighted Woodland|7.0|-4
+Flare of Cultivation|6.8|1
+Case of the Locked Hothouse|6.6|2
+Hidden Grotto|6.6|6
+Krosan Grip|6.4|-11
+Scavenger Grounds|6.4|0
+Traverse the Ulvenwald|6.4|5
+Unnatural Growth|6.4|-17
+Abundance|6.2|1
+Wild Growth|6.0|-20
+Hedge Shredder|5.6|4
+Dancing from Dark to Dawn|5.6|-8|161
+Escape Tunnel|5.4|0
+Genesis Wave|5.4|-5
+Overwhelming Stampede|5.2|-14
+Ram Through|5.2|-16
+Smuggler's Surprise|5.2|-1
+Necklace of Girion|5.1|-7|176
