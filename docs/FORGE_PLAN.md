@@ -136,6 +136,11 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
   - **Land count stays fixed** (the user, 2026-10-30): a build swaps lands for lands; mana bases are the next tool's job.
   - **Open:** how locked cards are marked (a `# lock:` list header or a flag). The existing `--variant` (named builds on the
     same seeds and pods) is the stage-3 path; it has never answered a real question yet.
+- **Sanar Polymorph (not simulated yet; the user, 2026-11-04):** Forge's AI never casts Reality Scramble (0 casts in a 12-game
+  probe, held 9 turns with mana idle): it reads Battlefield->Library on an own permanent as removal with no good target. Wild Idea
+  also fetches Season of Weaving or Thud over Scramble despite the `# key:` bonus. Polymorph is AI-flagged. A pilot patch (cast
+  Scramble/Polymorph on Sanar, a Treasure or the lone creature when the deck holds exactly one card of that type) plus a puzzle
+  would be needed; dummies have no creatures, so goad needs real pods. Waits until the user finalizes the list.
 - **Mana-base optimizer** (after the swap-list tester; the user, 2026-10-30): the same process over the land section, a
   separate tool, using what the other tools measure (landbase.py, manasim.py, the swap tester's mana metrics).
 - **Report:** a headline block (win rate and interval, how it wins and loses, pilot errors beside it with game and turn); combined
