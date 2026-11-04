@@ -2,8 +2,6 @@
 # plan: Rigid curve. T1 land, T2 Sanar, T3 any instant/sorcery so Sanar taps for a Treasure, T4 Wild Idea (Sanar's prepared copy) finds Reality Scramble + another Treasure, T5 Reality Scramble on Sanar flips into Havoc Eater (the only creature in the 99), T6 retrace Reality Scramble on the Treasure flips into Resonating Lute (the only artifact). Then copy Havoc Eater (clone spells, Vesuvan Duplimancy, Echocasting Symposium) to goad the table; Fling/Thud for reach. Modular by design: the Havoc Eater slot is any nonlegendary Izzet creature that pays off spells or ETBs, the Lute slot is any Izzet artifact; each must stay the deck's only card of its type.
 # pets: Reality Scramble + Havoc Eater + Resonating Lute + Polymorph
 # key: Reality Scramble; Havoc Eater; Resonating Lute
-# package: Copies = Cackling Counterpart + Fated Infatuation + Quasiduplicate + Self-Reflection + Rite of Replication + See Double + Quantum Misalignment + Echocasting Symposium + Season of Weaving + Will of the Temur + Devastating Onslaught + Vesuvan Duplimancy
-# package: Sac for damage = Fling + Thud
 Commander
 1 Sanar, Unfinished Genius
 
