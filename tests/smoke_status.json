@@ -1,7 +1,5 @@
 {
- "status": "fail",
- "since": "2026-11-06T02:42:36Z",
- "failures": [
-  "rules current: missing: '722.'"
- ]
+ "status": "pass",
+ "since": "2026-11-10T14:26:50Z",
+ "failures": []
 }

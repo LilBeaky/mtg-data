@@ -74,7 +74,7 @@ def checks():
                    "reskin: 'The Cloudsea Djinn' is this card"],
              must_not=["NOT FOUND", "ambiguous", "Studious", "Harmonized"]),
         dict(name="rules", cmd=S("mtg.py", "rule", "702.124h"), must=["Partner"]),
-        dict(name="rules current", cmd=S("mtg.py", "rule", "--grep", "prepare spell"), must=["722."]),
+        dict(name="rules current", cmd=S("mtg.py", "rule", "--grep", "prepare spell"), must=["prepared designation"]),
         dict(name="search", cmd=S("mtg.py", "search", "--ci", "UB", "--tag", "removal", "--cmc", "1-2", "--limit", "3")),
         dict(name="gc list", cmd=S("mtg.py", "gc")),
         dict(name="search gc + price", cmd=S("mtg.py", "search", "--gc", "--max-price", "5", "--limit", "3"), must=["prices as of"]),
