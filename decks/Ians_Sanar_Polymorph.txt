@@ -1,0 +1,80 @@
+# name: Ians Sanar Polymorph
+# bracket: 2
+# plan: Rigid curve. T1 land, T2 Sanar, T3 any instant/sorcery so Sanar taps for a Treasure, T4 Wild Idea (Sanar's prepared copy) finds Reality Scramble + another Treasure, T5 Reality Scramble on Sanar flips into Havoc Eater (the only creature in the 99), T6 retrace Reality Scramble on the Treasure flips into Resonating Lute (the only artifact). Then copy Havoc Eater (clone spells, Vesuvan Duplimancy, Echocasting Symposium) to goad the table; Fling/Thud for reach. Modular by design: the Havoc Eater slot is any nonlegendary Izzet creature that pays off spells or ETBs, the Lute slot is any Izzet artifact; each must stay the deck's only card of its type.
+# pets: Reality Scramble + Havoc Eater + Resonating Lute + Polymorph
+# key: Reality Scramble; Havoc Eater; Resonating Lute
+Commander
+1 Sanar, Unfinished Genius
+
+Deck
+1 Aetherspouts
+1 An Offer You Can't Refuse
+1 Blasphemous Act
+1 Brainstorm
+1 Cackling Counterpart
+1 Cascade Bluffs
+1 Clear the Mind
+1 Command Tower
+1 Counterspell
+1 Day's Undoing
+1 Devastating Onslaught
+1 Divert Disaster
+1 Echocasting Symposium
+1 Faithless Looting
+1 Fated Infatuation
+1 Flashback
+1 Fling
+1 Flow State
+1 Flusterstorm
+1 Frantic Search
+1 Frostboil Snarl
+1 Frostcliff Siege
+1 Goblin War Drums
+1 Havoc Eater
+1 High Tide
+1 Impulse
+20 Island
+1 Long River's Pull
+1 Long-Term Plans
+10 Mountain
+1 Muddle the Mixture
+1 Mystic Sanctuary
+1 Narset's Reversal
+1 Negate
+1 Polymorph
+1 Ponder
+1 Pongify
+1 Preordain
+1 Prismari Command
+1 Quantum Misalignment
+1 Quasiduplicate
+1 Quest for Ancient Secrets
+1 Reality Scramble
+1 Reminisce
+1 Resonating Lute
+1 Return the Favor
+1 Rise from the Tides
+1 Rite of Replication
+1 Season of Weaving
+1 See Double
+1 Seething Song
+1 Seize the Spoils
+1 Self-Reflection
+1 Shivan Reef
+1 Silundi Vision
+1 Sleight of Hand
+1 Spell Pierce
+1 Stormcarved Coast
+1 Strategic Planning
+1 Sulfur Falls
+1 Teferi's Ageless Insight
+1 Temple of Epiphany
+1 Terramorphic Expanse
+1 Thrill of Possibility
+1 Thud
+1 Unwind
+1 Vandalblast
+1 Vesuvan Duplimancy
+1 Whirlwind Denial
+1 Will of the Temur
+1 Witness the Future
