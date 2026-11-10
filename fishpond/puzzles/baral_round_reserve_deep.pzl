@@ -1,0 +1,21 @@
+# title: Guard for baral_round_reserve_keeps: the same board with a 12-card library: the Approach is cast (10 left covers the round)
+# card: Consecrated Sphinx
+# deck: Claudes_Baral_Control
+# turns: 1
+# expect: Ai\(1\)-P1 cast Sphinx's Approach
+p0life=40
+p1life=40
+p2life=40
+p3life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Baral, Chief of Compliance;Consecrated Sphinx;Sphinx of the Second Sun;Island;Island;Island;Island;Island;Island
+p0hand=Sphinx's Approach;Snow-Covered Island
+p0library=Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p2battlefield=Forest;Forest
+p2library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest
+p3battlefield=Forest;Forest
+p3library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

@@ -1,0 +1,251 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiController.java b/forge-ai/src/main/java/forge/ai/AiController.java
+index 52417ad..661c9c1 100644
+--- a/forge-ai/src/main/java/forge/ai/AiController.java
++++ b/forge-ai/src/main/java/forge/ai/AiController.java
+@@ -1101,7 +1101,8 @@ public class AiController {
+             return AiPlayDecision.AnotherTime;   // fishpond patch 64: it would leave too little mana for the turn plan
+         }
+         if (TurnPlan.force(this, player, sa)) {
+-            return AiPlayDecision.WillPlay;   // fishpond patch 64: a planned ritual whose mana the plan needs
++            final AiPlayDecision decks = LIBRARY_BURN ? deckGuard(sa.getHostCard(), sa) : null;
++            return decks != null ? decks : AiPlayDecision.WillPlay;   // fishpond patch 64: a planned ritual whose mana the plan needs
+         }
+         // fishpond patch 61: an overloaded spell is a wipe (Cyclonic Rift for 7): judged across the table like one; the
+         // single-target AI it would otherwise reach never weighed "each permanent you don't control"
+@@ -1784,9 +1785,163 @@ public class AiController {
+                 }
+             }
+         }
++        if (LIBRARY_BURN) {
++            // fishpond patch 124: cards that leave the library without a draw. A permanent spell's entering sets off reveals
++            // and digs that take cards (Unesh's top four, to hand and graveyard); a spell that searches a creature onto the
++            // battlefield (the fifth Sphinx's Approach) sets off the same for the card it finds. Baral decked in 15 of 50
++            // games (baral_jace50, 2026-10-30): with Unesh out each Approach that found a Sphinx took 6 cards, counted as 2.
++            if (card.isPermanent() && !beforeResolving) {
++                n += enterBurn(ai, card, false);
++            }
++            if (!beforeResolving) {
++                n += searchedEntryBurn(ai, sa);
++            }
++        }
+         return n + putsLand * landfallDraws;
+     }
+ 
++    static final boolean LIBRARY_BURN = !"false".equals(System.getProperty("fishpond.libraryBurn"));
++
++    /** Cards one ability chain takes from its controller's library (patch 124). Draws count only with withDraws; a dig
++     *  counts what it doesn't put back, a reveal what a later step moves to hand or graveyard (Unesh's two piles). */
++    static int libraryBurn(final Card host, final SpellAbility first, final boolean withDraws) {
++        int n = 0;
++        for (SpellAbility a = first; a != null; a = a.getSubAbility()) {
++            final ApiType api = a.getApi();
++            final String def = a.getParamOrDefault("Defined", "You");
++            if (api == ApiType.Draw) {
++                if (withDraws) {
++                    n += drawsForCaster(host, a);
++                }
++            } else if (api == ApiType.Dig && "You".equals(def) && !a.usesTargeting()) {
++                final int dig = amount(host, a, "DigNum", 1);
++                n += "Library".equals(a.getParamOrDefault("DestinationZone2", "Library")) ? Math.min(dig, amount(host, a, "ChangeNum", 1)) : dig;
++            } else if (api == ApiType.PeekAndReveal && "You".equals(def) && !a.usesTargeting()) {
++                for (SpellAbility b = a.getSubAbility(); b != null; b = b.getSubAbility()) {
++                    if (b.getApi() == ApiType.TwoPiles || b.getApi() == ApiType.ChangeZone && b.getParamOrDefault("Origin", "").contains("Library")
++                            && !"Library".equals(b.getParam("Destination"))) {
++                        n += amount(host, a, "PeekAmount", 1);
++                        break;
++                    }
++                }
++            } else if (api == ApiType.Mill && a.hasParam("Defined") && "You".equals(def)) {
++                n += amount(host, a, "NumCards", 1);
++            }
++        }
++        return n;
++    }
++
++    private static int amount(final Card host, final SpellAbility a, final String param, final int dflt) {
++        try {
++            return a.hasParam(param) ? Math.max(0, AbilityUtils.calculateAmount(host, a.getParam(param), a)) : dflt;
++        } catch (RuntimeException e) {
++            return dflt;
++        }
++    }
++
++    /** What a card entering the battlefield takes from its controller's library through enter triggers (its own and the
++     *  battlefield's), past the draws drawsFromCasting already counts unless withDraws (patch 124). */
++    static int enterBurn(final Player ai, final Card entering, final boolean withDraws) {
++        int n = 0;
++        for (final Card c : ai.getCardsIn(ZoneType.Battlefield)) {
++            if (c == entering) {
++                continue;
++            }
++            for (final forge.game.trigger.Trigger t : c.getTriggers()) {
++                if (t.getMode() != forge.game.trigger.TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))) {
++                    continue;
++                }
++                final String valid = t.getParamOrDefault("ValidCard", "");
++                if (valid.isEmpty() || valid.startsWith("Land") || !entering.isValid(valid.split(","), ai, c, null)) {
++                    continue;
++                }
++                n += libraryBurn(c, t.ensureAbility(), withDraws);
++            }
++        }
++        for (final forge.game.trigger.Trigger t : entering.getTriggers()) {
++            if (t.getMode() == forge.game.trigger.TriggerType.ChangesZone && "Battlefield".equals(t.getParam("Destination"))
++                    && t.getParamOrDefault("ValidCard", "").contains("Card.Self")) {
++                n += libraryBurn(entering, t.ensureAbility(), withDraws);
++            }
++        }
++        return n;
++    }
++
++    /** A search that puts a creature from the library onto the battlefield: the largest enterBurn, draws included, among the
++     *  cards it could find; 0 when an "if you do" exile cost from the graveyard can't be paid yet (patch 124). */
++    static int searchedEntryBurn(final Player ai, final SpellAbility sa) {
++        final Card host = sa.getHostCard();
++        int best = 0;
++        for (SpellAbility a = sa; a != null; a = a.getSubAbility()) {
++            if (a.getApi() != ApiType.ChangeZone || !a.getParamOrDefault("Origin", "").contains("Library")
++                    || !"Battlefield".equals(a.getParam("Destination")) || !a.hasParam("ChangeType") || a.hasParam("Defined")) {
++                continue;
++            }
++            final String unless = a.getParamOrDefault("UnlessCost", "");
++            final java.util.regex.Matcher m = java.util.regex.Pattern.compile("ExileFromGrave<(\\d+)/([^>]+)>").matcher(unless);
++            boolean payable = true;
++            while (m.find()) {
++                final int need = Integer.parseInt(m.group(1));
++                payable &= forge.game.card.CardLists.getValidCards(ai.getCardsIn(ZoneType.Graveyard), m.group(2).split(","), ai, host, a).size() >= need;
++            }
++            if (!payable) {
++                continue;
++            }
++            for (final Card c : forge.game.card.CardLists.getValidCards(ai.getCardsIn(ZoneType.Library), a.getParam("ChangeType").split(","), ai, host, a)) {
++                best = Math.max(best, 1 + enterBurn(ai, c, true));   // the found card itself leaves the library too
++            }
++        }
++        return best;
++    }
++
++    /** Cards the seat's own permanents will take from its library before its next turn's spells (patch 124): its draw step,
++     *  each extra beginning phase (Sphinx of the Second Sun), upkeep and draw-step draws, and "whenever an opponent draws"
++     *  draws (Consecrated Sphinx) once per living opponent. */
++    static int roundDraws(final Player ai) {
++        int n = 1;
++        final int opps = ai.getOpponents().size();
++        for (final Card c : ai.getCardsIn(ZoneType.Battlefield)) {
++            for (final forge.game.trigger.Trigger t : c.getTriggers()) {
++                final forge.game.trigger.TriggerType mode = t.getMode();
++                if (mode == forge.game.trigger.TriggerType.Phase && "You".equals(t.getParamOrDefault("ValidPlayer", "You"))) {
++                    for (SpellAbility a = t.ensureAbility(); a != null; a = a.getSubAbility()) {
++                        if (a.getApi() == ApiType.AddPhase && a.getParamOrDefault("ExtraPhase", "").contains("Beginning")) {
++                            n++;
++                        }
++                    }
++                    final String ph = t.getParamOrDefault("Phase", "");
++                    if (ph.contains("Upkeep") || ph.contains("Draw")) {
++                        n += libraryBurn(c, t.ensureAbility(), true);
++                    }
++                } else if (mode == forge.game.trigger.TriggerType.Drawn && t.getParamOrDefault("ValidCard", "").contains("Opp")) {
++                    n += opps * libraryBurn(c, t.ensureAbility(), true);
++                }
++            }
++        }
++        return n;
++    }
++
++    /** The library a spell that draws must leave (patch 107's reserve; patch 124 sizes it to the coming round's draws). */
++    static int libraryReserve(final Player ai) {
++        return LIBRARY_BURN ? Math.max(LIBRARY_RESERVE, roundDraws(ai) + 1) : LIBRARY_RESERVE;
++    }
++
++    /** A card that wins as it enters (Thassa's Oracle): drawing down to it is safe because it is cast and wins on its own.
++     *  A replacement-effect win (Jace, Wielder of Mysteries; Laboratory Maniac) wins only once on the battlefield. */
++    static boolean winsOnEntering(final Card c) {
++        for (final forge.game.trigger.Trigger t : c.getTriggers()) {
++            if (t.getMode() != forge.game.trigger.TriggerType.ChangesZone || !"Battlefield".equals(t.getParam("Destination"))) {
++                continue;
++            }
++            for (SpellAbility a = t.ensureAbility(); a != null; a = a.getSubAbility()) {
++                if (a.getApi() == ApiType.WinsGame) {
++                    return true;
++                }
++            }
++        }
++        return false;
++    }
++
+     private static int drawsForCaster(final Card host, final SpellAbility a) {
+         final String def = a.getParamOrDefault("Defined", "You");
+         if (a.getApi() != ApiType.Draw || !"You".equals(def) && !def.startsWith("TriggeredCard")) {
+@@ -1873,22 +2028,10 @@ public class AiController {
+         return false;
+     }
+ 
+-    private AiPlayDecision saSideEffects(final Card card, final SpellAbility sa) {
+-        // fishpond patch 51: with Heliod out, Walking Ballista is half the combo, and two counters start the loop with just the
+-        // lifelink grant; Forge spent them pinging a mana creature or a Snake token (study150_20261014_p50 V02 g13, V05 g10).
+-        // It keeps two unless it is about to die anyway.
+-        if (forge.ai.ability.DrawAi.pilotSeat(player) && card != null && sa.isActivatedAbility() && sa.getApi() == ApiType.DealDamage
+-                && sa.getPayCosts() != null && sa.getPayCosts().hasSpecificCostType(CostRemoveCounter.class) && !sa.getPayCosts().hasManaCost()
+-                && card.isCreature() && card.getCounters(forge.game.card.CounterEnumType.P1P1) <= 2 && hasLifelinkCounterEngine(player)
+-                && !ComputerUtil.predictThreatenedObjects(player, null).contains(card)) {
+-            return AiPlayDecision.AnotherTime;
+-        }
+-        if (forge.ai.ability.DrawAi.pilotSeat(player) && player.canLoseLife() && !player.cantLoseForZeroOrLessLife()) {
+-            final int lifeCost = lifeCostOf(player, sa);
+-            if (lifeCost > 0 && ComputerUtil.aiLifeInDanger(player, true, lifeCost)) {
+-                return AiPlayDecision.CurseEffects;   // fishpond patch 23: past the life budget
+-            }
+-        }
++    /** Patch 20's decking guard (107's reserve, 124's burn), or null when the spell leaves enough library. Patch 124: its
++     *  own method, so a spell the turn plan forces (a planned tutor, patch 89: the fifth Sphinx's Approach) runs it too;
++     *  forced casts skipped it (baral_jace50 g8: five Approaches from a 14-card library with 23 cards in hand). */
++    private AiPlayDecision deckGuard(final Card card, final SpellAbility sa) {
+         if (sa.isSpell() && forge.ai.ability.DrawAi.pilotSeat(player) && !ComputerUtil.winsOnEmptyLibraryDraw(player)
+                 && !(sa.getApi() == ApiType.Draw && forge.ai.ability.DrawAi.selfDeckWins(player, sa))) {
+             final int lib = player.getCardsIn(ZoneType.Library).size();
+@@ -1901,18 +2044,43 @@ public class AiController {
+             // cards), so a 13-16 cast turn walked the library to 1-2 and the next draw step decked it (trends_20261027: 6 of 20
+             // Chulane seats); draws outside casts (Esper Sentinel, opponents' turns) aren't counted at all. A spell that draws
+             // keeps LIBRARY_RESERVE cards (patch 18's Surge reserve) unless an empty-library win card waits in hand.
++            // patch 124: the reserve covers the coming round's draws, and only a card that wins as it enters excuses it (Baral
++            // drew out with Jace, Wielder of Mysteries held in hand: baral_jace50 g14, 52 cards in hand and no Jace cast)
+             boolean winInHand = false;
+             for (final Card c : player.getCardsIn(ZoneType.Hand)) {
+-                if (c != card && forge.ai.ability.DrawAi.emptyLibraryWinCard(c)) {
++                if (c != card && forge.ai.ability.DrawAi.emptyLibraryWinCard(c) && (!LIBRARY_BURN || winsOnEntering(c))) {
+                     winInHand = true;
+                     break;
+                 }
+             }
+-            final int floor = winCard ? 0 : Math.max(1 + (draws + 1) / 2, winInHand ? 0 : LIBRARY_RESERVE);
++            final int floor = winCard ? 0 : Math.max(1 + (draws + 1) / 2, winInHand ? 0 : libraryReserve(player));
+             if (draws > 0 && lib - draws < floor) {
+                 return AiPlayDecision.CurseEffects;   // fishpond patch 20: casting it would deck the caster
+             }
+         }
++        return null;
++    }
++
++    private AiPlayDecision saSideEffects(final Card card, final SpellAbility sa) {
++        // fishpond patch 51: with Heliod out, Walking Ballista is half the combo, and two counters start the loop with just the
++        // lifelink grant; Forge spent them pinging a mana creature or a Snake token (study150_20261014_p50 V02 g13, V05 g10).
++        // It keeps two unless it is about to die anyway.
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && card != null && sa.isActivatedAbility() && sa.getApi() == ApiType.DealDamage
++                && sa.getPayCosts() != null && sa.getPayCosts().hasSpecificCostType(CostRemoveCounter.class) && !sa.getPayCosts().hasManaCost()
++                && card.isCreature() && card.getCounters(forge.game.card.CounterEnumType.P1P1) <= 2 && hasLifelinkCounterEngine(player)
++                && !ComputerUtil.predictThreatenedObjects(player, null).contains(card)) {
++            return AiPlayDecision.AnotherTime;
++        }
++        if (forge.ai.ability.DrawAi.pilotSeat(player) && player.canLoseLife() && !player.cantLoseForZeroOrLessLife()) {
++            final int lifeCost = lifeCostOf(player, sa);
++            if (lifeCost > 0 && ComputerUtil.aiLifeInDanger(player, true, lifeCost)) {
++                return AiPlayDecision.CurseEffects;   // fishpond patch 23: past the life budget
++            }
++        }
++        final AiPlayDecision decks = deckGuard(card, sa);
++        if (decks != null) {
++            return decks;
++        }
+         // fishpond patch 14: with City of Traitors (or any "sacrifice this when you play another land") out, a land drop is
+         // decided by a rule: stock Forge plays any land and loses City, and hybrid's one-move check vetoes every land
+         // (it sees City sacrificed), which stranded lands in hand for whole games

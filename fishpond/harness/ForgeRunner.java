@@ -904,7 +904,8 @@ public class ForgeRunner {
                     || f == ZoneType.Hand && t == ZoneType.Battlefield
                     || f == ZoneType.Graveyard && (t == ZoneType.Hand || t == ZoneType.Battlefield);
             if (!want) return;
-            SpellAbility sa = g.getStack().peekAbility();
+            SpellAbility sa = resolving();
+            if (sa == null) return;
             boolean moving = false;   // a part of it moves cards from that zone (not a draw: Valakut Awakening bottoms, then draws)
             for (SpellAbility x = sa; x != null && !moving; x = x.getSubAbility()) {
                 ApiType a = x.getApi();
@@ -923,8 +924,36 @@ public class ForgeRunner {
                     + ", \"from\": \"" + f.name() + "\", \"to\": \"" + t.name() + "\"}");
         }
 
+        /** MagicStack.curResolvingCard (private; set for the whole resolution, cleared after it). */
+        static final java.lang.reflect.Field RESOLVING_CARD;
+        static {
+            java.lang.reflect.Field f = null;
+            try {
+                f = forge.game.zone.MagicStack.class.getDeclaredField("curResolvingCard");
+                f.setAccessible(true);
+            } catch (Exception ex) { /* no fallback below: the stack top only */ }
+            RESOLVING_CARD = f;
+        }
+
+        /** The spell or ability resolving now, or null. Usually the stack's top, but a spell that leaves the stack partway
+         *  through (Sphinx's Approach exiles itself, then searches) is gone from it: the top is then empty or the item below,
+         *  so the resolving card's own spell is used instead (Baral run 2026-10-30: the empty stack threw here, and every
+         *  Approach fetch went unrecorded). */
+        SpellAbility resolving() {
+            forge.game.zone.MagicStack st = g.getStack();
+            if (!st.isResolving()) return null;
+            SpellAbility top = st.isEmpty() ? null : st.peekAbility();
+            if (top != null && st.isResolving(top.getHostCard())) return top;
+            try {
+                Card host = RESOLVING_CARD == null ? null : (Card) RESOLVING_CARD.get(st);
+                return host == null ? top : host.getFirstSpellAbility();
+            } catch (IllegalAccessException ex) {
+                return top;
+            }
+        }
+
         void tutor(GameEventCardChangeZone e, ZoneType to) {
-            SpellAbility sa = g.getStack().isResolving() ? g.getStack().peekAbility() : null;
+            SpellAbility sa = resolving();
             String kind = null;
             for (SpellAbility s = sa; s != null && kind == null; s = s.getSubAbility()) {
                 ApiType a = s.getApi();

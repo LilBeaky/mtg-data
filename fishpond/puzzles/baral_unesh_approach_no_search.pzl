@@ -1,0 +1,16 @@
+# title: Guard for baral_unesh_approach_keeps_reserve: the 10-card library with only two Approaches in the graveyard: no search can happen, so the Approach takes 2 and is cast (8 left)
+# card: Unesh, Criosphinx Sovereign
+# deck: Claudes_Baral_Control
+# turns: 1
+# expect: Ai\(1\)-P1 cast Sphinx's Approach
+p0life=40
+p1life=40
+turn=9
+activeplayer=p0
+activephase=MAIN1
+p0battlefield=Baral, Chief of Compliance;Unesh, Criosphinx Sovereign;Island;Island;Island;Island;Island;Island
+p0hand=Sphinx's Approach;Snow-Covered Island
+p0graveyard=Sphinx's Approach;Sphinx's Approach
+p0library=Island;Island;Island;Sphinx of the Final Word;Island;Island;Island;Island;Island;Island
+p1battlefield=Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

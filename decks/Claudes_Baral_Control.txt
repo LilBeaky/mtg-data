@@ -1,6 +1,6 @@
 # name: Claudes Baral Control
 # bracket: 3
-# plan: Mono-blue counterspells. Baral loots off every counter and is the deck's cost reducer; protect him rather than backing him up. 25 Sphinx's Approach for card flow; every fifth Approach tutors a Sphinx, with Sphinx of the Second Sun first (extra untap = counter mana twice). Thin curve; the only non-Sphinx top end is big mana.
+# plan: Mono-blue counterspells. Baral loots off every counter and is the deck's cost reducer; protect him rather than backing him up. 25 Sphinx's Approach for card flow; every fifth Approach tutors a Sphinx, with Sphinx of the Second Sun first (extra untap = counter mana twice). Thin curve; the only non-Sphinx top end is big mana. Jace, Wielder of Mysteries turns a drawn-out library into a win.
 # priority: Sphinx of the Second Sun; Consecrated Sphinx
 # key: Sphinx of the Second Sun; Consecrated Sphinx; Sphinx of the Final Word; Unesh, Criosphinx Sovereign
 Commander
@@ -12,7 +12,7 @@ Deck
 1 Consecrated Sphinx #sphinx
 1 Sphinx of the Final Word #sphinx
 1 Unesh, Criosphinx Sovereign #sphinx
-1 Dream Eater #sphinx
+1 Jace, Wielder of Mysteries #wincon
 1 Enigma Thief #sphinx
 1 Sphinx of Forgotten Lore #sphinx
 1 Mana Drain #counter
