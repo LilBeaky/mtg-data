@@ -1,7 +1,8 @@
 {
  "status": "fail",
- "since": "2026-11-06T02:42:36Z",
+ "since": "2026-11-10T18:22:47Z",
  "failures": [
-  "rules current: missing: '722.'"
+  "rules current: missing: '722.'",
+  "tutors to add: missing: 'transmute (card MV=2)'"
  ]
 }
