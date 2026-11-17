@@ -1,0 +1,272 @@
+# commander: Klauth, Unrivaled Ancient
+# variant: upgraded
+# url: https://edhrec.com/commanders/klauth-unrivaled-ancient/upgraded
+# decks: 304
+# fetched: 2026-10-29
+Ajani's Anguish|8.2|3|49
+Samut, Hazoret's Champion|6.2|0|48
+Draconic Visitor|6.1|1|49
+Ghalta the Unstoppable|3.8|0|52
+Verdant Kraken|2.1|-2|48
+Garruk's Uprising|79|39
+Rhythm of the Wild|72|34
+Savage Ventmaw|69|60
+Dragonborn Champion|68|62
+Atarka, World Render|66|63
+Rishkar's Expertise|65|43
+Terror of the Peaks|63|57
+Heroic Intervention|62|23
+Beast Within|60|8
+Return of the Wildspeaker|59|32
+Skyship Stalker|5.3|5
+Dragonstorm|9.5|9
+Stormscale Scion|19|18|296
+Backdraft Hellkite|5.6|5
+Knollspine Dragon|20|19
+Leyline Tyrant|17|16
+Klauth's Will|56|53
+Crucible of the Spirit Dragon|21|20
+Kindred Summons|27|26
+Utvara Hellkite|51|49
+Lathliss, Dragon Queen|58|55
+Dragonspeaker Shaman|58|54
+Old Gnawbone|57|50
+Goblin Anarchomancer|55|11
+Scourge of Valkas|55|52
+Goldspan Dragon|54|48
+Scourge of the Throne|47|43
+Hellkite Charger|45|41
+Thrakkus the Butcher|45|42
+Dragonlord's Servant|43|40
+Balefire Dragon|41|38
+Twinflame Tyrant|40|35
+Drakuseth, Maw of Flames|39|33
+Xenagos, God of Revels|39|24
+Birds of Paradise|38|8
+Wrathful Red Dragon|37|35
+Ancient Copper Dragon|37|32
+Fanatic of Rhonas|36|18
+Goreclaw, Terror of Qal Sisma|35|20
+Dragonhawk, Fate's Tempest|35|32
+Llanowar Elves|32|-1
+Hellkite Tyrant|32|26
+Earthquake Dragon|29|28
+Dragonmaster Outcast|29|25
+Wulfgar of Icewind Dale|28|24
+Shivan Devastator|28|26
+Ganax, Astral Hunter|26|25
+Ancient Bronze Dragon|26|23
+Selvala, Heart of the Wilds|24|14
+Thunderbreak Regent|24|22
+Bloomvine Regent|24|22|290
+Elvish Mystic|23|-2
+Bonehoard Dracosaur|23|20
+Cavern-Hoard Dragon|22|20
+Delighted Halfling|21|7
+Hellkite Courser|21|17
+Sakura-Tribe Elder|20|-3
+Scaled Nurturer|19|18
+Skyline Despot|19|18
+Beast Whisperer|19|3
+Roaming Throne|18|10
+Thundermane Dragon|18|17|284
+Zopandrel, Hunger Dominus|17|10
+Inferno of the Star Mounts|16|15
+Karlach, Fury of Avernus|16|10
+Parapet Thrasher|16|15|284
+Smaug the Magnificent|15|13|142
+Terror of Mount Velus|15|14
+Toski, Bearer of Secrets|15|3
+Moraug, Fury of Akoum|14|5
+Chaos Warp|36|-5
+Hunter's Insight|33|21
+Deflecting Swat|29|10
+Worldly Tutor|26|12
+Magmaquake|21|19
+Great Train Heist|19|15
+Sarkhan's Triumph|19|18
+Smuggler's Surprise|19|16
+Comet Storm|18|13
+Savage Beating|16|13
+Tyvar's Stand|15|4
+Return to Nature|15|7
+Bolt Bend|15|7
+Tamiyo's Safekeeping|14|-1
+Valakut Awakening|12|8
+Entish Restoration|12|2
+Spit Flame|12|10
+Archdruid's Charm|11|4
+Tibalt's Trickery|9.9|4
+Nature's Claim|9.2|-3
+Collective Resistance|8.9|-2
+Untimely Malfunction|7.9|-3
+Wrap in Vigor|7.6|4
+Chord of Calling|7.2|3
+Redirect Lightning|7.2|0|236
+Seething Song|6.9|1
+Lifestream's Blessing|6.8|4|266
+Big Score|5.9|-4
+Abrade|5.9|-10
+Snakeskin Veil|5.3|-7
+Krosan Grip|5.3|-2
+Commune with Lava|5.3|4
+Cultivate|58|9
+Nature's Lore|53|16
+Rampant Growth|45|3
+Three Visits|44|16
+Blasphemous Act|40|-3
+Kodama's Reach|39|8
+Farseek|36|3
+Jeska's Will|35|18
+Shamanic Revelation|29|16
+Relentless Assault|28|24
+Crackle with Power|27|23
+Last March of the Ents|22|18
+Skyshroud Claim|22|11
+Stump Stomp|20|3
+Harmonize|19|3
+Genesis Wave|19|15
+Full Throttle|18|14|303
+Vandalblast|18|0
+Bala Ged Recovery|17|7
+Finale of Devastation|16|9
+Explore|15|0
+Decimate|14|-8
+Jaya's Immolating Inferno|14|11
+Nature's Rhythm|13|9|284
+Escape to the Wilds|12|6
+Traverse the Outlands|11|7
+Bridgeworks Battle|11|0
+Season of Gathering|10|6
+Desolation of Smaug|9.2|9|98
+Tooth and Nail|8.9|7
+Mana Geyser|8.9|5
+Chain Reaction|8.6|1
+Soul's Majesty|8.6|6
+Shatterskull Smashing|8.6|6
+Shared Roots|8.3|0|217
+World at War|8.2|7
+Majestic Genesis|8.2|8
+Banefire|8.2|7
+Gamble|7.9|0
+Turntimber Symbiosis|7.2|4
+Green Sun's Zenith|6.9|2
+Hull Breach|6.9|-2
+Overpowering Attack|6.9|5
+Earthquake|6.6|6
+Migration Path|6.6|2
+Chandra's Ignition|6.2|-6
+Sundering Eruption|5.9|1
+Open the Way|5.6|3
+The Great Henge|36|22
+Urza's Incubator|26|24
+Lightning Greaves|24|2
+Swiftfoot Boots|23|-9
+Herald's Horn|16|12
+Monster Manual|12|11
+Ruby Medallion|8.2|4
+The Fire Crystal|6.9|2|262
+Emerald Medallion|6.6|2
+The One Ring|5.6|0
+Dragon Tempest|54|50
+Elemental Bond|39|28
+Aggravated Assault|36|25
+Unnatural Growth|33|9
+Up the Beanstalk|30|25
+Encroaching Dragonstorm|26|23|290
+Dracogenesis|20|19|290
+Colossal Majesty|18|11
+Warstorm Surge|18|5
+Sylvan Library|17|6
+Guardian Project|17|5
+Wild Growth|17|0
+Crucible of Fire|14|12
+Breaching Dragonstorm|13|12|284
+Utopia Sprawl|13|1
+Shadow in the Warp|12|9
+Greater Good|12|2
+Gratuitous Violence|10|0
+Tribute to the World Tree|9.2|2
+Frontier Siege|8.9|6
+Rising of the Day|8.6|4
+Bear Umbra|8.2|0
+Asceticism|7.6|0
+Defense of the Heart|7.2|4
+Fires of Yavimaya|6.9|1
+Sneak Attack|5.6|4
+Invasion of Ikoria|6.9|4
+Invasion of Tarkir|6.2|6
+Domri, Anarch of Bolas|12|2
+Sarkhan, Fireblood|10|10
+Mosswort Bridge|41|15
+Kessig Wolf Run|38|2
+Arena of Glory|25|16
+Boseiju, Who Endures|23|3
+Reliquary Tower|20|-6
+Yavimaya, Cradle of Growth|19|-1
+Rogue's Passage|19|-9
+Castle Garenbrig|19|10
+Spinerock Knoll|16|9
+Ancient Tomb|15|7
+Bonders' Enclave|12|7
+Temple of the False God|11|2
+Command Beacon|10|4
+War Room|6.9|4
+Castle Embereth|6.9|4
+Three Tree City|6.2|2
+Nykthos, Shrine to Nyx|5.9|3
+Shifting Woodland|5.3|-2
+Sol Ring|90|13
+Arcane Signet|68|7
+Dragon's Hoard|42|39
+Gruul Signet|25|3
+Carnelian Orb of Dragonkind|24|22
+Jade Orb of Dragonkind|22|21
+Herd Heirloom|19|12|284
+Talisman of Impulse|19|-3
+Orb of Dragonkind|13|12
+Mox Jasper|11|11|296
+Dragonstorm Globe|9.9|9|284
+Commander's Sphere|7.2|1
+Fellwar Stone|5.6|-5
+Command Tower|94|11
+Cinder Glade|80|13
+Stomping Ground|68|19
+Rootbound Crag|64|7
+Rockfall Vale|62|18
+Haven of the Spirit Dragon|57|54
+Spire Garden|57|20
+Game Trail|55|12
+Path of Ancestry|51|34
+Karplusan Forest|50|8
+Wooded Foothills|45|12
+Mossfire Valley|44|12
+Thornspire Verge|41|15
+Gruul Turf|37|2
+Exotic Orchard|35|9
+Cragcrown Pathway|32|12
+Maelstrom of the Spirit Dragon|31|30|290
+Cavern of Souls|31|24
+Fire-Lit Thicket|30|13
+Temple of Abandon|26|-3
+Commercial District|24|4
+Sheltered Thicket|22|0
+Copperline Gorge|19|1
+Temple of the Dragon Queen|17|16
+Taiga|15|2
+Fabled Passage|14|-1
+Disciple of Freyalise|13|2
+Training Compound|12|4|120
+Evolving Wilds|12|-12
+Rugged Highlands|12|0
+Grove of the Burnwillows|12|3
+Highland Forest|10|3
+Myriad Landscape|9.2|-6
+Unclaimed Territory|9.2|7
+Secluded Courtyard|8.9|7
+Prismatic Vista|7.9|1
+Windswept Heath|7.2|-3
+Bloodstained Mire|6.6|-2
+Arid Mesa|6.2|-3
+Misty Rainforest|5.9|-3
+Verdant Catacombs|5.9|-3
