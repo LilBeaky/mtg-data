@@ -39,6 +39,21 @@ from collections import Counter, defaultdict
 from . import logparse as lp
 from .held import runs_under, seat_decks
 
+_BG = {}
+
+
+def _is_background(name):
+    """A Background (a second commander that buffs the creature commander): Flaming Fist."""
+    if name not in _BG:
+        try:
+            from . import decks   # puts scripts/ on the path for mtg
+            import mtg
+            c, _ = mtg.find(name)
+        except Exception:
+            c = None
+        _BG[name] = bool(c) and "background" in (c.get("type_line") or "").lower()
+    return _BG[name]
+
 ROUND = 4                       # table turns in a round, for the "within N rounds" windows
 SEAT = re.compile(r"Ai\((\d)\)")
 TURN = re.compile(r"^Turn: Turn (\d+) \(Ai\((\d)\)")
@@ -176,9 +191,12 @@ def _seats_of(r, g, hero, tag):
         for p in plans:
             if p.get("phase") != "MAIN1" or p["t"] in seen or p["t"] in planned: continue
             lo = [x for x in p.get("left_out") or [] if x["card"] in cmd_names and x.get("cost", 99) <= p.get("budget", 0)]
+            b0, b1 = boards.get(p["t"] - 1, {}).get(s), boards.get(p["t"], {}).get(s)
+            # patch 124: a Background is planned first only once a creature commander is out (the user, 2026-11-17)
+            out_now = any(c.get("zone") == "Battlefield" for c in ((b1 if b1 is not None else b0) or {}).get("cmd") or [])
+            lo = [x for x in lo if not _is_background(x["card"]) or out_now]
             if not lo: continue
             seen.add(p["t"])
-            b0, b1 = boards.get(p["t"] - 1, {}).get(s), boards.get(p["t"], {}).get(s)
             # the first cast only: a recast keeps its diminishing value on purpose (patch 116, the user's rule)
             if b0 is not None:
                 if any(c.get("casts", 0) for c in b0.get("cmd") or [] if c["n"] == lo[0]["card"]): continue

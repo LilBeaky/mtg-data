@@ -1,0 +1,35 @@
+diff --git a/forge-ai/src/main/java/forge/ai/TurnPlan.java b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+index 3a96502..149daa0 100644
+--- a/forge-ai/src/main/java/forge/ai/TurnPlan.java
++++ b/forge-ai/src/main/java/forge/ai/TurnPlan.java
+@@ -1736,6 +1736,15 @@ public final class TurnPlan {
+     static final int EARLY_RAMP_UNDER = 5;
+     static final double TRANSMUTE = 150;
+     static final double COMMANDER_PLAN = Double.parseDouble(System.getProperty("fishpond.commanderPlan", "1000"));   // patch 112
++    static final double BACKGROUND_SHARE = Double.parseDouble(System.getProperty("fishpond.backgroundShare", "0.8"));   // patch 124
++
++    /** fishpond patch 124: one of the seat's creature commanders is on the battlefield (what a Background buffs). */
++    static boolean creatureCommanderOut(final Player ai) {
++        for (final Card k : ai.getCommanders()) {
++            if (k.isCreature() && k.isInZone(ZoneType.Battlefield)) return true;
++        }
++        return false;
++    }
+     static final double KEY_PICK = 250;          // fishpond patch 101: a tutor's key-card pick to hand or the top
+     static final double DRAW_LIFE = 5;   // fishpond patch 76: a life point lost to a draw punisher (a card in hand is 80)   // fishpond patch 73: a transmute is a tutor (Gamble, Long-Term Plans plan on their own value)
+ 
+@@ -1947,6 +1956,14 @@ public final class TurnPlan {
+             if (c.isCreature() && AiController.commanderRulesOn() && ai.getCommanderCast(c) == 0 && !ComputerUtil.aiLifeInDanger(ai, true, 0)) {
+                 v += COMMANDER_PLAN;
+             }
++            // fishpond patch 124: a Background is a commander too, a little below the creature, and only once a creature
++            // commander it can buff is on the battlefield (the user, 2026-11-17: "It should get a slightly reduced modifier,
++            // because it's hingent on the creature being out, but yes"; baseline125_20261104: Flaming Fist sat out 142 of
++            // Wilson's plans at 285-345). Before the creature is out the creature's own first cast comes first (patch 112).
++            if (!c.isCreature() && c.getType().hasSubtype("Background") && AiController.commanderRulesOn()
++                    && ai.getCommanderCast(c) == 0 && !ComputerUtil.aiLifeInDanger(ai, true, 0) && creatureCommanderOut(ai)) {
++                v += COMMANDER_PLAN * BACKGROUND_SHARE;
++            }
+         }
+         v += commanderDoubler(ai, c);
+         final java.util.function.ToDoubleBiFunction<Player, Card> sv = SETUP_VALUE;

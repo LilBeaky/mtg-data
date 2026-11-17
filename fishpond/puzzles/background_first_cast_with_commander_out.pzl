@@ -1,0 +1,17 @@
+# title: Wilson's deck, Wilson on the battlefield, Flaming Fist (his Background) in the command zone, three lands and Strong Back in hand: it casts Flaming Fist, the second commander's first cast, over Strong Back (patch 124; the user, 2026-11-17: a Background gets a slightly reduced commander modifier, hinged on the creature being out; baseline125_20261104: Fist sat out 142 of Wilson's plans at 285-345 behind 3-drops). commander_before_buff_wilson is the guard: with Wilson still in the command zone, Wilson comes first.
+# card: Flaming Fist
+# deck: Ians_Wilson_Auras
+# turns: 1
+# expect: cast Flaming Fist
+# forbid: cast Strong Back
+p0life=40
+p1life=40
+turn=5
+activeplayer=p0
+activephase=MAIN1
+p0command=Flaming Fist|IsCommander
+p0battlefield=Wilson, Refined Grizzly|IsCommander;Forest;Plains;Forest
+p0hand=Strong Back
+p0library=Forest;Plains;Forest;Plains;Forest;Plains;Forest;Plains;Forest;Plains
+p1battlefield=Forest;Forest;Forest
+p1library=Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest;Forest

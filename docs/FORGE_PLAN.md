@@ -25,14 +25,14 @@ item is done, move its numbers into the commit and FORGE_ISSUES and delete it he
 - **Claude's background tasks die at 2 hours.** Split batches into resumable chunks under that (`run --resume` finishes a cut-off pod), or hand the user the command for long studies (the user's preference as runs grow).
 - **Seeds replay exactly.** One game replays alone from one line of a run's `logs/plan_*.tsv` with ForgeRunner (the command line is in `runner.execute`; `fishpond replay POD GAME` does it for a study pod); the game log is printed only when the game ends. Profile with `-XX:StartFlightRecording=...,settings=profile` and dump mid-turn with `jcmd <pid> JFR.dump`; add `-XX:FlightRecorderOptions:stackdepth=2048` and read it with `jfr print --stack-depth 2048` (the defaults, 64 and 5 frames, hide which caller is slow). Time an A/B as a pair run side by side: load alone changes a big game's time 1.5-2x, and past about 6 busy JVMs a 90 s decision can cross the 120 s AI limit and change the game. A patch that changes play makes games diverge from older runs on the same seed: compare distributions, not paired games, across it.
 - **Writing a patch:** `~/forge-cache/forge-src-2.0.15` is CRLF and doesn't match the tag; fetch the files with `forge.FORGE_SRC_URL` into a scratch git repo, apply 01..NN, edit, `git diff` > the next patch; procedure and table in FORGE_ISSUES "Patches". To see a debug println, call `fishpond.puzzles.run_one(path)` and grep its lines. Before a Forge perf or crash patch from scratch, check Manabrew's fork (github.com/witchesofthehill/forge, branch `manabrew`) for new commits.
-- **Before pushing:** `python -m fishpond check` (the checks the branch's changes need; FISHPOND.md "Before a push"), and the full suite (`fishpond check --full`: 361 puzzles, 356 pass, 5 known gaps on patches 01-123) before a long study. Stage only your own files, fetch/rebase, never force. Write findings into this doc as soon as they're known.
+- **Before pushing:** `python -m fishpond check` (the checks the branch's changes need; FISHPOND.md "Before a push"), and the full suite (`fishpond check --full`: 362 puzzles, 357 pass, 5 known gaps on patches 01-124) before a long study. Stage only your own files, fetch/rebase, never force. Write findings into this doc as soon as they're known.
 - `--sim hybrid` prints hundreds of "AI failed to play" lines a game (lookahead test-casts unaffordable spells): noise, not a stuck card.
 - **Why did the AI not cast X?** Replay the game with a debug copy of one class first on the classpath: copy the file from the scratch source tree (or `forge-src-2.0.15` if no patch touches it), add a println, `javac -cp <patched classes>;<forge jar>` into a folder, prepend that folder to `-cp`. Nothing in the repo changes. `AiController.canPlayAndPayFor` printing its `AiPlayDecision` per spell and `OnePlaySafetyChecker.isAcceptable` printing scores is the usual start.
 - **After a study:** `fishpond pilot STUDY_DIR` (the pilot-failure table, per 100 seat-games; `--vs OLD_DIR` for before/after), `fishpond lines` (win lines), `fishpond held` (dead cards), and the study's `index.html` for reading games.
 
 ## Where things stand (2026-10-30)
 
-- **Build:** Forge 2.0.15 + patches 01-123 (crash fixes, speed, and the pilot), 93 card overrides, 361 puzzles. The pilot, at every
+- **Build:** Forge 2.0.15 + patches 01-124 (crash fixes, speed, and the pilot), 93 card overrides, 362 puzzles. The pilot, at every
   pilot seat: the tutor policy (`policy.py`, `PilotPolicy.java`), the turn plan (patch 64 on, with the commander in the plan,
   patch 112), the threat model (counters, removal, wipes and holding mana, `ThreatModel.java`), mulligans by hand score, loop
   shortcuts and jumps, library reserves. Each patch's why and evidence is its FORGE_ISSUES row.
@@ -90,9 +90,9 @@ item is done, move its numbers into the commit and FORGE_ISSUES and delete it he
 ## Open: pilot failures still measured
 
 From `pilot_20261028c` and the miss reviews, rechecked on the 01-123 baseline (2026-11-17, numbers above).
-- **Wilson's Background left out of the plan** (new; 142 plans in the baseline): Flaming Fist is a commander but the turn plan
-  values it like any 3-drop, so the first-cast rule never applies to it. Whether a Background gets the commander's first-cast
-  priority is the user's call (open questions).
+- **Wilson's Background left out of the plan** (142 plans in the baseline): Flaming Fist is a commander but the turn plan
+  valued it like any 3-drop. Patch 124 (2026-11-17, the user's call): a Background's first cast gets 80% of the commander
+  value once a creature commander is out; `fishpond pilot` counts a Background as left out only then. Not yet measured in games.
 - **Lines with real misses (baseline):** Zur's Approach of the Second Sun played on 17 of 48 available turns (8 of 31 before);
   Zur's Triskaidekaphile at a full hand 0 of 9; Niv's Sheoldred + Niv 6 of 29 and Bolas's Citadel 6 of 16 (unchanged); Jarad
   eats something big 24 of 53; Ragost with fodder 141 of 254; Heliod + Ballista 16 of 23.
@@ -124,7 +124,8 @@ From `pilot_20261028c` and the miss reviews, rechecked on the 01-123 baseline (2
   block declaration left exact; (b) no gang blocks in predictions past a board size; (c) on a timeout, remake the decision without
   lookahead instead of passing; (d) leave it; (e) raise the AI limit and let the sim take what it needs. The user (2026-10-30):
   leans to (e), decided on the 01-123 baseline's count. **The count (2026-11-17): 0 of 300 games** (no decision crossed 120 s,
-  none finished in hurry mode), with Heliod, Xyris, Lumra and Zur all at the table; the report keeps warning if one does.
+  none finished in hurry mode), with Heliod, Xyris, Lumra and Zur all at the table. **Decided (the user, 2026-11-17): (d) leave
+  it**; the report keeps warning if one crosses, and a recurrence reopens it.
 - **Lumra's token floods** are now the slow-game problem, not the AI limit: both baseline game timeouts (30 min) had Lumra at the
   table. Profile one (T06 g2 or T10 g3 of `baseline125_20261104`), then decide on d7334e07 below.
 - **Held back from Manabrew's fork:** d7334e07b374, caching the CR 613 dependency order between static-ability passes (65% of
@@ -214,9 +215,5 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
 
 ## Open questions for the user
 
-- **Big-board decisions over 120 s:** options (a)-(e) above (the user leans to raising the limit). The 01-123 baseline counted
-  none in 300 games: (d) leave it, or (e) raise the limit anyway?
-- **Partner Backgrounds:** should Wilson's Flaming Fist (and any Background) get the commander's first-cast priority in the turn
-  plan, or stay a normal card? The baseline flags it in nearly every Wilson seat.
 - **Gauntlet beyond 16 decks:** when new decks pass their trial, a round-robin of more than 16 needs a different pod design (or
   two 16-deck lineups). Which decks are in is the user's call.
