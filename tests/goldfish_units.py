@@ -1426,6 +1426,25 @@ def _():
     G.build_pool(); G.cast_loop(activate=False)
     return ZK["Mystical Tutor"] not in G.hand
 
+# ---- searches that reveal several cards and hand you fewer (Klauth audit: Signal the Clans read as three tutors)
+KNAMES = ["Signal the Clans", "Gifts Ungiven", "Intuition", "Fork in the Road", "Realms Uncharted"]
+KRAW = {c["name"]: c for c in json.load(open("data/trimmed_scryfall_v2.json", encoding="utf-8")) if c["name"] in set(KNAMES)}
+KK = {n: g.compile_card(KRAW[n], g.ALL5) for n in KNAMES}
+
+@check("kept count: Signal the Clans 1 of 3 at random, Intuition 1, Gifts Ungiven 2 of 4, all modeled")
+def _():
+    n = {k: [e[3] for e in KK[k].spell if e[0] == "tutor"] for k in ("Signal the Clans", "Intuition", "Gifts Ungiven")}
+    return n == {"Signal the Clans": [1], "Intuition": [1], "Gifts Ungiven": [2]} \
+        and all(KK[k].status == "modeled" for k in n)
+@check("kept count: Fork in the Road finds 1 land, Realms Uncharted 2 (the rest go to the graveyard)")
+def _():
+    return [e[1] for e in KK["Fork in the Road"].spell if e[0] == "land_search"] == [1] \
+        and [e[1] for e in KK["Realms Uncharted"].spell if e[0] == "land_search"] == [2]
+@check("tutors.py kept count: Signal the Clans finds 1 to hand; Gifts Ungiven 2 to hand, not the graveyard")
+def _():
+    s, gi = tu.card_tutors(KRAW["Signal the Clans"])[0], tu.card_tutors(KRAW["Gifts Ungiven"])[0]
+    return (s.target.count, s.dest, gi.target.count, gi.dest) == (1, "hand", 2, "hand")
+
 def main():
     fails = 0
     for name, fn in CHECKS:

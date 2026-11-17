@@ -190,6 +190,26 @@ def _card_names():
     if not _NAMES: _NAMES.update(c["name"].lower() for c in mtg.cards())
     return _NAMES
 
+KEEP_RX = [   # searches that reveal several cards and hand you fewer: (pattern, kept from group 1 or "rest", note)
+    (re.compile(r"choose (one|two) of them at random and put (?:that card|those cards) into your hand", re.I),
+     None, "you get {n} of them at random"),                                           # Signal the Clans
+    (re.compile(r"opponent chooses (one|two)\b[^.]*\.\s*put (?:that card|the chosen cards?) into your hand", re.I),
+     None, None),                                                                      # Intuition
+    (re.compile(r"opponent chooses (one|two)\b[^.]*\.\s*(?:put|shuffle) the chosen cards? into your (?:graveyard|library)"
+                r"[^.]*?\bthe rest into your hand", re.I), "rest", None),                # Gifts Ungiven, Threats Undetected
+    (re.compile(r"put (one) into your hand and the other into your graveyard", re.I), None, None)]   # Jarad's Orders
+
+def kept_count(count, after):
+    """Cards a search actually gives you, read from the text after it: (count, note or None).
+    Signal the Clans reveals three and hands you one at random; Gifts Ungiven reveals four and hands you two."""
+    for rx, mode, note in KEEP_RX:
+        m = rx.search(after)
+        if m:
+            n = NUMBER[m.group(1).lower()]
+            kept = max(1, count - n) if mode == "rest" else min(n, count)
+            return kept, (note.format(n=m.group(1).lower()) if note else None)
+    return count, None
+
 def parse_target(what, self_card):
     """'an enchantment card with mana value 3 or less' -> Target."""
     raw = what.strip()
@@ -369,6 +389,9 @@ def card_tutors(c):
                 if dest == "exile" and not re.search(r"\b(?:cast|play)\b[^.]*\b(?:exiled|that card|those cards|it|them)|put the exiled card into your hand|may cast spells? from among", text, re.I):
                     dest = "exile (no access)"
                 tgt = parse_target(m.group("what"), c)
+                tgt.count, note = kept_count(tgt.count, after)
+                if note: tgt.approx.append(note)
+                if any(rx.search(after) for rx, _, _ in KEEP_RX): dest = "hand"   # Gifts Ungiven: the chosen to the graveyard, the rest to hand
                 if re.search(r"opponent chooses|target opponent chooses", line, re.I): tgt.approx.append("opponent picks which card you get")
                 if self_target: tgt.approx.append("you must target yourself (the other player also tutors)")
                 if each: tgt.approx.append("each player searches: your opponents tutor too")

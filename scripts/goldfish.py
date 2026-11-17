@@ -442,6 +442,7 @@ def _fx_search(m):
         mc = re.match(r"(up to )?(\w+) ", head + " ")
         count = num(mc.group(2)) if mc and mc.group(2) not in ("a", "an") else 1
         if not isinstance(count, int): count = 1
+        count, _ = tu.kept_count(count, s + m.string[m.end():m.end() + 250])     # Fork in the Road, Realms Uncharted
         ldest = ("split" if re.search(r"one onto the battlefield tapped and the other into your hand", s)
                  else "top" if "on top" in s else "bf_t" if "onto the battlefield tapped" in s
                  else "bf" if "onto the battlefield" in s else "hand")
@@ -462,6 +463,9 @@ def _fx_search(m):
     if rm:                                                     # Birthing Pod, Neoform, Eldritch Evolution: tied to the fodder
         tg.approx = [a for a in tg.approx if not a.startswith("mana value")]
         tg.approx.append(f"mana value {'=' if rm.group(1) == 'equal to' else '<='} sacrificed {rm.group(3)}'s + {num(rm.group(2))}")
+    # Signal the Clans: one of three (its 'If you reveal ...' sentence is gone from m.string, so the card's text too)
+    tg.count, note = tu.kept_count(tg.count, s + m.string[m.end():m.end() + 250] + " " + (_CTX.get("text") or ""))
+    if note: tg.approx.append(note)
     return ("tutor", tg, dest, max(1, min(tg.count, 7)))
 
 def rel_mv(tg):
@@ -1089,8 +1093,8 @@ def parse_fx(s):
             if cond:
                 inner, _ = parse_fx(x[cm.start("rest"):])
                 if inner: (first if not keep else conds).append(("cond", cond, inner))   # text order: a leading 'If' first
-            elif _CTX.get("left") is not None and not LEFT_OPP.search(x.lower()) and (LEFT_VERB.search(x[cm.start("rest"):].lower())
-                                                                                 or _probe(x[cm.start("rest"):])):
+            elif _CTX.get("left") is not None and not LEFT_OPP.search(x.lower()) and not any(r.search(x) for r, _, _ in tu.KEEP_RX) \
+                    and (LEFT_VERB.search(x[cm.start("rest"):].lower()) or _probe(x[cm.start("rest"):])):   # KEEP_RX: Signal the Clans
                 _CTX["left"].append(x.strip()[:90])      # an unread condition: its effect is dropped, and the line is partial
         fx, t2 = parse_fx(" ".join(keep)) if keep else ([], False)
         return first + fx + conds, tax or t2
@@ -1138,6 +1142,7 @@ def _leftover(masked, orig=None):
         if osent and OPP_LEAD.match(osent) and not re.search(r"(?:,|\band|\bthen) you\b", osent): continue
         if "#" in was and re.match(r"(?:then )?put (?:that card|it|them|those cards) (?:onto the battlefield|into your hand)", sent) \
                 and not re.search(r"\bif\b|\bunless\b", sent): continue    # a search's destination, read by _fx_search
+        if any(rx.search(was + " " + sent) for rx, _, _ in tu.KEEP_RX): continue  # how many a search keeps (tu.kept_count)
         bare = re.sub(r"#+", " ", LEFT_GLUE.sub("", sent))
         if "may pay {" in masked: bare = re.sub(r"^\s*if (?:the|that) player doesn't,?", "", bare)   # the tax clause (parse_fx's tax)
         if LEFT_VS.search(bare) or (spell and re.fullmatch(r"\s*exile ~\.?\s*", bare)): continue   # aimed at opponents; a spell exiling itself
