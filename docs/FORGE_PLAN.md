@@ -65,8 +65,21 @@ item is done, move its numbers into the commit and FORGE_ISSUES and delete it he
     of them 30-minute timeouts; one sat 20 minutes in a turn with 768 Scute Swarms: profile it, then decide on Manabrew's
     d7334e07 below); GC threads per JVM (`-XX:ParallelGCThreads=2` in `FISHPOND_JVM`, a paired timing run); the 2,400 MB a
     JVM is budgeted against a median peak of 888 MB.
-- **Next:** the baseline on 01-123 (the user runs it; the round-robin, `fishpond/pods/roundrobin16.txt`), read with `fishpond
-  pilot --vs pilot_20261028c`. It also answers whether decisions still cross the 120 s AI limit (open question below).
+- **Baseline on 01-123, read 2026-11-17** (`baseline125_20261104`: the round-robin, 20 pods x 15 games, 300 games, 1200
+  seat-games; run 2026-11-04 before the queue and the id-counter reset, so its later-in-JVM games carry #10's play-order noise).
+  Pilot sound at the engine level: **0 AI decision timeouts, 0 hurried evals, 0 lookahead fallbacks or crash replays** in 300
+  games. Lookahead paused on 1-16 of a pod's ~120 own turns, nearly all for a prepared card (#1). 296 natural endings; unfinished:
+  2 game timeouts at 30 min (T06 g2, T10 g3, both with Lumra at the table), 1 turn cap (T06 g1), 1 natural draw (T02 g8).
+  `fishpond pilot`, per 100 seat-games (`pilot_20261028c` on 01-116 in brackets; that run isn't on this box, so the comparison
+  is with the numbers above, not `--vs`; the meters became `fishpond pilot` on 2026-10-30 from the same scratch pass):
+  commander affordable and left out 7.3 (19.0), of which Wilson's seat is 96 per 100 of its seats: his Background, Flaming Fist,
+  142 of the flagged plans (valued 285-345, no first-cast bonus) and Wilson 60; everyone else about 1.4. Engines not played 0.9
+  (1.5); decked itself 1.4 (0.8; Chulane 13 per 100 of its seats); killed itself 0.5 (0.5); removal held then killed by the
+  target's owner 4.4 (0.8; Jarad 16, Yusri 12: check the definition before reading it as a regression); castable held 3+ turns
+  with mana idle 24.2 (43.7; the 2026-10-30 Rule of Law fix explains part); missed land drops T1-4 6.4% (7.0%); loops stopped
+  2.3 (3.5); commander never resolved 18.3 (18.1; Niv-Mizzet 61, Witherbloom 40, Zhulodok 35, Lumra 32 per 100 of their seats).
+  Meters new since: closer available and never played 3.0 (Zur 21, Niv 12), counter kept then killed by the caster 3.4 (Zur,
+  Yusri 19, Araumi 17), wipe refused then dead within 2 rounds 3.8 (25 of them would have hit the killer).
 - **Direction (the user, 2026-10-30):** most decks play reasonably now; pilot tuning winds down and the focus moves to tools the
   user runs through the simulator, starting with the swap-list tester (Backlog). Pilot fixes from here are for failures the baseline
   measures, not new tuning.
@@ -76,16 +89,24 @@ item is done, move its numbers into the commit and FORGE_ISSUES and delete it he
 
 ## Open: pilot failures still measured
 
-From `pilot_20261028c` and the miss reviews; each is a candidate only if the 01-123 baseline still shows it.
-- **Castable cards held 3+ turns with mana idle** (43.7 per 100 seat-games, flat). Mostly cards Forge has no good moment for:
+From `pilot_20261028c` and the miss reviews, rechecked on the 01-123 baseline (2026-11-17, numbers above).
+- **Wilson's Background left out of the plan** (new; 142 plans in the baseline): Flaming Fist is a commander but the turn plan
+  values it like any 3-drop, so the first-cast rule never applies to it. Whether a Background gets the commander's first-cast
+  priority is the user's call (open questions).
+- **Lines with real misses (baseline):** Zur's Approach of the Second Sun played on 17 of 48 available turns (8 of 31 before);
+  Zur's Triskaidekaphile at a full hand 0 of 9; Niv's Sheoldred + Niv 6 of 29 and Bolas's Citadel 6 of 16 (unchanged); Jarad
+  eats something big 24 of 53; Ragost with fodder 141 of 254; Heliod + Ballista 16 of 23.
+- **Held 3+ turns, top cards per deck (baseline `fishpond held`):** Shadowborn Apostle 20 (Erebos), Sprout Swarm 23 held as an
+  instant (Witherbloom), Quirion Ranger 11 (Lumra, 9 idle), Perpetual Timepiece 9 (Jarad, 7 idle), Aether Channeler 10 (Zur),
+  Glimpse the Unthinkable 10 (Araumi), Soul's Majesty 8 (Omnath), Chatterstorm 8 (Witherbloom, 7 idle).
+- **Castable cards held 3+ turns with mana idle** (43.7 per 100 seat-games on 01-116, 24.2 on 01-123). Mostly cards Forge has no good moment for:
   Perpetual Timepiece (flagged; needs logic for its exile-and-shuffle ability), Shadowborn Apostle (Erebos casts one at a time
   instead of building to six), Diplomatic Immunity, Regrowth and Soul's Majesty (Omnath), Wander in Death (Zur), Toxic Deluge and
   Black Sun's Zenith (Witherbloom). Some holds are right; Apostles and the modal spells look like AI gaps. The user (2026-10-30):
   chase out every dead card eventually; not started (start from the baseline's `fishpond pilot` and `held` lists).
 - **Missed land drops on turns 1-4** (7%, flat after the free-mulligan rule): the seats that sent a 2-land seven back won no more
   often than 2-land keeps did. Monitor (the user, 2026-10-30): could be no land in hand, or luck, as much as land counts.
-- **Loops stopped as stalled or at the goal** (3.5): Sprout Swarm and Walking Ballista mostly.
-- **Lines with real misses:** Niv's Citadel (6 of 16 available), Zur's Approach (8 of 31).
+- **Loops stopped as stalled or at the goal** (3.5; 2.3 on 01-123, Witherbloom 23 per 100 of its seats): Sprout Swarm and Walking Ballista mostly.
 - **Removal against noncreature engines** (Flaming Fist, Krark's Thumb, Lightning Greaves, Astral Drift held against all game):
   measured cost weak (the target's controller won 29% vs a 25% base rate). The removal floor is the user's design; the idea if it
   grows: judge an attachment by its host's value against the creature floor, and give engines a fixed place above the
@@ -102,7 +123,10 @@ From `pilot_20261028c` and the miss reviews; each is a candidate only if the 01-
   changing play: (a) tighter patch-11 caps for predicted combats only (`maxBlockPairs` 400, `maxReleaseSteps` 12 today), the real
   block declaration left exact; (b) no gang blocks in predictions past a board size; (c) on a timeout, remake the decision without
   lookahead instead of passing; (d) leave it; (e) raise the AI limit and let the sim take what it needs. The user (2026-10-30):
-  leans to (e), decided on the 01-123 baseline's count.
+  leans to (e), decided on the 01-123 baseline's count. **The count (2026-11-17): 0 of 300 games** (no decision crossed 120 s,
+  none finished in hurry mode), with Heliod, Xyris, Lumra and Zur all at the table; the report keeps warning if one does.
+- **Lumra's token floods** are now the slow-game problem, not the AI limit: both baseline game timeouts (30 min) had Lumra at the
+  table. Profile one (T06 g2 or T10 g3 of `baseline125_20261104`), then decide on d7334e07 below.
 - **Held back from Manabrew's fork:** d7334e07b374, caching the CR 613 dependency order between static-ability passes (65% of
   `checkStaticAbilities` on its wide boards). It keys on every Tracker view change and reuses the real pass's order for the AI's
   LKI passes, a small approximation. Profile a big board on 01-123 first; port it only if dependency ordering is still hot, then
@@ -152,6 +176,9 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
   - **Land count stays fixed** (the user, 2026-10-30): a build swaps lands for lands; mana bases are the next tool's job.
   - **Open:** how locked cards are marked (a `# lock:` list header or a flag). The existing `--variant` (named builds on the
     same seeds and pods) is the stage-3 path; it has never answered a real question yet.
+  - **Validate before use** (FABLE_ROADMAP, 2026-11-09): a synthetic deck with a planted, known effect; the estimator must
+    recover it with an honest interval before the tester answers a real question. Same-seed pairs need exact replays, so
+    #10's garbage-collector item comes first.
 - **Mana-base optimizer** (after the swap-list tester; the user, 2026-10-30): the same process over the land section, a
   separate tool, using what the other tools measure (landbase.py, manasim.py, the swap tester's mana metrics).
 - **Report:** a headline block (win rate and interval, how it wins and loses, pilot errors beside it with game and turn); combined
@@ -165,6 +192,16 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
 - **Remaining AI-flagged cards:** known gap Biorhythm (puzzle marked `known_gap`); untested flagged cards (`fishpond flags
   --smoke`); Araumi's other flags (Dakmor Salvage, Lim-Dûl's Vault, Toxic Deluge).
 - **Landbase tempo validation logging:** `docs/LANDBASE_TEMPO_PLAN.md` step 3.
+- **Review and audit** (from `docs/FABLE_ROADMAP.md`, 2026-11-09, a local draft that ranks this plan for long sessions on the
+  strongest model: it designs and diagnoses, a cheaper model does the mechanical rest; commit per stage):
+  - an adversarial review of patches 107-123 and the tutor, threat and sequencing code against the standing rules above;
+  - a statistical audit of `stats_math.py` and every interval the reports print (paired statistics for same-seed comparisons,
+    multiple comparisons in the swap tester's sortable output);
+  - sim against the yardstick: why the sim ranks the big-turn decks (Yusri, Klauth, Zur, Chulane) below the user's yardstick
+    (pilot, engine, or the yardstick), with controlled runs and a written account;
+  - the data layer (per-seat turn snapshots, then the card ledger, then a win-probability model): waits for the user and the
+    card-advantage definition (memory: fishpond-data-roadmap);
+  - watch-list triage (below): cheap to reproduce, sometimes a systemic bug.
 
 ## Watch list (seen once, not filed)
 
@@ -177,7 +214,9 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
 
 ## Open questions for the user
 
-- **Big-board decisions over 120 s:** options (a)-(e) above (the user leans to raising the limit), decided after the 01-123
-  baseline counts AI timeouts.
+- **Big-board decisions over 120 s:** options (a)-(e) above (the user leans to raising the limit). The 01-123 baseline counted
+  none in 300 games: (d) leave it, or (e) raise the limit anyway?
+- **Partner Backgrounds:** should Wilson's Flaming Fist (and any Background) get the commander's first-cast priority in the turn
+  plan, or stay a normal card? The baseline flags it in nearly every Wilson seat.
 - **Gauntlet beyond 16 decks:** when new decks pass their trial, a round-robin of more than 16 needs a different pod design (or
   two 16-deck lineups). Which decks are in is the user's call.

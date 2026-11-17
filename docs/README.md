@@ -46,7 +46,7 @@ gauntlet growth).
 
 | Doc | What it was |
 |---|---|
-| `TUTOR_PLAN.md` | Tutor math in tutors.py, manasim.py and the audit (phases 0-4 done 2026-10-08). |
+| `TUTOR_PLAN.md` | Tutor math in tutors.py, manasim.py and the audit (phases 0-4 done 2026-10-08). Sample report: `examples/tutors_zur_2026-10-08.md` (Zur's tutor network). |
 
 ## Frozen (2026-10-01; simulation moved to Forge)
 
