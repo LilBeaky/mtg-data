@@ -5,17 +5,16 @@
 
 PODS lists one pod a line, 'ID|HERO|OPP1|OPP2|OPP3' (deck names in decks/ without .txt, or paths; '#' starts a comment),
 as data/fishpond/varied_20261007/pods.txt. Pod k (1-based, in file order) plays --games games on seed SEED + 100*k into
-DIR/<ID>_<HERO>, so a study is the same games however it is split. Lanes run pods side by side (each pod uses --jobs JVMs;
-two lanes of 5 suit this machine). Running the same command again skips finished pods and resumes cut-off ones (run
---resume). --max-minutes stops starting new pods after that long (finished pods stay; a running pod is completed), for
-sessions with a time limit: rerun to continue. The report follows the last pod; --report prints it alone.
+DIR/<ID>_<HERO>, so a study is the same games however it is split. The study's games share one queue on --lanes x --jobs
+JVMs (2 x 5 suits this machine): a free JVM takes the next game, whichever pod it belongs to. Running the same command
+again skips finished pods and resumes cut-off ones (run --resume). --max-minutes stops starting new pods after that long
+(finished pods stay; a started pod is completed), for sessions with a time limit: rerun to continue. The report follows
+the last pod; --report prints it alone.
 """
 import json
 import os
 import queue
-import subprocess
 import sys
-import threading
 import time
 from collections import Counter, defaultdict
 
@@ -55,42 +54,104 @@ def pod_state(d):
 
 
 def run_study(args):
+    """Every pod's games go through one pool of JVMs (runner.Pool, lanes x jobs of them): a JVM that finishes a game takes
+    the study's next one, whichever pod it belongs to, so a 30-minute game holds one JVM while the others move on to the
+    next pods. Pods are prepared as the queue reaches them and reported as their last game ends, all in this process:
+    the harness and the patched Forge classes are built once, so an edit to fishpond/ mid-study no longer changes the
+    later pods' Java (their deck lists and Python still load as each pod is prepared)."""
+    import contextlib, threading
+    from . import cli, forge, runner
     pods = read_pods(args.pods)
     out = os.path.abspath(args.out)
     os.makedirs(out, exist_ok=True)
-    todo = queue.Queue()
+    todo = []
     for k, (pid, hero, opps) in enumerate(pods, 1):
         d = pod_dir(out, pid, hero)
         st = pod_state(d)
         if st == "done": continue
         if st == "new":
-            cmd = [sys.executable, "-m", "fishpond", "run", deck_path(hero), *sum((["--opp", deck_path(o)] for o in opps), []),
-                   "--trials", str(args.games), "--seed", str(args.seed + 100 * k), "--sim", args.sim, "--opp-sim", args.sim,
-                   "--jobs", str(args.jobs), "--quiet", "--out", d]
+            argv = ["run", deck_path(hero), *sum((["--opp", deck_path(o)] for o in opps), []),
+                    "--trials", str(args.games), "--seed", str(args.seed + 100 * k), "--sim", args.sim, "--opp-sim", args.sim,
+                    "--jobs", str(args.jobs), "--quiet", "--out", d]
         else:
-            cmd = [sys.executable, "-m", "fishpond", "run", "--resume", d, "--jobs", str(args.jobs)]   # same JVMs (and heap) as a start
-        todo.put((pid, d, cmd, st))
-    n = todo.qsize()
-    print(f"fishpond study: {len(pods)} pods, {len(pods) - n} done, {n} to run on {args.lanes} lane(s) x {args.jobs} JVMs -> {out}")
+            argv = ["run", "--resume", d, "--jobs", str(args.jobs), "--quiet"]
+        todo.append((pid, d, argv, st))
+    # JVMs and heap as before the pool: --jobs per lane (cut to what free memory holds), each JVM with a lane's share of heap
+    full = args.sim == "full"
+    per_lane = max(1, min(args.jobs, runner.max_jobs(full)))
+    slots = max(1, args.lanes) * per_lane
+    print(f"fishpond study: {len(pods)} pods, {len(pods) - len(todo)} done, {len(todo)} to run on one queue, {slots} JVMs "
+          f"({args.lanes} lane(s) x {per_lane}) -> {out}")
     print(f"  to continue later (or locally): python -m fishpond study {args.pods} --out {out} --games {args.games} --seed {args.seed} "
-          f"--lanes {args.lanes} --jobs {args.jobs} --sim {args.sim}")
+          f"--lanes {args.lanes} --jobs {args.jobs} --sim {args.sim}", flush=True)
     t0 = time.time()
-    lock = threading.Lock()
+    say = lambda pid, what: print(f"  {time.strftime('%H:%M:%S')} {pid} {what}", flush=True)
 
-    def lane():
-        while True:
-            if args.max_minutes and time.time() - t0 > args.max_minutes * 60: return
-            try: pid, d, cmd, st = todo.get_nowait()
-            except queue.Empty: return
-            with lock: print(f"  {time.strftime('%H:%M:%S')} {pid} {'resume' if st == 'partial' else 'start'}", flush=True)
-            os.makedirs(d, exist_ok=True)
-            with open(d + ".log", "a", encoding="utf-8") as fh:
-                rc = subprocess.run(cmd, cwd=dk.REPO, stdout=fh, stderr=subprocess.STDOUT).returncode
-            with lock: print(f"  {time.strftime('%H:%M:%S')} {pid} {'done' if rc == 0 else f'exit {rc} (see {d}.log)'}", flush=True)
+    def prepare(pid, d, argv, st):
+        """A pod's context and its games as pool units, or None when it can't start (the reason goes to its .log)."""
+        a = cli.parser().parse_args(argv)
+        try:
+            if st == "new":
+                c = cli.prepare_run(a)
+                if c["engine"] != "harness": sys.exit("fishpond: a study needs the harness engine (javac: python -m fishpond setup --jdk)")
+                entries, c["session"], c["finish"] = cli.harness_plan(c), "s1", cli.finish_harness
+            else:
+                c = cli.prepare_resume(a)
+                entries, c["finish"] = c["todo"], cli.finish_resume
+        except SystemExit as e:
+            with open(d + ".log", "a", encoding="utf-8") as fh: fh.write(f"{e}\n")
+            say(pid, f"not started: {e}")
+            return None
+        units = {}
+        for e in entries:
+            units.setdefault(e["game"], []).append({"id": e["id"], "line": e["line"], "run_dir": c["run_dir"], "session": c["session"], "pod": pid})
+        c.update(pid=pid, d=d, left=len(entries), t0=time.time())
+        return c, list(units.values())
 
-    threads = [threading.Thread(target=lane) for _ in range(max(1, args.lanes))]
-    for t in threads: t.start()
-    for t in threads: t.join()
+    def finish(c):
+        """The pod's records, report and game page (the report goes to its .log, as when a pod was its own process)."""
+        try:
+            with open(c["d"] + ".log", "a", encoding="utf-8") as fh, contextlib.redirect_stdout(fh):
+                c["finish"](c, time.time() - c["t0"])
+            say(c["pid"], "done" if pod_state(c["d"]) == "done" else f"not finished (see {c['d']}.log)")
+        except (SystemExit, Exception) as e:
+            say(c["pid"], f"no report ({type(e).__name__}: {e}; see {c['d']}.log)")
+
+    pool = runner.Pool(slots, runner.xmx_for(per_lane, full), quiet=False) if todo else None
+    uq, ev, active, outstanding = queue.Queue(), queue.Queue(), {}, 0
+    def feed():
+        while (u := uq.get()) is not None: yield u
+    th = threading.Thread(target=lambda: pool.run(feed(), lambda job, ok: ev.put(job)), daemon=True)
+    if pool: th.start()
+    try:
+        while pool:
+            # keep about two games a JVM queued: pods are prepared (decks read, policies written) as the queue reaches them
+            while todo and outstanding < 2 * slots and not (args.max_minutes and time.time() - t0 > args.max_minutes * 60):
+                pid, d, argv, st = todo.pop(0)
+                got = prepare(pid, d, argv, st)
+                if got is None: continue
+                c, units = got
+                say(pid, "resume" if st == "partial" else "start")
+                if not units: finish(c); continue
+                active[pid] = c
+                outstanding += c["left"]
+                for u in units: uq.put(u)
+            if not outstanding: break
+            try: job = ev.get(timeout=1)
+            except queue.Empty:
+                if not th.is_alive() and ev.empty():
+                    print("fishpond study: the JVMs stopped with games left; rerun the line above to continue", flush=True)
+                    break
+                continue
+            outstanding -= 1
+            c = active[job["pod"]]
+            c["left"] -= 1
+            if not c["left"]: finish(active.pop(job["pod"]))
+        uq.put(None)
+        if pool: th.join()
+    finally:
+        if pool: pool.kill()
+    for c in active.values(): finish(c)          # pods cut off with the pool: what they finished, for the resume
     left = sum(1 for k, (pid, hero, _) in enumerate(pods, 1) if pod_state(pod_dir(out, pid, hero)) != "done")
     if left:
         print(f"fishpond study: {left} pod(s) not finished; rerun the line above to continue")

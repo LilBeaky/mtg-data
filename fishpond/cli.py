@@ -183,6 +183,44 @@ def cmd_save(args):
 
 def cmd_run(args):
     if args.resume: return cmd_resume(args)
+    c = prepare_run(args)
+    if c["engine"] == "harness":
+        if not args.quiet: print(f"fishpond: if this session ends early: python3 -m fishpond run --resume {_rel(c['run_dir'])}", file=sys.stderr)
+        wall = runner.execute(harness_plan(c), c["jobs"], c["run_dir"], "s1", args.quiet)
+        finish_harness(c, wall)
+    else:
+        records, wall = runner.run_cli(c["builds"], c["pods"], args.trials, args.seed, args.clock, c["jobs"], c["run_dir"], hero_ai=args.ai,
+                                       opp_ai=c["opp_ai"], quiet=args.quiet)
+        finish_run(c, records, wall)
+
+def harness_plan(c):
+    """A new harness run's games, saved to plan.json before the first one starts (so a cut-off run can be resumed)."""
+    a = c["args"]
+    c["plan"] = runner.plan_harness(c["builds"], c["pods"], 0, a.trials, a.seed, a.cap, a.timeout, c["run_dir"], a.ai, c["opp_ai"],
+                                    a.sim, a.opp_sim, _keys(c["hero"]))
+    runner.save_plan(c["run_dir"], c["plan"])
+    return c["plan"]
+
+def finish_harness(c, wall):
+    a = c["args"]
+    records, missing = runner.collect(c["run_dir"], c["plan"], c["builds"], c["pods"], a.ai, c["opp_ai"])
+    for e in missing: print(f"fishpond: warning: game {e['game']} ({e['label']}) produced no result", file=sys.stderr)
+    finish_run(c, records, wall)
+
+def finish_run(c, records, wall):
+    a, meta = c["args"], c["meta"]
+    # a game with no result (a worker that couldn't start) leaves the run to --resume, which replays it from its seed; a study
+    # skipped such a pod as finished (trends_20261027 T01: two lanes building the card overrides at once)
+    done = len({(r["build"], r["game"]) for r in records})
+    meta.update(wall=wall, complete=c["engine"] != "harness" or done >= a.trials * len(c["builds"]))
+    runner.save(c["run_dir"], meta, records)
+    _report(meta, records, c["builds"], a.json, c["run_dir"])
+    _page(c["run_dir"], a.quiet or a.json)
+
+def prepare_run(args):
+    """Everything a new run needs before its first game: the decks checked and loaded, the run folder and its meta.json.
+    Returns the run's context (a dict) for harness_plan and finish_harness; a study prepares each pod with it and plays
+    every pod's games on one pool of JVMs (fishpond/study.py)."""
     if not args.deck: sys.exit("fishpond: run needs a deck file (or --resume RUN_DIR)")
     os.environ["FISHPOND_PILOT_SEATS"] = "1" if args.pilot_seats == "you" else "all"
     args.trials = 20 if args.trials is None else args.trials
@@ -231,20 +269,8 @@ def cmd_run(args):
             "pilot_patches": [os.path.basename(f) for f in forge.patch_files() if "-pilot-" in f], "overrides": len(forge.override_files()),
             "pilot_seats": args.pilot_seats}
     runner.save(run_dir, meta, [])                  # written first: a cut-off run can be reported on and resumed
-    if engine == "harness":
-        if not args.quiet: print(f"fishpond: if this session ends early: python3 -m fishpond run --resume {_rel(run_dir)}", file=sys.stderr)
-        records, wall = runner.run_harness(builds, pods, args.trials, args.seed, args.cap, args.timeout, jobs, run_dir, hero_ai=args.ai,
-                                           opp_ai=opp_ai, quiet=args.quiet, hero_sim=args.sim, opp_sim=args.opp_sim, keys=_keys(hero))
-    else:
-        records, wall = runner.run_cli(builds, pods, args.trials, args.seed, args.clock, jobs, run_dir, hero_ai=args.ai,
-                                       opp_ai=opp_ai, quiet=args.quiet)
-    # a game with no result (a worker that couldn't start) leaves the run to --resume, which replays it from its seed; a study
-    # skipped such a pod as finished (trends_20261027 T01: two lanes building the card overrides at once)
-    done = len({(r["build"], r["game"]) for r in records})
-    meta.update(wall=wall, complete=engine != "harness" or done >= args.trials * len(builds))
-    runner.save(run_dir, meta, records)
-    _report(meta, records, builds, args.json, run_dir)
-    _page(run_dir, args.quiet or args.json)
+    return {"args": args, "hero": hero, "builds": builds, "pods": pods, "opp_ai": opp_ai, "engine": engine, "jobs": jobs,
+            "run_dir": run_dir, "meta": meta}
 
 def _pods_from_meta(meta, idx):
     fixed, pool = dk.seat_plan(meta.get("opp") or [])
@@ -252,6 +278,12 @@ def _pods_from_meta(meta, idx):
 
 def cmd_resume(args):
     """Finish a cut-off harness run (replaying unfinished games from their seeds) and/or add --trials more games to it."""
+    c = prepare_resume(args)
+    wall = runner.execute(c["todo"], c["jobs"], c["run_dir"], c["session"], args.quiet)
+    finish_resume(c, wall)
+
+def prepare_resume(args):
+    """The games a cut-off run still has to play (and --trials new ones), and what finish_resume needs."""
     run_dir = os.path.abspath(args.resume)  # the JVM runs from Forge's home, so relative paths break
     meta = json.load(open(os.path.join(run_dir, "meta.json"), encoding="utf-8"))
     os.environ["FISHPOND_PILOT_SEATS"] = "1" if meta.get("pilot_seats") == "you" else "all"
@@ -278,10 +310,14 @@ def cmd_resume(args):
     # the run's own job count when none is given: a resumed study pod ran 8 JVMs instead of 5, each with less heap, and Xyris's
     # Snake boards ran out of memory (balance_20261016: 32 games)
     jobs = args.jobs or meta.get("jobs") or runner.default_jobs(full)
-    wall = runner.execute(todo, jobs, run_dir, session, args.quiet)
-    records, missing = runner.collect(run_dir, plan, builds, pods, meta.get("hero_ai", "Default"), meta.get("opp_ai", ["Default"] * 3))
+    return {"args": args, "run_dir": run_dir, "meta": meta, "plan": plan, "builds": builds, "pods": pods, "todo": todo,
+            "session": session, "jobs": jobs}
+
+def finish_resume(c, wall):
+    args, run_dir, meta, plan, builds = c["args"], c["run_dir"], c["meta"], c["plan"], c["builds"]
+    records, missing = runner.collect(run_dir, plan, builds, c["pods"], meta.get("hero_ai", "Default"), meta.get("opp_ai", ["Default"] * 3))
     meta.update(wall=meta.get("wall", 0) + wall, trials=len({e["game"] for e in plan}), complete=not missing,
-                jobs=jobs)
+                jobs=c["jobs"])
     runner.save(run_dir, meta, records)
     _report(meta, records, builds, args.json, run_dir)
     _page(run_dir, args.quiet or args.json)
@@ -417,6 +453,12 @@ def cmd_show(args):
         print("\n".join(lines))
 
 def main(argv=None):
+    ap = parser()
+    args = ap.parse_args(argv)
+    if not args.cmd: ap.print_help(); return
+    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "lines": cmd_lines, "study": cmd_study, "replay": cmd_replay, "sequencing": cmd_sequencing, "pilot": cmd_pilot, "page": cmd_page, "check": cmd_check}[args.cmd](args)
+
+def parser():
     ap = argparse.ArgumentParser(prog="python3 -m fishpond", description="Fishpond: Commander decks played on Forge (docs/FISHPOND.md)",
                                  formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
     sub = ap.add_subparsers(dest="cmd")
@@ -460,6 +502,4 @@ def main(argv=None):
     pg = sub.add_parser("page"); pg.add_argument("runs", nargs="+"); pg.add_argument("--out"); pg.add_argument("--title")
     w = sub.add_parser("show"); w.add_argument("run"); w.add_argument("game", type=int); w.add_argument("--build")
     w.add_argument("--log", action="store_true"); w.add_argument("--phases", action="store_true")
-    args = ap.parse_args(argv)
-    if not args.cmd: ap.print_help(); return
-    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "lines": cmd_lines, "study": cmd_study, "replay": cmd_replay, "sequencing": cmd_sequencing, "pilot": cmd_pilot, "page": cmd_page, "check": cmd_check}[args.cmd](args)
+    return ap

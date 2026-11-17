@@ -49,6 +49,22 @@ item is done, move its numbers into the commit and FORGE_ISSUES and delete it he
 - **Measurement fix (2026-10-30):** held cards under a spell limit (Zur's Rule of Law) no longer read as idle mana in the
   dead-card meter or `#FP-SEQ` (10 of 12 streaks in one sample game were false). Idle counts from earlier runs, including
   `pilot_20261028c`'s "castable cards held 3+ turns", run high in any pod with Zur; compare them with care.
+- **Run speed and exact replays (2026-11-09; harness and runner, no new patch):**
+  - *One queue of games* (`runner.Pool`, `ForgeRunner --queue`): a free JVM takes the next game of the run, and a study's
+    pods share one pool (`--lanes` x `--jobs` JVMs) in one process. `baseline125_20261104` (300 games, 2 lanes x 5) had its
+    JVMs busy 51% of the time behind slow games, 1 h 55 min of wall time for 10.2 h of game time; not yet timed at that scale
+    on the queue.
+  - *A game's place in its JVM* (FORGE_ISSUES #10): Forge's ability and trigger id counters and the pilot's static per-game
+    state are reset before every game. Before, a JVM's second and later games (two of every three in a study) often were
+    not the games a replay alone gives (5 of 15 in the check; 1 of 15 after). Puzzles 356 pass, 5 known gaps.
+  - *Open, found the same day:* some games change with the garbage collector's timing (T01 game 4 of the baseline plays
+    differently alone under another heap size or collector): something the pilot reads disappears when memory is collected,
+    most likely a weak map entry left by a lookahead copy (#10 "Open" lists the suspects). Until it is fixed, "seeds replay
+    exactly" holds only on the same heap settings, and same-seed A/B pairs carry some of this noise.
+  - *Still open from the 2026-11-09 review:* Lumra's token floods (the five slowest baseline games, 19% of its game time, two
+    of them 30-minute timeouts; one sat 20 minutes in a turn with 768 Scute Swarms: profile it, then decide on Manabrew's
+    d7334e07 below); GC threads per JVM (`-XX:ParallelGCThreads=2` in `FISHPOND_JVM`, a paired timing run); the 2,400 MB a
+    JVM is budgeted against a median peak of 888 MB.
 - **Next:** the baseline on 01-123 (the user runs it; the round-robin, `fishpond/pods/roundrobin16.txt`), read with `fishpond
   pilot --vs pilot_20261028c`. It also answers whether decisions still cross the 120 s AI limit (open question below).
 - **Direction (the user, 2026-10-30):** most decks play reasonably now; pilot tuning winds down and the focus moves to tools the

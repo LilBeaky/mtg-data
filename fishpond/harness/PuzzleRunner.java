@@ -64,6 +64,7 @@ public class PuzzleRunner {
         int turns = Integer.parseInt(args[1]);
         long seed = Long.parseLong(args[2]);
         boolean hybrid = args.length > 3 && args[3].equals("hybrid");
+        ForgeRunner.resetGameState();   // a batch plays its puzzles in one JVM: none starts on an earlier one's plans or memos
         MyRandom.setRandom(new Random(seed));
         PilotPolicy policy = null, policy2 = null;   // seat 2's from a '# deck2:' line (an opponent's key cards and engines)
         if (args.length > 4 && !args[4].equals("-")) {

@@ -7,6 +7,7 @@
 // the end of the hero's turn CAP, and snapshots are taken at the hero's first main phase and cleanup step.
 //
 // usage: java -cp <jar>:<dir> ForgeRunner DECK_DIR PLAN_FILE    (cwd = the Forge install: it reads res/ from there)
+//        java -cp <jar>:<dir> ForgeRunner --queue             (games one at a time on standard input: queue() below)
 // PLAN_FILE lines, tab-separated: id seed cap timeout_s colors play_out deck1 deck2 deck3 deck4 ai1,ai2,ai3,ai4 sim1,..,sim4 keys
 //   colors = the hero's color identity (e.g. WUG); play_out = 1 to keep playing after the hero dies (real opponents left)
 //   sim = off | hybrid | full per seat: Forge's lookahead (AIOption). hybrid = the heuristic AI picks, a one-move simulation
@@ -125,8 +126,9 @@ public class ForgeRunner {
             forge.ai.ComputerUtil.class.getField("MULLIGAN").set(null, mull);
             forge.ai.ComputerUtil.class.getField("BOTTOM").set(null, tuck);
         } catch (ReflectiveOperationException e) { out.println("#FP-WARN no mulligan hook in this Forge build (patch 68)"); }
-        String deckDir = args[0];
         Map<String, Deck> decks = new HashMap<>();
+        if (args[0].equals("--queue")) { queue(decks); return; }
+        String deckDir = args[0];
         out.println("#FP-READY");
         for (String line : Files.readAllLines(Paths.get(args[1]), StandardCharsets.UTF_8)) {
             if (line.isBlank() || line.startsWith("#")) continue;
@@ -146,6 +148,41 @@ public class ForgeRunner {
             }
         }
         out.flush();
+        System.exit(0);
+    }
+
+    /** Queue mode (`ForgeRunner --queue`, what fishpond/runner.py's pool runs): games arrive one at a time on standard input,
+     *  so a free JVM takes the next game of the run or study instead of working through a list fixed at its start. A line is
+     *  LOG_FILE, DECK_DIR and the plan line's fields, tab-separated; the game's whole output (Forge's own prints included) is
+     *  appended to LOG_FILE, in the format the plan-file mode prints. Standard output carries only the protocol: #FP-READY
+     *  once Forge is loaded, then "#FP-DONE id" after each game ("#FP-DONE id restart" when this JVM stops after it: a
+     *  timeout or out of memory, as in the plan-file mode). End of input ends the JVM. */
+    static void queue(Map<String, Deck> decks) throws Exception {
+        PrintStream real = out, realOut = System.out, realErr = System.err;
+        java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(System.in, StandardCharsets.UTF_8));
+        real.println("#FP-READY");
+        for (String line; (line = in.readLine()) != null; ) {
+            if (line.isBlank()) continue;
+            String[] q = line.split("\t");
+            String[] f = Arrays.copyOfRange(q, 2, q.length);
+            try (PrintStream log = new PrintStream(new java.io.FileOutputStream(q[0], true), true, "UTF-8")) {
+                out = log; System.setOut(log); System.setErr(log);
+                try {
+                    runGame(f, q[1], decks, null);
+                } catch (Throwable t) {
+                    out.println("#FP-ERROR {\"id\": " + f[0] + ", \"error\": " + js(String.valueOf(t)) + "}");
+                    out.println("\nGame Result: Game " + f[0] + " ended in a Draw! Took 0 ms.");
+                    if (t instanceof OutOfMemoryError) restart = "out of memory";
+                }
+                if (restart != null) out.println("#FP-RESTART {\"after\": " + f[0] + ", \"why\": " + js(restart) + "}");
+                out.flush();
+            } finally {
+                out = real; System.setOut(realOut); System.setErr(realErr);
+            }
+            real.println("#FP-DONE " + f[0] + (restart != null ? " restart" : ""));
+            real.flush();
+            if (restart != null) System.exit(3);
+        }
         System.exit(0);
     }
 
@@ -332,7 +369,103 @@ public class ForgeRunner {
     }
 
     /** fallbackTrace != null: this is a replay with lookahead off after Forge's simulation code crashed on the first try. */
+    /** The pilot's per-game state kept in static fields (Forge patches and the harness): plans, memos, loop counts, what was
+     *  logged. Forge's players, cards and abilities compare by id and ids restart every game, so an entry left by an earlier
+     *  game in this JVM answers for the new game's player or card with the same id until the garbage collector happens to drop
+     *  it: of 4 baseline125_20261104 games played second or third in their JVM, 2 did not replay alone (2026-11-09; patch 120
+     *  fixed two such fields by hand). Every game starts by emptying all of them. A patch that adds a static map, set or
+     *  reference of per-game things adds its name here (tests/fishpond_units.py checks the patches against this list). */
+    static final String[][] GAME_STATE = {
+        {"forge.ai.AiController", "COMBO_FOCUS", "COMBO_STEPS", "LOOPS"},
+        {"forge.ai.ComputerUtil", "COMBAT_MEMO", "MEMO_ROOT", "MEMO_STATS_BY_ROOT", "PLANNED_SAC", "putBackSa", "putBackCards", "putBackTurn"},
+        {"forge.ai.ComputerUtilCard", "APPROVED", "ATTACK_MEMO", "FALLS_OFF", "LOGGED", "REMOVAL_LOGGED"},
+        {"forge.ai.TurnPlan", "CACHE", "DECLINED", "FAILED", "LOGGED", "PLACED", "TOP", "cacheGame"},
+        {"forge.ai.ability.ChooseCardNameAi", "DIG_CHOSEN"},
+        {"forge.ai.ability.CounterAi", "LOGGED"},
+        {"ThreatModel", "REAL", "CACHE", "DECK_ANSWERS", "COUNTER_SHARE", "HOLD_SINCE", "HOLDS"},
+        {"HandScore", "INFO", "BAR", "DECISIONS"},
+        {"SetupModel", "DECK"},
+    };
+
+    /** The game's random source. With -Dfishpond.rngTrace=DIR every draw from it is written to DIR/rng_<game id>.txt with
+     *  the thread and the Forge code that asked: two plays of one seed that differ first differ here, at the draw one of
+     *  them makes and the other doesn't (how the 2026-11-09 position-in-JVM difference was traced). Slow; one game at a time. */
+    static Random rngTrace(long seed, int id) throws java.io.IOException {
+        String dir = System.getProperty("fishpond.rngTrace");
+        if (dir == null) return new Random(seed);
+        if (rngLog != null) rngLog.close();
+        rngLog = new java.io.PrintWriter(new java.io.BufferedWriter(new java.io.FileWriter(new File(dir, "rng_" + id + ".txt"))));
+        return new Random(seed) {
+            long n = 0;
+            @Override protected int next(int bits) {
+                int v = super.next(bits);
+                StringBuilder sb = new StringBuilder();
+                StackWalker.getInstance().walk(s -> s.filter(fr -> !fr.getClassName().startsWith("java.") && !fr.getClassName().startsWith("ForgeRunner$")
+                        && !fr.getClassName().equals("forge.util.MyRandom")).limit(7).map(fr -> fr.getClassName().replaceAll("^forge\\.", "") + "." + fr.getMethodName() + ":" + fr.getLineNumber()).toList())
+                    .forEach(x -> sb.append(" < ").append(x));
+                synchronized (rngLog) { rngLog.println((n++) + " " + Thread.currentThread().getName().replaceAll("\\d+", "N") + " " + bits + sb); }
+                return v;
+            }
+        };
+    }
+    static java.io.PrintWriter rngLog;
+
+    /** Forge numbers abilities, triggers, static abilities, replacement effects, stack entries and games from counters that run
+     *  on for the life of the JVM, and the AI walks hash sets and maps of those objects, whose order follows the numbers. So a
+     *  JVM's second game considered the same plays in another order than its first and could choose differently: after any
+     *  one game of another pod, baseline125_20261104 T02 game 0 cast Gwenna at action 281 where the game alone attacked
+     *  (2026-11-09, traced with rngTrace and a debug AiController). Every game starts these counters where the JVM's first
+     *  game found them, so a game plays the same alone, first or fiftieth in its JVM. */
+    static final String[] ID_COUNTERS = {"forge.game.Game", "forge.game.spellability.SpellAbility", "forge.game.spellability.SpellAbilityStackInstance",
+        "forge.game.trigger.Trigger", "forge.game.staticability.StaticAbility", "forge.game.replacement.ReplacementEffect"};
+    static int[] idBase;
+
+    static void resetIdCounters() {
+        boolean first = idBase == null;
+        if (first) idBase = new int[ID_COUNTERS.length];
+        for (int i = 0; i < ID_COUNTERS.length; i++) {
+            try {
+                java.lang.reflect.Field fld = Class.forName(ID_COUNTERS[i]).getDeclaredField("maxId");
+                fld.setAccessible(true);
+                if (first) idBase[i] = fld.getInt(null); else fld.setInt(null, idBase[i]);
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                out.println("#FP-WARN id counter not reset: " + ID_COUNTERS[i] + ": " + e);
+            }
+        }
+    }
+
+    static void resetGameState() {
+        resetIdCounters();
+        for (String[] row : GAME_STATE) {
+            Set<String> names = new HashSet<>(Arrays.asList(row).subList(1, row.length));
+            Class<?> top;
+            try { top = Class.forName(row[0]); } catch (ClassNotFoundException | LinkageError e) { continue; }   // stock Forge (FISHPOND_PILOT=off)
+            Deque<Class<?>> todo = new ArrayDeque<>(List.of(top));
+            while (!todo.isEmpty()) {
+                Class<?> c = todo.pop();
+                try { todo.addAll(Arrays.asList(c.getDeclaredClasses())); } catch (LinkageError e) { /* a nested class of another build */ }
+                for (java.lang.reflect.Field fld : c.getDeclaredFields()) {
+                    if (!java.lang.reflect.Modifier.isStatic(fld.getModifiers()) || !names.remove(fld.getName())) continue;
+                    try {
+                        fld.setAccessible(true);
+                        Object v = fld.get(null);
+                        if (v instanceof Map<?, ?> m) m.clear();
+                        else if (v instanceof Collection<?> s) s.clear();
+                        else if (fld.getType() == int.class) fld.setInt(null, -1);                       // putBackTurn
+                        else if (fld.getType() == java.lang.ref.WeakReference.class) fld.set(null, new java.lang.ref.WeakReference<>(null));
+                        else fld.set(null, null);
+                    } catch (ReflectiveOperationException | RuntimeException e) {
+                        out.println("#FP-WARN per-game state not reset: " + c.getName() + "." + fld.getName() + ": " + e);
+                    }
+                }
+            }
+            if (!names.isEmpty() && (!row[0].contains(".") || !"off".equals(System.getProperty("fishpond.policy"))))
+                out.println("#FP-WARN per-game state not found in " + row[0] + ": " + names);
+        }
+    }
+
     static void runGame(String[] f, String deckDir, Map<String, Deck> decks, String fallbackTrace) throws Exception {
+        resetGameState();
         int id = Integer.parseInt(f[0]);
         long seed = Long.parseLong(f[1]);
         int cap = Integer.parseInt(f[2]);
@@ -344,7 +477,7 @@ public class ForgeRunner {
         Set<String> keys = new HashSet<>();
         if (f.length > 12) for (String k : f[12].split("\\|")) if (!k.isBlank()) keys.add(k);
 
-        MyRandom.setRandom(new Random(seed));
+        MyRandom.setRandom(rngTrace(seed, id));
         SimFallbacks fb = new SimFallbacks();
         GameRules rules = new GameRules(GameType.Commander);
         rules.setAppliedVariants(EnumSet.of(GameType.Commander));
@@ -353,7 +486,8 @@ public class ForgeRunner {
         List<PilotPolicy> policies = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             String file = f[6 + i];
-            Deck d = decks.computeIfAbsent(file, k -> DeckSerializer.fromFile(new File(deckDir, k)));
+            // by full path: a pooled JVM plays pods whose folders hold different decks under one file name (hero0_....dck)
+            Deck d = decks.computeIfAbsent(new File(deckDir, file).getPath(), k -> DeckSerializer.fromFile(new File(k)));
             RegisteredPlayer rp = RegisteredPlayer.forCommander(d);
             String profile = ai[i].equals("Default") ? "" : ai[i];
             Set<AIOption> opts = sims[i].equals("full") ? EnumSet.of(AIOption.USE_FULL_SIMULATION)
@@ -516,6 +650,7 @@ public class ForgeRunner {
         else for (Card c : hero.getCardsIn(ZoneType.Hand)) hand.add(c.getName());
         for (int h = 0; h < hand.size(); h++) end.append(h > 0 ? ", " : "").append(js(hand.get(h)));
         end.append("], \"lib\": ").append(hero.hasLost() ? w.lastLib : hero.getCardsIn(ZoneType.Library).size()).append("}");
+        if (rngLog != null) synchronized (rngLog) { rngLog.flush(); }
         out.println("#FP-END " + end);
         if (winner != null && !game.getOutcome().isDraw()) out.println("\nGame Result: Game " + id + " ended in " + ms + " ms. " + winner + " has won!");
         else out.println("\nGame Result: Game " + id + " ended in a Draw! Took " + ms + " ms.");

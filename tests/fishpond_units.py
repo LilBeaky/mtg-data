@@ -246,6 +246,60 @@ with _tf2.TemporaryDirectory() as _d3:
     check("pilot: an example names pod, game, seat and turn", _pa["ex"]["cmd_waits"], ["T01_pod g0 s1 t1 (own 1)"])
     check("pilot: report prints", _pl.report(_pl.tally([_d3]), _pl.tally([_d3]))[0].startswith("pilot failures, every seat: 4 seat-games"), True)
 
+# the runner's pool (fishpond/runner.py Pool): JVMs sharing one queue of games, against a stand-in for ForgeRunner --queue
+import subprocess as _sp, tempfile as _tf2
+from fishpond import runner as _rn
+with _tf2.TemporaryDirectory() as _pd:
+    _fake = os.path.join(FIX, "fake_queue_jvm.py")
+    _starts = []
+    def _spawn():
+        _starts.append(1)
+        return _sp.Popen([sys.executable, _fake], stdin=_sp.PIPE, stdout=_sp.PIPE, stderr=_sp.STDOUT, text=True, encoding="utf-8", bufsize=1)
+    _job = lambda i, what, run="a": {"id": i, "line": f"{i}\t{what}", "run_dir": os.path.join(_pd, run), "session": "s1"}
+    def _ids(run):
+        got = []
+        for lf in sorted(os.listdir(os.path.join(_pd, run, "logs"))):
+            if lf.startswith("worker_"):
+                for b in lp.split_games(open(os.path.join(_pd, run, "logs", lf), encoding="utf-8").read()):
+                    end = lp.harness_lines(b)[1]
+                    if end: got.append((end["id"], sum(1 for l in b if l.startswith("Turn:"))))
+        return sorted(got)
+    # one slow game holds one JVM; the other JVM plays everything else (a fixed split would leave two games behind the slow one)
+    _done = []
+    _left = _rn.Pool(2, 0, quiet=True, spawn=_spawn).run([[_job(0, "slow")]] + [[_job(i, "ok")] for i in range(1, 6)], lambda j, ok: _done.append((j["id"], ok)))
+    check("pool: every game finished once, each block its own game", (_ids("a"), _left, sorted(_done)), ([(i, 1) for i in range(6)], [], [(i, True) for i in range(6)]))
+    _plans = {f: open(os.path.join(_pd, "a", "logs", f)).read().split() [0::2] for f in sorted(os.listdir(os.path.join(_pd, "a", "logs"))) if f.startswith("plan_")}
+    check("pool: two JVMs, the plan files list what each played", (len(_starts), sorted(sum(_plans.values(), []))), (2, [str(i) for i in range(6)]))
+    # a restart (timeout / out of memory) gets a fresh JVM; a JVM that dies mid-game: the game is played again, once
+    _starts.clear()
+    _left = _rn.Pool(1, 0, quiet=True, spawn=_spawn).run([[_job(0, "restart", "b")], [_job(1, "die", "b"), _job(2, "ok", "b")], [_job(3, "dead", "b")], [_job(4, "ok", "b")]])
+    check("pool: restart and one retry; a game that kills its JVM twice is left for --resume", (_ids("b"), [j["id"] for j in _left], len(_starts)),
+          ([(0, 1), (1, 1), (2, 1), (4, 1)], [3], 5))
+    # games of two runs through one pool land in their own run folders (a study's pods)
+    _rn.Pool(2, 0, quiet=True, spawn=_spawn).run([[_job(0, "ok", "c")], [_job(0, "ok", "d")], [_job(1, "ok", "c")]])
+    check("pool: each run's games in its own logs", (_ids("c"), _ids("d")), ([(0, 1), (1, 1)], [(0, 1)]))
+    # a JVM that won't start: its games are handed back, not lost silently
+    _left = _rn.Pool(1, 0, quiet=True, spawn=lambda: _sp.Popen([sys.executable, "-c", "print('no java')"], stdin=_sp.PIPE, stdout=_sp.PIPE, text=True)).run([[_job(0, "ok", "e")], [_job(1, "ok", "e")]])
+    check("pool: no JVM, games reported as left", sorted(j["id"] for j in _left), [0, 1])
+
+# per-game state (harness ForgeRunner.GAME_STATE): every static map, set or reference a Forge patch adds is emptied before each
+# game, or an earlier game's entry answers for the next game's player or card with the same id
+import glob as _gl, re as _re2
+_decl, _cur = {}, None
+for _pf in sorted(_gl.glob(os.path.join(REPO, "fishpond", "forge_patches", "*.patch")), key=lambda f: int(_re2.match(r"\d+", os.path.basename(f)).group())):
+    for _l in open(_pf, encoding="utf-8"):
+        if _l.startswith("+++ b/"): _cur = _l[6:].strip().split("/java/")[-1][:-5].replace("/", ".")
+        _m = _re2.match(r"^([+-])\s*(?:(?:public|private|protected)\s+)?static\s+(?:final\s+|volatile\s+)*([\w.]+(?:<.*>)?)\s+(\w+)\s*[=;]", _l)
+        if not _m or not _re2.match(r"(java\.util\.)?(Map|Set|List|Collection)\b|java\.lang\.ref\.WeakReference|CardCollectionView", _m.group(2)): continue
+        if _m.group(1) == "+": _decl[(_cur, _m.group(3))] = _m.group(2)
+        else: _decl.pop((_cur, _m.group(3)), None)
+_CONFIG = {("forge.ai.ability.DrawAi", "overridden"), ("forge.ai.ability.DrawAi", "pilotSeats")}   # read once from the JVM's switches
+_src = open(os.path.join(REPO, "fishpond", "harness", "ForgeRunner.java"), encoding="utf-8").read()
+_rows = _re2.search(r"GAME_STATE = \{(.*?)\n    \};", _src, _re2.S).group(1)
+_reset = {(r[0], n) for r in (_re2.findall(r'"([^"]+)"', row) for row in _rows.splitlines()) if r for n in r[1:]}
+check("per-game state: the patches' static containers were found", len(_decl) >= 20, True)
+check("per-game state: every static container the patches add is reset before a game", sorted(set(_decl) - _CONFIG - _reset), [])
+
 for f in fails: print("FAIL", f)
 print(f"units: {'all ' if not fails else ''}{count - len(fails)} of {count} passed" if fails else f"units: all {count} passed")
 sys.exit(1 if fails else 0)

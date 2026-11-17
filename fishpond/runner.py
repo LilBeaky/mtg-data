@@ -7,7 +7,7 @@ cut by the wall clock (-c) changes the rest of its chunk: keep the clock generou
 play on until someone wins or the clock runs out; the record stops at the hero's death either way.
 """
 import concurrent.futures as cf
-import json, os, random, re, subprocess, sys, time
+import json, os, random, re, subprocess, sys, threading, time
 
 from . import policy, decks as dk, forge, logparse as lp
 
@@ -215,15 +215,17 @@ def _pilot_seat_props(run_dir):
     with open(p, "w", encoding="utf-8") as fh: fh.write("\n".join(names) + "\n")
     return [f"-Dfishpond.pilotSeats={seats}", f"-Dfishpond.overriddenFile={os.path.abspath(p)}"]
 
-def java_cmd(run_dir, xmx, patched, classes, plan_file):
-    """The harness JVM command for a plan file: what execute() runs, and what a replay of one game must run to play it the
-    same way (the overridden-cards list and the win-line audit included)."""
+def java_cmd(run_dir, xmx, patched, classes, plan_file=None):
+    """The harness JVM command: for a plan file, what a replay of one game runs to play it the way its worker did (the
+    overridden-cards list and the win-line audit included); with no plan file, a pool worker that takes its games one at a
+    time on standard input (ForgeRunner --queue). The switches are the same either way. run_dir None: a pool shared by the
+    pods of a study (no --pilot-seats list, which is per run)."""
     return ["java", f"-Xmx{xmx}m", "-XX:-OmitStackTraceInFastThrow", "-Djava.awt.headless=true", "-Dfile.encoding=UTF-8",
-            *([] if forge.pilot_on() else ["-Dfishpond.policy=off"]), *_pilot_seat_props(run_dir),
+            *([] if forge.pilot_on() else ["-Dfishpond.policy=off"]), *(_pilot_seat_props(run_dir) if run_dir else []),
             f"-Dfishpond.winLines={os.path.join(os.path.dirname(os.path.abspath(__file__)), 'win_lines.txt')}",
             *os.environ.get("FISHPOND_JVM", "").split(),   # extra -D switches for A/B runs (e.g. -Dfishpond.commanderRules=false)
             "-cp", os.pathsep.join(([patched] if patched else []) + [forge.jar(), classes]), "ForgeRunner",
-            os.path.join(run_dir, "decks", ""), plan_file]
+            *([os.path.join(run_dir, "decks", ""), plan_file] if plan_file else ["--queue"])]
 
 ACTION_LINE = ("Turn:", "Add To Stack:", "Resolve Stack:", "Damage:", "Life:", "Zone Change:", "Land:", "Combat:", "Mulligan:", "Discard:")
 
@@ -233,8 +235,8 @@ def game_actions(block):
 
 def replay(pod_dir, game_id, out_log, patched=None, quiet=True):
     """Play one game of a run again, exactly as its worker did (same JVM switches, same plan line), into out_log; returns
-    (identical, first differing action pair or None, the replay's #FP-END dict). A game a worker played after others in the
-    same JVM can still differ if state carries across games; the first game of each worker can't."""
+    (identical, first differing action pair or None, the replay's #FP-END dict). A run from before 2026-11-09 can differ in a
+    game its worker played after others in the same JVM (docs/FORGE_ISSUES.md #10); the first game of each worker can't."""
     import glob, tempfile
     line = None
     for pf in glob.glob(os.path.join(pod_dir, "logs", "plan_*.tsv")):
@@ -263,64 +265,152 @@ def replay(pod_dir, game_id, out_log, patched=None, quiet=True):
     diff = None if i is None else (a[i] if i < len(a) else "(end)", b[i] if i < len(b) else "(end)")
     return diff is None, diff, end
 
+class Pool:
+    """Harness JVMs that share one queue of games. Each JVM (ForgeRunner --queue) is handed its next game when it finishes
+    one, so a long game holds up one JVM and not the games listed behind it, and a JVM stays loaded and warm for as many
+    games as the queue holds. Before, a run split its games into one fixed list per JVM: on baseline125_20261104 (300
+    games, 2 lanes x 5 JVMs) the JVMs were busy 51% of the time, and a JVM's first game took a median 95 s against 59 s
+    for its third.
+
+    A job is {"id", "line" (the plan line), "run_dir", "session"}; a unit is a list of jobs that stay on one JVM, in order
+    (the builds of one game). Worker j appends each game's output to its run's logs/worker_<session>_<j>.log and the plan
+    line to logs/plan_<session>_<j>.tsv as before, so collect, replay and the reports read a run the same way. Every game
+    has its own seed and Forge match, and the harness starts each one from the same Forge id counters and empty pilot
+    state (ForgeRunner.resetGameState; docs/FORGE_ISSUES.md #10), so the games a JVM played before don't change it. Still
+    open there: some games change with the garbage collector's timing, which a JVM's history and heap size move.
+
+    A JVM stops after a game that timed out or ran out of memory (ForgeRunner's restart); the worker starts a fresh one for
+    its next game. A JVM that dies mid-game gets that game one more try on a fresh JVM, then the game is left for
+    --resume. A worker whose JVM won't start hands its games back and stops."""
+
+    def __init__(self, jobs, xmx, run_dir=None, quiet=False, spawn=None):
+        self.jobs, self.quiet = max(1, jobs), quiet
+        self._lock = threading.Lock()
+        self._procs = []
+        self._spawn = spawn or self._java(xmx, run_dir)
+
+    def _java(self, xmx, run_dir):
+        forge.ensure(quiet=self.quiet)
+        cmd = java_cmd(run_dir, xmx, forge.patched_classes(quiet=self.quiet), harness_classes(self.quiet))
+        home = forge.run_home(quiet=True)
+        return lambda: subprocess.Popen(cmd, cwd=home, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                        text=True, encoding="utf-8", errors="replace", bufsize=1)
+
+    def _say(self, msg):
+        if not self.quiet:
+            with self._lock: print(f"fishpond: {msg}", file=sys.stderr, flush=True)
+
+    @staticmethod
+    def _read(proc, tail, want):
+        """Read the JVM's protocol lines up to `want`; returns that line, or None when the JVM ended first."""
+        for line in proc.stdout:
+            line = line.rstrip("\n")
+            if line == want or line.startswith(want + " "): return line
+            tail.append(line); del tail[:-30]
+        return None
+
+    def _start(self, j):
+        tail = []
+        try:
+            proc = self._spawn()
+        except OSError as e:
+            self._say(f"worker {j}: the JVM did not start ({e})"); return None
+        with self._lock: self._procs.append(proc)
+        if self._read(proc, tail, "#FP-READY") is None:
+            self._say(f"worker {j}: the JVM stopped before it was ready (exit {proc.wait()}):\n  " + "\n  ".join(tail[-12:]))
+            return None
+        return proc
+
+    def _play(self, proc, j, job):
+        """One game on worker j's JVM: 'done', 'restart' (done, and the JVM is stopping) or 'dead' (the JVM ended mid-game)."""
+        log_dir = os.path.join(job["run_dir"], "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        with open(os.path.join(log_dir, f"plan_{job['session']}_{j}.tsv"), "a", encoding="utf-8") as fh: fh.write(job["line"] + "\n")
+        lf = os.path.join(log_dir, f"worker_{job['session']}_{j}.log")
+        tail = []
+        try:
+            proc.stdin.write("\t".join([lf, os.path.join(job["run_dir"], "decks", ""), job["line"]]) + "\n"); proc.stdin.flush()
+            got = self._read(proc, tail, f"#FP-DONE {job['id']}")
+        except OSError:
+            got = None
+        if got is not None: return "restart" if got.endswith(" restart") else "done"
+        rc = proc.wait()
+        # close the cut-off game's block, so the log parser doesn't read its lines into the next game in this file (a block
+        # with no #FP-END line is not a result)
+        with open(lf, "a", encoding="utf-8") as fh:
+            fh.write(f"\nGame Result: Game {job['id']} ended in a Draw! Took 0 ms. (fishpond: the JVM stopped mid-game, exit {rc})\n")
+        self._say(f"worker {j}: the JVM stopped during game {job['id']} (exit {rc})" + "".join("\n  " + t for t in tail[-8:]))
+        return "dead"
+
+    def run(self, units, on_done=None):
+        """Play every unit; `units` may be a generator (a study prepares its pods as the queue reaches them). on_done(job,
+        finished) is called after each job, from the worker's thread. Returns the jobs that did not finish."""
+        it, back, left, src = iter(units), [], [], threading.Lock()
+        def take():
+            with self._lock:
+                if back: return back.pop(0)
+            with src:
+                return next(it, None)
+        def work(j):
+            proc = None
+            while True:
+                unit = take()
+                if unit is None: break
+                for k, job in enumerate(unit):
+                    state = "dead"
+                    for attempt in range(2):
+                        if proc is None: proc = self._start(j)
+                        if proc is None:                      # no JVM for this worker: its games go back to the others
+                            with self._lock: back.append(unit[k:])
+                            return
+                        state = self._play(proc, j, job)
+                        if state != "done":
+                            if state == "restart": proc.wait()
+                            proc = None
+                        if state != "dead": break
+                    if state == "dead":
+                        with self._lock: left.append(job)
+                    if on_done: on_done(job, state != "dead")
+            if proc is not None:
+                try: proc.stdin.close()
+                except OSError: pass
+                proc.wait()
+        threads = [threading.Thread(target=work, args=(j,), daemon=True) for j in range(self.jobs)]
+        try:
+            for t in threads: t.start()
+            for t in threads:
+                while t.is_alive(): t.join(1)                  # short joins: Ctrl-C reaches the main thread
+        finally:
+            self.kill()
+        # with no JVM left the queue's tail was never taken (a list is read out here; a study's feed sees the pool end)
+        rest = list(it) if isinstance(units, (list, tuple)) else []
+        return left + [job for unit in back + rest for job in unit]
+
+    def kill(self):
+        """Stop any JVM still running (the pool's work is over, or the session was interrupted)."""
+        with self._lock: procs = list(self._procs)
+        for p in procs:
+            if p.poll() is None: p.kill()
+
 def execute(entries, jobs, run_dir, session, quiet=False):
-    """Run plan entries on `jobs` harness JVMs; each writes logs/worker_<session>_<j>.log, one game at a time (a cut-off
-    session keeps every finished game). Returns wall seconds."""
+    """Run plan entries on `jobs` harness JVMs sharing one queue (Pool); each JVM appends its games to
+    logs/worker_<session>_<j>.log one at a time (a cut-off session keeps every finished game). Returns wall seconds."""
     if not entries: return 0.0
-    forge.ensure(quiet=quiet)
-    classes = harness_classes(quiet)
-    patched = forge.patched_classes(quiet=quiet)       # Forge fixes (fishpond/forge_patches), ahead of the jar
-    deck_dir = os.path.join(run_dir, "decks"); log_dir = os.path.join(run_dir, "logs")
-    os.makedirs(log_dir, exist_ok=True)
-    nb = len({e["build"] for e in entries})
     full = uses_full(entries)
     if jobs > max_jobs(full) and not os.environ.get("FISHPOND_XMX"):
         if not quiet: print(f"fishpond: --jobs {jobs} cut to {max_jobs(full)}: {forge.memory_mb()} MB free holds that many JVMs at {JOB_MB[full]} MB", file=sys.stderr)
         jobs = max_jobs(full)
-    jobs = max(1, min(jobs, len(entries)))
-    chunks = [[e for k, e in enumerate(entries) if (k // nb) % jobs == j] for j in range(jobs)]   # paired builds share a worker
+    units = {}
+    for e in entries:                                          # paired builds of a game share a JVM
+        units.setdefault(e["game"], []).append({"id": e["id"], "line": e["line"], "run_dir": run_dir, "session": session})
+    jobs = max(1, min(jobs, len(units)))
     t0 = time.time()
-    def start(j, chunk, k):
-        """Worker j's JVM on `chunk` (restart k appends to the same log; its plan file keeps the original's name + rK)."""
-        pf = os.path.join(log_dir, f"plan_{session}_{j}{f'r{k}' if k else ''}.tsv")
-        with open(pf, "w", encoding="utf-8") as fh: fh.write("\n".join(e["line"] for e in chunk) + "\n")
-        lf = os.path.join(log_dir, f"worker_{session}_{j}.log")
-        # -XX:-OmitStackTraceInFastThrow: the JVM drops the stack of an exception thrown often at one spot, and the harness
-        # reads the stack to tell a lookahead crash (remade without lookahead) from a real one (study150_20261014 V02 g10
-        # ended on a trace-less NullPointerException that was a lookahead crash)
-        cmd = java_cmd(run_dir, xmx_for(jobs, full), patched, classes, pf)
-        fh = open(lf, "a" if k else "w", encoding="utf-8")
-        return {"j": j, "chunk": chunk, "k": k, "lf": lf, "fh": fh, "p": subprocess.Popen(cmd, cwd=forge.run_home(quiet=True), stdout=fh, stderr=subprocess.STDOUT)}
-    def finished_ids(lf):
-        text = open(lf, encoding="utf-8", errors="replace").read()
-        return {int(m) for m in re.findall(r'^#FP-(?:END|ERROR) \{"id": (\d+)', text, re.M)}
-    workers = [start(j, chunk, 0) for j, chunk in enumerate(chunks)]
-    last = -1
-    while not all(isinstance(w["p"], _Done) for w in workers):
-        time.sleep(3)
-        for i, w in enumerate(workers):
-            if isinstance(w["p"], _Done) or w["p"].poll() is None: continue
-            w["fh"].close()
-            ids = finished_ids(w["lf"])
-            left = [e for e in w["chunk"] if e["id"] not in ids]
-            # a worker that stopped early (#FP-RESTART after a timeout or out of memory, or a dead JVM) and finished at least
-            # one game of this start gets a fresh JVM for the rest; one that finished none is left stopped (no restart loop)
-            if left and len(left) < len(w["chunk"]):
-                if not quiet: print(f"fishpond: worker {w['j']} stopped with {len(left)} game(s) left (exit {w['p'].returncode}); starting a fresh JVM", file=sys.stderr, flush=True)
-                workers[i] = start(w["j"], left, w["k"] + 1)
-            else:
-                w["p"] = _Done()
-        done = sum(len(finished_ids(w["lf"])) for w in workers)
-        if not quiet and done != last:
-            print(f"fishpond: {done}/{len(entries)} games this session ({time.time() - t0:.0f}s)", file=sys.stderr, flush=True); last = done
-    for w in workers:
-        if not w["fh"].closed: w["fh"].close()
+    done = [0]
+    def progress(job, ok):
+        done[0] += ok
+        if not quiet: print(f"fishpond: {done[0]}/{len(entries)} games this session ({time.time() - t0:.0f}s)", file=sys.stderr, flush=True)
+    Pool(jobs, xmx_for(jobs, full), run_dir, quiet).run(list(units.values()), progress)
     return time.time() - t0
-
-class _Done:
-    """A worker slot whose JVM has exited for good."""
-    returncode = 0
-    def poll(self): return 0
 
 def collect(run_dir, plan, builds, pods, hero_ai="Default", opp_ai=("Default",) * 3):
     """Every finished game of the run, from all worker logs (any session), matched to plan entries by game id.
