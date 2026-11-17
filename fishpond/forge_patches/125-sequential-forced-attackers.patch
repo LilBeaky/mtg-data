@@ -1,0 +1,38 @@
+diff --git a/forge-ai/src/main/java/forge/ai/AiAttackController.java b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+index e19979f..14c7692 100644
+--- a/forge-ai/src/main/java/forge/ai/AiAttackController.java
++++ b/forge-ai/src/main/java/forge/ai/AiAttackController.java
+@@ -1203,12 +1203,28 @@ public class AiAttackController {
+                 });
+             }
+ 
+-            try {
+-                executor.invokeAll(tasks, ai.getGame().getAITimeout(), TimeUnit.SECONDS);
+-            } catch (InterruptedException e) {
+-                Thread.currentThread().interrupt();
+-            } finally {
++            // fishpond patch 125: the forced-attacker checks run one after another on this thread. In parallel, the order the
++            // threads finished in set the order of combat.addAttacker and the shared AI caches' contents, so one seed played
++            // differently from run to run (FORGE_ISSUES #10). -Dfishpond.parallelForcedAttackers=true: as before.
++            if (Boolean.getBoolean("fishpond.parallelForcedAttackers")) {
++                try {
++                    executor.invokeAll(tasks, ai.getGame().getAITimeout(), TimeUnit.SECONDS);
++                } catch (InterruptedException e) {
++                    Thread.currentThread().interrupt();
++                } finally {
++                    executor.shutdownNow();
++                }
++            } else {
+                 executor.shutdownNow();
++                for (final Callable<Integer> task : tasks) {
++                    try {
++                        task.call();
++                    } catch (final RuntimeException e) {
++                        throw e;
++                    } catch (final Exception e) {
++                        throw new RuntimeException(e);
++                    }
++                }
+             }
+ 
+             if (attackersLeft.isEmpty()) {

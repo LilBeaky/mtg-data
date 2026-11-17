@@ -388,7 +388,7 @@ public class ForgeRunner {
     };
 
     /** The game's random source. With -Dfishpond.rngTrace=DIR every draw from it is written to DIR/rng_<game id>.txt with
-     *  the thread and the Forge code that asked: two plays of one seed that differ first differ here, at the draw one of
+     *  the thread and the Forge code that asked (7 frames; -Dfishpond.rngTraceDepth=N for more): two plays of one seed that differ first differ here, at the draw one of
      *  them makes and the other doesn't (how the 2026-11-09 position-in-JVM difference was traced). Slow; one game at a time. */
     static Random rngTrace(long seed, int id) throws java.io.IOException {
         String dir = System.getProperty("fishpond.rngTrace");
@@ -401,14 +401,16 @@ public class ForgeRunner {
                 int v = super.next(bits);
                 StringBuilder sb = new StringBuilder();
                 StackWalker.getInstance().walk(s -> s.filter(fr -> !fr.getClassName().startsWith("java.") && !fr.getClassName().startsWith("ForgeRunner$")
-                        && !fr.getClassName().equals("forge.util.MyRandom")).limit(7).map(fr -> fr.getClassName().replaceAll("^forge\\.", "") + "." + fr.getMethodName() + ":" + fr.getLineNumber()).toList())
+                        && !fr.getClassName().equals("forge.util.MyRandom")).limit(Integer.getInteger("fishpond.rngTraceDepth", 7)).map(fr -> fr.getClassName().replaceAll("^forge\\.", "") + "." + fr.getMethodName() + ":" + fr.getLineNumber()).toList())
                     .forEach(x -> sb.append(" < ").append(x));
+                if (TRACE_IDS) sb.append(" #").append(Thread.currentThread().threadId());   // -Dfishpond.rngTraceIds=true: which thread
                 synchronized (rngLog) { rngLog.println((n++) + " " + Thread.currentThread().getName().replaceAll("\\d+", "N") + " " + bits + sb); }
                 return v;
             }
         };
     }
     static java.io.PrintWriter rngLog;
+    static final boolean TRACE_IDS = Boolean.getBoolean("fishpond.rngTraceIds");
 
     /** Forge numbers abilities, triggers, static abilities, replacement effects, stack entries and games from counters that run
      *  on for the life of the JVM, and the AI walks hash sets and maps of those objects, whose order follows the numbers. So a

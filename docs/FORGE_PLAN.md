@@ -25,14 +25,14 @@ item is done, move its numbers into the commit and FORGE_ISSUES and delete it he
 - **Claude's background tasks die at 2 hours.** Split batches into resumable chunks under that (`run --resume` finishes a cut-off pod), or hand the user the command for long studies (the user's preference as runs grow).
 - **Seeds replay exactly.** One game replays alone from one line of a run's `logs/plan_*.tsv` with ForgeRunner (the command line is in `runner.execute`; `fishpond replay POD GAME` does it for a study pod); the game log is printed only when the game ends. Profile with `-XX:StartFlightRecording=...,settings=profile` and dump mid-turn with `jcmd <pid> JFR.dump`; add `-XX:FlightRecorderOptions:stackdepth=2048` and read it with `jfr print --stack-depth 2048` (the defaults, 64 and 5 frames, hide which caller is slow). Time an A/B as a pair run side by side: load alone changes a big game's time 1.5-2x, and past about 6 busy JVMs a 90 s decision can cross the 120 s AI limit and change the game. A patch that changes play makes games diverge from older runs on the same seed: compare distributions, not paired games, across it.
 - **Writing a patch:** `~/forge-cache/forge-src-2.0.15` is CRLF and doesn't match the tag; fetch the files with `forge.FORGE_SRC_URL` into a scratch git repo, apply 01..NN, edit, `git diff` > the next patch; procedure and table in FORGE_ISSUES "Patches". To see a debug println, call `fishpond.puzzles.run_one(path)` and grep its lines. Before a Forge perf or crash patch from scratch, check Manabrew's fork (github.com/witchesofthehill/forge, branch `manabrew`) for new commits.
-- **Before pushing:** `python -m fishpond check` (the checks the branch's changes need; FISHPOND.md "Before a push"), and the full suite (`fishpond check --full`: 362 puzzles, 357 pass, 5 known gaps on patches 01-124) before a long study. Stage only your own files, fetch/rebase, never force. Write findings into this doc as soon as they're known.
+- **Before pushing:** `python -m fishpond check` (the checks the branch's changes need; FISHPOND.md "Before a push"), and the full suite (`fishpond check --full`: 362 puzzles, 357 pass, 5 known gaps on patches 01-125) before a long study. Stage only your own files, fetch/rebase, never force. Write findings into this doc as soon as they're known.
 - `--sim hybrid` prints hundreds of "AI failed to play" lines a game (lookahead test-casts unaffordable spells): noise, not a stuck card.
 - **Why did the AI not cast X?** Replay the game with a debug copy of one class first on the classpath: copy the file from the scratch source tree (or `forge-src-2.0.15` if no patch touches it), add a println, `javac -cp <patched classes>;<forge jar>` into a folder, prepend that folder to `-cp`. Nothing in the repo changes. `AiController.canPlayAndPayFor` printing its `AiPlayDecision` per spell and `OnePlaySafetyChecker.isAcceptable` printing scores is the usual start.
 - **After a study:** `fishpond pilot STUDY_DIR` (the pilot-failure table, per 100 seat-games; `--vs OLD_DIR` for before/after), `fishpond lines` (win lines), `fishpond held` (dead cards), and the study's `index.html` for reading games.
 
 ## Where things stand (2026-10-30)
 
-- **Build:** Forge 2.0.15 + patches 01-124 (crash fixes, speed, and the pilot), 93 card overrides, 362 puzzles. The pilot, at every
+- **Build:** Forge 2.0.15 + patches 01-125 (crash fixes, speed, determinism, and the pilot), 93 card overrides, 362 puzzles. The pilot, at every
   pilot seat: the tutor policy (`policy.py`, `PilotPolicy.java`), the turn plan (patch 64 on, with the commander in the plan,
   patch 112), the threat model (counters, removal, wipes and holding mana, `ThreatModel.java`), mulligans by hand score, loop
   shortcuts and jumps, library reserves. Each patch's why and evidence is its FORGE_ISSUES row.
@@ -57,13 +57,10 @@ item is done, move its numbers into the commit and FORGE_ISSUES and delete it he
   - *A game's place in its JVM* (FORGE_ISSUES #10): Forge's ability and trigger id counters and the pilot's static per-game
     state are reset before every game. Before, a JVM's second and later games (two of every three in a study) often were
     not the games a replay alone gives (5 of 15 in the check; 1 of 15 after). Puzzles 356 pass, 5 known gaps.
-  - *Open, found the same day:* some games change with the garbage collector's timing (T01 game 4 of the baseline plays
-    differently alone under another heap size or collector): something the pilot reads disappears when memory is collected,
-    most likely a weak map entry left by a lookahead copy (#10 "Open" lists the suspects). Until it is fixed, "seeds replay
-    exactly" holds only on the same heap settings, and same-seed A/B pairs carry some of this noise.
-  - *Still open from the 2026-11-09 review:* Lumra's token floods (the five slowest baseline games, 19% of its game time, two
-    of them 30-minute timeouts; one sat 20 minutes in a turn with 768 Scute Swarms: profile it, then decide on Manabrew's
-    d7334e07 below); GC threads per JVM (`-XX:ParallelGCThreads=2` in `FISHPOND_JVM`, a paired timing run); the 2,400 MB a
+  - *Run-to-run differences, closed 2026-11-17 (patch 125):* games that changed with the garbage collector or machine load were
+    stock Forge checking forced attackers on a thread pool, not the weak maps first suspected (#10). Seeds now replay exactly
+    across heap and collector settings (T01 g4/g5, T03 g10, T06 g0, T11 g0, T14 g0); game time unchanged.
+  - *Still open from the 2026-11-09 review:* Lumra's token floods (profiled 2026-11-17, below); GC threads per JVM (`-XX:ParallelGCThreads=2` in `FISHPOND_JVM`, a paired timing run); the 2,400 MB a
     JVM is budgeted against a median peak of 888 MB.
 - **Baseline on 01-123, read 2026-11-17** (`baseline125_20261104`: the round-robin, 20 pods x 15 games, 300 games, 1200
   seat-games; run 2026-11-04 before the queue and the id-counter reset, so its later-in-JVM games carry #10's play-order noise).
@@ -127,11 +124,17 @@ From `pilot_20261028c` and the miss reviews, rechecked on the 01-123 baseline (2
   none finished in hurry mode), with Heliod, Xyris, Lumra and Zur all at the table. **Decided (the user, 2026-11-17): (d) leave
   it**; the report keeps warning if one crosses, and a recurrence reopens it.
 - **Lumra's token floods** are now the slow-game problem, not the AI limit: both baseline game timeouts (30 min) had Lumra at the
-  table. Profile one (T06 g2 or T10 g3 of `baseline125_20261104`), then decide on d7334e07 below.
+  table. **Profiled 2026-11-17** (T10 g3 replayed on 01-124 with JFR, 30 min to its timeout, 153k samples, a board of Scute Swarm
+  copies; inclusive shares): combat prediction 50% (`predictNextCombatsRemainingLife` under `AiCache`, mostly reached from
+  `ChangeZoneAi.hiddenOriginCanPlayAI` -> `evaluateBoardPositionChanged`, 46%: each fetch or ramp play is scored by re-planning
+  the next combat, and the patch-16 memo seldom hits because every token changes the board key; `choosePreferredDefenderPlayer`
+  45%, `makeGoodBlocks` 29%); static abilities 37% (`checkStaticAbilities`, of it `findStaticAbilityToApply`, the dependency
+  order, 25.5%); `CardProperty.cardHasProperty` is the top self-time method (18%). Two levers, both to be checked on same-seed
+  replays: d7334e07 below for the 25%, and a cheaper board key or prediction for fetch/ramp scoring (changes play: the user's call).
 - **Held back from Manabrew's fork:** d7334e07b374, caching the CR 613 dependency order between static-ability passes (65% of
   `checkStaticAbilities` on its wide boards). It keys on every Tracker view change and reuses the real pass's order for the AI's
-  LKI passes, a small approximation. Profile a big board on 01-123 first; port it only if dependency ordering is still hot, then
-  check it on same-seed replays like 121. Not ported on purpose: its token-flood draw caps, per-game AiCache, AI eval deadlines
+  LKI passes, a small approximation. The 2026-11-17 profile says dependency ordering is still hot (25.5% of a Lumra flood game,
+  69% of `checkStaticAbilities`): port it next, then check it on same-seed replays like 121. Not ported on purpose: its token-flood draw caps, per-game AiCache, AI eval deadlines
   and combat budgets (they change play), concurrency patches.
 - **Harness gaps** (FORGE_ISSUES "Harness safety net"; there too, 2026-10-30: the meters' `canPayManaCost` calls at cleanup
   have side effects the games depend on, so a meter change must replay identically before it's pushed):
