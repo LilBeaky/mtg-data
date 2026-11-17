@@ -74,7 +74,7 @@ def checks():
                    "reskin: 'The Cloudsea Djinn' is this card"],
              must_not=["NOT FOUND", "ambiguous", "Studious", "Harmonized"]),
         dict(name="rules", cmd=S("mtg.py", "rule", "702.124h"), must=["Partner"]),
-        dict(name="rules current", cmd=S("mtg.py", "rule", "--grep", "prepare spell"), must=["722."]),
+        dict(name="rules current", cmd=S("mtg.py", "rule", "--grep", "prepare spell"), must=["723."]),   # 722 until the 2026-11 rules
         dict(name="search", cmd=S("mtg.py", "search", "--ci", "UB", "--tag", "removal", "--cmc", "1-2", "--limit", "3")),
         dict(name="gc list", cmd=S("mtg.py", "gc")),
         dict(name="search gc + price", cmd=S("mtg.py", "search", "--gc", "--max-price", "5", "--limit", "3"), must=["prices as of"]),
@@ -170,7 +170,7 @@ def checks():
              must=["== 5b FINDABLE BY", "Idyllic Tutor (MV 3, one-shot, to hand): enchantment", "specific, most played first:",
                    "find-anything (they find every card"], must_not=["Traceback", "Demonic Tutor (MV"]),
         dict(name="tutors to add", cmd=S("tutors.py", "decks/Ians_Zur_Wizardcycling.txt", "--no-lists", "--md", "--played-trials", "300",
-                                         "--suggest", "6"),
+                                         "--suggest", "12"),   # 12: the 2026-11 data refresh moved the transmute tutor out of the top 6
              must=["## 8. Tutors to add", "| Tutor | Played: key cards per 100 games | Finds (your keys; via: tutors it can fetch) |", "transmute (card MV=2)", "swap: Long-Term Plans",
                    "| Find-anything tutor | Played: key cards per 100 games |", "| everything |"],
              must_not=["Traceback", "| Profane Tutor |", "| Inventors' Fair |", "| Mask of the Mimic |", "| Remembrance |"]),

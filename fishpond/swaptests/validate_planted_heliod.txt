@@ -1,0 +1,18 @@
+# Swap-tester validation: planted effects with known signs on a deck that kills dummies quickly (fishpond/swaptest.py).
+# The four {1} artifacts that care about red, blue and black spells do nothing in mono-white: the same blank four times, so
+# their effects must agree with each other (an A/A test). Mind Stone and Arcane Signet are planted ramp: more mana by turn 6
+# than a blank. The cuts are real lifegain cards under Heliod: a faster kill than a blank.
+title: Planted effects (Heliod)
+deck: decks/Coles_Heliod_Life.txt
+cut: Pearl Medallion
+cut: Soul Warden
+cut: Soul's Attendant
+cut: Daxos, Blessed by the Sun
+cut: Lunarch Veteran
+cut: Ajani's Welcome
+add: Iron Star
+add: Wooden Sphere
+add: Crystal Rod
+add: Throne of Bone
+add: Mind Stone
+add: Arcane Signet

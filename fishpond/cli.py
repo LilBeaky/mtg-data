@@ -19,6 +19,8 @@
   python3 -m fishpond pilot RUN_DIR... [--vs OLD_DIR...]   pilot failures per 100 seat-games, every seat, with games to replay
                                                     (--vs: the same table for an older run beside it; --json)
   python3 -m fishpond sequencing RUN_DIR...        per deck against the user's yardstick: win turn, commander turn, early mana
+  python3 -m fishpond swaptest SPEC --out DIR [--games N]   swap-list tester, stage 1: random builds from a cut list and an
+                                                    add list against 3 dummies; each card's effect on speed and mana (fishpond/swaptest.py)
   python3 -m fishpond replay POD_DIR GAME          replay one game with its worker's exact switches; says whether it matches
   python3 -m fishpond check [--full] [--dry-run]    the checks a change needs before a push (by the files changed)
   python3 -m fishpond page RUN_DIR [RUN_DIR...]    the game page (every run writes it: RUN_DIR/games.html); a study dir: one per pod
@@ -120,6 +122,10 @@ def cmd_held(args):
     from . import held
     held.cmd(args.runs)
 
+
+def cmd_swaptest(args):
+    from . import swaptest
+    swaptest.cmd(args)
 
 def cmd_replay(args):
     from . import runner
@@ -456,7 +462,7 @@ def main(argv=None):
     ap = parser()
     args = ap.parse_args(argv)
     if not args.cmd: ap.print_help(); return
-    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "lines": cmd_lines, "study": cmd_study, "replay": cmd_replay, "sequencing": cmd_sequencing, "pilot": cmd_pilot, "page": cmd_page, "check": cmd_check}[args.cmd](args)
+    {"setup": cmd_setup, "deck": cmd_deck, "save": cmd_save, "run": cmd_run, "report": cmd_report, "show": cmd_show, "puzzles": cmd_puzzles, "flags": cmd_flags, "compare": cmd_compare, "held": cmd_held, "lines": cmd_lines, "study": cmd_study, "replay": cmd_replay, "sequencing": cmd_sequencing, "pilot": cmd_pilot, "page": cmd_page, "check": cmd_check, "swaptest": cmd_swaptest}[args.cmd](args)
 
 def parser():
     ap = argparse.ArgumentParser(prog="python3 -m fishpond", description="Fishpond: Commander decks played on Forge (docs/FISHPOND.md)",
@@ -500,6 +506,11 @@ def parser():
     ck = sub.add_parser("check"); ck.add_argument("--full", action="store_true"); ck.add_argument("--dry-run", action="store_true")
     ck.add_argument("--since"); ck.add_argument("--jobs", type=int, default=3)
     pg = sub.add_parser("page"); pg.add_argument("runs", nargs="+"); pg.add_argument("--out"); pg.add_argument("--title")
+    sw = sub.add_parser("swaptest"); sw.add_argument("spec", nargs="?"); sw.add_argument("--out"); sw.add_argument("--report")
+    sw.add_argument("--games", type=int, default=1500); sw.add_argument("--fixed", type=int, default=100, help="games each for 'current' and 'full'")
+    sw.add_argument("--seed", type=int, default=1); sw.add_argument("--cap", type=int, default=20); sw.add_argument("--jobs", type=int, default=0)
+    sw.add_argument("--sim", choices=runner.SIM_MODES, default="hybrid"); sw.add_argument("--timeout", type=int, default=1800)
+    sw.add_argument("--quiet", action="store_true")
     w = sub.add_parser("show"); w.add_argument("run"); w.add_argument("game", type=int); w.add_argument("--build")
     w.add_argument("--log", action="store_true"); w.add_argument("--phases", action="store_true")
     return ap

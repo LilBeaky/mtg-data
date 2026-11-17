@@ -22,6 +22,9 @@ python3 -m fishpond replay POD_DIR GAME [--out LOG]    # one game again with its
 python3 -m fishpond page RUN_DIR [RUN_DIR...]          # the game page (every run writes RUN_DIR/games.html); a study dir: one per pod
 python3 -m fishpond study PODS --out DIR [--games 5] [--seed S] [--lanes 2] [--jobs 5] [--max-minutes M]   # a pod study, resumable
 python3 -m fishpond study --report DIR                 # its per-deck report
+python3 -m fishpond swaptest SPEC --out DIR [--games 1500] [--fixed 100]   # swap-list tester, stage 1: random builds from a cut
+                                                      # list and an add list vs 3 dummies; each card's effect (fishpond/swaptest.py)
+python3 -m fishpond swaptest --report DIR              # its report again (report.txt, swaptest.html)
 ```
 
 ## Before a run

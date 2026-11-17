@@ -25,14 +25,14 @@ item is done, move its numbers into the commit and FORGE_ISSUES and delete it he
 - **Claude's background tasks die at 2 hours.** Split batches into resumable chunks under that (`run --resume` finishes a cut-off pod), or hand the user the command for long studies (the user's preference as runs grow).
 - **Seeds replay exactly.** One game replays alone from one line of a run's `logs/plan_*.tsv` with ForgeRunner (the command line is in `runner.execute`; `fishpond replay POD GAME` does it for a study pod); the game log is printed only when the game ends. Profile with `-XX:StartFlightRecording=...,settings=profile` and dump mid-turn with `jcmd <pid> JFR.dump`; add `-XX:FlightRecorderOptions:stackdepth=2048` and read it with `jfr print --stack-depth 2048` (the defaults, 64 and 5 frames, hide which caller is slow). Time an A/B as a pair run side by side: load alone changes a big game's time 1.5-2x, and past about 6 busy JVMs a 90 s decision can cross the 120 s AI limit and change the game. A patch that changes play makes games diverge from older runs on the same seed: compare distributions, not paired games, across it.
 - **Writing a patch:** `~/forge-cache/forge-src-2.0.15` is CRLF and doesn't match the tag; fetch the files with `forge.FORGE_SRC_URL` into a scratch git repo, apply 01..NN, edit, `git diff` > the next patch; procedure and table in FORGE_ISSUES "Patches". To see a debug println, call `fishpond.puzzles.run_one(path)` and grep its lines. Before a Forge perf or crash patch from scratch, check Manabrew's fork (github.com/witchesofthehill/forge, branch `manabrew`) for new commits.
-- **Before pushing:** `python -m fishpond check` (the checks the branch's changes need; FISHPOND.md "Before a push"), and the full suite (`fishpond check --full`: 362 puzzles, 357 pass, 5 known gaps on patches 01-125) before a long study. Stage only your own files, fetch/rebase, never force. Write findings into this doc as soon as they're known.
+- **Before pushing:** `python -m fishpond check` (the checks the branch's changes need; FISHPOND.md "Before a push"), and the full suite (`fishpond check --full`: 362 puzzles, 357 pass, 5 known gaps on patches 01-126) before a long study. Stage only your own files, fetch/rebase, never force. Write findings into this doc as soon as they're known.
 - `--sim hybrid` prints hundreds of "AI failed to play" lines a game (lookahead test-casts unaffordable spells): noise, not a stuck card.
 - **Why did the AI not cast X?** Replay the game with a debug copy of one class first on the classpath: copy the file from the scratch source tree (or `forge-src-2.0.15` if no patch touches it), add a println, `javac -cp <patched classes>;<forge jar>` into a folder, prepend that folder to `-cp`. Nothing in the repo changes. `AiController.canPlayAndPayFor` printing its `AiPlayDecision` per spell and `OnePlaySafetyChecker.isAcceptable` printing scores is the usual start.
 - **After a study:** `fishpond pilot STUDY_DIR` (the pilot-failure table, per 100 seat-games; `--vs OLD_DIR` for before/after), `fishpond lines` (win lines), `fishpond held` (dead cards), and the study's `index.html` for reading games.
 
 ## Where things stand (2026-10-30)
 
-- **Build:** Forge 2.0.15 + patches 01-125 (crash fixes, speed, determinism, and the pilot), 93 card overrides, 362 puzzles. The pilot, at every
+- **Build:** Forge 2.0.15 + patches 01-126 (crash fixes, speed, determinism, and the pilot), 93 card overrides, 362 puzzles. The pilot, at every
   pilot seat: the tutor policy (`policy.py`, `PilotPolicy.java`), the turn plan (patch 64 on, with the commander in the plan,
   patch 112), the threat model (counters, removal, wipes and holding mana, `ThreatModel.java`), mulligans by hand score, loop
   shortcuts and jumps, library reserves. Each patch's why and evidence is its FORGE_ISSUES row.
@@ -131,11 +131,13 @@ From `pilot_20261028c` and the miss reviews, rechecked on the 01-123 baseline (2
   45%, `makeGoodBlocks` 29%); static abilities 37% (`checkStaticAbilities`, of it `findStaticAbilityToApply`, the dependency
   order, 25.5%); `CardProperty.cardHasProperty` is the top self-time method (18%). Two levers, both to be checked on same-seed
   replays: d7334e07 below for the 25%, and a cheaper board key or prediction for fetch/ramp scoring (changes play: the user's call).
-- **Held back from Manabrew's fork:** d7334e07b374, caching the CR 613 dependency order between static-ability passes (65% of
-  `checkStaticAbilities` on its wide boards). It keys on every Tracker view change and reuses the real pass's order for the AI's
-  LKI passes, a small approximation. The 2026-11-17 profile says dependency ordering is still hot (25.5% of a Lumra flood game,
-  69% of `checkStaticAbilities`): port it next, then check it on same-seed replays like 121. Not ported on purpose: its token-flood draw caps, per-game AiCache, AI eval deadlines
-  and combat budgets (they change play), concurrency patches.
+- **Ported from Manabrew's fork as patch 126 (2026-11-17):** d7334e07b374, the CR 613 dependency-order cache between
+  static-ability passes. Same-seed replays against 01-125 play identically (7 games, and Lumra's T10 g3 up to its 30-minute
+  limit), and a check mode that works every reused pick out afresh found 0 disagreements, so the LKI approximation never
+  changed a pick there. The order was reused in 75-95% of contested layers, but games got only up to 16% faster (T01 g5) and
+  the Lumra flood got 4% further in its 30 minutes: what is left of a flood is combat prediction (50%), the fetch/ramp lever
+  above (the user's call). Not ported on purpose: its token-flood draw caps, per-game AiCache, AI eval deadlines and combat
+  budgets (they change play), concurrency patches.
 - **Harness gaps** (FORGE_ISSUES "Harness safety net"; there too, 2026-10-30: the meters' `canPayManaCost` calls at cleanup
   have side effects the games depend on, so a meter change must replay identically before it's pushed):
   - an exception wrapped in the AI's timeout `FutureTask` (`ExecutionException`) used to get past `SafeControllerAi` (#9);
@@ -159,7 +161,7 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
 
 ## Backlog (not scheduled; tools for the user first)
 
-- **Swap-list tester** (next focus, after the 01-123 baseline; the user's design, 2026-10-30). Not one card against one card:
+- **Swap-list tester** (in progress: stage 1 built 2026-11-17; the user's design, 2026-10-30). Not one card against one card:
   "test combinations of swaps from this cut list and this add list over ~1500 games and give me the data". The user reworks
   more than tinkers: lists of 5-20 cuts and 5-20 adds, no card-to-card pairing, a build is the list minus k cuts plus k adds
   (100 cards). "Works best" is the user's call per question, so the output is every metric, sortable, not one score.
@@ -178,8 +180,25 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
     rate compares whole builds at stage 3.
   - **Output:** an HTML page like the study index, builds and cards sortable by any metric, with intervals.
   - **Land count stays fixed** (the user, 2026-10-30): a build swaps lands for lands; mana bases are the next tool's job.
-  - **Open:** how locked cards are marked (a `# lock:` list header or a flag). The existing `--variant` (named builds on the
-    same seeds and pods) is the stage-3 path; it has never answered a real question yet.
+  - **Locked cards** (settled 2026-11-17, the user's go-ahead to proceed on the default): `# lock: NAME; NAME` header lines in
+    the spec file; a locked add is always in, a locked cut always out. The existing `--variant` (named builds on the same
+    seeds and pods) is the stage-3 path; it has never answered a real question yet.
+  - **Stage 1 built (2026-11-17):** `fishpond swaptest SPEC --out DIR` (`fishpond/swaptest.py`; specs in `fishpond/swaptests/`).
+    A spec is `deck:`, `cut:` and `add:` lines plus `# lock:`. Each game's build: every cut out, the locked adds in, the
+    remaining slots drawn at random from the flex cards, lands and nonlands as separate pools (so the land count holds);
+    with as many flex cuts as adds, each flex card is in half the games. 'current' (the list) and 'full' (every swap) run as
+    their own builds on the first `--fixed` seeds (default 100), paired. Estimator: per metric, least squares on which flex
+    cards were in, each card's effect against its pool's average flex card, HC1 robust 95% intervals, Holm over each
+    metric's cards; interaction (removal, wipes, counters role tags) is shown and left to stage 3. Metrics: kill turn,
+    commander turn, mulligans, missed land drops, mana T4/T6, mana spent, spells cast and cards drawn T1-6, held 3+ turns;
+    per card: games in, cast rate, first cast turn, held rate. Output: report.txt and a sortable swaptest.html.
+  - **Validation:** the estimator, offline (`tests/fishpond_units.py`): 300 simulated experiments x 600 games with planted
+    effects on a skewed, capped whole-turn outcome gave 95.0% interval coverage and 27/3900 null cards past Holm; the unit
+    test keeps a 60 x 400 version. On real games: `fishpond/swaptests/validate_planted_heliod.txt` (four identical blanks
+    for an A/A check, two planted mana rocks, six real lifegain cuts): smoke run of 12 games 2026-11-17 (plumbing only);
+    the validation run itself (about 600 games) waits for the user's go-ahead on run length.
+  - **Not built yet:** stage 2's "drags in the goldfish" gate is the user reading the page; key cards' first seen/cast,
+    lines reached and tutor finds aren't metrics yet; stage 3 is `fishpond run --variant`.
   - **Validate before use** (FABLE_ROADMAP, 2026-11-09): a synthetic deck with a planted, known effect; the estimator must
     recover it with an honest interval before the tester answers a real question. Same-seed pairs need exact replays, so
     #10's garbage-collector item comes first.

@@ -1,0 +1,418 @@
+diff --git a/forge-game/src/main/java/forge/game/Game.java b/forge-game/src/main/java/forge/game/Game.java
+index eae7966..a32a277 100644
+--- a/forge-game/src/main/java/forge/game/Game.java
++++ b/forge-game/src/main/java/forge/game/Game.java
+@@ -654,6 +654,15 @@ public class Game {
+ 
+     public void bumpZoneVersion() {
+         zoneVersion++;
++        bumpStateVersion();
++    }
++
++    // GameAction keys the static-ability application order on it
++    public void bumpStateVersion() {
++        tracker.noteChange();
++    }
++    public long getStateVersion() {
++        return tracker.getChangeVersion();
+     }
+ 
+     // patch 121: the lead cards first (an LKI copy stands in for its card), then the static-source cards, without building
+diff --git a/forge-game/src/main/java/forge/game/GameAction.java b/forge-game/src/main/java/forge/game/GameAction.java
+index de2f886..145cdf5 100644
+--- a/forge-game/src/main/java/forge/game/GameAction.java
++++ b/forge-game/src/main/java/forge/game/GameAction.java
+@@ -1073,6 +1073,41 @@ public class GameAction {
+     public final void checkStaticAbilities(final boolean runEvents) {
+         checkStaticAbilities(runEvents, Sets.newHashSet(), CardCollection.EMPTY);
+     }
++    // CR 613.8 dependency detection is a battlefield filter per pair of statics
++    // in a layer. A pass is idempotent, so the order it settled on holds for the
++    // next pass while the game's state version and the layer's statics are the
++    // same, which is every LKI pass the AI runs while enumerating its options.
++    // An LKI pass whose list has no entry yet takes the real pass's order: the
++    // LKI copy keeps the ids of its statics.
++    private static final class StaticOrder {
++        final Map<StaticAbilityLayer, Long> signature = Maps.newEnumMap(StaticAbilityLayer.class);
++        final Map<StaticAbilityLayer, List<Integer>> order = Maps.newEnumMap(StaticAbilityLayer.class);
++        Table<StaticAbility, StaticAbility, Set<StaticAbilityLayer>> dependencies;
++    }
++    private long orderCacheVersion = -1;
++    private final Map<Long, StaticOrder> orderCache = Maps.newHashMap();
++    // fishpond patch 126 (Manabrew d7334e07b374): off with -Dfishpond.staticOrderCache=false; with
++    // -Dfishpond.staticOrderCheck=true every reused pick is also worked out afresh, the fresh pick is the one applied,
++    // and a disagreement is printed as #FP-ORDER, so a run in that mode plays as uncached and counts the misses
++    static final boolean ORDER_CACHE = !"false".equals(System.getProperty("fishpond.staticOrderCache"));
++    static final boolean ORDER_CHECK = Boolean.getBoolean("fishpond.staticOrderCheck");
++    public static long orderChecks, orderMisses;
++
++    private static long staticsSignature(final List<StaticAbility> statics) {
++        long h = statics.size();
++        for (final StaticAbility stAb : statics) {
++            h = h * 1000003L + stAb.getId();
++        }
++        return h;
++    }
++    private static long preListSignature(final CardCollectionView preList) {
++        long h = preList.size();
++        for (final Card c : preList) {
++            h = h * 1000003L + c.getId();
++        }
++        return h;
++    }
++
+     public final void checkStaticAbilities(final boolean runEvents, final Set<Card> affectedCards, final CardCollectionView preList) {
+         game.boardChanged();   // fishpond patch 41: abilities change in this pass, so CardState's memo starts over
+         try {
+@@ -1089,6 +1124,7 @@ public class GameAction {
+             return;
+         }
+         game.getTracker().freeze(); //prevent views flickering during while updating for state-based effects
++        game.getTracker().holdChangeVersion();
+ 
+         final Map<StaticAbilityLayer, Set<Card>> affectedPerLayer = Maps.newHashMap();
+ 
+@@ -1098,10 +1134,21 @@ public class GameAction {
+         // search for cards with static abilities
+         final FCollection<StaticAbility> staticAbilities = new FCollection<>();
+         final CardCollection staticList = new CardCollection();
++        if (!ORDER_CACHE || orderCacheVersion != game.getStateVersion() || orderCache.size() > 64) {
++            orderCache.clear();
++            orderCacheVersion = game.getStateVersion();
++        }
++        final long preListSignature = preListSignature(preList);
++        StaticOrder cached = orderCache.get(preListSignature);
++        if (cached == null) {
++            cached = orderCache.get(0L);
++        }
++        final StaticOrder current = new StaticOrder();
+         Table<StaticAbility, StaticAbility, Set<StaticAbilityLayer>> dependencies = null;
+         if (preList.isEmpty()) {
+-            dependencies = HashBasedTable.create();
++            dependencies = cached != null && !ORDER_CHECK ? cached.dependencies : HashBasedTable.create();
+         }
++        current.dependencies = dependencies;
+ 
+         game.forEachCardInGame(c -> {
+             // need to get Card from preList if able
+@@ -1134,12 +1181,39 @@ public class GameAction {
+                 }
+             }
+ 
++            final long signature = staticsSignature(staticsForLayer);
++            final boolean reuseOrder = cached != null && Long.valueOf(signature).equals(cached.signature.get(layer));
++            final List<Integer> cachedOrder = reuseOrder ? cached.order.get(layer) : null;
++            final List<Integer> order = Lists.newArrayList();
++            int orderIndex = 0;
++
+             while (!staticsForLayer.isEmpty()) {
+                 StaticAbility stAb = staticsForLayer.get(0);
+-                // dependency with CDA seems unlikely
+-                if (!stAb.isCharacteristicDefining()) {
++                if (cachedOrder != null) {
++                    final int wantedId = cachedOrder.get(orderIndex++);
++                    for (final StaticAbility candidate : staticsForLayer) {
++                        if (candidate.getId() == wantedId) {
++                            stAb = candidate;
++                            break;
++                        }
++                    }
++                    if (ORDER_CHECK) {
++                        final StaticAbility head = staticsForLayer.get(0);
++                        final StaticAbility fresh = head.isCharacteristicDefining() ? head
++                                : findStaticAbilityToApply(layer, staticsForLayer, preList, affectedPerAbility, dependencies);
++                        orderChecks++;
++                        if (fresh != stAb) {
++                            orderMisses++;
++                            System.err.println("#FP-ORDER miss layer=" + layer + " lki=" + !preList.isEmpty() + " cached=" + stAb
++                                    + " fresh=" + fresh + " (" + orderMisses + "/" + orderChecks + ")");
++                            stAb = fresh;
++                        }
++                    }
++                } else if (!stAb.isCharacteristicDefining()) {
++                    // dependency with CDA seems unlikely
+                     stAb = findStaticAbilityToApply(layer, staticsForLayer, preList, affectedPerAbility, dependencies);
+                 }
++                order.add(stAb.getId());
+                 staticsForLayer.remove(stAb);
+                 final CardCollectionView previouslyAffected = affectedPerAbility.get(stAb);
+                 final CardCollectionView affectedHere;
+@@ -1173,11 +1247,14 @@ public class GameAction {
+                 // and may change if an effect that has not yet been applied becomes
+                 // dependent on or independent of one or more other effects that have not yet been applied.
+             }
++            current.signature.put(layer, signature);
++            current.order.put(layer, order);
+             staticAbilities.addAll(toAdd);
+             for (Player p : game.getPlayers()) {
+                 p.afterStaticAbilityLayer(layer);
+             }
+         }
++        orderCache.put(preListSignature, current);
+ 
+         for (final CardCollectionView affected : affectedPerAbility.values()) {
+             if (affected != null) {
+@@ -1200,6 +1277,7 @@ public class GameAction {
+                     ((GameCommand) staticCheck[3]).run();
+                     toRemove.add(staticCheck);
+                     affectedCards.add(c);
++                    orderCacheVersion = -1;
+                 }
+             }
+             c.getStaticCommandList().removeAll(toRemove);
+@@ -1276,6 +1354,7 @@ public class GameAction {
+             game.fireEvent(new GameEventCardStatsChanged(affectedCards));
+         }
+         game.getTracker().unfreeze();
++        game.getTracker().releaseChangeVersion();
+     }
+ 
+     private StaticAbility findStaticAbilityToApply(StaticAbilityLayer layer, List<StaticAbility> staticsForLayer, CardCollectionView preList, Map<StaticAbility, CardCollectionView> affectedPerAbility,
+diff --git a/forge-game/src/main/java/forge/game/card/Card.java b/forge-game/src/main/java/forge/game/card/Card.java
+index 52eec12..f3ae23f 100644
+--- a/forge-game/src/main/java/forge/game/card/Card.java
++++ b/forge-game/src/main/java/forge/game/card/Card.java
+@@ -1942,12 +1942,12 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+ 
+     @Override
+     public void setCounters(final CounterType counterType, final Integer num) {
+-        traitsVersion++;
++        bumpTraitsVersion();
+         super.setCounters(counterType, num);
+     }
+ 
+     public final void setCounters(final Multiset<CounterType> allCounters) {
+-        traitsVersion++;
++        bumpTraitsVersion();
+         boolean changed = counters.contains(CounterEnumType.MANABOND) || counters.elementSet().stream().anyMatch(CounterType::isKeywordCounter);
+         counters = allCounters;
+         view.updateCounters(this);
+@@ -1967,7 +1967,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     @Override
+     public final void clearCounters() {
+         if (counters.isEmpty()) { return; }
+-        traitsVersion++;
++        bumpTraitsVersion();
+         boolean changed = counters.contains(CounterEnumType.MANABOND) || counters.elementSet().stream().anyMatch(CounterType::isKeywordCounter);
+ 
+         counters.clear();
+@@ -3427,6 +3427,11 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     }
+     public final void bumpTraitsVersion() {
+         traitsVersion++;
++        // an LKI copy is not part of the game state; a card without a zone is
++        // either that or one being built, and entering a zone bumps anyway
++        if (game != null && !isLKI() && getZone() != null) {
++            game.bumpStateVersion();
++        }
+     }
+ 
+     public boolean hasRemoveIntrinsic() {
+@@ -4158,7 +4163,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     }
+ 
+     public final void updateTypeCache() {
+-        traitsVersion++;
++        bumpTraitsVersion();
+         this.getCurrentState().updateTypes();
+     }
+ 
+@@ -4897,7 +4902,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+         return changedCardTraitsByText;
+     }
+     public final void setChangedCardTraitsByText(Table<Long, Long, CardTraitChanges> changes) {
+-        traitsVersion++;
++        bumpTraitsVersion();
+         changedCardTraitsByText.clear();
+         for (Table.Cell<Long, Long, CardTraitChanges> e : changes.cellSet()) {
+             changedCardTraitsByText.put(e.getRowKey(), e.getColumnKey(), e.getValue().copy(this, true));
+@@ -4905,7 +4910,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     }
+     public final void addChangedCardTraitsByText(Collection<SpellAbility> spells,
+             Collection<Trigger> trigger, Collection<ReplacementEffect> replacements, Collection<StaticAbility> statics, long timestamp, long staticId) {
+-        traitsVersion++;
++        bumpTraitsVersion();
+         changedCardTraitsByText.put(timestamp, staticId, new CardTraitChanges(
+             spells, trigger, replacements, statics, e -> true
+         ));
+@@ -4930,7 +4935,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+         return addChangedCardTraits(result, timestamp, staticId, updateView);
+     }
+     public final ICardTraitChanges addChangedCardTraits(ICardTraitChanges changes, long timestamp, long staticId, boolean updateView) {
+-        traitsVersion++;
++        bumpTraitsVersion();
+         changedCardTraits.put(timestamp, staticId, changes);
+         if (updateView) {
+             updateAbilityTextForView();
+@@ -4939,11 +4944,11 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     }
+ 
+     public final boolean removeChangedCardTraits(long timestamp, long staticId) {
+-        traitsVersion++;
++        bumpTraitsVersion();
+         return changedCardTraits.remove(timestamp, staticId) != null;
+     }
+     public final boolean removeChangedCardTraitsByText(long timestamp, long staticId) {
+-        traitsVersion++;
++        bumpTraitsVersion();
+         return changedCardTraitsByText.remove(timestamp, staticId) != null;
+     }
+ 
+@@ -4963,7 +4968,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     }
+ 
+     public final void setChangedCardTraits(Table<Long, Long, ICardTraitChanges> changes) {
+-        traitsVersion++;
++        bumpTraitsVersion();
+         changedCardTraits.clear();
+         for (Table.Cell<Long, Long, ICardTraitChanges> e : changes.cellSet()) {
+             changedCardTraits.put(e.getRowKey(), e.getColumnKey(), e.getValue().copy(this, true));
+@@ -4971,7 +4976,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+     }
+ 
+     public boolean clearChangedCardTraits() {
+-        traitsVersion++;
++        bumpTraitsVersion();
+         boolean changed = false;
+         if (!changedCardTraitsByText.isEmpty()) {
+             changed = true;
+@@ -5203,7 +5208,7 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+         updateKeywordsCache(getCurrentState());
+     }
+     public final void updateKeywordsCache(final CardState state) {
+-        traitsVersion++;
++        bumpTraitsVersion();
+         KeywordCollection keywords = new KeywordCollection();
+ 
+         // Layer 1
+@@ -5619,10 +5624,10 @@ public class Card extends GameEntity implements Comparable<Card>, IHasSVars, ITr
+         return phasedOut;
+     }
+     public final void setPhasedOut(final Player phasedOut0) {
+-        if (game != null) {
++        if (phasedOut == phasedOut0) { return; }
++        if (game != null && getZone() != null) {
+             game.bumpZoneVersion();   // fishpond patch 121: the battlefield list leaves phased-out cards out
+         }
+-        if (phasedOut == phasedOut0) { return; }
+         phasedOut = phasedOut0;
+         view.updatePhasedOut(this);
+     }
+diff --git a/forge-game/src/main/java/forge/game/combat/CombatView.java b/forge-game/src/main/java/forge/game/combat/CombatView.java
+index 82e33e8..521319f 100644
+--- a/forge-game/src/main/java/forge/game/combat/CombatView.java
++++ b/forge-game/src/main/java/forge/game/combat/CombatView.java
+@@ -23,6 +23,12 @@ public class CombatView extends TrackableObject {
+     // Negative IDs avoid tracker registration (only id >= 0 is registered).
+     private static int nextId = -2;
+ 
++    // attackers and blockers reach the change version through their cards
++    @Override
++    protected boolean isGameState() {
++        return false;
++    }
++
+     public CombatView(final Tracker tracker) {
+         super(nextId--, tracker);
+         set(TrackableProperty.AttackersWithDefenders, new ConcurrentHashMap<CardView, GameEntityView>());
+diff --git a/forge-game/src/main/java/forge/game/spellability/SpellAbilityView.java b/forge-game/src/main/java/forge/game/spellability/SpellAbilityView.java
+index b914aad..7273077 100644
+--- a/forge-game/src/main/java/forge/game/spellability/SpellAbilityView.java
++++ b/forge-game/src/main/java/forge/game/spellability/SpellAbilityView.java
+@@ -28,6 +28,11 @@ public class SpellAbilityView extends TrackableObject implements IHasCardView {
+     SpellAbilityView(final SpellAbility sa) {
+         this(sa, sa.getHostCard() == null || sa.getHostCard().getGame() == null ? null : sa.getHostCard().getGame().getTracker());
+     }
++    @Override
++    protected boolean isGameState() {
++        return false;
++    }
++
+     SpellAbilityView(final SpellAbility sa, Tracker tracker) {
+         super(sa.getId(), tracker);
+         updateHostCard(sa);
+diff --git a/forge-game/src/main/java/forge/trackable/TrackableObject.java b/forge-game/src/main/java/forge/trackable/TrackableObject.java
+index 190bbb6..9f65585 100644
+--- a/forge-game/src/main/java/forge/trackable/TrackableObject.java
++++ b/forge-game/src/main/java/forge/trackable/TrackableObject.java
+@@ -91,6 +91,9 @@ public abstract class TrackableObject implements IIdentifiable, Serializable {
+                 respectsFreeze = props.get(key) != null;
+             }
+             if (respectsFreeze) {
++                if (isGameState()) {
++                    tracker.noteChange();
++                }
+                 tracker.addDelayedPropChange(this, key, value);
+                 return;
+             }
+@@ -102,14 +105,25 @@ public abstract class TrackableObject implements IIdentifiable, Serializable {
+                 // in typical Magic game flow. Revisit if profiling shows excessive no-op deltas.
+                 markDirtyForConsumers(key);
+                 key.updateObjLookup(tracker, value);
++                if (tracker != null && isGameState()) {
++                    tracker.noteChange();
++                }
+             }
+         }
+         else if (!value.equals(props.put(key, value))) {
+             markDirtyForConsumers(key);
+             key.updateObjLookup(tracker, value);
++            if (tracker != null && isGameState()) {
++                tracker.noteChange();
++            }
+         }
+     }
+ 
++    // whether a change of this object moves the tracker's change version
++    protected boolean isGameState() {
++        return true;
++    }
++
+     /**
+      * Mark a property as dirty for all registered consumers and increment version.
+      */
+diff --git a/forge-game/src/main/java/forge/trackable/Tracker.java b/forge-game/src/main/java/forge/trackable/Tracker.java
+index aa74570..d0e0ea2 100644
+--- a/forge-game/src/main/java/forge/trackable/Tracker.java
++++ b/forge-game/src/main/java/forge/trackable/Tracker.java
+@@ -36,6 +36,28 @@ public class Tracker {
+ 
+     private final Table<TrackableType<?>, Integer, Object> objLookups = HashBasedTable.create();
+ 
++    // Counts every effective property change on any tracked object in the
++    // game, so a consumer can tell whether anything moved since it last
++    // looked. Holding it hides the changes of a region that leaves the game
++    // where it found it, such as a static-ability pass.
++    private long changeVersion;
++    private int changeVersionHold;
++
++    public final long getChangeVersion() {
++        return changeVersion;
++    }
++    public final void noteChange() {
++        if (changeVersionHold == 0) {
++            changeVersion++;
++        }
++    }
++    public final void holdChangeVersion() {
++        changeVersionHold++;
++    }
++    public final void releaseChangeVersion() {
++        changeVersionHold--;
++    }
++
+     public final boolean isFrozen() {
+         return freezeCounter > 0;
+     }
+@@ -64,9 +86,11 @@ public class Tracker {
+             return;
+         }
+         //after being unfrozen, ensure all changes delayed during freeze are now applied
++        holdChangeVersion();
+         for (final DelayedPropChange change : delayedPropChanges) {
+             change.object.set(change.prop, change.value);
+         }
++        releaseChangeVersion();
+         delayedPropChanges.clear();
+     }
+ 

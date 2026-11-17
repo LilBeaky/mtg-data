@@ -300,6 +300,39 @@ _reset = {(r[0], n) for r in (_re2.findall(r'"([^"]+)"', row) for row in _rows.s
 check("per-game state: the patches' static containers were found", len(_decl) >= 20, True)
 check("per-game state: every static container the patches add is reset before a game", sorted(set(_decl) - _CONFIG - _reset), [])
 
+# swap tester's estimator (fishpond/swaptest.py): random half-mixes with planted effects on a skewed, capped, whole-turn
+# outcome; the 95% intervals must cover the true effects about 95% of the time, the planted card must stand out, and null
+# cards must rarely survive Holm. 300 x 600 games gave coverage 0.950 and 27/3900 null survivors (2026-11-17).
+import random as _rnd
+from fishpond import swaptest as _st
+_pools = {"nonland": {"flex": [f"c{i}" for i in range(6)] + [f"a{i}" for i in range(6)], "slots": 6},
+          "land": {"flex": ["Lc0", "Lc1", "La0", "La1", "La2"], "slots": 2}}
+_true = {n: 0.0 for k in _pools for n in _pools[k]["flex"]}
+_true.update(a0=-1.0, a1=-0.4, c2=0.5, La0=-0.6)
+_truth = {}
+for _k in _pools:
+    _m = sum(_true[c] for c in _pools[_k]["flex"]) / len(_pools[_k]["flex"])
+    _truth.update({c: _true[c] - _m for c in _pools[_k]["flex"]})
+_g = _rnd.Random(7)
+_cov = _tot = _fp = _nul = _found = 0
+for _r in range(60):
+    _rows, _ys = [], []
+    for _i in range(400):
+        _s = set(_g.sample(_pools["nonland"]["flex"], 6) + _g.sample(_pools["land"]["flex"], 2))
+        _rows.append(_s)
+        _ys.append(min(21, max(4, round(9 + sum(_true[c] for c in _s) + _g.gauss(0, 2.2) * (1.5 if _g.random() < 0.2 else 1)))))
+    _f = _st.fit(_rows, _ys, _pools)
+    _sv = _st.holm({c: _st._p(e / se) for c, (e, se) in _f.items()})
+    _found += "a0" in _sv
+    for c, (e, se) in _f.items():
+        _tot += 1; _cov += abs(e - _truth[c]) <= 1.96 * se
+        if abs(_truth[c]) < 0.2: _nul += 1; _fp += c in _sv
+check("swaptest estimator: every flex card estimated", len(_f), 17)
+check("swaptest estimator: 95% intervals cover the planted truth 92-98% of the time", 0.92 <= _cov / _tot <= 0.98, True)
+check("swaptest estimator: the planted -1 turn card survives Holm in 80%+ of runs (88% at 400 games)", _found >= 48, True)
+check("swaptest estimator: null cards survive Holm under 2% of the time", _fp / _nul < 0.02, True)
+check("swaptest holm: smallest p first, stops at the first failure", _st.holm({"x": 0.001, "y": 0.03, "z": 0.04}), {"x"})
+
 for f in fails: print("FAIL", f)
 print(f"units: {'all ' if not fails else ''}{count - len(fails)} of {count} passed" if fails else f"units: all {count} passed")
 sys.exit(1 if fails else 0)
