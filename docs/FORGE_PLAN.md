@@ -192,11 +192,19 @@ On by default at every pilot seat (FISHPOND.md "The pilot" has the user-facing d
     metric's cards; interaction (removal, wipes, counters role tags) is shown and left to stage 3. Metrics: kill turn,
     commander turn, mulligans, missed land drops, mana T4/T6, mana spent, spells cast and cards drawn T1-6, held 3+ turns;
     per card: games in, cast rate, first cast turn, held rate. Output: report.txt and a sortable swaptest.html.
-  - **Validation:** the estimator, offline (`tests/fishpond_units.py`): 300 simulated experiments x 600 games with planted
+  - **Validation:** the estimators, offline (`tests/fishpond_units.py`): 300 simulated experiments x 600 games with planted
     effects on a skewed, capped whole-turn outcome gave 95.0% interval coverage and 27/3900 null cards past Holm; the unit
-    test keeps a 60 x 400 version. On real games: `fishpond/swaptests/validate_planted_heliod.txt` (four identical blanks
-    for an A/A check, two planted mana rocks, six real lifegain cuts): smoke run of 12 games 2026-11-17 (plumbing only);
-    the validation run itself (about 600 games) waits for the user's go-ahead on run length.
+    tests keep smaller versions of that and of the drawn-by-T4 fit. On real games (2026-11-17, 600 mixed games + 100 each of
+    current and full, `data/fishpond/swaptest_planted_20261117`): `fishpond/swaptests/validate_planted_heliod.txt` (four
+    identical {1} blanks, Mind Stone and Arcane Signet planted, six real lifegain cuts). **The per-game fit has honest
+    intervals but no power for one card in a 99-card deck:** 8 of 120 intervals excluded 0 (about chance), none past Holm,
+    and the rocks didn't show (Mind Stone +0.17 +/- 0.21 mana T6, truth about +0.1: each flex card is cast by T5 in only
+    9-13% of the games it's in). **So the main table is now the effect when drawn by T4** (seen in hand, cast or in play by
+    the turn-4 main phase): Mind Stone +1.16 +/- 0.46 mana T6 (truth about +1) and +0.85 at T4, Arcane Signet +0.75 mana T4
+    and -0.22 +/- 0.13 commander turn, all past Holm; the four blanks agree with each other on every speed and mana metric
+    (none past Holm); blanks drawn early slow the kill against core cards (+0.19 to +0.84), the lifegain cuts less so. The
+    only other Holm survivors are cheap cards on spells cast T1-6, a real effect (a drawn 1-drop gets cast). Drawn-by-T4
+    includes cards drawn by draw spells, a mild selection the validation didn't show.
   - **Not built yet:** stage 2's "drags in the goldfish" gate is the user reading the page; key cards' first seen/cast,
     lines reached and tutor finds aren't metrics yet; stage 3 is `fishpond run --variant`.
   - **Validate before use** (FABLE_ROADMAP, 2026-11-09): a synthetic deck with a planted, known effect; the estimator must

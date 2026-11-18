@@ -331,6 +331,24 @@ check("swaptest estimator: every flex card estimated", len(_f), 17)
 check("swaptest estimator: 95% intervals cover the planted truth 92-98% of the time", 0.92 <= _cov / _tot <= 0.98, True)
 check("swaptest estimator: the planted -1 turn card survives Holm in 80%+ of runs (88% at 400 games)", _found >= 48, True)
 check("swaptest estimator: null cards survive Holm under 2% of the time", _fp / _nul < 0.02, True)
+# the drawn-by-T4 estimator: each card in the deck half the time and drawn early in 12% of those games; planted effects
+# apply only when drawn
+_fl = [f"d{i}" for i in range(10)]
+_dt = {n: 0.0 for n in _fl}; _dt.update(d0=1.0, d1=-0.8)
+_g = _rnd.Random(11)
+_cov = _tot = _found = 0
+for _r in range(60):
+    _rows, _ys = [], []
+    for _i in range(600):
+        _d = {n for n in _fl if _g.random() < 0.5 and _g.random() < 0.12}
+        _rows.append(_d)
+        _ys.append(4.3 + sum(_dt[n] for n in _d) + _g.gauss(0, 1.3))
+    _f = _st.fit_drawn(_rows, _ys, _fl)
+    _found += "d0" in _st.holm({c: _st._p(e / se) for c, (e, se) in _f.items()})
+    for c, (e, se) in _f.items():
+        _tot += 1; _cov += abs(e - _dt[c]) <= 1.96 * se
+check("swaptest drawn estimator: 95% intervals cover the planted truth 92-98% of the time", 0.92 <= _cov / _tot <= 0.98, True)
+check("swaptest drawn estimator: a +1 card drawn early in 6% of 600 games survives Holm in 80%+ of runs", _found >= 48, True)
 check("swaptest holm: smallest p first, stops at the first failure", _st.holm({"x": 0.001, "y": 0.03, "z": 0.04}), {"x"})
 
 for f in fails: print("FAIL", f)

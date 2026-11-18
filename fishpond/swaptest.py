@@ -20,11 +20,17 @@ lands (the land count stays fixed; mana bases are a later tool's job), so lands 
 many flex cuts as flex adds, each flex card is in half the games. Two fixed builds run beside the mixes on the same seeds:
 'current' (the list as it is) and 'full' (every cut out, every add in), when the counts allow it.
 
-What is estimated: for each metric, a least-squares fit of the game's value on which flex cards were in, per pool. A card's
-effect is against the average flex card of its pool: "with this card in one of the flex slots instead of a typical flex
-card, the commander comes down 0.3 turns sooner". Two cards' effects subtract to the swap of one for the other. Intervals
-are 95% (robust standard errors); a card marked * keeps its effect after the Holm correction over all the cards of that
-metric. Interaction (removal, wipes, counters: Scryfall role tags) can't be judged against dummies: those cards still
+What is estimated, two ways, each a least-squares fit per metric with 95% intervals (robust standard errors) and Holm over
+the metric's cards (* keeps its effect after the correction):
+  - when drawn by turn 4 (the main table): the game's value on which flex cards the hero had seen by its turn-4 main phase
+    (in hand, cast or on the battlefield). A card's effect is drawing it in place of a card of the core list; two cards'
+    effects subtract to drawing one instead of the other. A given card is drawn that early in about one game in eight, and
+    the other games carry no signal about it, only noise, so this is about 2.5x as precise as the per-game fit: on the
+    planted validation (fishpond/swaptests/validate_planted_heliod.txt, 600 games, 2026-11-17) Mind Stone drawn by T4 gave
+    +1.16 +/- 0.46 mana at T6 against a truth of about +1, where the per-game fit gave +0.17 +/- 0.21.
+  - per game in the deck: the game's value on which flex cards were in the build, per pool, each card against its pool's
+    average flex card ("with this card in a flex slot instead of a typical one"). This is what the swap does to the deck's
+    average, but most games never draw the card, so only cards that change their games a lot show here. Interaction (removal, wipes, counters: Scryfall role tags) can't be judged against dummies: those cards still
 vary, so the other estimates stay sound, but they are marked and left to stage 3 (the chosen builds against real pods,
 with `fishpond run --variant`).
 
@@ -284,6 +290,17 @@ def card_usage(r, names, cards):
         out[n] = (t is not None, t, bool(al & held))
     return out
 
+DRAWN_T = 4
+
+def seen_by(r, n, cards, t=DRAWN_T):
+    """Whether the hero had card n in hand by its turn-t main phase, or had cast it or put it onto the battlefield by then."""
+    al = {n, cards[n]["forge"], n.split(" // ")[0]}
+    sn = r.get("snaps") or {}
+    for tt in range(1, t + 1):
+        if al & set((((sn.get(str(tt)) or {}).get("main")) or {}).get("hand_names") or []): return True
+    fc, fi = r.get("first_cast") or {}, r.get("first_in") or {}
+    return any(fc.get(a, 99) <= t or fi.get(a, 99) <= t for a in al)
+
 # ---------------------------------------------------------------------------------------------------------- estimation
 
 def _solve(A, b):
@@ -352,6 +369,32 @@ def fit(rows, ys, pools):
             out[card] = (b[a] - mean, math.sqrt(max(var, 0.0)))
     return out
 
+def fit_drawn(rows, ys, flex):
+    """OLS of ys on 'drawn by T4' indicators, one per flex card, with an intercept (how many flex cards a game draws isn't
+    fixed, so nothing is dropped). A card's coefficient is the effect of drawing it in place of a card of the core list.
+    Returns {card: (effect, se)} with HC1 robust standard errors, or {} when the cards are drawn too rarely to fit."""
+    pos = {c: 1 + k for k, c in enumerate(flex)}
+    act = [[0] + [pos[c] for c in row if c in pos] for row in rows]
+    n, p = len(act), 1 + len(flex)
+    if n <= p + 1: return {}
+    XtX = [[0.0] * p for _ in range(p)]
+    Xty = [0.0] * p
+    for a, y in zip(act, ys):
+        for i in a:
+            Xty[i] += y
+            for j in a: XtX[i][j] += 1.0
+    if any(XtX[i][i] < 5 for i in range(1, p)): return {}
+    inv = _inverse(XtX)
+    if inv is None: return {}
+    beta = [sum(inv[i][j] * Xty[j] for j in range(p)) for i in range(p)]
+    meat = [[0.0] * p for _ in range(p)]
+    for a, y in zip(act, ys):
+        e2 = (y - sum(beta[i] for i in a)) ** 2
+        for i in a:
+            for j in a: meat[i][j] += e2
+    tmp = [[sum(inv[i][a] * meat[a][j] for a in range(p)) for j in range(p)] for i in range(p)]
+    return {c: (beta[k], math.sqrt(max(sum(tmp[k][a] * inv[a][k] for a in range(p)) * n / (n - p), 0.0))) for c, k in pos.items()}
+
 def _p(z): return math.erfc(abs(z) / math.sqrt(2))
 
 def holm(pvals):
@@ -387,6 +430,13 @@ def analyse(out):
         f = fit(rows, ys, pools)
         surv = holm({c: _p(e / se) if se else 1.0 for c, (e, se) in f.items() if not _interaction(cards[c])})
         effects[key] = {c: {"eff": e, "se": se, "holm": c in surv} for c, (e, se) in f.items()}
+    drawn_rows = [{n for n in s if seen_by(r, n, cards)} for r, s in zip(mix, rows)]
+    drawn = {}
+    for key, *_ in METRICS:
+        if key == "mull": continue                         # mulligans come before the draws
+        f = fit_drawn(drawn_rows, [g[key] for g in gm], flex)
+        surv = holm({c: _p(e / se) if se else 1.0 for c, (e, se) in f.items() if not _interaction(cards[c])})
+        drawn[key] = {c: {"eff": e, "se": se, "holm": c in surv} for c, (e, se) in f.items()}
     builds = {}
     for label in ["mixes"] + list(fixed):
         rs = mix if label == "mixes" else [r for r in recs if r["build"] == label]
@@ -406,9 +456,9 @@ def analyse(out):
         ins = [r for r, s in zip(mix, rows) if n in s]
         u = [card_usage(r, [n], cards)[n] for r in ins]
         casts = [t for c, t, _ in u if c and t]
-        usage[n] = {"games_in": len(ins), "cast": sum(1 for c, _, _ in u if c) / len(u) if u else None,
+        usage[n] = {"games_in": len(ins), "drawn": sum(1 for d, s in zip(drawn_rows, rows) if n in d) / len(ins) if ins else None, "cast": sum(1 for c, _, _ in u if c) / len(u) if u else None,
                     "first": sum(casts) / len(casts) if casts else None, "held": sum(1 for *_, h in u if h) / len(u) if u else None}
-    return meta, {"n": len(mix), "effects": effects, "builds": builds, "paired": paired, "usage": usage, "flex": flex}
+    return meta, {"n": len(mix), "effects": effects, "drawn": drawn, "builds": builds, "paired": paired, "usage": usage, "flex": flex}
 
 def _interaction(c): return bool(set(c.get("roles") or []) & set(INTERACTION))
 
@@ -446,46 +496,60 @@ def text_report(meta, a):
         L.append(f"  full - current, same seeds ({n} pairs): " + ", ".join(
             f"{lab} {v[0]:+.2f}±{v[1]:.2f}" for (k, lab, *_), v in ((m, a["paired"][m[0]]) for m in METRICS) if v[0] is not None and v[1] is not None))
     L.append("")
-    L.append("Card effects against the pool's average flex card (95% interval; * survives Holm over the metric's cards;")
-    L.append("lower is better for kill turn, commander turn, mulligans, missed drops and held; I = interaction, judged at stage 3):")
+    L.append(f"Card effects when drawn by turn {DRAWN_T}: drawing the card in place of a core card (95% interval; * survives Holm")
+    L.append("over the metric's cards; lower is better for kill turn, commander turn, missed drops and held; I = interaction,")
+    L.append("judged at stage 3). Compare two cards by subtracting their effects:")
+    _effect_lines(L, meta, a["drawn"])
+    L.append("")
+    L.append("Card effects per game in the deck, against the pool's average flex card (what the swap does to the deck's average;")
+    L.append("most games never draw a given card, so these are small and noisy):")
+    _effect_lines(L, meta, a["effects"])
+    L.append("")
+    L.append(f"Flex cards when in the build: games in, drawn by T{DRAWN_T}, cast at all, first cast turn, held castable 3+ turns")
+    for c in a["flex"]:
+        u = a["usage"][c]
+        L.append(f"  {c:32} {u['games_in']:5}  {_pct(u.get('drawn'))}  {_pct(u['cast'])}  {_f(u['first'], 1):>5}  {_pct(u['held'])}")
+    return "\n".join(L)
+
+def _effect_lines(L, meta, effects):
     for key, lab, low, _ in METRICS:
-        e = a["effects"].get(key) or {}
+        e = effects.get(key) or {}
         if not e: continue
         L.append(f"  {lab}:")
         for c in sorted(e, key=lambda c: e[c]["eff"] * (1 if low else -1)):
             v = e[c]
             tag = ("I " if _interaction(meta["cards"][c]) else "  ") + ("*" if v["holm"] else " ")
             L.append(f"    {tag} {meta['cards'][c]['side']:3} {c:32} {v['eff']:+.2f} ± {1.96 * v['se']:.2f}")
-    L.append("")
-    L.append("Flex cards when in the build: games in, cast at all, first cast turn, held castable 3+ turns")
-    for c in a["flex"]:
-        u = a["usage"][c]
-        L.append(f"  {c:32} {u['games_in']:5}  {_pct(u['cast'])}  {_f(u['first'], 1):>5}  {_pct(u['held'])}")
-    return "\n".join(L)
 
 def _pct(v): return "   -" if v is None else f"{100 * v:3.0f}%"
 
 def html_report(meta, a):
     import html as H
     esc = H.escape
-    met = [(k, lab, low, why) for k, lab, low, why in METRICS if a["effects"].get(k)]
-    rows = []
-    for c in a["flex"]:
+    def card_table(effects):
+        met = [(k, lab, low, why) for k, lab, low, why in METRICS if effects.get(k)]
+        rows = [card_row(c, effects, met) for c in a["flex"]]
+        head = "".join(f"<th title='{esc(why)}{' (lower is better)' if low else ''}'>{esc(lab)}</th>" for k, lab, low, why in met)
+        return (f"<div class=wrap><table class=sort><thead><tr><th>card</th><th>side</th><th>land</th><th>interaction</th><th>games in</th>"
+                f"<th>drawn by T{DRAWN_T}</th><th>cast</th><th>first cast</th><th>held 3+</th>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table></div>")
+    def card_row(c, effects, met):
         card = meta["cards"][c]
         u = a["usage"][c]
+        dv = lambda x: "" if x is None else x
         cells = [f"<td>{esc(c)}</td>", f"<td>{card['side']}</td>", f"<td>{'land' if card['land'] else ''}</td>",
                  f"<td>{'yes' if _interaction(card) else ''}</td>", f"<td class=n data-v='{u['games_in']}'>{u['games_in']}</td>",
+                 f"<td class=n data-v='{dv(u.get('drawn'))}'>{_pct(u.get('drawn')).strip()}</td>",
                  f"<td class=n data-v='{u['cast'] if u['cast'] is not None else ''}'>{_pct(u['cast']).strip()}</td>",
                  f"<td class=n data-v='{u['first'] if u['first'] is not None else ''}'>{_f(u['first'], 1)}</td>",
                  f"<td class=n data-v='{u['held'] if u['held'] is not None else ''}'>{_pct(u['held']).strip()}</td>"]
         for k, lab, low, _ in met:
-            v = a["effects"][k].get(c)
+            v = effects[k].get(c)
             if not v: cells.append("<td class=n data-v=''>-</td>"); continue
             good = (v["eff"] < 0) == low
             cls = ("good" if good else "bad") if v["holm"] and not _interaction(card) else ""
             cells.append(f"<td class='n {cls}' data-v='{v['eff']:.4f}' title='95%: {v['eff'] - 1.96 * v['se']:+.2f} to {v['eff'] + 1.96 * v['se']:+.2f}'>"
                          f"{v['eff']:+.2f}<small> ±{1.96 * v['se']:.2f}</small>{'*' if v['holm'] else ''}</td>")
-        rows.append("<tr>" + "".join(cells) + "</tr>")
+        return "<tr>" + "".join(cells) + "</tr>"
     brows = []
     for label, b in a["builds"].items():
         cells = [f"<td>{esc(label)}</td>", f"<td class=n data-v='{b['games']}'>{b['games']}</td>", f"<td class=n data-v='{b['wins']}'>{b['wins']}</td>"]
@@ -493,7 +557,6 @@ def html_report(meta, a):
             mu, hw = b[k]
             cells.append("<td class=n data-v=''>-</td>" if mu is None else f"<td class=n data-v='{mu:.4f}'>{mu:.2f}<small>{f' ±{hw:.2f}' if hw else ''}</small></td>")
         brows.append("<tr>" + "".join(cells) + "</tr>")
-    head = "".join(f"<th title='{esc(why)}{' (lower is better)' if low else ''}'>{esc(lab)}</th>" for k, lab, low, why in met)
     bhead = "".join(f"<th title='{esc(why)}'>{esc(lab)}</th>" for k, lab, low, why in METRICS)
     pools = "; ".join(f"{k}: {p['slots']} slots from {len(p['flex'])} flex cards" + (f", locked in: {', '.join(p['lock_add'])}" if p["lock_add"] else "")
                       + (f", locked out: {', '.join(p['lock_cut'])}" if p["lock_cut"] else "") for k, p in meta["pools"].items() if p["cut"] or p["add"])
@@ -520,13 +583,16 @@ small{{color:var(--mut)}} .good{{color:var(--good);font-weight:600}} .bad{{color
 <h2>Builds</h2><p>Mean and 95% interval. "mixes" is every random build pooled.</p>
 <div class=wrap><table class=sort><thead><tr><th>build</th><th>games</th><th>wins</th>{bhead}</tr></thead><tbody>{''.join(brows)}</tbody></table></div>
 {paired}
-<h2>Cards</h2>
-<p>Effects are against the pool's average flex card: with this card in a flex slot instead of a typical flex card. Two cards' effects
-subtract to the swap of one for the other. The ± is the 95% interval (hover for its ends); * survives the Holm correction over that
-metric's cards, and only those are colored (green helps, red hurts). Interaction can't be judged against dummies: it is shown but
-left to stage 3. Click a column to sort.</p>
-<div class=wrap><table class=sort><thead><tr><th>card</th><th>side</th><th>land</th><th>interaction</th><th>games in</th><th>cast</th><th>first cast</th><th>held 3+</th>{head}</tr></thead>
-<tbody>{''.join(rows)}</tbody></table></div>
+<h2>Cards when drawn by turn {DRAWN_T}</h2>
+<p>The effect of drawing the card by your turn {DRAWN_T} in place of a card of the core list. Two cards' effects subtract to drawing
+one instead of the other. A given card is drawn that early in only about one game in eight, so this is where the per-card signal is.
+The ± is the 95% interval (hover for its ends); * survives the Holm correction over that metric's cards, and only those are colored
+(green helps, red hurts). Interaction can't be judged against dummies: it is shown but left to stage 3. Click a column to sort.</p>
+{card_table(a["drawn"])}
+<h2>Cards per game in the deck</h2>
+<p>What having the card in a flex slot does to the deck's average game, against the pool's average flex card. Most games never draw
+a given card, so these effects are small and their intervals wide; a card has to change the games it is drawn in a lot to show here.</p>
+{card_table(a["effects"])}
 <script>
 document.querySelectorAll('table.sort').forEach(t=>t.querySelectorAll('th').forEach((th,i)=>th.addEventListener('click',()=>{{
  const b=t.tBodies[0],rs=[...b.rows],asc=th.dataset.d!=='a';th.dataset.d=asc?'a':'d';
