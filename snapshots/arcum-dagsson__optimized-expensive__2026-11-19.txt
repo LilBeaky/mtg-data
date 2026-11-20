@@ -1,0 +1,258 @@
+# commander: Arcum Dagsson
+# variant: optimized-expensive
+# url: https://edhrecstatic.com/commanders/arcum-dagsson/optimized/expensive
+# decks: 10
+# fetched: 2026-11-19
+Blinkmoth Nexus|80|79
+Minamo, School at Water's Edge|90|78
+Academy Ruins|90|72
+Tezzeret the Seeker|80|71
+Dramatic Reversal|90|70
+Mishra's Factory|70|68
+Portal to Phyrexia|70|65
+Walking Ballista|70|65
+Force of Negation|80|65
+Urza's Saga|80|63
+Etherium Sculptor|80|63
+Mana Drain|80|53
+Silver Myr|70|59
+Mystic Remora|70|43
+Rings of Brighthearth|70|63
+Swan Song|70|44
+Ornithopter of Paradise|60|50
+Thousand-Year Elixir|60|56
+Darksteel Forge|60|55
+Staff of Domination|60|58
+Rhystic Study|100|66
+Mana Vault|100|89
+Cyclonic Rift|90|55
+Mishra's Workshop|90|89
+Fierce Guardianship|90|67
+Mox Diamond|90|84
+Grim Monolith|90|85
+Ancient Tomb|90|78
+Force of Will|90|72
+The One Ring|70|57
+Marvin, Murderous Mimic|60|57
+Phyrexian Metamorph|60|41
+Urza, Lord High Artificer|60|53
+Crashing Drawbridge|60|57
+Combat Courier|50|49
+Hangarback Walker|50|47
+Corridor Monitor|50|48
+Myr Sire|50|49
+Metalworker|50|49
+Spellskite|50|39
+Scrap Trawler|50|46
+Liberator, Urza's Battlethopter|50|45
+Myr Convert|40|39
+Memnite|40|36
+Shield Sphere|40|38
+Plague Myr|40|38
+Ornithopter|40|31
+Myr Retriever|40|36
+Hedron Crawler|30|29
+Filigree Sages|30|29
+Emry, Lurker of the Loch|30|18
+Thassa's Oracle|30|17
+Sai, Master Thopterist|30|18
+Forensic Gadgeteer|30|20
+Manakin|30|29
+Master Transmuter|30|25
+Junk Diver|20|18
+Padeem, Consul of Innovation|20|10
+Phyrexian Walker|20|18
+Palladium Myr|20|16
+Aphetto Alchemist|20|17
+Malcator's Watcher|20|19
+Tomb Trawler|20|20
+K-9, Mark I|20|19
+Circuit Mender|10|9
+Teferi, Mage of Zhalfir|10|6
+Snapcaster Mage|10|3
+Silver Raven|10|9
+Hydroelectric Specimen|10|-4
+Fatespinner|10|8
+The Reality Chip|10|-3
+Kozilek, Butcher of Truth|10|8
+Arcanis the Omnipotent|10|3
+Su-Chi|10|10
+Zenith Chronicler|10|9
+Faerie Mastermind|10|-4
+Jace's Archivist|10|6
+Thopter Squadron|10|10
+Millikin|10|8
+Solemn Simulacrum|10|-12
+Mystical Tutor|60|36
+Counterspell|60|-7
+Pact of Negation|50|40
+Mindbreak Trap|50|45
+Flusterstorm|50|40
+Mental Misstep|40|33
+An Offer You Can't Refuse|40|4
+Sink into Stupor|40|19
+Pongify|30|-10
+Chain of Vapor|30|25
+Whir of Invention|30|17
+Strix Serenade|30|20
+Muddle the Mixture|30|14
+Into the Flood Maw|30|24
+Trickbind|20|18
+Shore Up|20|15
+Brainstorm|20|-21
+Rapid Hybridization|10|-24
+Stroke of Genius|10|7
+Flare of Denial|10|3
+Tidal Bore|10|10
+Cerulean Wisps|10|7
+Commandeer|10|5
+Blue Sun's Zenith|10|-2
+Dispel|10|1
+Resculpt|10|-9
+Boomerang|10|8
+Impulse|10|5
+Negate|10|-28
+Machine Over Matter|10|9
+Reality Shift|10|-18
+Tale's End|10|7
+Stifle|10|8
+Unsubstantiate|10|7
+Misdirection|10|5
+Snapback|10|9
+Sunder|10|9
+Transmute Artifact|60|56
+Fabricate|40|18
+Ponder|20|-10
+Reshape|20|13
+Timetwister|20|18
+Windfall|20|-3
+Sea Gate Restoration|10|-5
+Rise and Shine|10|8
+Ancestral Vision|10|9
+Gitaxian Probe|10|-2
+Curse of the Swine|10|-2
+Merchant Scroll|10|0
+Step Through|10|5
+All Is Dust|10|8
+Lightning Greaves|60|34
+Unwinding Clock|60|48
+Isochron Scepter|60|42
+Encroaching Mycosynth|50|46
+Grafdigger's Cage|50|45
+Mycosynth Lattice|50|47
+Voltaic Key|50|45
+God-Pharaoh's Statue|50|48
+Myr Turbine|40|39
+Swiftfoot Boots|40|12
+Repurposing Bay|40|36
+Clock of Omens|40|38
+Nevinyrral's Disk|40|38
+Simulacrum Synthesizer|40|35
+Sculpting Steel|40|33
+Nexus of Becoming|30|29
+Citanul Flute|30|30
+Imposter Mech|30|26
+Spine of Ish Sah|30|28
+Sensei's Divining Top|30|15
+Peter Parker's Camera|25|24
+Winter Orb|20|15
+Krark-Clan Ironworks|20|18
+Forsaken Monument|20|16
+Torpor Orb|20|18
+The Regalia|20|19
+Esoteric Duplicator|20|19
+Chimil, the Inner Sun|20|16
+Pithing Needle|20|18
+Agatha's Soul Cauldron|20|19
+Trinisphere|10|8
+Expedition Map|10|6
+Winter Moon|10|5
+Altar of Dementia|10|9
+Static Orb|10|7
+Manifold Key|10|3
+Ashnod's Altar|10|6
+The Immortal Sun|10|8
+Lavaspur Boots|10|8
+Mystic Forge|10|1
+Goblin Cannon|10|10
+Knowledge Pool|10|10
+Ensnaring Bridge|10|9
+Ugin's Nexus|10|10
+Illusionist's Bracers|10|7
+Crucible of Worlds|10|9
+Umbral Mantle|10|10
+Vedalken Orrery|10|7
+Mind's Eye|10|9
+Skullclamp|10|4
+Mind Over Matter|50|48
+Copy Artifact|50|46
+Power Artifact|30|27
+Unstoppable Plan|10|3
+The Phasing of Zhalfir|10|9
+Thopter Spy Network|10|2
+Mirrodin Besieged|10|5
+Mirrormade|10|5
+Leyline of Anticipation|10|0
+Mechanized Production|10|3
+Pemmin's Aura|10|8
+Dress Down|10|8
+Karn, the Great Creator|30|26
+Narset, Parter of Veils|20|8
+Ugin, Eye of the Storms|13|10
+Otawara, Soaring City|80|55
+Inventors' Fair|70|57
+Seat of the Synod|60|42
+Inkmoth Nexus|60|58
+City of Traitors|60|58
+Buried Ruin|50|38
+Hall of the Bandit Lord|40|39
+Darksteel Citadel|40|29
+Archway of Innovation|30|19
+Strip Mine|30|27
+Tolaria West|30|24
+Command Beacon|30|26
+Mishra's Foundry|20|20
+Reliquary Tower|20|-36
+Wasteland|20|19
+Emergence Zone|20|15
+Mistrise Village|13|3
+Soldevi Excavations|10|9
+Boseiju, Who Shelters All|10|9
+Maze of Ith|10|5
+Deserted Temple|10|9
+Castle Vantress|10|-9
+Mystic Sanctuary|10|-41
+Crystal Vein|10|8
+Thespian's Stage|10|8
+Homeward Path|10|9
+Temple of the False God|10|0
+Sol Ring|100|15
+Mox Opal|90|80
+Basalt Monolith|80|70
+Chrome Mox|70|61
+Arcane Signet|60|-5
+Lotus Petal|50|38
+Chromatic Orrery|50|48
+Liquimetal Torque|40|33
+Thran Dynamo|30|17
+Gilded Lotus|20|9
+Mox Amber|10|3
+Fellwar Stone|10|-10
+Midnight Clock|10|-11
+Machine God's Effigy|10|7
+Guardian Idol|10|9
+Springleaf Drum|10|7
+Extraplanar Lens|10|2
+Lion's Eye Diamond|10|9
+Cavern of Souls|60|55
+Gemstone Caverns|50|44
+The Mycosynth Gardens|40|34
+Polluted Delta|30|22
+Scalding Tarn|30|22
+Flooded Strand|30|22
+Misty Rainforest|30|22
+Talon Gates of Madara|20|16
+Command Tower|10|6
+Myriad Landscape|10|-17
+Mirrex|10|9
+Plaza of Heroes|10|9

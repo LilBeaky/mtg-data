@@ -1,0 +1,91 @@
+# bracket: 4
+# plan: Strongest non-cEDH Arcum. Arcum sacrifices cheap artifact creatures to put combo pieces straight onto the battlefield. Main line: Basalt Monolith + Forsaken Monument or Rings of Brighthearth (or Power Artifact on a Monolith) for infinite colorless, then Walking Ballista, or Staff of Domination to draw the deck into Thassa's Oracle. Backups: Chromatic Orrery + Filigree Sages, Metalworker + Staff, Dramatic Reversal + Isochron Scepter. Portal to Phyrexia as the fair value bomb. No locks.
+# pets: Portal to Phyrexia
+# key: Basalt Monolith; Forsaken Monument; Rings of Brighthearth; Staff of Domination; Walking Ballista; Chromatic Orrery
+# package: Infinite colorless = Basalt Monolith + Forsaken Monument
+Commander
+1 Arcum Dagsson
+Deck
+1 Ornithopter #fodder
+1 Memnite #fodder
+1 Phyrexian Walker #fodder
+1 Ornithopter of Paradise #fodder #ramp
+1 Silver Myr #fodder #ramp
+1 Manakin #fodder #ramp
+1 Hedron Crawler #fodder #ramp
+1 Plague Myr #fodder #ramp
+1 Corridor Monitor #fodder #engine
+1 Combat Courier #fodder #draw
+1 Crashing Drawbridge #fodder #haste
+1 Etherium Sculptor #fodder #ramp
+1 Marvin, Murderous Mimic #fodder #engine
+1 Phyrexian Metamorph #fodder #engine
+1 Walking Ballista #fodder #wincon
+1 Hangarback Walker #fodder
+1 Spellskite #fodder #protection
+1 Metalworker #fodder #ramp #combo
+1 Liberator, Urza's Battlethopter #fodder #engine
+1 Filigree Sages #fodder #combo
+1 Myr Sire #fodder
+1 Myr Retriever #fodder #recursion
+1 Thassa's Oracle #wincon
+1 Sol Ring #ramp
+1 Mana Vault #ramp
+1 Grim Monolith #ramp #combo
+1 Basalt Monolith #ramp #combo
+1 Mox Opal #ramp
+1 Mox Diamond #ramp
+1 Chrome Mox #ramp
+1 Lotus Petal #ramp
+1 Rings of Brighthearth #combo
+1 Forsaken Monument #combo #ramp
+1 Staff of Domination #combo #draw
+1 Thousand-Year Elixir #haste #engine
+1 Chromatic Orrery #combo #ramp
+1 Isochron Scepter #combo
+1 Voltaic Key #combo
+1 Clock of Omens #combo
+1 Sculpting Steel #combo
+1 The One Ring #draw #protection
+1 Portal to Phyrexia #removal #recursion
+1 Nevinyrral's Disk #boardwipe
+1 Darksteel Forge #protection
+1 Simulacrum Synthesizer #fodder
+1 Urza, Lord High Artificer #fodder #ramp
+1 Lightning Greaves #protection #haste
+1 Power Artifact #combo
+1 Rhystic Study #draw
+1 Mystic Remora #draw
+1 Tezzeret the Seeker #tutor
+1 Force of Will #counter
+1 Force of Negation #counter
+1 Fierce Guardianship #counter
+1 Pact of Negation #counter
+1 Mana Drain #counter
+1 Counterspell #counter
+1 Swan Song #counter
+1 Gifts Ungiven #tutor
+1 An Offer You Can't Refuse #counter
+1 Cyclonic Rift #removal
+1 Into the Flood Maw #removal
+1 Rapid Hybridization #removal
+1 Shore Up #protection
+1 Dramatic Reversal #combo
+1 Whir of Invention #tutor
+1 Trophy Mage #tutor
+1 Mystical Tutor #tutor
+1 Fabricate #tutor
+1 Ancient Tomb
+1 Mishra's Workshop
+1 City of Traitors
+1 Urza's Saga
+1 Academy Ruins
+1 Minamo, School at Water's Edge
+1 Otawara, Soaring City
+1 Inventors' Fair
+1 Seat of the Synod
+1 Hall of the Bandit Lord
+1 Blinkmoth Nexus
+1 Mishra's Factory
+1 Sink into Stupor // Soporific Springs
+17 Island
