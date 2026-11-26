@@ -1,5 +1,7 @@
 # name: Ians Klauth Dragons
 # bracket: 3
+# plan: Ramp into Klauth as early as possible (Dragonspeaker Shaman and the Dragon-mana lands help pay), then attack with haste: combat power becomes spell-only mana that carries between phases. Spend it to go off the same turn: Dracogenesis or Dragonstorm chains of Dragons with Terror of the Peaks pinging, Finale of Devastation for X of 10+ (+X/+X and haste to the team), or Biorhythm to set every life total to its creature count.
+# key: Klauth, Unrivaled Ancient; Dragonspeaker Shaman; Terror of the Peaks; Dracogenesis; Dragonstorm; Finale of Devastation; Biorhythm
 Commander
 1 Klauth, Unrivaled Ancient
 

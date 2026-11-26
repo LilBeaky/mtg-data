@@ -2,7 +2,6 @@
 # bracket: 3
 # plan: Primal Surge
 # key: Shrieking Drake; Primal Surge; Thassa's Oracle
-# pets: Seedborn Muse + Tidal Barracuda
 # track: Surge=Primal Surge
 # track: Oracle=Thassa's Oracle
 Commander
