@@ -1,0 +1,14 @@
+# Paper decks: the decks Ian physically owns and plays (built, sleeved, playable).
+# Set reviews cover only these. Concepts, in-progress builds, friends' decks and
+# digital-only lists stay out until they are added here.
+# One path per line, relative to this file (same convention as fishpond/opponents/own.txt).
+# Add a line when a deck is built; remove it when the deck is dismantled.
+Ians_Yusri_Omni.txt
+Ians_Klauth_Dragons.txt
+Ians_Zur_Wizardcycling.txt
+Ians_Chulane_Surge.txt
+Ians_Erebos_Apostles.txt
+Ians_Wilson_Auras.txt
+Ians_Sanar_Polymorph.txt
+Ians_Araumi_Reanimator.txt
+Ians_Ragost_Burn.txt
